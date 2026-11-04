@@ -1,0 +1,6 @@
+{
+  "name": "EduVerse - Education & School Management System",
+  "description": "Comprehensive school management and learning platform with student information, academic grading, attendance check-in, course management, LINE & Resend notifications, and Thai/English grade report generation.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
