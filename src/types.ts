@@ -6,7 +6,7 @@ export type AppLanguage = 'th' | 'en';
 
 export type AppTheme = 'dark' | 'light';
 
-export type ThemePalette = 'sapphire' | 'emerald' | 'amethyst' | 'light';
+export type ThemePalette = 'light_sky' | 'light_warm' | 'light_mint' | 'sapphire' | 'emerald' | 'amethyst' | 'light';
 
 export type StudentStatus = 'active' | 'graduated' | 'suspended' | 'transferred';
 

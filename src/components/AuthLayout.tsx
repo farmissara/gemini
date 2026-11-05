@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { School, AuthUser, UserRole, AppLanguage } from '../types';
+import { School, AuthUser, UserRole, AppLanguage, ThemePalette } from '../types';
 import { 
   GraduationCap, 
   Building2, 
@@ -16,7 +16,12 @@ import {
   MapPin,
   HelpCircle,
   PlusCircle,
-  ArrowLeft
+  ArrowLeft,
+  KeyRound,
+  ShieldAlert,
+  Palette,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface AuthLayoutProps {
@@ -27,6 +32,8 @@ interface AuthLayoutProps {
   onRegisterUser: (newUser: AuthUser) => void;
   lang: AppLanguage;
   setLang: (lang: AppLanguage) => void;
+  themePalette?: ThemePalette;
+  setThemePalette?: (palette: ThemePalette) => void;
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
@@ -37,9 +44,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onRegisterUser,
   lang,
   setLang,
+  themePalette = 'light_sky',
+  setThemePalette,
 }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register_user' | 'register_school'>('login');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>(schools[0]?.id || '');
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
+  const [superAdminInputKey, setSuperAdminInputKey] = useState('');
+  const [superAdminKeyError, setSuperAdminKeyError] = useState<string | null>(null);
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');

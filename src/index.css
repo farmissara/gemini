@@ -6,7 +6,47 @@
   }
 }
 
-/* Color Scheme Themes */
+/* ========================================================
+   THEME PALETTE COLOR DEFINITIONS
+   ======================================================== */
+
+/* 1. Eye-Care Light Sky (ฟ้าละมุน สบายตา) */
+.theme-light_sky, .theme-light {
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-accent: #0ea5e9;
+  --color-bg-base: #f1f5fa;
+  --color-card-bg: #ffffff;
+  --color-card-border: #e2e8f0;
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
+}
+
+/* 2. Eye-Care Warm Paper (ครีมอุ่น ถนอมสายตา ไร้แสงสะท้อน) */
+.theme-light_warm {
+  --color-primary: #b45309;
+  --color-primary-hover: #92400e;
+  --color-accent: #d97706;
+  --color-bg-base: #fbf9f4;
+  --color-card-bg: #ffffff;
+  --color-card-border: #ebe4d5;
+  --color-text-main: #292524;
+  --color-text-muted: #57534e;
+}
+
+/* 3. Eye-Care Gentle Mint (มินต์ผ่อนคลาย พักสายตา) */
+.theme-light_mint {
+  --color-primary: #059669;
+  --color-primary-hover: #047857;
+  --color-accent: #10b981;
+  --color-bg-base: #f0f7f4;
+  --color-card-bg: #ffffff;
+  --color-card-border: #cfe2d7;
+  --color-text-main: #132a22;
+  --color-text-muted: #40584d;
+}
+
+/* 4. Sapphire Dark (ค่ำคืนครามเข้ม) */
 .theme-sapphire {
   --color-primary: #0284c7;
   --color-primary-hover: #0369a1;
@@ -14,8 +54,11 @@
   --color-bg-base: #0B0F19;
   --color-card-bg: rgba(15, 23, 42, 0.7);
   --color-card-border: rgba(30, 41, 59, 0.8);
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
 }
 
+/* 5. Emerald Dark (มรกตเข้ม) */
 .theme-emerald {
   --color-primary: #059669;
   --color-primary-hover: #047857;
@@ -23,8 +66,11 @@
   --color-bg-base: #061512;
   --color-card-bg: rgba(6, 32, 28, 0.6);
   --color-card-border: rgba(16, 78, 64, 0.7);
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
 }
 
+/* 6. Amethyst Dark (อเมทิสต์) */
 .theme-amethyst {
   --color-primary: #7c3aed;
   --color-primary-hover: #6d28d9;
@@ -32,15 +78,220 @@
   --color-bg-base: #110c1f;
   --color-card-bg: rgba(30, 18, 54, 0.6);
   --color-card-border: rgba(76, 29, 149, 0.5);
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
 }
 
+/* ========================================================
+   EYE-CARE LIGHT THEME ADAPTATION
+   (Transforms dark backgrounds, cards, borders and text into
+   soft, soothing, eye-comfortable light mode)
+   ======================================================== */
+
+.theme-light_sky,
+.theme-light_warm,
+.theme-light_mint,
 .theme-light {
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-accent: #0284c7;
-  --color-bg-base: #f8fafc;
-  --color-card-bg: #ffffff;
-  --color-card-border: #e2e8f0;
+  color-scheme: light;
+}
+
+/* Background surfaces */
+.theme-light_sky,
+.theme-light {
+  background-color: #f1f5fa !important;
+}
+
+.theme-light_warm {
+  background-color: #fbf9f4 !important;
+}
+
+.theme-light_mint {
+  background-color: #f0f7f4 !important;
+}
+
+/* Primary cards, navbars, modals and panels */
+.theme-light_sky .bg-slate-900,
+.theme-light_sky .bg-slate-950,
+.theme-light_sky aside.bg-slate-900\/60,
+.theme-light_warm .bg-slate-900,
+.theme-light_warm .bg-slate-950,
+.theme-light_warm aside.bg-slate-900\/60,
+.theme-light_mint .bg-slate-900,
+.theme-light_mint .bg-slate-950,
+.theme-light_mint aside.bg-slate-900\/60,
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-950 {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light_sky header,
+.theme-light_warm header,
+.theme-light_mint header,
+.theme-light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.theme-light_sky .bg-slate-900\/95,
+.theme-light_sky .bg-slate-900\/80,
+.theme-light_sky .bg-slate-900\/60,
+.theme-light_sky .bg-slate-900\/50,
+.theme-light_warm .bg-slate-900\/95,
+.theme-light_warm .bg-slate-900\/80,
+.theme-light_warm .bg-slate-900\/60,
+.theme-light_warm .bg-slate-900\/50,
+.theme-light_mint .bg-slate-900\/95,
+.theme-light_mint .bg-slate-900\/80,
+.theme-light_mint .bg-slate-900\/60,
+.theme-light_mint .bg-slate-900\/50 {
+  background-color: #ffffff !important;
+}
+
+/* Inner secondary cards and stat badges */
+.theme-light_sky .bg-slate-800,
+.theme-light_sky .bg-slate-800\/60,
+.theme-light_sky .bg-slate-800\/50,
+.theme-light_sky .bg-slate-800\/40,
+.theme-light .bg-slate-800,
+.theme-light .bg-slate-800\/60 {
+  background-color: #f8fafc !important;
+}
+
+.theme-light_warm .bg-slate-800,
+.theme-light_warm .bg-slate-800\/60,
+.theme-light_warm .bg-slate-800\/50,
+.theme-light_warm .bg-slate-800\/40 {
+  background-color: #f7f4ea !important;
+}
+
+.theme-light_mint .bg-slate-800,
+.theme-light_mint .bg-slate-800\/60,
+.theme-light_mint .bg-slate-800\/50,
+.theme-light_mint .bg-slate-800\/40 {
+  background-color: #eaf4ee !important;
+}
+
+/* Card Borders */
+.theme-light_sky .border-slate-800,
+.theme-light_sky .border-slate-800\/80,
+.theme-light_sky .border-slate-700,
+.theme-light_sky .border-slate-700\/60,
+.theme-light_sky .border-slate-700\/80,
+.theme-light .border-slate-800,
+.theme-light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+.theme-light_warm .border-slate-800,
+.theme-light_warm .border-slate-800\/80,
+.theme-light_warm .border-slate-700,
+.theme-light_warm .border-slate-700\/60 {
+  border-color: #ebe4d5 !important;
+}
+
+.theme-light_mint .border-slate-800,
+.theme-light_mint .border-slate-800\/80,
+.theme-light_mint .border-slate-700,
+.theme-light_mint .border-slate-700\/60 {
+  border-color: #cfe2d7 !important;
+}
+
+/* Typography & Headings */
+.theme-light_sky .text-white,
+.theme-light_sky .text-slate-100,
+.theme-light_sky .text-slate-200,
+.theme-light .text-white,
+.theme-light .text-slate-100,
+.theme-light .text-slate-200 {
+  color: #0f172a !important;
+}
+
+.theme-light_warm .text-white,
+.theme-light_warm .text-slate-100,
+.theme-light_warm .text-slate-200 {
+  color: #292524 !important;
+}
+
+.theme-light_mint .text-white,
+.theme-light_mint .text-slate-100,
+.theme-light_mint .text-slate-200 {
+  color: #132a22 !important;
+}
+
+/* Secondary muted text */
+.theme-light_sky .text-slate-300,
+.theme-light_sky .text-slate-400,
+.theme-light .text-slate-300,
+.theme-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.theme-light_warm .text-slate-300,
+.theme-light_warm .text-slate-400 {
+  color: #57534e !important;
+}
+
+.theme-light_mint .text-slate-300,
+.theme-light_mint .text-slate-400 {
+  color: #40584d !important;
+}
+
+.theme-light_sky .text-slate-500,
+.theme-light_warm .text-slate-500,
+.theme-light_mint .text-slate-500,
+.theme-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Inputs, Selects, and Textareas */
+.theme-light_sky input:not([type="checkbox"]):not([type="radio"]),
+.theme-light_sky select,
+.theme-light_sky textarea,
+.theme-light input:not([type="checkbox"]):not([type="radio"]),
+.theme-light select,
+.theme-light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.theme-light_warm input:not([type="checkbox"]):not([type="radio"]),
+.theme-light_warm select,
+.theme-light_warm textarea {
+  background-color: #ffffff !important;
+  color: #292524 !important;
+  border-color: #e2d9c8 !important;
+}
+
+.theme-light_mint input:not([type="checkbox"]):not([type="radio"]),
+.theme-light_mint select,
+.theme-light_mint textarea {
+  background-color: #ffffff !important;
+  color: #132a22 !important;
+  border-color: #c0d8cb !important;
+}
+
+/* Hero Banners in Light Mode */
+.theme-light_sky .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+}
+.theme-light_sky .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r * {
+  color: #ffffff !important;
+}
+
+.theme-light_warm .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
+  background: linear-gradient(135deg, #78350f 0%, #b45309 100%) !important;
+}
+.theme-light_warm .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r * {
+  color: #ffffff !important;
+}
+
+.theme-light_mint .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
+  background: linear-gradient(135deg, #065f46 0%, #059669 100%) !important;
+}
+.theme-light_mint .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r * {
+  color: #ffffff !important;
 }
 
 /* Glassmorphism helpers */
@@ -52,7 +303,7 @@
 }
 
 .glass-card-light {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(226, 232, 240, 0.9);
@@ -64,14 +315,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(11, 15, 25, 0.6);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.35);
+  background: rgba(148, 163, 184, 0.45);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.55);
+  background: rgba(100, 116, 139, 0.65);
 }
 
 @keyframes fadeIn {

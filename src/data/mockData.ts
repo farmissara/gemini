@@ -37,46 +37,6 @@ export const INITIAL_SCHOOLS: School[] = [
     lineOaId: '@eduverse_official',
     createdAt: '2022-01-15',
     status: 'active',
-  },
-  {
-    id: 'sch-2',
-    code: 'SCH-CNX02',
-    nameTh: 'โรงเรียนสาธิตพัฒนปัญญาเชียงใหม่',
-    nameEn: 'Chiang Mai Demonstration School',
-    slug: 'chiangmai-demo',
-    type: 'demonstration',
-    province: 'เชียงใหม่',
-    address: '239 ถ.ห้วยแก้ว ต.สุเทพ อ.เมือง จ.เชียงใหม่ 50200',
-    phone: '053-943-111',
-    email: 'contact@cm-demo.ac.th',
-    primaryColor: '#10b981', // Emerald modern accent
-    studentsCount: 980,
-    teachersCount: 62,
-    academicYear: '2569 (2026)',
-    currentSemester: 'ภาคเรียนที่ 1 (Semester 1)',
-    lineOaId: '@cm_demo',
-    createdAt: '2023-04-10',
-    status: 'active',
-  },
-  {
-    id: 'sch-3',
-    code: 'SCH-HKT03',
-    nameTh: 'โรงเรียนมัธยมวิทยาการภูเก็ตนานาชาติ',
-    nameEn: 'Phuket Science & International Academy',
-    slug: 'phuket-academy',
-    type: 'international',
-    province: 'ภูเก็ต',
-    address: '88 หมู่ 2 ต.เกาะแก้ว อ.เมือง จ.ภูเก็ต 83000',
-    phone: '076-608-555',
-    email: 'admissions@phuket-academy.edu',
-    primaryColor: '#8b5cf6', // Violet modern accent
-    studentsCount: 740,
-    teachersCount: 54,
-    academicYear: '2569 (2026)',
-    currentSemester: 'ภาคเรียนที่ 1 (Semester 1)',
-    lineOaId: '@phuket_edu',
-    createdAt: '2024-02-01',
-    status: 'active',
   }
 ];
 
@@ -269,7 +229,7 @@ export const INITIAL_STUDENTS: Student[] = [
   // School 2 (Chiang Mai Demo)
   {
     id: 'stu-7',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     studentIdNumber: 'CM-4011',
     nationalId: '1-5002-00345-12-3',
     firstNameEn: 'Natthanicha',
@@ -293,7 +253,7 @@ export const INITIAL_STUDENTS: Student[] = [
   },
   {
     id: 'stu-8',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     studentIdNumber: 'CM-4012',
     nationalId: '1-5002-00877-44-1',
     firstNameEn: 'Chanon',
@@ -319,7 +279,7 @@ export const INITIAL_STUDENTS: Student[] = [
   // School 3 (Phuket Science)
   {
     id: 'stu-9',
-    schoolId: 'sch-3',
+    schoolId: 'sch-1',
     studentIdNumber: 'PK-1001',
     nationalId: '1-8301-00233-91-0',
     firstNameEn: 'Alex',
@@ -403,7 +363,7 @@ export const INITIAL_COURSES: Course[] = [
   // School 2 Courses (Chiang Mai)
   {
     id: 'crs-10',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     code: 'ว30215',
     titleEn: 'Molecular Genetics & Bioinformatics',
     titleTh: 'พันธุศาสตร์ระดับโมเลกุลและชีวสารสนเทศ',
@@ -423,7 +383,7 @@ export const INITIAL_COURSES: Course[] = [
   // School 3 Courses (Phuket)
   {
     id: 'crs-20',
-    schoolId: 'sch-3',
+    schoolId: 'sch-1',
     code: 'AI-401',
     titleEn: 'Robotics, IoT & Edge Intelligence',
     titleTh: 'หุ่นยนต์ ปัญญาประดิษฐ์ และอินเทอร์เน็ตของสรรพสิ่ง',
@@ -489,7 +449,7 @@ export const INITIAL_GRADES: GradeRecord[] = [
   },
   {
     id: 'grd-7',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     studentId: 'stu-7',
     courseId: 'crs-10',
     academicYear: '2569',
@@ -504,7 +464,7 @@ export const INITIAL_GRADES: GradeRecord[] = [
   },
   {
     id: 'grd-9',
-    schoolId: 'sch-3',
+    schoolId: 'sch-1',
     studentId: 'stu-9',
     courseId: 'crs-20',
     academicYear: '2026',
@@ -555,7 +515,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
   },
   {
     id: 'att-7',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     studentId: 'stu-7',
     date: '2026-11-04',
     time: '07:40:02',
@@ -566,7 +526,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
   },
   {
     id: 'att-9',
-    schoolId: 'sch-3',
+    schoolId: 'sch-1',
     studentId: 'stu-9',
     date: '2026-11-04',
     time: '07:50:18',
@@ -619,7 +579,7 @@ export const INITIAL_INVOICES: TuitionInvoice[] = [
   },
   {
     id: 'inv-7',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     invoiceNumber: 'INV-CM-2026-042',
     studentId: 'stu-7',
     semester: 'ภาคเรียนที่ 1/2569',
@@ -670,7 +630,7 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
   },
   {
     id: 'ann-10',
-    schoolId: 'sch-2',
+    schoolId: 'sch-1',
     title: 'การเปิดรับผลงานโครงงานชีววิทยาภาคเหนือ (Northern Bio Project)',
     content: 'นักเรียนสาธิต มช. ที่ผ่านการคัดเลือกรอบแรก ให้เตรียมไฟล์นำเสนอและรายงานฉบับสมบูรณ์ภายในวันที่ 15 พฤศจิกายนนี้',
     category: 'academic',
