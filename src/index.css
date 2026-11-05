@@ -7,26 +7,14 @@
 }
 
 /* ========================================================
-   THEME PALETTE COLOR DEFINITIONS
+   EYE-CARE & COMFORT PALETTES (โทนสีถนอมสายตาสำหรับการทำงานและเรียน)
    ======================================================== */
 
-/* 1. Eye-Care Light Sky (ฟ้าละมุน สบายตา) */
-.theme-light_sky, .theme-light {
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-accent: #0ea5e9;
-  --color-bg-base: #f1f5fa;
-  --color-card-bg: #ffffff;
-  --color-card-border: #e2e8f0;
-  --color-text-main: #0f172a;
-  --color-text-muted: #475569;
-}
-
-/* 2. Eye-Care Warm Paper (ครีมอุ่น ถนอมสายตา ไร้แสงสะท้อน) */
+/* 1. Eye-Care Warm Paper (กระดาษอุ่น ไร้แสงสะท้อน - ดีที่สุดต่อสายตา) */
 .theme-light_warm {
-  --color-primary: #b45309;
-  --color-primary-hover: #92400e;
-  --color-accent: #d97706;
+  --color-primary: #1e3a8a;
+  --color-primary-hover: #172554;
+  --color-accent: #c2410c;
   --color-bg-base: #fbf9f4;
   --color-card-bg: #ffffff;
   --color-card-border: #ebe4d5;
@@ -34,133 +22,116 @@
   --color-text-muted: #57534e;
 }
 
-/* 3. Eye-Care Gentle Mint (มินต์ผ่อนคลาย พักสายตา) */
+/* 2. Eye-Care Soft Sky (ฟ้าครามละมุน สบายตา) */
+.theme-light_sky, .theme-light {
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-accent: #0284c7;
+  --color-bg-base: #f8fafc;
+  --color-card-bg: #ffffff;
+  --color-card-border: #e2e8f0;
+  --color-text-main: #1e293b;
+  --color-text-muted: #475569;
+}
+
+/* 3. Eye-Care Gentle Mint (มินต์ธรรมชาติ พักสายตา) */
 .theme-light_mint {
-  --color-primary: #059669;
-  --color-primary-hover: #047857;
-  --color-accent: #10b981;
-  --color-bg-base: #f0f7f4;
+  --color-primary: #047857;
+  --color-primary-hover: #065f46;
+  --color-accent: #059669;
+  --color-bg-base: #f2f7f4;
   --color-card-bg: #ffffff;
   --color-card-border: #cfe2d7;
   --color-text-main: #132a22;
   --color-text-muted: #40584d;
 }
 
-/* 4. Eye-Care Clean Pure White (ขาวสว่าง คลีนมินิมอล) */
+/* 4. Eye-Care Clean Minimal (ขาวคลีน นวลตา) */
 .theme-light_pure {
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-accent: #6366f1;
-  --color-bg-base: #f8fafc;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-accent: #4f46e5;
+  --color-bg-base: #fafafa;
   --color-card-bg: #ffffff;
-  --color-card-border: #e2e8f0;
-  --color-text-main: #0f172a;
-  --color-text-muted: #475569;
+  --color-card-border: #e5e5e5;
+  --color-text-main: #18181b;
+  --color-text-muted: #52525b;
 }
 
-/* 5. Eye-Care Soft Lavender (ลาเวนเดอร์นุ่มนวล ผ่อนคลายตา) */
+/* 5. Eye-Care Soft Lavender (ลาเวนเดอร์ผ่อนคลาย) */
 .theme-light_lavender {
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-accent: #8b5cf6;
-  --color-bg-base: #f7f5fc;
+  --color-primary: #6d28d9;
+  --color-primary-hover: #5b21b6;
+  --color-accent: #7c3aed;
+  --color-bg-base: #f8f6fc;
   --color-card-bg: #ffffff;
-  --color-card-border: #e9e3f7;
+  --color-card-border: #e8e2f4;
   --color-text-main: #1e1338;
   --color-text-muted: #52466e;
 }
 
-/* 6. Sapphire Dark (ค่ำคืนครามเข้ม) */
-.theme-sapphire {
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-accent: #06b6d4;
-  --color-bg-base: #0B0F19;
-  --color-card-bg: rgba(15, 23, 42, 0.7);
-  --color-card-border: rgba(30, 41, 59, 0.8);
-  --color-text-main: #f8fafc;
-  --color-text-muted: #94a3b8;
-}
-
-/* 7. Emerald Dark (มรกตเข้ม) */
-.theme-emerald {
-  --color-primary: #059669;
-  --color-primary-hover: #047857;
-  --color-accent: #10b981;
-  --color-bg-base: #061512;
-  --color-card-bg: rgba(6, 32, 28, 0.6);
-  --color-card-border: rgba(16, 78, 64, 0.7);
-  --color-text-main: #f8fafc;
-  --color-text-muted: #94a3b8;
-}
-
-/* 8. Amethyst Dark (อเมทิสต์) */
-.theme-amethyst {
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-accent: #a855f7;
-  --color-bg-base: #110c1f;
-  --color-card-bg: rgba(30, 18, 54, 0.6);
-  --color-card-border: rgba(76, 29, 149, 0.5);
-  --color-text-main: #f8fafc;
+/* 6. Soft Dark Mode (มืดนุ่มนวล ไม่แสบตา ไม่ใช้ดำมืดสนิท) */
+.theme-sapphire, .theme-dark {
+  --color-primary: #38bdf8;
+  --color-primary-hover: #0ea5e9;
+  --color-accent: #38bdf8;
+  --color-bg-base: #0f172a;
+  --color-card-bg: #1e293b;
+  --color-card-border: #334155;
+  --color-text-main: #f1f5f9;
   --color-text-muted: #94a3b8;
 }
 
 /* ========================================================
-   UNIVERSAL EYE-CARE LIGHT THEME ADAPTATION
-   (Transforms dark backgrounds, cards, borders and text into
-   soft, soothing, eye-comfortable light mode)
+   UNIVERSAL EYE-CARE OVERRIDES FOR LIGHT THEMES
    ======================================================== */
 
 [class*="theme-light"] {
   color-scheme: light;
 }
 
-/* Specific background surfaces */
-.theme-light_sky,
-.theme-light {
-  background-color: #f1f5fa !important;
-}
-
+/* Background canvas */
 .theme-light_warm {
   background-color: #fbf9f4 !important;
 }
-
-.theme-light_mint {
-  background-color: #f0f7f4 !important;
-}
-
-.theme-light_pure {
+.theme-light_sky, .theme-light {
   background-color: #f8fafc !important;
 }
-
+.theme-light_mint {
+  background-color: #f2f7f4 !important;
+}
+.theme-light_pure {
+  background-color: #fafafa !important;
+}
 .theme-light_lavender {
-  background-color: #f7f5fc !important;
+  background-color: #f8f6fc !important;
 }
 
-/* Primary cards, navbars, modals and panels */
+/* Headers, Sidebars and Modals */
+[class*="theme-light"] header {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+[class*="theme-light"] aside {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
 [class*="theme-light"] .bg-slate-900,
 [class*="theme-light"] .bg-slate-950,
 [class*="theme-light"] .bg-\[\#0B0F19\],
-[class*="theme-light"] aside.bg-slate-900\/60 {
-  background-color: #ffffff !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-}
-
-[class*="theme-light"] header {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-}
-
 [class*="theme-light"] .bg-slate-900\/95,
 [class*="theme-light"] .bg-slate-900\/80,
 [class*="theme-light"] .bg-slate-900\/60,
 [class*="theme-light"] .bg-slate-900\/50,
 [class*="theme-light"] .bg-slate-900\/40 {
   background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03) !important;
 }
 
-/* Inner secondary cards and stat badges */
+/* Sub-cards and inner wells */
 [class*="theme-light"] .bg-slate-800,
 [class*="theme-light"] .bg-slate-800\/60,
 [class*="theme-light"] .bg-slate-800\/50,
@@ -177,21 +148,7 @@
   background-color: #f6f3eb !important;
 }
 
-.theme-light_mint .bg-slate-800,
-.theme-light_mint .bg-slate-800\/60,
-.theme-light_mint .bg-slate-800\/50,
-.theme-light_mint .bg-slate-800\/40 {
-  background-color: #e8f3ee !important;
-}
-
-.theme-light_lavender .bg-slate-800,
-.theme-light_lavender .bg-slate-800\/60,
-.theme-light_lavender .bg-slate-800\/50,
-.theme-light_lavender .bg-slate-800\/40 {
-  background-color: #f2edf8 !important;
-}
-
-/* Card Borders */
+/* Subtle Borders */
 [class*="theme-light"] .border-slate-800,
 [class*="theme-light"] .border-slate-800\/80,
 [class*="theme-light"] .border-slate-800\/60,
@@ -208,25 +165,11 @@
   border-color: #ebe4d5 !important;
 }
 
-.theme-light_mint .border-slate-800,
-.theme-light_mint .border-slate-800\/80,
-.theme-light_mint .border-slate-700,
-.theme-light_mint .border-slate-700\/60 {
-  border-color: #cfe2d7 !important;
-}
-
-.theme-light_lavender .border-slate-800,
-.theme-light_lavender .border-slate-800\/80,
-.theme-light_lavender .border-slate-700,
-.theme-light_lavender .border-slate-700\/60 {
-  border-color: #e9e3f7 !important;
-}
-
-/* Typography & Headings */
+/* Main typography in light mode */
 [class*="theme-light"] .text-white,
 [class*="theme-light"] .text-slate-100,
 [class*="theme-light"] .text-slate-200 {
-  color: #0f172a !important;
+  color: #1e293b !important;
 }
 
 .theme-light_warm .text-white,
@@ -235,19 +178,6 @@
   color: #292524 !important;
 }
 
-.theme-light_mint .text-white,
-.theme-light_mint .text-slate-100,
-.theme-light_mint .text-slate-200 {
-  color: #132a22 !important;
-}
-
-.theme-light_lavender .text-white,
-.theme-light_lavender .text-slate-100,
-.theme-light_lavender .text-slate-200 {
-  color: #1e1338 !important;
-}
-
-/* Secondary muted text */
 [class*="theme-light"] .text-slate-300,
 [class*="theme-light"] .text-slate-400 {
   color: #475569 !important;
@@ -258,18 +188,97 @@
   color: #57534e !important;
 }
 
-.theme-light_mint .text-slate-300,
-.theme-light_mint .text-slate-400 {
-  color: #40584d !important;
-}
-
-.theme-light_lavender .text-slate-300,
-.theme-light_lavender .text-slate-400 {
-  color: #52466e !important;
-}
-
 [class*="theme-light"] .text-slate-500 {
   color: #64748b !important;
+}
+
+/* ========================================================
+   CRITICAL EYE-CARE COLOR MAP (Transforms neon glaring text into readable tones)
+   ======================================================== */
+
+/* Cyan & Sky -> Deep Calming Blue */
+[class*="theme-light"] .text-cyan-400,
+[class*="theme-light"] .text-cyan-300,
+[class*="theme-light"] .text-cyan-200,
+[class*="theme-light"] .text-sky-300 {
+  color: #0369a1 !important;
+}
+[class*="theme-light"] .bg-cyan-500\/10,
+[class*="theme-light"] .bg-cyan-500\/20 {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+[class*="theme-light"] .border-cyan-500\/30,
+[class*="theme-light"] .border-cyan-500\/40 {
+  border-color: #bfdbfe !important;
+}
+
+/* Emerald & Green -> Deep Forest Sage */
+[class*="theme-light"] .text-emerald-400,
+[class*="theme-light"] .text-emerald-300,
+[class*="theme-light"] .text-green-300 {
+  color: #15803d !important;
+}
+[class*="theme-light"] .bg-emerald-500\/10,
+[class*="theme-light"] .bg-emerald-500\/20 {
+  background-color: #f0fdf4 !important;
+  color: #166534 !important;
+}
+[class*="theme-light"] .border-emerald-500\/30,
+[class*="theme-light"] .border-emerald-500\/40 {
+  border-color: #bbf7d0 !important;
+}
+
+/* Amber & Yellow -> Deep Warm Clay Amber */
+[class*="theme-light"] .text-amber-400,
+[class*="theme-light"] .text-amber-300,
+[class*="theme-light"] .text-yellow-300 {
+  color: #b45309 !important;
+}
+[class*="theme-light"] .bg-amber-500\/10,
+[class*="theme-light"] .bg-amber-500\/20 {
+  background-color: #fffbeb !important;
+  color: #92400e !important;
+}
+[class*="theme-light"] .border-amber-500\/30,
+[class*="theme-light"] .border-amber-500\/40 {
+  border-color: #fde68a !important;
+}
+
+/* Rose & Pink -> Deep Wine Rose */
+[class*="theme-light"] .text-rose-400,
+[class*="theme-light"] .text-rose-300,
+[class*="theme-light"] .text-pink-300 {
+  color: #be123c !important;
+}
+[class*="theme-light"] .bg-rose-500\/10,
+[class*="theme-light"] .bg-rose-500\/20 {
+  background-color: #fff1f2 !important;
+  color: #9f1239 !important;
+}
+[class*="theme-light"] .border-rose-500\/30,
+[class*="theme-light"] .border-rose-500\/40 {
+  border-color: #fecdd3 !important;
+}
+
+/* Indigo & Purple -> Deep Royal Indigo */
+[class*="theme-light"] .text-indigo-400,
+[class*="theme-light"] .text-indigo-300,
+[class*="theme-light"] .text-purple-400,
+[class*="theme-light"] .text-purple-300 {
+  color: #4338ca !important;
+}
+[class*="theme-light"] .bg-indigo-500\/10,
+[class*="theme-light"] .bg-indigo-500\/20,
+[class*="theme-light"] .bg-purple-500\/10,
+[class*="theme-light"] .bg-purple-500\/20 {
+  background-color: #eef2ff !important;
+  color: #3730a3 !important;
+}
+[class*="theme-light"] .border-indigo-500\/30,
+[class*="theme-light"] .border-indigo-500\/40,
+[class*="theme-light"] .border-purple-500\/30 {
+  border-color: #c7d2fe !important;
 }
 
 /* Inputs, Selects, and Textareas */
@@ -277,81 +286,37 @@
 [class*="theme-light"] select,
 [class*="theme-light"] textarea {
   background-color: #ffffff !important;
-  color: #0f172a !important;
+  color: #1e293b !important;
   border-color: #cbd5e1 !important;
 }
-
-.theme-light_warm input:not([type="checkbox"]):not([type="radio"]),
-.theme-light_warm select,
-.theme-light_warm textarea {
-  background-color: #ffffff !important;
-  color: #292524 !important;
-  border-color: #e2d9c8 !important;
+[class*="theme-light"] input::placeholder,
+[class*="theme-light"] textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
-.theme-light_mint input:not([type="checkbox"]):not([type="radio"]),
-.theme-light_mint select,
-.theme-light_mint textarea {
-  background-color: #ffffff !important;
-  color: #132a22 !important;
-  border-color: #c0d8cb !important;
+/* Buttons in Light Mode */
+[class*="theme-light"] .bg-indigo-600 {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
 }
-
-.theme-light_lavender input:not([type="checkbox"]):not([type="radio"]),
-.theme-light_lavender select,
-.theme-light_lavender textarea {
-  background-color: #ffffff !important;
-  color: #1e1338 !important;
-  border-color: #ddd4ee !important;
+[class*="theme-light"] .bg-cyan-600 {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
 }
-
-/* Button & Link Hover States in Light Mode */
 [class*="theme-light"] .hover\:bg-slate-800:hover,
-[class*="theme-light"] .hover\:bg-slate-800\/80:hover,
 [class*="theme-light"] .hover\:bg-slate-700:hover {
   background-color: #f1f5f9 !important;
+  color: #1e293b !important;
 }
 
-[class*="theme-light"] .hover\:text-white:hover {
-  color: #0f172a !important;
+/* Hero Top Banner: Calm Slate/Blue instead of harsh dark neon */
+[class*="theme-light"] .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
 }
-
-
-/* Hero Banners in Light Mode */
-.theme-light_sky .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-}
-.theme-light_sky .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r * {
-  color: #ffffff !important;
-}
-
-.theme-light_warm .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
-  background: linear-gradient(135deg, #78350f 0%, #b45309 100%) !important;
-}
-.theme-light_warm .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r * {
-  color: #ffffff !important;
-}
-
-.theme-light_mint .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {
-  background: linear-gradient(135deg, #065f46 0%, #059669 100%) !important;
-}
-.theme-light_mint .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r * {
-  color: #ffffff !important;
-}
-
-/* Glassmorphism helpers */
-.glass-card {
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-card-light {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+[class*="theme-light"] .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r h1,
+[class*="theme-light"] .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r p,
+[class*="theme-light"] .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r span {
+  color: #f8fafc !important;
 }
 
 /* Custom scrollbars */

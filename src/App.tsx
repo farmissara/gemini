@@ -98,7 +98,7 @@ export const App: React.FC = () => {
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
   const [lang, setLang] = useState<AppLanguage>('th');
   const [theme, setTheme] = useState<AppTheme>('light');
-  const [themePalette, setThemePalette] = useState<ThemePalette>('light_sky');
+  const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Primary Domain State
@@ -159,6 +159,19 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     setCurrentUser(null);
   };
+
+  // Direct URL access for Super Admin (e.g. ?role=super_admin or #superadmin)
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('role') === 'super_admin' || params.get('login') === 'superadmin' || window.location.hash === '#superadmin') {
+        const superUser = demoUsers.find((u) => u.role === 'super_admin') || demoUsers[0];
+        handleLogin(superUser, schools[0]);
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }, []);
 
   const handleRegisterSchool = (newSchool: School, adminUser: AuthUser) => {
     setSchools((prev) => [newSchool, ...prev]);

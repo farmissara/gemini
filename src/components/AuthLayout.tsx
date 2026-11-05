@@ -499,45 +499,74 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <span className="font-semibold uppercase tracking-wider">
                       {lang === 'th' ? 'ทดสอบเข้าสู่ระบบด่วน 1 คลิก:' : '1-Click Quick Demo Sign In:'}
                     </span>
-                    <span className="text-[10px] text-cyan-400">ไม่ต้องกรอกรหัสผ่าน</span>
+                    <span className="text-[10px] text-indigo-500 font-semibold">ไม่ต้องกรอกรหัสผ่าน</span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemo('super_admin')}
+                      className="px-2 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 text-xs font-bold border border-amber-500/30 text-center transition-all flex flex-col items-center justify-center gap-1 shadow-sm"
+                      title="เข้าสู่ระบบแม่ข่ายระดับสูงสุด Super Admin"
+                    >
+                      <ShieldAlert className="w-4 h-4 text-amber-600" />
+                      <span>👑 Super Admin</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDemo('admin')}
-                      className="px-2.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 text-center transition-all flex flex-col items-center justify-center gap-1"
+                      className="px-2 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="ผู้อำนวยการ / แอดมินโรงเรียน"
                     >
-                      <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                      <ShieldCheck className="w-4 h-4 text-indigo-600" />
                       <span>{lang === 'th' ? 'ผอ. / แอดมิน' : 'Principal / Admin'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDemo('teacher')}
-                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 text-center transition-all flex flex-col items-center justify-center gap-1"
+                      className="px-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="อาจารย์ผู้สอน"
                     >
-                      <User className="w-4 h-4 text-sky-400" />
+                      <User className="w-4 h-4 text-sky-600" />
                       <span>{lang === 'th' ? 'อาจารย์' : 'Teacher'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDemo('student')}
-                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 text-center transition-all flex flex-col items-center justify-center gap-1"
+                      className="px-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="นักเรียน"
                     >
-                      <GraduationCap className="w-4 h-4 text-emerald-400" />
+                      <GraduationCap className="w-4 h-4 text-emerald-600" />
                       <span>{lang === 'th' ? 'นักเรียน' : 'Student'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDemo('parent')}
-                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 text-center transition-all flex flex-col items-center justify-center gap-1"
+                      className="px-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="ผู้ปกครอง"
                     >
-                      <Building2 className="w-4 h-4 text-amber-400" />
+                      <Building2 className="w-4 h-4 text-amber-600" />
                       <span>{lang === 'th' ? 'ผู้ปกครอง' : 'Parent'}</span>
+                    </button>
+                  </div>
+
+                  {/* Super Admin Info Callout */}
+                  <div className="mt-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">👑</span>
+                      <div>
+                        <strong className="text-amber-900 block">พอร์ทัลแม่ข่าย Super Admin:</strong>
+                        <span className="text-amber-700 text-[11px]">
+                          อีเมล: <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-200">superadmin@eduverse.school</code> • รหัสผ่าน: <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-200">SuperAdmin@Edu2026!</code>
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemo('super_admin')}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs transition shrink-0 ml-2"
+                    >
+                      เข้าสู่ระบบทันที
                     </button>
                   </div>
                 </div>

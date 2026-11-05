@@ -258,37 +258,44 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>{lang === 'th' ? '🇹🇭 ไทย' : '🇬🇧 EN'}</span>
         </button>
 
-        {/* Role Switcher or Super Admin Badge */}
-        {currentRole === 'super_admin' ? (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-            <span>{lang === 'th' ? '👑 Super Admin ส่วนกลาง' : '👑 Master Super Admin'}</span>
-          </div>
-        ) : (
-          <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700/80 text-xs">
-            {(['admin', 'teacher', 'student', 'parent'] as UserRole[]).map((r) => (
+        {/* Role Switcher with direct Super Admin access */}
+        <div className="flex items-center bg-slate-800/80 rounded-xl p-1 border border-slate-700/80 text-xs gap-1">
+          {(['super_admin', 'admin', 'teacher', 'student', 'parent'] as UserRole[]).map((r) => {
+            const isActive = currentRole === r;
+            const isSuper = r === 'super_admin';
+            return (
               <button
                 key={r}
                 onClick={() => setCurrentRole(r)}
-                className={`px-2 py-1 rounded capitalize font-medium text-[11px] transition-all ${
-                  currentRole === r
-                    ? 'bg-cyan-600 text-white font-bold shadow'
-                    : 'text-slate-400 hover:text-white'
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 ${
+                  isActive
+                    ? isSuper
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : isSuper
+                    ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
+                title={isSuper ? 'เข้าสู่สิทธิ์แม่ข่ายระดับสูงสุด (Super Admin Portal)' : `สลับมุมมอง: ${r}`}
               >
-                {lang === 'th'
-                  ? r === 'admin'
-                    ? 'แอดมิน'
-                    : r === 'teacher'
-                    ? 'ครู'
-                    : r === 'student'
-                    ? 'นักเรียน'
-                    : 'ผู้ปกครอง'
-                  : r}
+                {isSuper && <span>👑</span>}
+                <span>
+                  {lang === 'th'
+                    ? r === 'super_admin'
+                      ? 'Super Admin'
+                      : r === 'admin'
+                      ? 'แอดมิน'
+                      : r === 'teacher'
+                      ? 'ครู'
+                      : r === 'student'
+                      ? 'นักเรียน'
+                      : 'ผู้ปกครอง'
+                    : r === 'super_admin' ? 'Super Admin' : r}
+                </span>
               </button>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
 
         {/* User Info & Log Out */}
         <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-800">
