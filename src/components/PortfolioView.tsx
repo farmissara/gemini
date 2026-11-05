@@ -25,6 +25,7 @@ interface PortfolioViewProps {
   currentUser: AuthUser | null;
   lang: AppLanguage;
   onAddPortfolioItem: (item: PortfolioItem) => void;
+  onOpenProfile?: () => void;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -32,7 +33,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   students,
   currentUser,
   lang,
-  onAddPortfolioItem
+  onAddPortfolioItem,
+  onOpenProfile,
 }) => {
   const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'teacher'>('student');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -103,10 +105,20 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {onOpenProfile && (
+              <button
+                onClick={onOpenProfile}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md hover:shadow-blue-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <User className="w-4 h-4" />
+                <span>{lang === 'th' ? 'โปรไฟล์ & พรีวิวเล่มของฉัน' : 'My Profile & Book'}</span>
+              </button>
+            )}
+
             <button
               onClick={handlePrintPortfolio}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>{lang === 'th' ? 'พิมพ์ / ส่งออก PDF' : 'Print / Export PDF'}</span>
@@ -114,7 +126,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white text-xs font-extrabold shadow-lg shadow-rose-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white text-xs font-extrabold shadow-lg shadow-rose-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{lang === 'th' ? 'เพิ่มผลงานใหม่' : 'Add New Work'}</span>

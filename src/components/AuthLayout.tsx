@@ -414,23 +414,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                     <button
                       type="button"
-                      onClick={() => handleFillCredentials('superadmin@eduverse.school', 'SuperAdmin@Edu2026!')}
-                      className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-left transition flex items-start gap-2"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-blue-700 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="font-bold text-slate-900">👑 Super Admin</div>
-                        <div className="text-slate-500 font-mono text-[10px]">superadmin@eduverse.school</div>
-                        <div className="text-slate-400 text-[10px]">Pass: SuperAdmin@Edu2026!</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => handleFillCredentials('admin@eduverse.school', 'Admin@Edu2026!')}
                       className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-left transition flex items-start gap-2"
                     >
-                      <Building2 className="w-4 h-4 text-slate-700 mt-0.5 shrink-0" />
+                      <Building2 className="w-4 h-4 text-blue-700 mt-0.5 shrink-0" />
                       <div>
                         <div className="font-bold text-slate-900">ผอ. / แอดมินโรงเรียน</div>
                         <div className="text-slate-500 font-mono text-[10px]">admin@eduverse.school</div>
@@ -461,6 +448,19 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         <div className="font-bold text-slate-900">นักเรียน (Student)</div>
                         <div className="text-slate-500 font-mono text-[10px]">student@eduverse.school</div>
                         <div className="text-slate-400 text-[10px]">Pass: Student@Edu2026!</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleFillCredentials('parent@eduverse.school', 'Parent@Edu2026!')}
+                      className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-left transition flex items-start gap-2"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-900">ผู้ปกครอง (Parent)</div>
+                        <div className="text-slate-500 font-mono text-[10px]">parent@eduverse.school</div>
+                        <div className="text-slate-400 text-[10px]">Pass: Parent@Edu2026!</div>
                       </div>
                     </button>
                   </div>

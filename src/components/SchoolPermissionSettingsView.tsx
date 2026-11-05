@@ -1,0 +1,319 @@
+import React, { useState } from 'react';
+import { 
+  ShieldCheck, 
+  User, 
+  GraduationCap, 
+  Users, 
+  Check, 
+  X, 
+  Save, 
+  CheckCircle2, 
+  Building2, 
+  Lock, 
+  Sparkles, 
+  Info 
+} from 'lucide-react';
+import { School, UserRole, AppLanguage } from '../types';
+
+interface SchoolPermissionSettingsViewProps {
+  activeSchool: School;
+  lang: AppLanguage;
+}
+
+interface SchoolRolePolicy {
+  id: string;
+  role: 'teacher' | 'student' | 'parent';
+  titleTh: string;
+  descTh: string;
+  category: 'academic' | 'student_care' | 'communication';
+  enabled: boolean;
+}
+
+export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsViewProps> = ({
+  activeSchool,
+  lang,
+}) => {
+  const [selectedRole, setSelectedRole] = useState<'teacher' | 'student' | 'parent'>('teacher');
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  // Storage key specific to this school
+  const storageKey = `eduverse_school_perms_${activeSchool.id}`;
+
+  const defaultPolicies: SchoolRolePolicy[] = [
+    // Teacher Policies
+    {
+      id: 'teacher_grade_entry',
+      role: 'teacher',
+      titleTh: 'อนุญาตให้ครูบันทึกและแก้ไขคะแนนสอบ ปพ.1',
+      descTh: 'ครูประจำวิชาสามารถกรอกคะแนนเก็บ กลางภาค และปลายภาคได้โดยตรง',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'teacher_attendance',
+      role: 'teacher',
+      titleTh: 'อนุญาตให้ครูเช็คชื่อเข้าแถวและเช็คชื่อรายคาบ',
+      descTh: 'ครูสามารถบันทึกเวลาเรียนและสแกน QR Code ประจำคาบเรียนได้',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'teacher_homework',
+      role: 'teacher',
+      titleTh: 'อนุญาตให้ครูสั่งการบ้านและตรวจงานออนไลน์ (LMS)',
+      descTh: 'สร้างงาน มอบหมายแบบฝึกหัด และให้คะแนนพร้อมข้อเสนอแนะแก่นักเรียน',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'teacher_line_broadcast',
+      role: 'teacher',
+      titleTh: 'อนุญาตให้ครูส่งข้อความแจ้งเตือนผ่าน LINE Official Account',
+      descTh: 'ส่งข่าวสารหรือแจ้งเตือนการบ้านถึงผู้ปกครองผ่านระบบ LINE อัตโนมัติ',
+      category: 'communication',
+      enabled: true,
+    },
+    {
+      id: 'teacher_sdq_screening',
+      role: 'teacher',
+      titleTh: 'อนุญาตให้ครูประเมินพฤติกรรม & คัดกรอง SDQ สพฐ.',
+      descTh: 'บันทึกแบบประเมินจุดเด่นจุดพัฒนา และส่งต่อข้อมูลการดูแลช่วยเหลือนักเรียน',
+      category: 'student_care',
+      enabled: true,
+    },
+    {
+      id: 'teacher_infirmary_access',
+      role: 'teacher',
+      titleTh: 'อนุญาตให้ครูดูประวัติสุขภาพและการรักษาห้องพยาบาล',
+      descTh: 'ตรวจสอบข้อมูลการแพ้ยา ประวัติการเจ็บป่วย และการส่งตัวไปห้องพยาบาล',
+      category: 'student_care',
+      enabled: true,
+    },
+
+    // Student Policies
+    {
+      id: 'student_view_grades',
+      role: 'student',
+      titleTh: 'อนุญาตให้นักเรียนดูผลการเรียนและพิมพ์ใบรายงานผล',
+      descTh: 'นักเรียนสามารถดูเกรดเฉลี่ย GPA และดาวน์โหลดเอกสาร ปพ. ได้ด้วยตนเอง',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'student_submit_homework',
+      role: 'student',
+      titleTh: 'อนุญาตให้นักเรียนส่งการบ้านและไฟล์งานผ่านระบบ',
+      descTh: 'อัปโหลดการบ้าน ตรวจสอบสถานะการส่ง และดูคะแนนที่ครูตรวจแล้ว',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'student_treasure_game',
+      role: 'student',
+      titleTh: 'อนุญาตให้นักเรียนเข้าเล่น "เกมล่าสมบัติ 3D"',
+      descTh: 'เข้าสู่สนามประลองความรู้ 3D เพื่อทำข้อสอบและสะสมเหรียญรางวัล',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'student_upload_portfolio',
+      role: 'student',
+      titleTh: 'อนุญาตให้นักเรียนสร้างและอัปโหลดแฟ้มผลงาน Portfolio (TCAS)',
+      descTh: 'บันทึกเกียรติบัตร กิจกรรม และผลงานเพื่อยื่นประกอบการศึกษาต่อ',
+      category: 'student_care',
+      enabled: true,
+    },
+
+    // Parent Policies
+    {
+      id: 'parent_realtime_attendance',
+      role: 'parent',
+      titleTh: 'อนุญาตให้ผู้ปกครองดูเวลาผ่านประตูโรงเรียนแบบ Real-time',
+      descTh: 'ตรวจสอบเวลาที่บุตรหลานสแกนบัตรผ่านประตูอัตโนมัติของโรงเรียน',
+      category: 'student_care',
+      enabled: true,
+    },
+    {
+      id: 'parent_promptpay_tuition',
+      role: 'parent',
+      titleTh: 'อนุญาตให้ผู้ปกครองชำระค่าเล่าเรียนด้วย PromptPay QR',
+      descTh: 'ดูใบแจ้งหนี้ สแกนจ่ายเงินผ่านแอปธนาคาร และรับใบเสร็จรับเงินดิจิทัล',
+      category: 'academic',
+      enabled: true,
+    },
+    {
+      id: 'parent_line_alerts',
+      role: 'parent',
+      titleTh: 'ส่งการแจ้งเตือนเข้าเรียนและการบ้านผ่าน LINE OA ของผู้ปกครอง',
+      descTh: 'แจ้งเตือนเมื่อนักเรียนเข้าโรงเรียน หรือมีการบ้านใหม่ที่ต้องส่ง',
+      category: 'communication',
+      enabled: true,
+    },
+  ];
+
+  const [policies, setPolicies] = useState<SchoolRolePolicy[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return defaultPolicies;
+  });
+
+  const togglePolicy = (policyId: string) => {
+    setPolicies(prev =>
+      prev.map(p => p.id === policyId ? { ...p, enabled: !p.enabled } : p)
+    );
+  };
+
+  const savePolicies = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(storageKey, JSON.stringify(policies));
+    }
+    setFeedbackToast(`บันทึกการกำหนดสิทธิ์ของ ${activeSchool.nameTh} เรียบร้อยแล้ว`);
+    setTimeout(() => setFeedbackToast(null), 3000);
+  };
+
+  const currentRolePolicies = policies.filter(p => p.role === selectedRole);
+
+  return (
+    <div className="space-y-6 max-w-full overflow-hidden">
+      {/* Toast Alert */}
+      {feedbackToast && (
+        <div className="fixed bottom-6 right-6 z-50 p-3.5 rounded-xl bg-slate-900 text-white border border-slate-700 shadow-xl text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{feedbackToast}</span>
+        </div>
+      )}
+
+      {/* Header Banner */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+            <Building2 className="w-3.5 h-3.5" />
+            <span>การบริหารจัดการสิทธิ์เฉพาะสถาบัน • School Administrator Console</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+            กำหนดสิทธิ์ผู้ใช้งานภายในโรงเรียน
+          </h1>
+          <p className="text-xs text-slate-500">
+            {activeSchool.nameTh} ({activeSchool.code}) — ผู้อำนวยการและผู้บริหารโรงเรียนเป็นผู้กำหนดสิทธิ์การเข้าถึงข้อมูลของครู นักเรียน และผู้ปกครองในโรงเรียนนี้
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={savePolicies}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition shrink-0"
+        >
+          <Save className="w-4 h-4" />
+          <span>บันทึกการกำหนดสิทธิ์ (Save)</span>
+        </button>
+      </div>
+
+      {/* Role Selection Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar pb-1">
+        <button
+          type="button"
+          onClick={() => setSelectedRole('teacher')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
+            selectedRole === 'teacher'
+              ? 'border-blue-700 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>อาจารย์ผู้สอน / บุคลากร (Teachers)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSelectedRole('student')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
+            selectedRole === 'student'
+              ? 'border-blue-700 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span>นักเรียน (Students)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSelectedRole('parent')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
+            selectedRole === 'parent'
+              ? 'border-blue-700 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>ผู้ปกครอง (Parents)</span>
+        </button>
+      </div>
+
+      {/* Policy Switches Grid */}
+      <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              {selectedRole === 'teacher' && 'สิทธิ์การทำงานของคณะครูและอาจารย์'}
+              {selectedRole === 'student' && 'สิทธิ์การเข้าถึงข้อมูลของนักเรียน'}
+              {selectedRole === 'parent' && 'สิทธิ์และการแจ้งเตือนของผู้ปกครอง'}
+            </h3>
+            <p className="text-xs text-slate-500">
+              เปิดหรือปิดสิทธิ์การใช้งานของบทบาทนี้ในโรงเรียนของคุณ
+            </p>
+          </div>
+
+          <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+            {currentRolePolicies.filter(p => p.enabled).length} / {currentRolePolicies.length} สิทธิ์ที่เปิดใช้งาน
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          {currentRolePolicies.map((pol) => (
+            <div
+              key={pol.id}
+              className={`p-4 rounded-xl border transition flex items-center justify-between gap-3 ${
+                pol.enabled
+                  ? 'bg-white border-blue-200 shadow-xs'
+                  : 'bg-slate-50 border-slate-200 opacity-60'
+              }`}
+            >
+              <div className="min-w-0">
+                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  {pol.enabled ? (
+                    <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  ) : (
+                    <X className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  )}
+                  <span className="truncate">{pol.titleTh}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{pol.descTh}</div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => togglePolicy(pol.id)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  pol.enabled ? 'bg-blue-600' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    pol.enabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};

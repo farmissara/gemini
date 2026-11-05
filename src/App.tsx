@@ -26,7 +26,10 @@ import {
   BehaviorRecord,
   SdqAssessment,
   InfirmaryVisit,
-  HomeworkSubmission
+  HomeworkSubmission,
+  RolePermissionConfig,
+  PromotionCampaign,
+  SchoolSubscriptionPlan
 } from './types';
 import { 
   INITIAL_SCHOOLS,
@@ -49,7 +52,10 @@ import {
   INITIAL_BEHAVIOR_RECORDS,
   INITIAL_SDQ_ASSESSMENTS,
   INITIAL_INFIRMARY_VISITS,
-  INITIAL_HOMEWORK_SUBMISSIONS
+  INITIAL_HOMEWORK_SUBMISSIONS,
+  INITIAL_ROLE_PERMISSIONS,
+  INITIAL_PROMOTIONS,
+  INITIAL_SUBSCRIPTION_PLANS
 } from './data/mockData';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
@@ -74,7 +80,11 @@ import { BehaviorSdqView } from './components/BehaviorSdqView';
 import { DigitalIdCardView } from './components/DigitalIdCardView';
 import { InfirmaryHealthView } from './components/InfirmaryHealthView';
 import { HomeworkTrackerView } from './components/HomeworkTrackerView';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users } from 'lucide-react';
+import { SuperAdminConsoleView } from './components/SuperAdminConsoleView';
+import { SchoolPermissionSettingsView } from './components/SchoolPermissionSettingsView';
+import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
+import { UserProfileModal } from './components/UserProfileModal';
+import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
@@ -84,7 +94,12 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
 
-  // Navigation, Mode, Theme & Language State
+  // Super Admin Management State (RBAC, Promotions, Subscription Plans)
+  const [rolePermissions, setRolePermissions] = useState<RolePermissionConfig[]>(INITIAL_ROLE_PERMISSIONS);
+  const [promotions, setPromotions] = useState<PromotionCampaign[]>(INITIAL_PROMOTIONS);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>(INITIAL_SUBSCRIPTION_PLANS);
+
+  // Navigation, Mode, Theme, Language & Mobile Drawer State
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
@@ -92,6 +107,7 @@ export const App: React.FC = () => {
   const [theme, setTheme] = useState<AppTheme>('light');
   const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Primary Domain State
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
@@ -117,6 +133,7 @@ export const App: React.FC = () => {
   // Modals
   const [selectedStudentForReport, setSelectedStudentForReport] = useState<Student | null>(null);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -146,6 +163,11 @@ export const App: React.FC = () => {
       schoolNameEn: school.nameEn,
       schoolNameTh: school.nameTh,
     }));
+    if (user.role === 'super_admin') {
+      setCurrentTab('super_admin_console');
+    } else {
+      setCurrentTab('dashboard');
+    }
   };
 
   const handleLogout = () => {
@@ -355,6 +377,48 @@ export const App: React.FC = () => {
     setPortfolioItems((prev) => [{ ...item, schoolId: activeSchool.id }, ...prev]);
   };
 
+  const handleDeletePortfolioItem = (itemId: string) => {
+    setPortfolioItems((prev) => prev.filter((p) => p.id !== itemId));
+  };
+
+  const handleUpdateUserProfile = (updatedUser: AuthUser) => {
+    setCurrentUser(updatedUser);
+    setDemoUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+
+    // Synchronize with students state if role is student to keep records coherent
+    if (updatedUser.role === 'student') {
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id === updatedUser.id || (updatedUser.studentIdNumber && s.studentIdNumber === updatedUser.studentIdNumber)) {
+            const namePartsTh = (updatedUser.fullNameTh || '').trim().split(' ');
+            const namePartsEn = (updatedUser.fullNameEn || '').trim().split(' ');
+            return {
+              ...s,
+              firstNameTh: namePartsTh[0] || s.firstNameTh,
+              lastNameTh: namePartsTh.slice(1).join(' ') || s.lastNameTh,
+              firstNameEn: namePartsEn[0] || s.firstNameEn,
+              lastNameEn: namePartsEn.slice(1).join(' ') || s.lastNameEn,
+              avatarUrl: updatedUser.avatarUrl || s.avatarUrl,
+              gradeLevel: updatedUser.gradeLevel || s.gradeLevel,
+              room: updatedUser.room || s.room,
+              academicTrack: updatedUser.academicTrack || s.academicTrack,
+              gpa: updatedUser.gpax ?? s.gpa,
+              skills: updatedUser.skills || s.skills,
+              phone: updatedUser.phone || s.phone,
+              bloodType: updatedUser.bloodType || s.bloodType,
+              allergies: updatedUser.allergies || s.allergies,
+              chronicDiseases: updatedUser.chronicDiseases || s.chronicDiseases,
+              emergencyContact: updatedUser.emergencyContact || s.emergencyContact,
+              emergencyPhone: updatedUser.emergencyPhone || s.emergencyPhone,
+              address: updatedUser.address || s.address,
+            };
+          }
+          return s;
+        })
+      );
+    }
+  };
+
   const handleAddTimetableSlot = (slot: TimetableSlot) => {
     setTimetableSlots((prev) => [{ ...slot, schoolId: activeSchool.id }, ...prev]);
   };
@@ -431,27 +495,94 @@ export const App: React.FC = () => {
         setThemePalette={setThemePalette}
         onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
         onLogout={handleLogout}
+        onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
+        onOpenProfile={() => setShowProfileModal(true)}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar only shown in School ERP mode */}
-        {programMode === 'school_erp' && (
-          <Sidebar
-            currentTab={currentTab}
-            setCurrentTab={setCurrentTab}
-            currentRole={currentRole}
-            studentsCount={schoolStudents.length}
-            coursesCount={schoolCourses.length}
-            lang={lang}
+      {/* Mobile Drawer Overlay and Sidebar */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsMobileMenuOpen(false)} 
           />
+          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+              <span className="font-bold text-xs text-slate-800">เมนูระบบโรงเรียน (EduVerse)</span>
+              <button 
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <Sidebar
+                currentTab={currentTab}
+                setCurrentTab={(tab) => {
+                  setCurrentTab(tab);
+                  setIsMobileMenuOpen(false);
+                }}
+                currentRole={currentRole}
+                studentsCount={schoolStudents.length}
+                coursesCount={schoolCourses.length}
+                lang={lang}
+                onOpenProfile={() => {
+                  setShowProfileModal(true);
+                  setIsMobileMenuOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 flex overflow-hidden min-w-0">
+        {/* Desktop Left Sidebar only shown in School ERP mode */}
+        {programMode === 'school_erp' && (
+          <div className="hidden md:flex shrink-0">
+            <Sidebar
+              currentTab={currentTab}
+              setCurrentTab={setCurrentTab}
+              currentRole={currentRole}
+              studentsCount={schoolStudents.length}
+              coursesCount={schoolCourses.length}
+              lang={lang}
+              onOpenProfile={() => setShowProfileModal(true)}
+            />
+          </div>
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 w-full max-w-full min-w-0 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8">
+          <div className="max-w-7xl mx-auto w-full min-w-0">
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
+                {currentTab === 'super_admin_console' && currentRole === 'super_admin' && (
+                  <SuperAdminConsoleView
+                    schools={schools}
+                    onUpdateSchools={setSchools}
+                    rolePermissions={rolePermissions}
+                    onUpdateRolePermissions={setRolePermissions}
+                    promotions={promotions}
+                    onUpdatePromotions={setPromotions}
+                    subscriptionPlans={subscriptionPlans}
+                    onUpdateSubscriptionPlans={setSubscriptionPlans}
+                    allUsers={demoUsers}
+                    lang={lang}
+                  />
+                )}
+
+                {/* School Admin: Role Permissions Console for this specific school */}
+                {currentTab === 'school_permissions' && (currentRole === 'admin' || currentRole === 'super_admin') && (
+                  <SchoolPermissionSettingsView
+                    activeSchool={activeSchool}
+                    lang={lang}
+                  />
+                )}
+
                 {currentTab === 'dashboard' && (
                   <DashboardView
                     students={schoolStudents}
@@ -559,20 +690,6 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'games' && (
-                  <EduBattleGameView
-                    questions={schoolQuestions}
-                    playerScores={playerScores}
-                    rewardItems={rewardItems}
-                    currentUser={currentUser}
-                    lang={lang}
-                    onAddQuestion={handleAddQuestion}
-                    onImportQuestions={handleImportQuestions}
-                    onEarnRewards={handleEarnRewards}
-                    onRedeemReward={handleRedeemReward}
-                  />
-                )}
-
                 {currentTab === 'portfolio' && (
                   <PortfolioView
                     portfolioItems={schoolPortfolioItems}
@@ -580,6 +697,7 @@ export const App: React.FC = () => {
                     currentUser={currentUser}
                     lang={lang}
                     onAddPortfolioItem={handleAddPortfolioItem}
+                    onOpenProfile={() => setShowProfileModal(true)}
                   />
                 )}
 
@@ -693,7 +811,7 @@ export const App: React.FC = () => {
           }`}
         >
           <Gamepad2 className="w-5 h-5" />
-          <span>เกม O-NET</span>
+          <span>ล่าสมบัติ</span>
         </button>
 
         <button
@@ -714,18 +832,11 @@ export const App: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => {
-            setProgramMode('school_erp');
-            setCurrentTab('students');
-          }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
-            programMode === 'school_erp' && currentTab === 'students'
-              ? 'text-blue-700 font-bold bg-blue-50'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
+          onClick={() => setShowProfileModal(true)}
+          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition text-slate-500 hover:text-slate-800"
         >
-          <Users className="w-5 h-5" />
-          <span>นักเรียน</span>
+          <User className="w-5 h-5 text-blue-600" />
+          <span>โปรไฟล์</span>
         </button>
       </nav>
 
@@ -775,6 +886,33 @@ export const App: React.FC = () => {
           }}
           onToggleLineSync={handleToggleLineSync}
         />
+      )}
+
+      {/* Comprehensive User Profile & Portfolio Modal */}
+      {showProfileModal && currentUser && (
+        <UserProfileModal
+          currentUser={currentUser}
+          portfolioItems={schoolPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+          lang={lang}
+          onSaveProfile={handleUpdateUserProfile}
+          onAddPortfolioItem={handleAddPortfolioItem}
+          onDeletePortfolioItem={handleDeletePortfolioItem}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
+
+      {/* Standalone Dedicated Fullscreen Game Screen: ล่าสมบัติ (Treasure Hunt 3D) */}
+      {currentTab === 'games' && (
+        <div className="fixed inset-0 z-50 bg-slate-950 w-screen h-screen flex flex-col overflow-hidden select-none">
+          <EduBattleRoyale3DView
+            questions={schoolQuestions}
+            currentUser={currentUser}
+            lang={lang}
+            rewardItems={rewardItems}
+            onEarnRewards={handleEarnRewards}
+            onExit={() => setCurrentTab('dashboard')}
+          />
+        </div>
       )}
     </div>
   );

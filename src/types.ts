@@ -39,6 +39,57 @@ export interface School {
   lineOaId: string;
   createdAt: string;
   status: 'active' | 'pending' | 'suspended';
+  subscriptionPlan?: 'Starter' | 'Professional' | 'Enterprise';
+  appliedPromoCode?: string;
+}
+
+export interface RolePermissionConfig {
+  role: UserRole;
+  roleNameTh: string;
+  roleNameEn: string;
+  descriptionTh: string;
+  permissions: {
+    manageStudents: boolean;
+    manageCourses: boolean;
+    editGrades: boolean;
+    recordAttendance: boolean;
+    manageTuition: boolean;
+    sendBroadcastLine: boolean;
+    manageTimetable: boolean;
+    manageSdq: boolean;
+    viewInfirmary: boolean;
+    approveTranscripts: boolean;
+  };
+}
+
+export interface PromotionCampaign {
+  id: string;
+  code: string;
+  titleTh: string;
+  titleEn: string;
+  discountType: 'percentage' | 'fixed_amount' | 'free_trial_months';
+  discountValue: number;
+  applicableSchoolType: 'all' | 'public' | 'private' | 'demonstration' | 'international';
+  validFrom: string;
+  validUntil: string;
+  maxRedemptions: number;
+  currentRedemptions: number;
+  status: 'active' | 'scheduled' | 'expired';
+  descriptionTh: string;
+}
+
+export interface SchoolSubscriptionPlan {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  planName: 'Starter' | 'Professional' | 'Enterprise';
+  maxStudents: number;
+  monthlyFee: number;
+  appliedPromoCode?: string;
+  finalPrice: number;
+  billingCycle: 'monthly' | 'yearly';
+  status: 'active' | 'trial' | 'suspended';
+  expiryDate: string;
 }
 
 export interface AuthUser {
@@ -51,6 +102,52 @@ export interface AuthUser {
   avatarUrl: string;
   lineConnected: boolean;
   phone?: string;
+
+  // General & Personal Information
+  nickname?: string;
+  nationalId?: string;
+  gender?: 'male' | 'female' | 'other';
+  dateOfBirth?: string;
+  bloodType?: 'A' | 'B' | 'AB' | 'O';
+  allergies?: string[];
+  chronicDiseases?: string[];
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  address?: string;
+  bio?: string;
+  lineUserId?: string;
+
+  // Student Profile Fields (TCAS Portfolio & Academic Track)
+  studentIdNumber?: string;
+  gradeLevel?: string;
+  room?: string;
+  academicTrack?: string; // e.g. "วิทยาศาสตร์-คณิตศาสตร์", "ศิลป์-คำนวณ", "ศิลป์-ภาษา"
+  advisorName?: string;
+  gpax?: number;
+  targetUniversity?: string; // e.g. "จุฬาลงกรณ์มหาวิทยาลัย"
+  targetFaculty?: string; // e.g. "คณะวิศวกรรมศาสตร์ สาขาวิศวกรรมคอมพิวเตอร์"
+  dreamCareer?: string; // e.g. "Software Engineer & AI Researcher"
+  skills?: string[]; // e.g. ["Python", "Robotics", "English Debate"]
+  languages?: string[]; // e.g. ["ไทย (Native)", "อังกฤษ (IELTS 7.0)"]
+  interests?: string[];
+
+  // Teacher Profile Fields (Academic Standing, Qualification & PA Evaluation)
+  teacherIdNumber?: string;
+  academicDegree?: string; // e.g. "ปริญญาโท ศึกษาศาสตรมหาบัณฑิต (M.Ed.)"
+  major?: string; // e.g. "การสอนคณิตศาสตร์และวิทยาการคำนวณ"
+  academicStanding?: string; // e.g. "ครูชำนาญการพิเศษ (คศ.3)"
+  department?: string; // e.g. "กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี"
+  teachingSubjects?: string[]; // e.g. ["คณิตศาสตร์ ม.4", "วิทยาการคำนวณ ม.6"]
+  homeroomClass?: string; // e.g. "ห้อง 401 (วิทย์-คณิต)"
+  teacherLicenseNo?: string; // e.g. "คส. 6210900012345"
+  expertise?: string[]; // e.g. ["Active Learning", "STEM Education"]
+  researchWorks?: string[];
+
+  // School Admin Profile Fields
+  adminPositionTitle?: string; // e.g. "ผู้อำนวยการสถานศึกษา", "รองผู้อำนวยการกลุ่มบริหารวิชาการ"
+  adminDepartment?: string; // e.g. "ฝ่ายบริหารวิชาการและทะเบียน"
+  directOfficePhone?: string;
+  officeRoom?: string;
 }
 
 export interface Student {
@@ -80,8 +177,18 @@ export interface Student {
   bloodType?: 'A' | 'B' | 'AB' | 'O';
   allergies?: string[];
   chronicDiseases?: string[];
+  emergencyContact?: string;
   emergencyPhone?: string;
   behaviorScore?: number;
+  phone?: string;
+  address?: string;
+  academicTrack?: string;
+  skills?: string[];
+  dreamCareer?: string;
+  targetUniversity?: string;
+  targetFaculty?: string;
+  interests?: string[];
+  languages?: string[];
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'sick' | 'leave';

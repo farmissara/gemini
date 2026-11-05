@@ -15,11 +15,16 @@ import {
   CreditCard, 
   HeartPulse, 
   FileCheck2,
+  SlidersHorizontal,
+  ShieldCheck,
+  User,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
 
 export type NavTab = 
+  | 'super_admin_console'
+  | 'school_permissions'
   | 'dashboard' 
   | 'students' 
   | 'courses' 
@@ -43,6 +48,7 @@ interface SidebarProps {
   studentsCount: number;
   coursesCount: number;
   lang: AppLanguage;
+  onOpenProfile?: () => void;
 }
 
 interface NavItemDef {
@@ -67,7 +73,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   studentsCount,
   coursesCount,
   lang,
+  onOpenProfile,
 }) => {
+  const superAdminGroups: NavGroupDef[] = currentRole === 'super_admin' ? [
+    {
+      groupTitleTh: '👑 ศูนย์ควบคุมแม่ข่าย (Super Admin)',
+      groupTitleEn: 'Master Authority Console',
+      items: [
+        {
+          id: 'super_admin_console',
+          labelTh: 'กำหนดสิทธิ์ & โปรโมชั่น',
+          labelEn: 'Permissions & Promotions',
+          icon: ShieldCheck,
+          badge: 'MASTER',
+          roles: ['super_admin'],
+        },
+      ],
+    },
+  ] : [];
   const navGroups: NavGroupDef[] = [
     {
       groupTitleTh: 'วิชาการ & ทะเบียน',
@@ -173,9 +196,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'games',
-          labelTh: 'คลังข้อสอบ O-NET Battle',
-          labelEn: 'EduBattle Quiz',
+          labelTh: 'ล่าสมบัติ (3D Quiz)',
+          labelEn: 'Treasure Hunt 3D',
           icon: Swords,
+          badge: '3D',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
@@ -184,6 +208,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'Announcements',
           icon: BellRing,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+      ],
+    },
+    {
+      groupTitleTh: 'การบริหาร & สิทธิ์โรงเรียน',
+      groupTitleEn: 'School Admin & Roles',
+      items: [
+        {
+          id: 'school_permissions',
+          labelTh: 'กำหนดสิทธิ์ในโรงเรียน',
+          labelEn: 'School Role Permissions',
+          icon: SlidersHorizontal,
+          badge: 'ADMIN',
+          roles: ['super_admin', 'admin'],
         },
       ],
     },
@@ -205,7 +243,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 select-none">
       <div className="p-3.5 space-y-5 overflow-y-auto max-h-[calc(100vh-64px)]">
-        {navGroups.map((group, gIdx) => {
+        {[...superAdminGroups, ...navGroups].map((group, gIdx) => {
           // Filter items by role
           const visibleItems = group.items.filter((item) =>
             item.roles.includes(currentRole)
@@ -254,9 +292,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </div>
 
-      {/* Footer Info */}
-      <div className="p-3 border-t border-slate-100 text-[11px] text-slate-400 text-center">
-        <span>EduVerse SIS • 2569</span>
+      {/* Profile & Portfolio Quick Access & Footer Info */}
+      <div className="p-3 border-t border-slate-100 space-y-2">
+        {onOpenProfile && (
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-blue-50/80 hover:bg-blue-100/90 text-blue-800 border border-blue-200/80 transition-all text-xs font-semibold shadow-xs text-left cursor-pointer group"
+          >
+            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-blue-900 font-bold">
+                {lang === 'th' ? 'โปรไฟล์ & Portfolio ของฉัน' : 'My Profile & Portfolio'}
+              </div>
+              <div className="text-[10px] text-blue-600 font-medium truncate">
+                {lang === 'th' ? 'อัปเดตข้อมูล & แฟ้มผลงาน' : 'Edit info & portfolio'}
+              </div>
+            </div>
+          </button>
+        )}
+        <div className="text-[11px] text-slate-400 text-center">
+          <span>EduVerse SIS • 2569</span>
+        </div>
       </div>
     </aside>
   );

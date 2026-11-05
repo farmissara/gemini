@@ -26,9 +26,17 @@ import {
   AlertTriangle,
   Shield,
   Wind,
-  Target
+  Target,
+  BookOpen
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
+import { 
+  COMPREHENSIVE_QUESTION_BANK, 
+  EXAM_CATEGORIES, 
+  EXAM_GRADE_LEVELS, 
+  ExamCategoryFilter, 
+  ExamGradeFilter 
+} from '../data/examQuestionBanks';
 
 interface EduBattleRoyale3DViewProps {
   questions: QuizQuestion[];
@@ -224,6 +232,75 @@ class BattleAudioEngine {
       });
     } catch {}
   }
+
+  playClick() {
+    if (!this.enabled) return;
+    const ctx = this.getCtx();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(540, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(780, ctx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.04);
+    } catch {}
+  }
+
+  playSwoosh() {
+    if (!this.enabled) return;
+    const ctx = this.getCtx();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.09, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {}
+  }
+
+  private ambientInterval: any = null;
+  startAmbientMusic() {
+    if (!this.enabled || this.ambientInterval) return;
+    const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+    this.ambientInterval = setInterval(() => {
+      if (!this.enabled) return;
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      try {
+        const freq = notes[Math.floor(Math.random() * notes.length)];
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.02, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.1);
+      } catch {}
+    }, 1600);
+  }
+
+  stopAmbientMusic() {
+    if (this.ambientInterval) {
+      clearInterval(this.ambientInterval);
+      this.ambientInterval = null;
+    }
+  }
 }
 
 const battleAudio = new BattleAudioEngine();
@@ -337,8 +414,14 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const [questionFeedback, setQuestionFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [isAirdropQuestion, setIsAirdropQuestion] = useState(false);
 
+  // Question Bank & Exam Selector State (Not restricted to O-NET)
+  const [selectedBankCategory, setSelectedBankCategory] = useState<ExamCategoryFilter>('all');
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<ExamGradeFilter>('all');
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [useVirtualDpad, setUseVirtualDpad] = useState(true);
+
   // Floating Notification Banner
-  const [hudAlert, setHudAlert] = useState<string | null>('🔥 เริ่มต้นแมตช์ O-NET Battle Royale! วิ่งหาหีบทองคำและแอร์ดรอป');
+  const [hudAlert, setHudAlert] = useState<string | null>('🔥 เริ่มต้นแมตช์ล่าสมบัติ 3D! วิ่งหาหีบสมบัติและตอบคำถามชิงคะแนน');
 
   // Victory / Game Over
   const [gameWon, setGameWon] = useState(false);
@@ -380,6 +463,14 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     crouch: false
   });
 
+  // Mobile Translucent D-Pad Flags
+  const dpadRef = useRef<{ up: boolean; down: boolean; left: boolean; right: boolean }>({
+    up: false,
+    down: false,
+    left: false,
+    right: false
+  });
+
   // Chests & Airdrop Refs
   interface ChestItem {
     id: string;
@@ -416,10 +507,18 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Audio Toggle
+  // Audio Toggle & Ambient Adventure Music
   useEffect(() => {
     battleAudio.enabled = !isMuted;
-  }, [isMuted]);
+    if (!isMuted && !gameWon) {
+      battleAudio.startAmbientMusic();
+    } else {
+      battleAudio.stopAmbientMusic();
+    }
+    return () => {
+      battleAudio.stopAmbientMusic();
+    };
+  }, [isMuted, gameWon]);
 
   // Alert dismiss
   useEffect(() => {
@@ -497,23 +596,35 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     return SKINS.find(s => s.id === selectedSkinId) || SKINS[0];
   }, [selectedSkinId]);
 
-  // Arena Questions
-  const arenaQuestions: QuizQuestion[] = useMemo(() => {
-    return questions.length > 0 ? questions : [
-      {
-        id: 'q-demo-1',
-        subject: 'คณิตศาสตร์ (O-NET)',
-        gradeLevel: 'ม.6',
-        questionTh: 'ถ้าค่าเฉลี่ยเลขคณิตของข้อมูลชุดหนึ่งคือ 15 และมี 5 จำนวน แล้วผลรวมของข้อมูลชุดนี้มีค่าเท่ากับเท่าใด?',
-        questionEn: 'If the mean of 5 numbers is 15, what is the sum of these numbers?',
-        options: ['60', '75', '90', '100'],
-        correctIndex: 1,
-        explanationTh: 'ผลรวม = ค่าเฉลี่ย × จำนวน = 15 × 5 = 75',
-        category: 'onet' as const,
-        points: 150
-      }
-    ];
+  // All available questions combining prop questions and comprehensive bank
+  const allAvailableQuestions = useMemo(() => {
+    return [...questions, ...COMPREHENSIVE_QUESTION_BANK];
   }, [questions]);
+
+  // Arena Questions filtered by selected question bank and grade level
+  const arenaQuestions: QuizQuestion[] = useMemo(() => {
+    const filtered = allAvailableQuestions.filter(q => {
+      // 1. Category Filter
+      if (selectedBankCategory !== 'all') {
+        if (selectedBankCategory === 'onet' && q.category !== 'onet') return false;
+        if (selectedBankCategory === 'midterm_final' && q.category !== 'exam') return false;
+        if (selectedBankCategory === 'stem' && !q.subject.includes('วิทย์') && !q.subject.includes('STEM') && !q.subject.includes('Science') && !q.subject.includes('หุ่นยนต์') && !q.subject.includes('AI') && !q.subject.includes('เคมี') && !q.subject.includes('ฟิสิกส์') && !q.subject.includes('ชีว')) return false;
+        if (selectedBankCategory === 'math' && !q.subject.includes('คณิต') && !q.subject.includes('Math') && !q.subject.includes('ตรรก')) return false;
+        if (selectedBankCategory === 'english' && !q.subject.includes('อังกฤษ') && !q.subject.includes('English') && !q.subject.includes('Idiom')) return false;
+        if (selectedBankCategory === 'thai_social' && !q.subject.includes('ไทย') && !q.subject.includes('สังคม') && !q.subject.includes('ประวัติ') && !q.subject.includes('ภูมิศาสตร์')) return false;
+        if (selectedBankCategory === 'general' && !q.subject.includes('ทั่วไป') && !q.subject.includes('ทักษะ') && !q.subject.includes('ปฐมพยาบาล') && !q.subject.includes('การเงิน')) return false;
+      }
+      // 2. Grade Level Filter
+      if (selectedGradeFilter !== 'all') {
+        if (selectedGradeFilter === 'primary' && !q.gradeLevel.includes('ประถม') && !q.gradeLevel.includes('ป.')) return false;
+        if (selectedGradeFilter === 'm13' && !q.gradeLevel.includes('ม.1') && !q.gradeLevel.includes('ม.2') && !q.gradeLevel.includes('ม.3') && !q.gradeLevel.includes('ม.ต้น')) return false;
+        if (selectedGradeFilter === 'm46' && !q.gradeLevel.includes('ม.4') && !q.gradeLevel.includes('ม.5') && !q.gradeLevel.includes('ม.6') && !q.gradeLevel.includes('ม.ปลาย')) return false;
+      }
+      return true;
+    });
+
+    return filtered.length > 0 ? filtered : allAvailableQuestions;
+  }, [allAvailableQuestions, selectedBankCategory, selectedGradeFilter]);
 
   // Trigger Freeze Trap on Competitors
   const handleUseFreezeTrap = () => {
@@ -1066,11 +1177,11 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       let moveForward = 0;
       let moveTurn = 0;
 
-      // Keyboard
-      if (keysRef.current['KeyW'] || keysRef.current['ArrowUp']) moveForward += 1;
-      if (keysRef.current['KeyS'] || keysRef.current['ArrowDown']) moveForward -= 1;
-      if (keysRef.current['KeyA'] || keysRef.current['ArrowLeft']) moveTurn += 1;
-      if (keysRef.current['KeyD'] || keysRef.current['ArrowRight']) moveTurn -= 1;
+      // Keyboard & Translucent Virtual D-Pad
+      if (keysRef.current['KeyW'] || keysRef.current['ArrowUp'] || dpadRef.current.up) moveForward += 1;
+      if (keysRef.current['KeyS'] || keysRef.current['ArrowDown'] || dpadRef.current.down) moveForward -= 1;
+      if (keysRef.current['KeyA'] || keysRef.current['ArrowLeft'] || dpadRef.current.left) moveTurn += 1;
+      if (keysRef.current['KeyD'] || keysRef.current['ArrowRight'] || dpadRef.current.right) moveTurn -= 1;
 
       // Touch Joystick
       if (touchJoystickRef.current.active) {
@@ -1463,7 +1574,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 1. TOP HEADER HUD BAR (Desktop & Mobile Adaptive) */}
       {/* ======================================================== */}
       <header className="relative z-20 flex items-center justify-between px-3 sm:px-5 py-2.5 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
-        {/* Left: Title & Subject */}
+        {/* Left: Title & Question Bank Selector */}
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
             <Zap className="w-5 h-5 fill-slate-950 text-slate-950" />
@@ -1471,19 +1582,24 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wide">
-                {gameMode === 'solo' ? 'ล่าสมบัติ O-NET · Solo' : `Battle Royale · ${roomCode}`}
+                ล่าสมบัติ 3D · {gameMode === 'solo' ? 'ผจญภัยเดี่ยว' : 'โหมดห้องเรียน'}
               </span>
               <button
-                onClick={() => setSubjectTitle(p => p.includes('คณิต') ? 'ศูนย์วิทยาศาสตร์ & O-NET' : 'ศูนย์คณิตศาสตร์ & O-NET')}
-                className="text-[10px] text-cyan-400 hover:underline cursor-pointer hidden sm:inline"
+                type="button"
+                onClick={() => {
+                  battleAudio.playClick();
+                  setShowBankModal(true);
+                }}
+                className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
               >
-                (เปลี่ยนวิชา)
+                <BookOpen className="w-3 h-3 text-amber-300" />
+                <span>คลังข้อสอบ: {EXAM_CATEGORIES.find(c => c.id === selectedBankCategory)?.labelTh.split(' ')[0] || 'ทั้งหมด'}</span>
               </button>
             </div>
             <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-2">
-              <span>{subjectTitle}</span>
+              <span>ล่าสมบัติผจญภัย</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">
-                ด่าน {currentStage}/{totalStages}
+                หีบสมบัติ {openedChestsCount}/{totalChests}
               </span>
             </h1>
           </div>
@@ -1492,10 +1608,22 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         {/* Center: Live Stats HUD */}
         <div className="hidden md:flex items-center gap-3">
           <button 
-            onClick={() => setIsMuted(!isMuted)}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"
+            type="button"
+            onClick={() => {
+              const nextMuted = !isMuted;
+              setIsMuted(nextMuted);
+              if (nextMuted) {
+                battleAudio.stopAmbientMusic();
+              } else {
+                battleAudio.playClick();
+                battleAudio.startAmbientMusic();
+              }
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            title={isMuted ? 'เปิดเสียงเกม' : 'ปิดเสียงเกม'}
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
+            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            <span className="text-[11px]">{isMuted ? 'เสียง: ปิด' : 'เสียง: เปิด'}</span>
           </button>
 
           {/* Player HP Bar */}
@@ -1530,11 +1658,47 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
           </div>
         </div>
 
-        {/* Right: Actions & Fullscreen */}
+        {/* Right: Actions, Fullscreen & Exit */}
         <div className="flex items-center gap-2">
+          {/* Mobile Sound Toggle */}
+          <button 
+            type="button"
+            onClick={() => {
+              const nextMuted = !isMuted;
+              setIsMuted(nextMuted);
+              if (nextMuted) {
+                battleAudio.stopAmbientMusic();
+              } else {
+                battleAudio.playClick();
+                battleAudio.startAmbientMusic();
+              }
+            }}
+            className="md:hidden p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"
+            title={isMuted ? 'เปิดเสียง' : 'ปิดเสียง'}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+          </button>
+
+          {/* Question Bank (Mobile button) */}
+          <button
+            type="button"
+            onClick={() => {
+              battleAudio.playClick();
+              setShowBankModal(true);
+            }}
+            className="sm:hidden p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer"
+            title="เลือกคลังข้อสอบ"
+          >
+            <BookOpen className="w-4 h-4" />
+          </button>
+
           {/* Locker / Skin Shop */}
           <button
-            onClick={() => setShowSkinShop(!showSkinShop)}
+            type="button"
+            onClick={() => {
+              battleAudio.playClick();
+              setShowSkinShop(!showSkinShop);
+            }}
             className="px-2.5 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
@@ -1543,6 +1707,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
           {/* Fullscreen Toggle */}
           <button
+            type="button"
             onClick={toggleFullscreen}
             className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"
             title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มหน้าจอ'}
@@ -1550,12 +1715,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
-          {/* Exit */}
+          {/* Exit Back to School System */}
           <button
-            onClick={onExit}
-            className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold cursor-pointer"
+            type="button"
+            onClick={() => {
+              battleAudio.playClick();
+              onExit();
+            }}
+            className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold cursor-pointer flex items-center gap-1"
           >
-            ออก
+            <span>ออกสู่ระบบโรงเรียน</span>
           </button>
         </div>
       </header>
@@ -1678,23 +1847,23 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
           </div>
         )}
 
-        {/* Mobile Left Touch Area (Virtual Floating Joystick) */}
+        {/* Mobile Left Touch Area (Translucent Virtual Floating Joystick) */}
         <div 
-          className="absolute inset-y-0 left-0 w-1/2 z-20"
+          className="absolute inset-y-0 left-0 w-1/2 z-20 pointer-events-auto"
           onTouchStart={handleTouchStartLeft}
           onTouchMove={handleTouchMoveLeft}
           onTouchEnd={handleTouchEndLeft}
         >
           {touchJoystickRef.current.active && (
             <div 
-              className="absolute w-28 h-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cyan-400/50 bg-cyan-950/40 backdrop-blur-sm pointer-events-none flex items-center justify-center"
+              className="absolute w-28 h-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/35 bg-white/10 backdrop-blur-md pointer-events-none flex items-center justify-center shadow-2xl"
               style={{
                 left: touchJoystickRef.current.startX,
                 top: touchJoystickRef.current.startY
               }}
             >
               <div 
-                className="w-12 h-12 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400 pointer-events-none"
+                className="w-12 h-12 rounded-full bg-white/60 border border-white/80 shadow-lg pointer-events-none"
                 style={{
                   transform: `translate(${touchJoystickRef.current.deltaX * 35}px, ${touchJoystickRef.current.deltaY * 35}px)`
                 }}
@@ -1703,60 +1872,128 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
           )}
         </div>
 
-        {/* Mobile Right Action Controls Cluster */}
-        <div className="absolute bottom-16 right-3 z-30 flex flex-col items-end gap-2.5">
-          {/* Quick Action: Open Chest / Airdrop */}
+        {/* Mobile Left: Translucent Glass D-Pad (ปุ่มควบคุมโปร่งแสง) */}
+        <div className="md:hidden absolute bottom-16 left-3 z-30 flex flex-col items-center gap-1 select-none pointer-events-auto">
+          {/* D-Pad Up */}
+          <button
+            type="button"
+            onTouchStart={(e) => { e.preventDefault(); battleAudio.playClick(); dpadRef.current.up = true; }}
+            onTouchEnd={(e) => { e.preventDefault(); dpadRef.current.up = false; }}
+            onMouseDown={() => { battleAudio.playClick(); dpadRef.current.up = true; }}
+            onMouseUp={() => { dpadRef.current.up = false; }}
+            className="w-12 h-12 rounded-2xl bg-white/15 hover:bg-white/25 active:bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform font-bold text-base"
+            aria-label="เดินหน้า"
+          >
+            ▲
+          </button>
+          <div className="flex items-center gap-1">
+            {/* D-Pad Left */}
+            <button
+              type="button"
+              onTouchStart={(e) => { e.preventDefault(); battleAudio.playClick(); dpadRef.current.left = true; }}
+              onTouchEnd={(e) => { e.preventDefault(); dpadRef.current.left = false; }}
+              onMouseDown={() => { battleAudio.playClick(); dpadRef.current.left = true; }}
+              onMouseUp={() => { dpadRef.current.left = false; }}
+              className="w-12 h-12 rounded-2xl bg-white/15 hover:bg-white/25 active:bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform font-bold text-base"
+              aria-label="เลี้ยวซ้าย"
+            >
+              ◀
+            </button>
+            {/* D-Pad Down */}
+            <button
+              type="button"
+              onTouchStart={(e) => { e.preventDefault(); battleAudio.playClick(); dpadRef.current.down = true; }}
+              onTouchEnd={(e) => { e.preventDefault(); dpadRef.current.down = false; }}
+              onMouseDown={() => { battleAudio.playClick(); dpadRef.current.down = true; }}
+              onMouseUp={() => { dpadRef.current.down = false; }}
+              className="w-12 h-12 rounded-2xl bg-white/15 hover:bg-white/25 active:bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform font-bold text-base"
+              aria-label="ถอยหลัง"
+            >
+              ▼
+            </button>
+            {/* D-Pad Right */}
+            <button
+              type="button"
+              onTouchStart={(e) => { e.preventDefault(); battleAudio.playClick(); dpadRef.current.right = true; }}
+              onTouchEnd={(e) => { e.preventDefault(); dpadRef.current.right = false; }}
+              onMouseDown={() => { battleAudio.playClick(); dpadRef.current.right = true; }}
+              onMouseUp={() => { dpadRef.current.right = false; }}
+              className="w-12 h-12 rounded-2xl bg-white/15 hover:bg-white/25 active:bg-white/40 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform font-bold text-base"
+              aria-label="เลี้ยวขวา"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Right Action Controls Cluster (Translucent Glass Buttons - ปุ่มโปร่งแสง) */}
+        <div className="absolute bottom-16 right-3 z-30 flex flex-col items-end gap-2.5 pointer-events-auto">
+          {/* Quick Action: Open Chest / Airdrop (Translucent Gold Glass) */}
           {(nearChestId || nearAirdrop) && (
             <button
-              onClick={triggerInteraction}
-              className="w-16 h-16 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 font-black text-xs shadow-2xl shadow-amber-500/50 flex flex-col items-center justify-center border-2 border-yellow-200 active:scale-90 transition-transform"
+              type="button"
+              onClick={() => {
+                battleAudio.playClick();
+                triggerInteraction();
+              }}
+              className="w-16 h-16 rounded-2xl bg-amber-400/25 hover:bg-amber-400/35 active:bg-amber-400/50 backdrop-blur-md text-amber-200 font-black text-xs shadow-xl shadow-amber-500/20 flex flex-col items-center justify-center border-2 border-amber-300/60 active:scale-90 transition-all cursor-pointer"
             >
-              <Package className="w-6 h-6 mb-0.5" />
+              <Package className="w-6 h-6 mb-0.5 text-amber-300" />
               <span>เปิดหีบ</span>
             </button>
           )}
 
-          {/* Sprint / Turbo Nitro Button */}
+          {/* Sprint / Turbo Nitro Button (Translucent Glass) */}
           <button
-            onClick={handleUseNitro}
-            className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center active:scale-90 transition-transform ${
+            type="button"
+            onClick={() => {
+              battleAudio.playClick();
+              handleUseNitro();
+            }}
+            className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center active:scale-90 transition-all backdrop-blur-md cursor-pointer ${
               activeBooster.nitro 
-                ? 'bg-amber-500 text-slate-950 border-amber-300 font-bold shadow-lg shadow-amber-500/50' 
-                : 'bg-slate-900/80 text-amber-300 border-amber-500/40 backdrop-blur-md'
+                ? 'bg-amber-400/40 text-amber-200 border-amber-300 shadow-lg shadow-amber-500/40 font-bold animate-pulse' 
+                : 'bg-white/15 hover:bg-white/25 active:bg-white/35 text-amber-200 border-white/25 shadow-lg'
             }`}
           >
-            <Wind className="w-5 h-5 mb-0.5" />
+            <Wind className="w-5 h-5 mb-0.5 text-amber-300" />
             <span className="text-[10px] font-bold">ไนโตร</span>
           </button>
 
-          {/* Jump Button */}
+          {/* Jump Button (Translucent Glass) */}
           <button
+            type="button"
             onClick={() => {
+              battleAudio.playClick();
               mobileActionsRef.current.jump = true;
             }}
-            className="w-14 h-14 rounded-2xl bg-cyan-600/90 hover:bg-cyan-500 text-white border border-cyan-400/50 shadow-xl flex flex-col items-center justify-center active:scale-90 transition-transform backdrop-blur-md"
+            className="w-14 h-14 rounded-2xl bg-white/15 hover:bg-white/25 active:bg-white/35 text-white border border-white/30 shadow-lg flex flex-col items-center justify-center active:scale-90 transition-all backdrop-blur-md cursor-pointer"
           >
-            <Zap className="w-5 h-5 mb-0.5" />
+            <Zap className="w-5 h-5 mb-0.5 text-cyan-300" />
             <span className="text-[10px] font-bold">กระโดด</span>
           </button>
 
-          {/* Freeze Trap Powerup Button */}
+          {/* Freeze Trap Powerup Button (Translucent Glass) */}
           <button
+            type="button"
             disabled={freezeCooldown > 0}
-            onClick={handleUseFreezeTrap}
-            className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center active:scale-90 transition-transform backdrop-blur-md ${
+            onClick={() => {
+              battleAudio.playClick();
+              handleUseFreezeTrap();
+            }}
+            className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center active:scale-90 transition-all backdrop-blur-md cursor-pointer ${
               freezeCooldown === 0 
-                ? 'bg-indigo-600 text-white border-indigo-400 shadow-indigo-600/40' 
-                : 'bg-slate-900/60 text-slate-500 border-slate-800'
+                ? 'bg-indigo-500/25 hover:bg-indigo-500/35 active:bg-indigo-500/45 text-indigo-200 border-indigo-300/40 shadow-lg' 
+                : 'bg-white/5 text-slate-500 border-white/10 opacity-60'
             }`}
           >
-            <Shield className="w-5 h-5 mb-0.5" />
+            <Shield className="w-5 h-5 mb-0.5 text-indigo-300" />
             <span className="text-[10px] font-bold">{freezeCooldown > 0 ? `${freezeCooldown}s` : 'แช่แข็ง'}</span>
           </button>
         </div>
 
-        {/* Bottom-Right Rounded Minimap Radar */}
-        <div className="absolute bottom-16 left-3 z-20 w-44 h-28 bg-emerald-950/85 backdrop-blur-md rounded-2xl border-2 border-emerald-600/60 shadow-2xl relative overflow-hidden flex items-center justify-center pointer-events-none">
+        {/* Minimap Radar */}
+        <div className="hidden sm:flex absolute bottom-16 left-3 z-20 w-44 h-28 bg-emerald-950/75 backdrop-blur-md rounded-2xl border-2 border-emerald-600/50 shadow-2xl overflow-hidden items-center justify-center pointer-events-none">
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:12px_12px]" />
           <div className="absolute w-20 h-20 rounded-full border border-emerald-500/40" />
 
@@ -1922,7 +2159,131 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 5. VICTORY ROYALE SCREEN */}
+      {/* 5. QUESTION BANK & EXAM SELECTOR MODAL (Not restricted to O-NET) */}
+      {/* ======================================================== */}
+      {showBankModal && (
+        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl p-5 sm:p-6 shadow-2xl text-white my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-white">เลือกคลังข้อสอบ & การทดสอบ</h3>
+                  <p className="text-xs text-slate-400">เลือกข้อสอบที่ต้องการใช้เปิดหีบสมบัติในเกม (ไม่จำกัดเฉพาะ O-NET)</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowBankModal(false)} 
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 1. Grade Level Filter Tabs */}
+            <div className="mt-4">
+              <label className="text-xs font-bold text-slate-300 block mb-1.5">เลือกระดับชั้นการศึกษา:</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {EXAM_GRADE_LEVELS.map((g) => {
+                  const isActive = selectedGradeFilter === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        battleAudio.playClick();
+                        setSelectedGradeFilter(g.id);
+                      }}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold text-center border transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-md shadow-amber-500/10'
+                          : 'bg-slate-800/60 border-slate-700/80 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      {g.labelTh}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Exam Category Grid */}
+            <div className="mt-5">
+              <label className="text-xs font-bold text-slate-300 block mb-1.5">เลือกหมวดหมู่ข้อสอบ & รายวิชา:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                {EXAM_CATEGORIES.map((cat) => {
+                  const isActive = selectedBankCategory === cat.id;
+                  return (
+                    <div
+                      key={cat.id}
+                      onClick={() => {
+                        battleAudio.playClick();
+                        setSelectedBankCategory(cat.id);
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                        isActive
+                          ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg shadow-amber-500/20'
+                          : 'bg-slate-800/60 border-slate-800 hover:bg-slate-800 text-slate-300'
+                      }`}
+                    >
+                      <span className="text-2xl shrink-0 mt-0.5">{cat.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs sm:text-sm text-white truncate">{cat.labelTh}</span>
+                          {isActive && <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />}
+                        </div>
+                        <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{cat.descriptionTh}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Questions available count badge */}
+            <div className="mt-4 p-3 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-between text-xs">
+              <span className="text-slate-300">
+                พร้อมใช้งาน: <strong className="text-amber-400 font-mono text-sm">{arenaQuestions.length}</strong> ข้อสอบ
+              </span>
+              <span className="text-slate-400 text-[11px]">
+                สุ่มบรรจุลงหีบสมบัติ 8 จุดในด่าน 3D
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowBankModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  battleAudio.playClick();
+                  setShowBankModal(false);
+                  // Refresh chests with new active questions
+                  chestsRef.current.forEach((c, idx) => {
+                    c.question = arenaQuestions[idx % arenaQuestions.length];
+                  });
+                  setHudAlert(`✅ เปลี่ยนข้อสอบเป็น: ${EXAM_CATEGORIES.find(c => c.id === selectedBankCategory)?.labelTh} สำเร็จ!`);
+                }}
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 cursor-pointer"
+              >
+                ยืนยันและนำมาใช้เล่นล่าสมบัติ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 6. VICTORY SCREEN (ล่าสมบัติ 3D) */}
       {/* ======================================================== */}
       {gameWon && (
         <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -1931,10 +2292,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               <Trophy className="w-10 h-10 animate-bounce" />
             </div>
             <h1 className="mt-4 text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-500 uppercase tracking-wider">
-              VICTORY ROYALE!
+              ภารกิจล่าสมบัติสำเร็จ!
             </h1>
             <p className="text-sm text-slate-300 mt-1">
-              🏆 คุณคว้าแชมป์การประลอง O-NET ประจำห้องเรียนสำเร็จ!
+              🏆 คุณพิชิตการผจญภัยล่าสมบัติและตอบคำถามครบทุกหีบในเกาะสำเร็จ!
             </p>
 
             <div className="grid grid-cols-3 gap-3 my-5">
@@ -1954,7 +2315,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
             <div className="flex gap-3 justify-center">
               <button
+                type="button"
                 onClick={() => {
+                  battleAudio.playClick();
                   setGameWon(false);
                   setOpenedChestsCount(0);
                   chestsRef.current.forEach(c => {
@@ -1967,10 +2330,14 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 เล่นใหม่อีกครั้ง
               </button>
               <button
-                onClick={onExit}
+                type="button"
+                onClick={() => {
+                  battleAudio.playClick();
+                  onExit();
+                }}
                 className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-sm text-slate-300 border border-slate-700 cursor-pointer"
               >
-                กลับเมนูหลัก
+                ออกสู่ระบบโรงเรียน
               </button>
             </div>
           </div>
@@ -1978,7 +2345,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 6. CHARACTER SKINS & LOCKER */}
+      {/* 7. CHARACTER SKINS & LOCKER */}
       {/* ======================================================== */}
       {showSkinShop && (
         <div className="absolute inset-0 z-40 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -1999,7 +2366,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 return (
                   <div
                     key={skin.id}
-                    onClick={() => setSelectedSkinId(skin.id)}
+                    onClick={() => {
+                      battleAudio.playClick();
+                      setSelectedSkinId(skin.id);
+                    }}
                     className={`p-3 rounded-xl border transition-all cursor-pointer ${
                       isSelected ? 'bg-indigo-500/20 border-indigo-400' : 'bg-slate-800/60 border-slate-700 hover:bg-slate-800'
                     }`}
@@ -2025,7 +2395,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 7. HOW TO PLAY MODAL */}
+      {/* 8. HOW TO PLAY MODAL */}
       {/* ======================================================== */}
       {showHowToPlay && (
         <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
@@ -2033,7 +2403,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-base flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-cyan-400" />
-                คู่มือการเล่นเกมล่าสมบัติ O-NET
+                คู่มือการเล่นเกมล่าสมบัติ 3D
               </h3>
               <button onClick={() => setShowHowToPlay(false)} className="text-slate-400 hover:text-white cursor-pointer">
                 ✕
@@ -2041,16 +2411,17 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </div>
             <div className="mt-4 space-y-3 text-xs text-slate-300 leading-relaxed">
               <p>
-                <strong>📱 เล่นบนมือถือ:</strong> แตะและลากที่บริเวณครึ่งซ้ายของหน้าจอเพื่อควบคุมทิศทางการเดิน 360 องศา และแตะปุ่มทางขวาเพื่อกระโดดหรือกดเปิดหีบ
+                <strong>📱 เล่นบนมือถือ:</strong> แตะปุ่ม D-Pad โปร่งแสง หรือลากหน้าจอฝั่งซ้ายเพื่อเดิน และแตะปุ่มโปร่งแสงฝั่งขวาเพื่อกระโดดหรือกดเปิดหีบ
               </p>
               <p>
                 <strong>💻 เล่นบนคอมพิวเตอร์:</strong> ใช้ปุ่ม <code>W, A, S, D</code> เพื่อเคลื่อนที่, คลิกและลากเมาส์เพื่อหมุนมุมมองกล้อง, <code>Shift</code> วิ่งเร็ว, <code>Space</code> กระโดด, <code>E</code> เปิดหีบ
               </p>
               <p>
-                <strong>📦 แอร์ดรอป & วงพายุ:</strong> วิ่งเข้าหาเสาแสงสีทองและกล่องแอร์ดรอปสีแดง พร้อมระวังอย่าให้อยู่นอกวงพายุหมอก Safe Zone
+                <strong>📦 เสาแสง & แอร์ดรอป:</strong> วิ่งเข้าหาเสาแสงสีทองเพื่อเปิดหีบข้อสอบ และแย่งกล่องแอร์ดรอปสีแดงเพื่อรับคะแนนโบนัส 2 เท่า!
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setShowHowToPlay(false)}
               className="mt-5 w-full py-2 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold text-xs"
             >
