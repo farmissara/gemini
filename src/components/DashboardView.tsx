@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Users, 
   BookOpen, 
@@ -14,23 +14,10 @@ import {
   QrCode,
   Swords,
   Smartphone,
-  FolderGit2,
-  Database,
-  Key,
-  RefreshCw,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  Cloud,
-  AlertCircle,
-  Copy,
-  Check,
-  FileCode,
-  Terminal
+  FolderGit2
 } from 'lucide-react';
 import { Student, Course, AttendanceRecord, TuitionInvoice, Announcement, SystemConfig } from '../types';
 import { NavTab } from './Sidebar';
-import { getSupabaseCredentials, saveCustomSupabaseCredentials, testSupabaseConnection, SUPABASE_SCHEMA_SQL } from '../lib/supabase';
 
 interface DashboardViewProps {
   students: Student[];
@@ -55,38 +42,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onQuickCheckIn,
   onOpenSupabaseModal,
 }) => {
-  // Supabase Quick Config state
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
-  const [isSaved, setIsSaved] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; tablesNeedCreation?: boolean } | null>(null);
-  const [isBoxOpen, setIsBoxOpen] = useState(true);
-  const [copiedSql, setCopiedSql] = useState(false);
-
-  useEffect(() => {
-    const creds = getSupabaseCredentials();
-    setSupabaseUrl(creds.url);
-    setSupabaseAnonKey(creds.key);
-    if (creds.url && creds.key) {
-      setIsSaved(true);
-    }
-  }, []);
-
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2500);
-  };
-
-  const handleSaveSupabase = async () => {
-    saveCustomSupabaseCredentials(supabaseUrl, supabaseAnonKey);
-    setIsSaved(true);
-    setIsTesting(true);
-    const res = await testSupabaseConnection();
-    setTestResult(res);
-    setIsTesting(false);
-  };
   // Compute key stats
   const totalStudents = students.length;
   const activeStudents = students.filter(s => s.status === 'active').length;
@@ -153,186 +108,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Supabase Direct Input Box */}
-      <div className="rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-cyan-950/40 border border-emerald-500/40 p-4 sm:p-5 shadow-xl space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>ช่องใส่ค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                  isSaved && testResult?.ok
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                }`}>
-                  {isSaved && testResult?.ok ? 'Connected' : 'พร้อมเชื่อมต่อ'}
-                </span>
-              </h2>
-              <p className="text-xs text-slate-300">
-                ใส่ค่าที่ได้จาก Supabase Dashboard (Project Settings → API) แล้วกดบันทึกเพื่อเริ่มใช้งานฐานข้อมูลจริงทันที
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onNavigate('supabase_studio')}
-              className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-slate-950 text-xs font-bold flex items-center gap-1.5 shadow transition-colors"
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              <span>เปิด Supabase Studio ในแอป</span>
-            </button>
-            {onOpenSupabaseModal && (
-              <button
-                onClick={onOpenSupabaseModal}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors"
-              >
-                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                <span>ดูคู่มือ &amp; SQL Schema</span>
-              </button>
-            )}
-            <button
-              onClick={() => setIsBoxOpen(!isBoxOpen)}
-              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-750 text-slate-400 hover:text-white transition-colors"
-              title="ย่อ/ขยาย"
-            >
-              {isBoxOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        {isBoxOpen && (
-          <div className="space-y-3 pt-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Field 1: VITE_SUPABASE_URL */}
-              <div className="space-y-1">
-                <label className="flex items-center justify-between text-xs font-semibold text-slate-300">
-                  <span className="flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>VITE_SUPABASE_URL</span>
-                  </span>
-                  <span className="text-[10px] font-normal text-slate-400 font-mono">https://xxxx.supabase.co</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://your-project-id.supabase.co"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500 placeholder-slate-600 transition-colors"
-                />
-              </div>
-
-              {/* Field 2: VITE_SUPABASE_ANON_KEY */}
-              <div className="space-y-1">
-                <label className="flex items-center justify-between text-xs font-semibold text-slate-300">
-                  <span className="flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>VITE_SUPABASE_ANON_KEY</span>
-                  </span>
-                  <span className="text-[10px] font-normal text-slate-400 font-mono">anon public key</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={supabaseAnonKey}
-                  onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500 placeholder-slate-600 transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleSaveSupabase}
-                  disabled={isTesting || !supabaseUrl.trim()}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
-                >
-                  {isTesting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  <span>{isTesting ? 'กำลังทดสอบ...' : 'บันทึกและเชื่อมต่อ Supabase'}</span>
-                </button>
-
-                <a
-                  href="https://supabase.com/dashboard"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors"
-                >
-                  <span>เปิด Supabase Console</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-
-              {testResult && (
-                <div className="w-full">
-                  {testResult.tablesNeedCreation ? (
-                    <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-xs font-bold text-amber-300">
-                            เชื่อมต่อโปรเจกต์ Supabase สำเร็จแล้ว แต่ยังไม่ได้สร้างตาราง (Error PGRST205)
-                          </h4>
-                          <p className="text-[11px] text-amber-200/80 mt-0.5 leading-relaxed">
-                            ระบบ Supabase ของคุณยังไม่มีตาราง <strong>public.schools</strong> ทำให้ระบบยังไม่สามารถบันทึกหรือดึงข้อมูลได้ ให้ทำตามขั้นตอน 3 ขั้นตอนนี้ครับ:
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="p-2.5 rounded-lg bg-slate-950 font-mono text-[11px] text-slate-300 space-y-1 border border-amber-500/20">
-                        <div>1. กดปุ่มสีเขียว <span className="text-emerald-400 font-bold">&quot;คัดลอก SQL สร้างตาราง&quot;</span> ด้านล่างนี้</div>
-                        <div>2. เปิด <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="text-cyan-400 underline font-bold">Supabase SQL Editor</a> แล้วกดปุ่ม <strong>+ New query</strong></div>
-                        <div>3. กด Paste (วางโค้ด) แล้วกดปุ่มสีเขียว <strong>RUN</strong> ทางขวาล่าง</div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <button
-                          onClick={handleCopySql}
-                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition-colors"
-                        >
-                          {copiedSql ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedSql ? 'คัดลอก SQL แล้ว! (นำไปวางใน Supabase ได้เลย)' : 'คัดลอก SQL สร้างตาราง (Copy Schema)'}</span>
-                        </button>
-
-                        <a
-                          href="https://supabase.com/dashboard"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>ไปที่ Supabase SQL Editor</span>
-                        </a>
-
-                        <button
-                          onClick={handleSaveSupabase}
-                          disabled={isTesting}
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors ml-auto"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
-                          <span>รัน SQL เสร็จแล้ว กดทดสอบอีกครั้ง</span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={`px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 border ${
-                      testResult.ok
-                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-                        : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
-                    }`}>
-                      {testResult.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
-                      <span>{testResult.message}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -71,7 +71,7 @@ export const App: React.FC = () => {
   const [schools, setSchools] = useState<School[]>(INITIAL_SCHOOLS);
   const [activeSchool, setActiveSchool] = useState<School>(INITIAL_SCHOOLS[0]);
   const [demoUsers, setDemoUsers] = useState<AuthUser[]>(DEMO_USERS);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(DEMO_USERS[1]); // Default to School Director / Admin
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
   const [showDatabaseBackup, setShowDatabaseBackup] = useState(false);
   const [showSupabaseRenderModal, setShowSupabaseRenderModal] = useState(false);
