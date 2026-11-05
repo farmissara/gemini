@@ -14,7 +14,12 @@ import {
   QrCode,
   Swords,
   Smartphone,
-  FolderGit2
+  FolderGit2,
+  Calendar,
+  FileCheck2,
+  CreditCard,
+  HeartHandshake,
+  HeartPulse
 } from 'lucide-react';
 import { Student, Course, AttendanceRecord, TuitionInvoice, Announcement, SystemConfig } from '../types';
 import { NavTab } from './Sidebar';
@@ -105,6 +110,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>TCAS/PA แฟ้มผลงาน</span>
             </button>
           </div>
+        </div>
+
+        {/* Quick Access Badges for 5 New Modules */}
+        <div className="mt-4 pt-4 border-t border-indigo-500/20 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 relative z-10 text-xs">
+          <button
+            onClick={() => onNavigate('timetable')}
+            className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/60 hover:bg-indigo-600/20 border border-slate-800 hover:border-indigo-500/40 text-slate-300 hover:text-white transition group"
+          >
+            <Calendar className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />
+            <span className="font-semibold truncate">ตารางเรียน & จัดตาราง</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('behavior_sdq')}
+            className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/60 hover:bg-purple-600/20 border border-slate-800 hover:border-purple-500/40 text-slate-300 hover:text-white transition group"
+          >
+            <HeartHandshake className="w-4 h-4 text-purple-400 group-hover:scale-110 transition" />
+            <span className="font-semibold truncate">ความประพฤติ & SDQ</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('student_id_cards')}
+            className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/60 hover:bg-cyan-600/20 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition group"
+          >
+            <CreditCard className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition" />
+            <span className="font-semibold truncate">บัตรนักเรียนดิจิทัล</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('infirmary')}
+            className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/60 hover:bg-rose-600/20 border border-slate-800 hover:border-rose-500/40 text-slate-300 hover:text-white transition group"
+          >
+            <HeartPulse className="w-4 h-4 text-rose-400 group-hover:scale-110 transition" />
+            <span className="font-semibold truncate">ห้องพยาบาล & สุขภาพ</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('homework')}
+            className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/60 hover:bg-amber-600/20 border border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-white transition group col-span-2 sm:col-span-1"
+          >
+            <FileCheck2 className="w-4 h-4 text-amber-400 group-hover:scale-110 transition" />
+            <span className="font-semibold truncate">การบ้าน & ตรวจงาน</span>
+          </button>
         </div>
       </div>
 

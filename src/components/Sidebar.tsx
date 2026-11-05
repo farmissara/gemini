@@ -12,7 +12,12 @@ import {
   Swords,
   Smartphone,
   FolderGit2,
-  Database
+  Database,
+  Calendar,
+  HeartHandshake,
+  CreditCard,
+  HeartPulse,
+  FileCheck2
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
 
@@ -20,8 +25,13 @@ export type NavTab =
   | 'dashboard' 
   | 'students' 
   | 'courses' 
+  | 'timetable'
+  | 'homework'
   | 'attendance' 
   | 'mobile_checkin'
+  | 'behavior_sdq'
+  | 'student_id_cards'
+  | 'infirmary'
   | 'games'
   | 'portfolio'
   | 'gradebook' 
@@ -73,6 +83,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       roles: ['admin', 'teacher', 'student']
     },
     {
+      id: 'timetable' as NavTab,
+      labelTh: 'ตารางเรียน & ตารางสอน',
+      labelEn: 'Timetable & Schedule',
+      icon: Calendar,
+      badge: 'Auto',
+      badgeColor: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
+      roles: ['admin', 'teacher', 'student', 'parent']
+    },
+    {
+      id: 'homework' as NavTab,
+      labelTh: 'การบ้าน & ติดตามงาน',
+      labelEn: 'Homework & Tasks',
+      icon: FileCheck2,
+      badge: 'LMS',
+      badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+      roles: ['admin', 'teacher', 'student', 'parent']
+    },
+    {
       id: 'attendance' as NavTab,
       labelTh: 'เช็คชื่อเข้าเรียน & สแกน QR',
       labelEn: 'Daily Attendance & QR',
@@ -89,6 +117,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: 'GPS',
       badgeColor: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
       roles: ['admin', 'teacher', 'student', 'parent']
+    },
+    {
+      id: 'student_id_cards' as NavTab,
+      labelTh: 'บัตรนักเรียนดิจิทัล & QR',
+      labelEn: 'Digital Student ID',
+      icon: CreditCard,
+      badge: 'NFC',
+      badgeColor: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+      roles: ['admin', 'teacher', 'student', 'parent']
+    },
+    {
+      id: 'behavior_sdq' as NavTab,
+      labelTh: 'ความประพฤติ & SDQ',
+      labelEn: 'Behavior & SDQ',
+      icon: HeartHandshake,
+      badge: 'สพฐ.',
+      badgeColor: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+      roles: ['admin', 'teacher', 'parent']
+    },
+    {
+      id: 'infirmary' as NavTab,
+      labelTh: 'ห้องพยาบาล & สุขภาพ',
+      labelEn: 'Infirmary & Health',
+      icon: HeartPulse,
+      badge: 'FirstAid',
+      badgeColor: 'bg-rose-500/20 text-rose-400 border border-rose-500/30',
+      roles: ['admin', 'teacher', 'parent', 'student']
     },
     {
       id: 'games' as NavTab,

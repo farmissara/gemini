@@ -77,6 +77,11 @@ export interface Student {
   lineLinked: boolean;
   lineNotifyEnabled: boolean;
   enrolledDate: string;
+  bloodType?: 'A' | 'B' | 'AB' | 'O';
+  allergies?: string[];
+  chronicDiseases?: string[];
+  emergencyPhone?: string;
+  behaviorScore?: number;
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'sick' | 'leave';
@@ -310,5 +315,112 @@ export interface PortfolioItem {
   skills: string[];
   certifiedBySchool: boolean;
   scoreBonus?: number;
+}
+
+// 1. Timetable / Schedule Management
+export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
+
+export interface TimetableSlot {
+  id: string;
+  schoolId?: string;
+  dayOfWeek: DayOfWeek;
+  periodNumber: number; // 1 to 8
+  startTime: string; // e.g. "08:30"
+  endTime: string; // e.g. "09:20"
+  courseCode: string; // e.g. "TH301"
+  courseTitleTh: string;
+  courseTitleEn: string;
+  teacherName: string;
+  room: string;
+  classRoom: string; // e.g. "ห้อง 401 (วิทย์-คณิต)", "ห้อง 402"
+  colorTag: 'sky' | 'emerald' | 'amber' | 'rose' | 'purple' | 'indigo' | 'cyan';
+}
+
+// 2. Behavior Points & SDQ
+export interface BehaviorRecord {
+  id: string;
+  schoolId?: string;
+  studentId: string;
+  studentName: string;
+  studentRoom: string;
+  date: string;
+  type: 'merit' | 'demerit';
+  points: number; // +10 or -5
+  category: string;
+  notes: string;
+  recordedBy: string;
+  lineNotified: boolean;
+}
+
+export interface SdqAssessment {
+  id: string;
+  schoolId?: string;
+  studentId: string;
+  studentName: string;
+  studentRoom: string;
+  assessorType: 'teacher' | 'parent' | 'student';
+  assessorName: string;
+  academicYear: string;
+  semester: string;
+  emotionalScore: number; // 0-10
+  conductScore: number; // 0-10
+  hyperactivityScore: number; // 0-10
+  peerScore: number; // 0-10
+  prosocialScore: number; // 0-10 (Strength)
+  totalDifficultiesScore: number; // sum of 4 risk scores (0-40)
+  overallStatus: 'normal' | 'risk' | 'problem';
+  date: string;
+  notes?: string;
+}
+
+// 3. School Infirmary & Health
+export type InfirmaryCategory = 'fever' | 'stomach' | 'injury' | 'headache' | 'allergy' | 'other';
+export type InfirmaryStatus = 'resting' | 'discharged' | 'sent_home' | 'hospital';
+
+export interface InfirmaryVisit {
+  id: string;
+  schoolId?: string;
+  studentId: string;
+  studentName: string;
+  gradeRoom: string;
+  visitDate: string;
+  visitTime: string;
+  temperature: number; // e.g. 37.8
+  symptoms: string;
+  category: InfirmaryCategory;
+  treatment: string;
+  medicationDispensed?: string;
+  bedNumber?: string;
+  status: InfirmaryStatus;
+  recordedByNurse: string;
+  parentNotified: boolean;
+  notes?: string;
+}
+
+// 4. Homework & Assignment Submission
+export interface HomeworkSubmission {
+  id: string;
+  schoolId?: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  courseCode: string;
+  courseTitleTh: string;
+  studentId: string;
+  studentName: string;
+  studentRoom: string;
+  dueDate: string;
+  submittedAt?: string;
+  status: 'submitted' | 'late' | 'pending' | 'graded';
+  fileAttachment?: {
+    name: string;
+    size: string;
+    type: string;
+  };
+  textSubmission?: string;
+  score?: number;
+  maxScore: number;
+  teacherFeedback?: string;
+  gradedAt?: string;
+  gradedBy?: string;
 }
 

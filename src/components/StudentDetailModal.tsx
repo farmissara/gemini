@@ -138,6 +138,42 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Health & Behavior Profile */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-rose-400" />
+              ข้อมูลสุขภาพ &amp; คะแนนความประพฤติ
+            </h4>
+            <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-800 grid grid-cols-3 gap-3">
+              <div>
+                <span className="text-slate-400 block text-[10px]">หมู่โลหิต (Blood)</span>
+                <span className="font-mono font-bold text-rose-400 text-sm">{student.bloodType || 'O'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">คะแนนความประพฤติ</span>
+                <span className="font-mono font-bold text-emerald-400 text-sm">{student.behaviorScore ?? 100} / 100</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">เบอร์ติดต่อฉุกเฉิน</span>
+                <span className="font-mono text-slate-200">{student.emergencyPhone || student.guardianPhone}</span>
+              </div>
+              <div className="col-span-3 pt-1 border-t border-slate-700/60">
+                <span className="text-slate-400 block text-[10px]">ประวัติการแพ้ยาและอาหาร (Allergies)</span>
+                {student.allergies && student.allergies.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {student.allergies.map((allergy, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold">
+                        ⚠️ {allergy}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-emerald-400 text-[11px] font-medium">ไม่มีประวัติการแพ้ยาหรืออาหาร</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Academic Courses Record */}
           <div className="space-y-2">
             <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">

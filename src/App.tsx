@@ -21,7 +21,12 @@ import {
   PlayerScore,
   RewardItem,
   PeriodAttendanceRecord,
-  PortfolioItem
+  PortfolioItem,
+  TimetableSlot,
+  BehaviorRecord,
+  SdqAssessment,
+  InfirmaryVisit,
+  HomeworkSubmission
 } from './types';
 import { 
   INITIAL_SCHOOLS,
@@ -39,7 +44,12 @@ import {
   INITIAL_PLAYER_SCORES,
   INITIAL_REWARD_ITEMS,
   INITIAL_PERIOD_ATTENDANCE,
-  INITIAL_PORTFOLIO_ITEMS
+  INITIAL_PORTFOLIO_ITEMS,
+  INITIAL_TIMETABLE_SLOTS,
+  INITIAL_BEHAVIOR_RECORDS,
+  INITIAL_SDQ_ASSESSMENTS,
+  INITIAL_INFIRMARY_VISITS,
+  INITIAL_HOMEWORK_SUBMISSIONS
 } from './data/mockData';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
@@ -64,7 +74,12 @@ import { StudentDetailModal } from './components/StudentDetailModal';
 import { SupabaseRenderModal } from './components/SupabaseRenderModal';
 import { SupabaseStudioView } from './components/SupabaseStudioView';
 import { SystemGuideModal } from './components/SystemGuideModal';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, GraduationCap, Users } from 'lucide-react';
+import { TimetableScheduleView } from './components/TimetableScheduleView';
+import { BehaviorSdqView } from './components/BehaviorSdqView';
+import { DigitalIdCardView } from './components/DigitalIdCardView';
+import { InfirmaryHealthView } from './components/InfirmaryHealthView';
+import { HomeworkTrackerView } from './components/HomeworkTrackerView';
+import { LayoutDashboard, QrCode, Gamepad2, Briefcase, GraduationCap, Users, Calendar, CreditCard, HeartPulse, FileCheck2, HeartHandshake } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
@@ -101,6 +116,11 @@ export const App: React.FC = () => {
   const [rewardItems, setRewardItems] = useState<RewardItem[]>(INITIAL_REWARD_ITEMS);
   const [periodAttendance, setPeriodAttendance] = useState<PeriodAttendanceRecord[]>(INITIAL_PERIOD_ATTENDANCE);
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>(INITIAL_PORTFOLIO_ITEMS);
+  const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>(INITIAL_TIMETABLE_SLOTS);
+  const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>(INITIAL_BEHAVIOR_RECORDS);
+  const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>(INITIAL_SDQ_ASSESSMENTS);
+  const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>(INITIAL_INFIRMARY_VISITS);
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(INITIAL_HOMEWORK_SUBMISSIONS);
 
   // Modals
   const [selectedStudentForReport, setSelectedStudentForReport] = useState<Student | null>(null);
@@ -118,6 +138,11 @@ export const App: React.FC = () => {
   const schoolQuestions = questions.filter((q) => !q.schoolId || q.schoolId === activeSchool.id);
   const schoolPeriodAttendance = periodAttendance.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
   const schoolPortfolioItems = portfolioItems.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
+  const schoolTimetableSlots = timetableSlots.filter((t) => !t.schoolId || t.schoolId === activeSchool.id);
+  const schoolBehaviorRecords = behaviorRecords.filter((b) => !b.schoolId || b.schoolId === activeSchool.id);
+  const schoolSdqAssessments = sdqAssessments.filter((s) => !s.schoolId || s.schoolId === activeSchool.id);
+  const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
+  const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
 
   // Auth Handlers
   const handleLogin = (user: AuthUser, school: School) => {
@@ -328,6 +353,47 @@ export const App: React.FC = () => {
     setPortfolioItems((prev) => [{ ...item, schoolId: activeSchool.id }, ...prev]);
   };
 
+  const handleAddTimetableSlot = (slot: TimetableSlot) => {
+    setTimetableSlots((prev) => [{ ...slot, schoolId: activeSchool.id }, ...prev]);
+  };
+
+  const handleDeleteTimetableSlot = (id: string) => {
+    setTimetableSlots((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleAddBehaviorRecord = (record: BehaviorRecord) => {
+    setBehaviorRecords((prev) => [{ ...record, schoolId: activeSchool.id }, ...prev]);
+  };
+
+  const handleAddSdqAssessment = (sdq: SdqAssessment) => {
+    setSdqAssessments((prev) => [{ ...sdq, schoolId: activeSchool.id }, ...prev]);
+  };
+
+  const handleAddInfirmaryVisit = (visit: InfirmaryVisit) => {
+    setInfirmaryVisits((prev) => [{ ...visit, schoolId: activeSchool.id }, ...prev]);
+  };
+
+  const handleAddHomeworkSubmission = (sub: HomeworkSubmission) => {
+    setHomeworkSubmissions((prev) => [{ ...sub, schoolId: activeSchool.id }, ...prev]);
+  };
+
+  const handleGradeHomeworkSubmission = (id: string, score: number, feedback: string) => {
+    setHomeworkSubmissions((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              score,
+              teacherFeedback: feedback,
+              status: 'graded' as const,
+              gradedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+              gradedBy: currentUser?.fullNameTh || 'อ.ดร.ประเสริฐ ถาวร'
+            }
+          : s
+      )
+    );
+  };
+
   // If user is not logged in: Render the Clear Main Login & Register Page
   if (!currentUser) {
     return (
@@ -438,6 +504,29 @@ export const App: React.FC = () => {
                   />
                 )}
 
+                {currentTab === 'timetable' && (
+                  <TimetableScheduleView
+                    slots={schoolTimetableSlots}
+                    onAddSlot={handleAddTimetableSlot}
+                    onDeleteSlot={handleDeleteTimetableSlot}
+                    lang={lang}
+                    currentRole={currentRole}
+                    schoolName={activeSchool.nameTh}
+                  />
+                )}
+
+                {currentTab === 'homework' && (
+                  <HomeworkTrackerView
+                    submissions={schoolHomeworkSubmissions}
+                    students={schoolStudents}
+                    courses={schoolCourses}
+                    onAddSubmission={handleAddHomeworkSubmission}
+                    onGradeSubmission={handleGradeHomeworkSubmission}
+                    lang={lang}
+                    currentRole={currentRole}
+                  />
+                )}
+
                 {currentTab === 'attendance' && (
                   <AttendanceView
                     students={schoolStudents}
@@ -456,6 +545,37 @@ export const App: React.FC = () => {
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onRecordPeriodAttendance={handleRecordPeriodAttendance}
+                  />
+                )}
+
+                {currentTab === 'student_id_cards' && (
+                  <DigitalIdCardView
+                    students={schoolStudents}
+                    school={activeSchool}
+                    lang={lang}
+                    currentRole={currentRole}
+                  />
+                )}
+
+                {currentTab === 'behavior_sdq' && (
+                  <BehaviorSdqView
+                    students={schoolStudents}
+                    records={schoolBehaviorRecords}
+                    sdqList={schoolSdqAssessments}
+                    onAddBehaviorRecord={handleAddBehaviorRecord}
+                    onAddSdqAssessment={handleAddSdqAssessment}
+                    lang={lang}
+                    currentRole={currentRole}
+                  />
+                )}
+
+                {currentTab === 'infirmary' && (
+                  <InfirmaryHealthView
+                    visits={schoolInfirmaryVisits}
+                    students={schoolStudents}
+                    onAddVisit={handleAddInfirmaryVisit}
+                    lang={lang}
+                    currentRole={currentRole}
                   />
                 )}
 
