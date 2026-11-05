@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Database,
   Palette,
-  Cloud
+  Cloud,
+  BookOpen
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -35,6 +36,7 @@ interface NavbarProps {
   onOpenSchoolSwitcher: () => void;
   onOpenDatabaseBackup: () => void;
   onOpenSupabaseRender?: () => void;
+  onOpenSystemGuide?: () => void;
   onLogout: () => void;
 }
 
@@ -58,6 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSchoolSwitcher,
   onOpenDatabaseBackup,
   onOpenSupabaseRender,
+  onOpenSystemGuide,
   onLogout,
 }) => {
   return (
@@ -179,6 +182,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Clean Light Theme"
           />
         </div>
+
+        {/* System Guide Shortcut */}
+        {onOpenSystemGuide && (
+          <button
+            onClick={onOpenSystemGuide}
+            className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs flex items-center gap-1.5 transition-colors"
+            title="คู่มือและแผนผังแนะนำระบบ EduVerse"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden md:inline text-[11px] font-semibold">แนะนำระบบ (Guide)</span>
+          </button>
+        )}
 
         {/* Supabase & Render Deploy Shortcut */}
         {onOpenSupabaseRender && (

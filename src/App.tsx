@@ -63,6 +63,7 @@ import { ReportCardModal } from './components/ReportCardModal';
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { SupabaseRenderModal } from './components/SupabaseRenderModal';
 import { SupabaseStudioView } from './components/SupabaseStudioView';
+import { SystemGuideModal } from './components/SystemGuideModal';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, GraduationCap, Users } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -74,6 +75,7 @@ export const App: React.FC = () => {
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
   const [showDatabaseBackup, setShowDatabaseBackup] = useState(false);
   const [showSupabaseRenderModal, setShowSupabaseRenderModal] = useState(false);
+  const [showSystemGuide, setShowSystemGuide] = useState(false);
 
   // Navigation, Mode, Theme & Language State
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -368,6 +370,7 @@ export const App: React.FC = () => {
         onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
         onOpenDatabaseBackup={() => setShowDatabaseBackup(true)}
         onOpenSupabaseRender={() => setShowSupabaseRenderModal(true)}
+        onOpenSystemGuide={() => setShowSystemGuide(true)}
         onLogout={handleLogout}
       />
 
@@ -702,6 +705,20 @@ export const App: React.FC = () => {
           announcements={schoolAnnouncements}
           lang={lang}
           onClose={() => setShowSupabaseRenderModal(false)}
+        />
+      )}
+
+      {/* Interactive System Guide & Architecture Modal */}
+      {showSystemGuide && (
+        <SystemGuideModal
+          activeSchool={activeSchool}
+          lang={lang}
+          onClose={() => setShowSystemGuide(false)}
+          onNavigateTab={(tab) => {
+            setCurrentTab(tab);
+            setProgramMode('school_erp');
+          }}
+          onSwitchRole={(role) => setCurrentRole(role)}
         />
       )}
     </div>
