@@ -226,11 +226,11 @@ export const INITIAL_STUDENTS: Student[] = [
     enrolledDate: '2022-05-15',
   },
 
-  // School 2 (Chiang Mai Demo)
+  // Additional Students (EduVerse Academy Bangkok)
   {
     id: 'stu-7',
     schoolId: 'sch-1',
-    studentIdNumber: 'CM-4011',
+    studentIdNumber: 'ED-6906',
     nationalId: '1-5002-00345-12-3',
     firstNameEn: 'Natthanicha',
     lastNameEn: 'Khamluang',
@@ -239,14 +239,14 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: 'female',
     dateOfBirth: '2008-08-14',
     gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
-    room: 'ห้อง 401 (สาธิต-ชีววิทยา)',
+    room: 'ห้อง 401 (วิทย์-ชีววิทยา)',
     status: 'active',
     avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&auto=format&fit=crop&q=80',
     gpa: 3.96,
     guardianName: 'นายบุญเลิศ คำหลวง',
     guardianRelation: 'บิดา',
     guardianPhone: '083-441-2929',
-    guardianEmail: 'boonlerd@cm.ac.th',
+    guardianEmail: 'boonlerd@eduverse.school',
     lineLinked: true,
     lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
@@ -254,7 +254,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 'stu-8',
     schoolId: 'sch-1',
-    studentIdNumber: 'CM-4012',
+    studentIdNumber: 'ED-6907',
     nationalId: '1-5002-00877-44-1',
     firstNameEn: 'Chanon',
     lastNameEn: 'Sukkasem',
@@ -263,7 +263,7 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: 'male',
     dateOfBirth: '2008-03-22',
     gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
-    room: 'ห้อง 401 (สาธิต-ชีววิทยา)',
+    room: 'ห้อง 401 (วิทย์-ชีววิทยา)',
     status: 'active',
     avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80',
     gpa: 3.82,
@@ -275,12 +275,10 @@ export const INITIAL_STUDENTS: Student[] = [
     lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
   },
-
-  // School 3 (Phuket Science)
   {
     id: 'stu-9',
     schoolId: 'sch-1',
-    studentIdNumber: 'PK-1001',
+    studentIdNumber: 'ED-6908',
     nationalId: '1-8301-00233-91-0',
     firstNameEn: 'Alex',
     lastNameEn: 'Thanakrit',
@@ -288,15 +286,15 @@ export const INITIAL_STUDENTS: Student[] = [
     lastNameTh: 'ธนกฤต',
     gender: 'male',
     dateOfBirth: '2008-10-05',
-    gradeLevel: 'Grade 10 (International)',
-    room: 'Class 10A (Robotics & AI)',
+    gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
+    room: 'ห้อง 403 (English Program & AI)',
     status: 'active',
     avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200&auto=format&fit=crop&q=80',
     gpa: 3.98,
     guardianName: 'David Thanakrit',
     guardianRelation: 'Father',
     guardianPhone: '089-887-2121',
-    guardianEmail: 'david.t@phuket.edu',
+    guardianEmail: 'david.t@eduverse.school',
     lineLinked: true,
     lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
@@ -360,7 +358,7 @@ export const INITIAL_COURSES: Course[] = [
     description: 'พัฒนาทักษะการเขียนเรียงความเชิงวิชาการ การโต้วาที และการเตรียมความพร้อมมาตรฐาน IELTS'
   },
 
-  // School 2 Courses (Chiang Mai)
+  // Advanced Science & AI Electives (EduVerse Academy)
   {
     id: 'crs-10',
     schoolId: 'sch-1',
@@ -370,8 +368,8 @@ export const INITIAL_COURSES: Course[] = [
     category: 'stem',
     credits: 3.0,
     teacherName: 'ผศ.ดร.สมชาย เวียงพิงค์',
-    teacherEmail: 'somchai.w@cm-demo.ac.th',
-    department: 'สาขาชีววิทยาประยุกต์',
+    teacherEmail: 'somchai.w@eduverse.school',
+    department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
     schedule: 'อังคาร, พฤหัสบดี 09:00 - 11:00',
     room: 'ห้องแล็บชีววิทยา 2',
     academicYear: '2569',
@@ -379,8 +377,6 @@ export const INITIAL_COURSES: Course[] = [
     enrolledStudentIds: ['stu-7', 'stu-8'],
     description: 'โครงสร้าง DNA, การตัดต่อยีน CRISPR, และการวิเคราะห์จีโนมด้วยซอฟต์แวร์คอมพิวเตอร์'
   },
-
-  // School 3 Courses (Phuket)
   {
     id: 'crs-20',
     schoolId: 'sch-1',
@@ -390,11 +386,11 @@ export const INITIAL_COURSES: Course[] = [
     category: 'stem',
     credits: 3.5,
     teacherName: 'Dr. Marcus Vance',
-    teacherEmail: 'marcus.v@phuket-academy.edu',
-    department: 'Advanced Robotics Engineering',
-    schedule: 'Mon, Wed, Fri 13:00 - 15:00',
-    room: 'Robotics Arena A',
-    academicYear: '2026',
+    teacherEmail: 'marcus.v@eduverse.school',
+    department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
+    schedule: 'จันทร์, พุธ, ศุกร์ 13:00 - 15:00',
+    room: 'ห้องปฏิบัติการ Robotics & AI Arena',
+    academicYear: '2569',
     semester: '1',
     enrolledStudentIds: ['stu-9'],
     description: 'ROS2 robotics operating system, sensor fusion, microcontrollers and computer vision.'
@@ -631,12 +627,12 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-10',
     schoolId: 'sch-1',
-    title: 'การเปิดรับผลงานโครงงานชีววิทยาภาคเหนือ (Northern Bio Project)',
-    content: 'นักเรียนสาธิต มช. ที่ผ่านการคัดเลือกรอบแรก ให้เตรียมไฟล์นำเสนอและรายงานฉบับสมบูรณ์ภายในวันที่ 15 พฤศจิกายนนี้',
+    title: 'การเปิดรับผลงานโครงงานวิทยาศาสตร์และนวัตกรรม AI (EduVerse Science & AI Fair)',
+    content: 'นักเรียนระดับชั้น ม.4 - ม.6 ที่ผ่านการคัดเลือกรอบแรก ให้เตรียมไฟล์นำเสนอและรายงานฉบับสมบูรณ์สำหรับงานนิทรรศการวิชาการ ภายในวันที่ 15 พฤศจิกายนนี้',
     category: 'academic',
     targetAudience: 'students',
     publishedAt: '2026-11-03 10:00',
-    author: 'กลุ่มวิจัยสาธิต มช.',
+    author: 'กลุ่มวิจัยนวัตกรรม EduVerse',
     authorRole: 'อาจารย์ที่ปรึกษา',
     pinned: true,
     lineBroadcastSent: true,

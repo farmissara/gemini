@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  const filteredNav = navItems.filter(item => item.roles.includes(currentRole));
+  const filteredNav = navItems.filter(item => currentRole === 'super_admin' || item.roles.includes(currentRole));
 
   return (
     <aside className="w-64 border-r border-slate-800 bg-slate-900/60 p-4 flex flex-col justify-between shrink-0 hidden md:flex">
@@ -201,23 +201,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-xs font-semibold text-slate-400">
               {lang === 'th' ? 'สิทธิ์ผู้ใช้งาน' : 'Current View'}
             </span>
-            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
+              currentRole === 'super_admin'
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+            }`}>
               {lang === 'th' 
-                ? currentRole === 'admin' ? 'ผู้ดูแลระบบ' : currentRole === 'teacher' ? 'อาจารย์' : currentRole === 'student' ? 'นักเรียน' : 'ผู้ปกครอง'
+                ? currentRole === 'super_admin' ? '👑 Super Admin' : currentRole === 'admin' ? 'ผู้ดูแลระบบ' : currentRole === 'teacher' ? 'อาจารย์' : currentRole === 'student' ? 'นักเรียน' : 'ผู้ปกครอง'
                 : currentRole}
             </span>
           </div>
           <p className="text-[11px] text-slate-400">
             {lang === 'th'
-              ? currentRole === 'admin'
-                ? 'สิทธิ์แอดมินสูงสุด: จัดการข้อมูลนักเรียน, การเงิน, LINE OA และฐานข้อมูล'
+              ? currentRole === 'super_admin'
+                ? 'สิทธิ์ Super Admin แม่ข่าย: ควบคุมทุกฟังก์ชัน, จัดการข้อมูลแม่ข่าย, Backup และเชื่อมต่อ Cloud'
+                : currentRole === 'admin'
+                ? 'สิทธิ์แอดมินโรงเรียน: จัดการข้อมูลนักเรียน, การเงิน, LINE OA และฐานข้อมูล'
                 : currentRole === 'teacher'
                 ? 'จัดการชั้นเรียน, บันทึกคะแนน และเช็คชื่อการเข้าเรียน'
                 : currentRole === 'student'
                 ? 'ดูตารางเรียน, ผลการประเมินเกรด และสถิติการเข้าเรียน'
                 : 'ตรวจสอบเวลาเข้า-ออกโรงเรียนของบุตรหลาน และใบแจ้งหนี้ค่าเทอม'
+              : currentRole === 'super_admin'
+              ? 'Master Super Admin: full unrestricted authority across all subsystems & databases.'
               : currentRole === 'admin'
-              ? 'Full administrative authority: students, tuition, LINE bot & database.'
+              ? 'School Administrator: students, tuition, LINE bot & database.'
               : currentRole === 'teacher'
               ? 'Class management, attendance taking, gradebook input.'
               : currentRole === 'student'

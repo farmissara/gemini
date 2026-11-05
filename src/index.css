@@ -46,7 +46,31 @@
   --color-text-muted: #40584d;
 }
 
-/* 4. Sapphire Dark (ค่ำคืนครามเข้ม) */
+/* 4. Eye-Care Clean Pure White (ขาวสว่าง คลีนมินิมอล) */
+.theme-light_pure {
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-accent: #6366f1;
+  --color-bg-base: #f8fafc;
+  --color-card-bg: #ffffff;
+  --color-card-border: #e2e8f0;
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
+}
+
+/* 5. Eye-Care Soft Lavender (ลาเวนเดอร์นุ่มนวล ผ่อนคลายตา) */
+.theme-light_lavender {
+  --color-primary: #7c3aed;
+  --color-primary-hover: #6d28d9;
+  --color-accent: #8b5cf6;
+  --color-bg-base: #f7f5fc;
+  --color-card-bg: #ffffff;
+  --color-card-border: #e9e3f7;
+  --color-text-main: #1e1338;
+  --color-text-muted: #52466e;
+}
+
+/* 6. Sapphire Dark (ค่ำคืนครามเข้ม) */
 .theme-sapphire {
   --color-primary: #0284c7;
   --color-primary-hover: #0369a1;
@@ -58,7 +82,7 @@
   --color-text-muted: #94a3b8;
 }
 
-/* 5. Emerald Dark (มรกตเข้ม) */
+/* 7. Emerald Dark (มรกตเข้ม) */
 .theme-emerald {
   --color-primary: #059669;
   --color-primary-hover: #047857;
@@ -70,7 +94,7 @@
   --color-text-muted: #94a3b8;
 }
 
-/* 6. Amethyst Dark (อเมทิสต์) */
+/* 8. Amethyst Dark (อเมทิสต์) */
 .theme-amethyst {
   --color-primary: #7c3aed;
   --color-primary-hover: #6d28d9;
@@ -83,19 +107,16 @@
 }
 
 /* ========================================================
-   EYE-CARE LIGHT THEME ADAPTATION
+   UNIVERSAL EYE-CARE LIGHT THEME ADAPTATION
    (Transforms dark backgrounds, cards, borders and text into
    soft, soothing, eye-comfortable light mode)
    ======================================================== */
 
-.theme-light_sky,
-.theme-light_warm,
-.theme-light_mint,
-.theme-light {
+[class*="theme-light"] {
   color-scheme: light;
 }
 
-/* Background surfaces */
+/* Specific background surfaces */
 .theme-light_sky,
 .theme-light {
   background-color: #f1f5fa !important;
@@ -109,52 +130,43 @@
   background-color: #f0f7f4 !important;
 }
 
+.theme-light_pure {
+  background-color: #f8fafc !important;
+}
+
+.theme-light_lavender {
+  background-color: #f7f5fc !important;
+}
+
 /* Primary cards, navbars, modals and panels */
-.theme-light_sky .bg-slate-900,
-.theme-light_sky .bg-slate-950,
-.theme-light_sky aside.bg-slate-900\/60,
-.theme-light_warm .bg-slate-900,
-.theme-light_warm .bg-slate-950,
-.theme-light_warm aside.bg-slate-900\/60,
-.theme-light_mint .bg-slate-900,
-.theme-light_mint .bg-slate-950,
-.theme-light_mint aside.bg-slate-900\/60,
-.theme-light .bg-slate-900,
-.theme-light .bg-slate-950 {
+[class*="theme-light"] .bg-slate-900,
+[class*="theme-light"] .bg-slate-950,
+[class*="theme-light"] .bg-\[\#0B0F19\],
+[class*="theme-light"] aside.bg-slate-900\/60 {
   background-color: #ffffff !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
-.theme-light_sky header,
-.theme-light_warm header,
-.theme-light_mint header,
-.theme-light header {
-  background-color: rgba(255, 255, 255, 0.95) !important;
+[class*="theme-light"] header {
+  background-color: rgba(255, 255, 255, 0.96) !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
-.theme-light_sky .bg-slate-900\/95,
-.theme-light_sky .bg-slate-900\/80,
-.theme-light_sky .bg-slate-900\/60,
-.theme-light_sky .bg-slate-900\/50,
-.theme-light_warm .bg-slate-900\/95,
-.theme-light_warm .bg-slate-900\/80,
-.theme-light_warm .bg-slate-900\/60,
-.theme-light_warm .bg-slate-900\/50,
-.theme-light_mint .bg-slate-900\/95,
-.theme-light_mint .bg-slate-900\/80,
-.theme-light_mint .bg-slate-900\/60,
-.theme-light_mint .bg-slate-900\/50 {
+[class*="theme-light"] .bg-slate-900\/95,
+[class*="theme-light"] .bg-slate-900\/80,
+[class*="theme-light"] .bg-slate-900\/60,
+[class*="theme-light"] .bg-slate-900\/50,
+[class*="theme-light"] .bg-slate-900\/40 {
   background-color: #ffffff !important;
 }
 
 /* Inner secondary cards and stat badges */
-.theme-light_sky .bg-slate-800,
-.theme-light_sky .bg-slate-800\/60,
-.theme-light_sky .bg-slate-800\/50,
-.theme-light_sky .bg-slate-800\/40,
-.theme-light .bg-slate-800,
-.theme-light .bg-slate-800\/60 {
+[class*="theme-light"] .bg-slate-800,
+[class*="theme-light"] .bg-slate-800\/60,
+[class*="theme-light"] .bg-slate-800\/50,
+[class*="theme-light"] .bg-slate-800\/40,
+[class*="theme-light"] .bg-slate-800\/30,
+[class*="theme-light"] .bg-slate-800\/20 {
   background-color: #f8fafc !important;
 }
 
@@ -162,24 +174,30 @@
 .theme-light_warm .bg-slate-800\/60,
 .theme-light_warm .bg-slate-800\/50,
 .theme-light_warm .bg-slate-800\/40 {
-  background-color: #f7f4ea !important;
+  background-color: #f6f3eb !important;
 }
 
 .theme-light_mint .bg-slate-800,
 .theme-light_mint .bg-slate-800\/60,
 .theme-light_mint .bg-slate-800\/50,
 .theme-light_mint .bg-slate-800\/40 {
-  background-color: #eaf4ee !important;
+  background-color: #e8f3ee !important;
+}
+
+.theme-light_lavender .bg-slate-800,
+.theme-light_lavender .bg-slate-800\/60,
+.theme-light_lavender .bg-slate-800\/50,
+.theme-light_lavender .bg-slate-800\/40 {
+  background-color: #f2edf8 !important;
 }
 
 /* Card Borders */
-.theme-light_sky .border-slate-800,
-.theme-light_sky .border-slate-800\/80,
-.theme-light_sky .border-slate-700,
-.theme-light_sky .border-slate-700\/60,
-.theme-light_sky .border-slate-700\/80,
-.theme-light .border-slate-800,
-.theme-light .border-slate-700 {
+[class*="theme-light"] .border-slate-800,
+[class*="theme-light"] .border-slate-800\/80,
+[class*="theme-light"] .border-slate-800\/60,
+[class*="theme-light"] .border-slate-700,
+[class*="theme-light"] .border-slate-700\/80,
+[class*="theme-light"] .border-slate-700\/60 {
   border-color: #e2e8f0 !important;
 }
 
@@ -197,13 +215,17 @@
   border-color: #cfe2d7 !important;
 }
 
+.theme-light_lavender .border-slate-800,
+.theme-light_lavender .border-slate-800\/80,
+.theme-light_lavender .border-slate-700,
+.theme-light_lavender .border-slate-700\/60 {
+  border-color: #e9e3f7 !important;
+}
+
 /* Typography & Headings */
-.theme-light_sky .text-white,
-.theme-light_sky .text-slate-100,
-.theme-light_sky .text-slate-200,
-.theme-light .text-white,
-.theme-light .text-slate-100,
-.theme-light .text-slate-200 {
+[class*="theme-light"] .text-white,
+[class*="theme-light"] .text-slate-100,
+[class*="theme-light"] .text-slate-200 {
   color: #0f172a !important;
 }
 
@@ -219,11 +241,15 @@
   color: #132a22 !important;
 }
 
+.theme-light_lavender .text-white,
+.theme-light_lavender .text-slate-100,
+.theme-light_lavender .text-slate-200 {
+  color: #1e1338 !important;
+}
+
 /* Secondary muted text */
-.theme-light_sky .text-slate-300,
-.theme-light_sky .text-slate-400,
-.theme-light .text-slate-300,
-.theme-light .text-slate-400 {
+[class*="theme-light"] .text-slate-300,
+[class*="theme-light"] .text-slate-400 {
   color: #475569 !important;
 }
 
@@ -237,20 +263,19 @@
   color: #40584d !important;
 }
 
-.theme-light_sky .text-slate-500,
-.theme-light_warm .text-slate-500,
-.theme-light_mint .text-slate-500,
-.theme-light .text-slate-500 {
+.theme-light_lavender .text-slate-300,
+.theme-light_lavender .text-slate-400 {
+  color: #52466e !important;
+}
+
+[class*="theme-light"] .text-slate-500 {
   color: #64748b !important;
 }
 
 /* Inputs, Selects, and Textareas */
-.theme-light_sky input:not([type="checkbox"]):not([type="radio"]),
-.theme-light_sky select,
-.theme-light_sky textarea,
-.theme-light input:not([type="checkbox"]):not([type="radio"]),
-.theme-light select,
-.theme-light textarea {
+[class*="theme-light"] input:not([type="checkbox"]):not([type="radio"]),
+[class*="theme-light"] select,
+[class*="theme-light"] textarea {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
@@ -271,6 +296,26 @@
   color: #132a22 !important;
   border-color: #c0d8cb !important;
 }
+
+.theme-light_lavender input:not([type="checkbox"]):not([type="radio"]),
+.theme-light_lavender select,
+.theme-light_lavender textarea {
+  background-color: #ffffff !important;
+  color: #1e1338 !important;
+  border-color: #ddd4ee !important;
+}
+
+/* Button & Link Hover States in Light Mode */
+[class*="theme-light"] .hover\:bg-slate-800:hover,
+[class*="theme-light"] .hover\:bg-slate-800\/80:hover,
+[class*="theme-light"] .hover\:bg-slate-700:hover {
+  background-color: #f1f5f9 !important;
+}
+
+[class*="theme-light"] .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
 
 /* Hero Banners in Light Mode */
 .theme-light_sky .relative.overflow-hidden.rounded-2xl.bg-gradient-to-r {

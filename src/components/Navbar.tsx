@@ -13,7 +13,9 @@ import {
   Database,
   Palette,
   Cloud,
-  BookOpen
+  BookOpen,
+  Sun,
+  ShieldAlert
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -158,28 +160,57 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right controls: Color Palette, Database Backup, Language, Role Switcher, Logout */}
       <div className="flex items-center justify-between sm:justify-end gap-2">
-        {/* Color Palette Switcher (เปลี่ยนสีสันใหม่ด้วย) */}
-        <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 gap-1" title="เปลี่ยนโทนสีสันโปรแกรม (Color Theme)">
-          <Palette className="w-3 h-3 text-slate-400 ml-1 hidden sm:inline" />
+        {/* Eye-Care Color Theme Palette Switcher */}
+        <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 gap-1" title={lang === 'th' ? 'เลือกโทนสีสว่างสบายตา (Eye-Care Themes)' : 'Eye-Care Light Color Themes'}>
+          <Sun className="w-3.5 h-3.5 text-amber-400 ml-1 hidden sm:inline" />
           <button
-            onClick={() => setThemePalette('sapphire')}
-            className={`w-4 h-4 rounded-full bg-sky-500 transition-all ${themePalette === 'sapphire' ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}
-            title="Sapphire Sky Theme"
+            onClick={() => {
+              setTheme('light');
+              setThemePalette('light_sky');
+            }}
+            className={`w-4 h-4 rounded-full bg-sky-400 transition-all ${themePalette === 'light_sky' || themePalette === 'light' ? 'ring-2 ring-sky-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+            title={lang === 'th' ? '☀️ ฟ้าละมุน สบายตา (Soft Sky)' : 'Eye-Care Soft Sky'}
           />
           <button
-            onClick={() => setThemePalette('emerald')}
-            className={`w-4 h-4 rounded-full bg-emerald-500 transition-all ${themePalette === 'emerald' ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}
-            title="Emerald Mint Theme"
+            onClick={() => {
+              setTheme('light');
+              setThemePalette('light_warm');
+            }}
+            className={`w-4 h-4 rounded-full bg-amber-600 transition-all ${themePalette === 'light_warm' ? 'ring-2 ring-amber-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+            title={lang === 'th' ? '📜 กระดาษอุ่น ถนอมสายตา ไร้แสงสะท้อน (Warm Paper)' : 'Eye-Care Warm Paper'}
           />
           <button
-            onClick={() => setThemePalette('amethyst')}
-            className={`w-4 h-4 rounded-full bg-purple-500 transition-all ${themePalette === 'amethyst' ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}
-            title="Royal Amethyst Theme"
+            onClick={() => {
+              setTheme('light');
+              setThemePalette('light_mint');
+            }}
+            className={`w-4 h-4 rounded-full bg-emerald-500 transition-all ${themePalette === 'light_mint' ? 'ring-2 ring-emerald-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+            title={lang === 'th' ? '🌿 มินต์ธรรมชาติ พักสายตา (Gentle Mint)' : 'Eye-Care Gentle Mint'}
           />
           <button
-            onClick={() => setThemePalette('light')}
-            className={`w-4 h-4 rounded-full bg-slate-200 transition-all ${themePalette === 'light' ? 'ring-2 ring-sky-500 scale-110' : 'opacity-60 hover:opacity-100'}`}
-            title="Clean Light Theme"
+            onClick={() => {
+              setTheme('light');
+              setThemePalette('light_pure');
+            }}
+            className={`w-4 h-4 rounded-full bg-white border border-slate-300 transition-all ${themePalette === 'light_pure' ? 'ring-2 ring-indigo-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+            title={lang === 'th' ? '⚪ ขาวสว่าง คลีนมินิมอล (Clean Pure White)' : 'Clean Pure White'}
+          />
+          <button
+            onClick={() => {
+              setTheme('light');
+              setThemePalette('light_lavender');
+            }}
+            className={`w-4 h-4 rounded-full bg-purple-400 transition-all ${themePalette === 'light_lavender' ? 'ring-2 ring-purple-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+            title={lang === 'th' ? '💜 ลาเวนเดอร์นุ่มนวล ผ่อนคลายตา (Soft Lavender)' : 'Soft Lavender Care'}
+          />
+          <div className="w-px h-3 bg-slate-700 mx-0.5" />
+          <button
+            onClick={() => {
+              setTheme('dark');
+              setThemePalette('sapphire');
+            }}
+            className={`w-4 h-4 rounded-full bg-slate-800 border border-slate-600 transition-all ${themePalette === 'sapphire' ? 'ring-2 ring-sky-400 scale-125' : 'opacity-60 hover:opacity-100'}`}
+            title={lang === 'th' ? '🌙 ค่ำคืนครามเข้ม (Sapphire Dark)' : 'Sapphire Dark Theme'}
           />
         </div>
 
@@ -227,30 +258,37 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>{lang === 'th' ? '🇹🇭 ไทย' : '🇬🇧 EN'}</span>
         </button>
 
-        {/* Role Switcher */}
-        <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700/80 text-xs">
-          {(['admin', 'teacher', 'student', 'parent'] as UserRole[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setCurrentRole(r)}
-              className={`px-2 py-1 rounded capitalize font-medium text-[11px] transition-all ${
-                currentRole === r
-                  ? 'bg-cyan-600 text-white font-bold shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {lang === 'th'
-                ? r === 'admin'
-                  ? 'แอดมิน'
-                  : r === 'teacher'
-                  ? 'ครู'
-                  : r === 'student'
-                  ? 'นักเรียน'
-                  : 'ผู้ปกครอง'
-                : r}
-            </button>
-          ))}
-        </div>
+        {/* Role Switcher or Super Admin Badge */}
+        {currentRole === 'super_admin' ? (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <span>{lang === 'th' ? '👑 Super Admin ส่วนกลาง' : '👑 Master Super Admin'}</span>
+          </div>
+        ) : (
+          <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700/80 text-xs">
+            {(['admin', 'teacher', 'student', 'parent'] as UserRole[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setCurrentRole(r)}
+                className={`px-2 py-1 rounded capitalize font-medium text-[11px] transition-all ${
+                  currentRole === r
+                    ? 'bg-cyan-600 text-white font-bold shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {lang === 'th'
+                  ? r === 'admin'
+                    ? 'แอดมิน'
+                    : r === 'teacher'
+                    ? 'ครู'
+                    : r === 'student'
+                    ? 'นักเรียน'
+                    : 'ผู้ปกครอง'
+                  : r}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* User Info & Log Out */}
         <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-800">

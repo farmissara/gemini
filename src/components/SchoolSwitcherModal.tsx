@@ -38,10 +38,10 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white">
-                {lang === 'th' ? 'สลับโรงเรียน / สาขา (Multi-School Switcher)' : 'Switch School / Campus'}
+                {lang === 'th' ? 'ข้อมูลสถาบันการศึกษา (School Institution)' : 'School Institution Info'}
               </h3>
               <p className="text-xs text-slate-400">
-                {lang === 'th' ? 'เลือกสถาบันการศึกษาที่ต้องการจัดการหรือตรวจสอบข้อมูล' : 'Select school instance to manage.'}
+                {lang === 'th' ? 'ระบบทำงานในรูปแบบโรงเรียนเดี่ยว (Dedicated Single School Demo)' : 'Operating in dedicated single school mode.'}
               </p>
             </div>
           </div>

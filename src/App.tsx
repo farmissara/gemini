@@ -82,8 +82,8 @@ export const App: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<UserRole>(currentUser?.role || 'admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
   const [lang, setLang] = useState<AppLanguage>('th');
-  const [theme, setTheme] = useState<AppTheme>('dark');
-  const [themePalette, setThemePalette] = useState<ThemePalette>('sapphire');
+  const [theme, setTheme] = useState<AppTheme>('light');
+  const [themePalette, setThemePalette] = useState<ThemePalette>('light_sky');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Primary Domain State
@@ -340,14 +340,26 @@ export const App: React.FC = () => {
           onRegisterUser={handleRegisterUser}
           lang={lang}
           setLang={setLang}
+          themePalette={themePalette}
+          setThemePalette={setThemePalette}
         />
       </div>
     );
   }
 
+  const isLightTheme = themePalette.startsWith('light') || themePalette === 'light';
+
   return (
     <div className={`min-h-screen theme-${themePalette} ${
-      themePalette === 'light' ? 'bg-slate-50 text-slate-900' : 'bg-[#0B0F19] text-slate-100'
+      isLightTheme
+        ? themePalette === 'light_warm'
+          ? 'bg-[#fbf9f4] text-stone-900'
+          : themePalette === 'light_mint'
+          ? 'bg-[#f0f7f4] text-emerald-950'
+          : themePalette === 'light_lavender'
+          ? 'bg-[#f7f5fc] text-slate-900'
+          : 'bg-[#f1f5fa] text-slate-900'
+        : 'bg-[#0B0F19] text-slate-100'
     } flex flex-col font-sans selection:bg-cyan-500 selection:text-white transition-colors duration-300`}>
       {/* Top Navbar with Multi-School Switcher, Palette Switcher, and Logout */}
       <Navbar

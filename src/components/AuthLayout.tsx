@@ -92,21 +92,53 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     e.preventDefault();
     setLoginError(null);
 
-    const existingUser = demoUsers.find(
-      (u) => u.email.toLowerCase() === loginEmail.toLowerCase()
-    );
-
+    const cleanEmail = loginEmail.trim().toLowerCase();
+    const cleanPassword = loginPassword.trim();
     const targetSchool = schools.find((s) => s.id === selectedSchoolId) || schools[0];
+
+    // Dedicated Super Admin authentication
+    if (cleanEmail === 'superadmin@eduverse.school' || cleanEmail === 'superadmin') {
+      if (
+        cleanPassword === 'SuperAdmin@Edu2026!' ||
+        cleanPassword === 'superadmin123' ||
+        cleanPassword === 'admin'
+      ) {
+        const superUser = demoUsers.find((u) => u.role === 'super_admin') || {
+          id: 'usr-super',
+          email: 'superadmin@eduverse.school',
+          fullNameTh: 'ดร.กิตติพงษ์ ศรีสุวรรณ (Super Admin)',
+          fullNameEn: 'Dr. Kittipong Srisuwan (Super Admin)',
+          role: 'super_admin',
+          schoolId: targetSchool.id,
+          avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+          lineConnected: true,
+          phone: '081-999-8888',
+        };
+        onLogin(superUser, targetSchool);
+        return;
+      } else {
+        setLoginError(
+          lang === 'th'
+            ? 'รหัสผ่าน Super Admin ไม่ถูกต้อง (รหัสผ่านคือ: SuperAdmin@Edu2026!)'
+            : 'Invalid Super Admin password (Password is: SuperAdmin@Edu2026!)'
+        );
+        return;
+      }
+    }
+
+    const existingUser = demoUsers.find(
+      (u) => u.email.toLowerCase() === cleanEmail
+    );
 
     if (existingUser) {
       onLogin(existingUser, targetSchool);
-    } else if (loginEmail && loginPassword) {
+    } else if (cleanEmail && cleanPassword) {
       // Allow realistic custom login
       const customUser: AuthUser = {
         id: `usr-${Date.now()}`,
-        email: loginEmail,
-        fullNameTh: loginEmail.split('@')[0],
-        fullNameEn: loginEmail.split('@')[0],
+        email: cleanEmail,
+        fullNameTh: cleanEmail.split('@')[0],
+        fullNameEn: cleanEmail.split('@')[0],
         role: 'admin',
         schoolId: targetSchool.id,
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
@@ -119,6 +151,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         lang === 'th'
           ? 'กรุณากรอกอีเมลและรหัสผ่าน หรือเลือกเข้าสู่ระบบด่วนผ่านบัญชีทดสอบด้านล่าง'
           : 'Please enter email and password or use the Quick Demo Logins below.'
+      );
+    }
+  };
+
+  // Super Admin direct gateway login handler
+  const handleSuperAdminGatewayLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuperAdminKeyError(null);
+    if (
+      superAdminInputKey.trim() === 'SuperAdmin@Edu2026!' ||
+      superAdminInputKey.trim() === 'superadmin123' ||
+      superAdminInputKey.trim() === 'admin'
+    ) {
+      const superUser = demoUsers.find((u) => u.role === 'super_admin') || demoUsers[0];
+      setShowSuperAdminModal(false);
+      onLogin(superUser, schools[0]);
+    } else {
+      setSuperAdminKeyError(
+        lang === 'th'
+          ? 'รหัสผ่านแม่ข่ายไม่ถูกต้อง (กรุณาใช้: SuperAdmin@Edu2026!)'
+          : 'Invalid master key (Please use: SuperAdmin@Edu2026!)'
       );
     }
   };
@@ -200,31 +253,86 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-between text-slate-100 selection:bg-indigo-500 selection:text-white font-sans">
+    <div className={`min-h-screen ${
+      themePalette.startsWith('light') || themePalette === 'light'
+        ? themePalette === 'light_warm'
+          ? 'bg-[#fbf9f4] text-stone-900'
+          : themePalette === 'light_mint'
+          ? 'bg-[#f0f7f4] text-emerald-950'
+          : themePalette === 'light_lavender'
+          ? 'bg-[#f7f5fc] text-slate-900'
+          : 'bg-[#f1f5fa] text-slate-900'
+        : 'bg-slate-950 text-slate-100'
+    } flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-white transition-colors duration-300`}>
       {/* Top Header */}
-      <header className="h-16 border-b border-slate-800/80 px-4 md:px-8 flex items-center justify-between">
+      <header className="h-16 border-b border-slate-800/80 px-4 md:px-8 flex items-center justify-between bg-slate-900/40 backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/20 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-sky-500 to-indigo-500 p-0.5 shadow-lg shadow-cyan-500/20 flex items-center justify-center">
             <div className="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <GraduationCap className="h-5 w-5 text-indigo-400" />
+              <GraduationCap className="h-5 w-5 text-cyan-400" />
             </div>
           </div>
           <div>
-            <span className="font-extrabold text-lg tracking-tight text-white flex items-center gap-2">
+            <span className="font-extrabold text-lg tracking-tight flex items-center gap-2">
               EduVerse
-              <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
-                Multi-School SIS &amp; LMS
+              <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20">
+                School SIS &amp; LMS
               </span>
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Eye-Care Bright Palette Selector */}
+          {setThemePalette && (
+            <div className="flex items-center bg-slate-900/70 p-1 rounded-xl border border-slate-800 gap-1" title={lang === 'th' ? 'เลือกโทนสีสว่างสบายตา (Eye-Care Themes)' : 'Eye-Care Light Themes'}>
+              <Sun className="w-3.5 h-3.5 text-amber-400 ml-1 hidden sm:inline" />
+              <button
+                type="button"
+                onClick={() => setThemePalette('light_sky')}
+                className={`w-4 h-4 rounded-full bg-sky-400 transition-all ${themePalette === 'light_sky' || themePalette === 'light' ? 'ring-2 ring-sky-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+                title={lang === 'th' ? '☀️ ฟ้าละมุน สบายตา (Soft Sky)' : 'Eye-Care Soft Sky'}
+              />
+              <button
+                type="button"
+                onClick={() => setThemePalette('light_warm')}
+                className={`w-4 h-4 rounded-full bg-amber-600 transition-all ${themePalette === 'light_warm' ? 'ring-2 ring-amber-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+                title={lang === 'th' ? '📜 กระดาษอุ่น ถนอมสายตา (Warm Paper)' : 'Eye-Care Warm Paper'}
+              />
+              <button
+                type="button"
+                onClick={() => setThemePalette('light_mint')}
+                className={`w-4 h-4 rounded-full bg-emerald-500 transition-all ${themePalette === 'light_mint' ? 'ring-2 ring-emerald-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+                title={lang === 'th' ? '🌿 มินต์ธรรมชาติ พักสายตา (Gentle Mint)' : 'Eye-Care Gentle Mint'}
+              />
+              <button
+                type="button"
+                onClick={() => setThemePalette('light_pure')}
+                className={`w-4 h-4 rounded-full bg-white border border-slate-300 transition-all ${themePalette === 'light_pure' ? 'ring-2 ring-indigo-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+                title={lang === 'th' ? '⚪ ขาวสว่าง คลีนมินิมอล (Clean Pure White)' : 'Clean Pure White'}
+              />
+              <button
+                type="button"
+                onClick={() => setThemePalette('light_lavender')}
+                className={`w-4 h-4 rounded-full bg-purple-400 transition-all ${themePalette === 'light_lavender' ? 'ring-2 ring-purple-500 scale-125' : 'opacity-60 hover:opacity-100'}`}
+                title={lang === 'th' ? '💜 ลาเวนเดอร์นุ่มนวล (Soft Lavender)' : 'Soft Lavender Care'}
+              />
+              <div className="w-px h-3 bg-slate-700 mx-0.5" />
+              <button
+                type="button"
+                onClick={() => setThemePalette('sapphire')}
+                className={`w-4 h-4 rounded-full bg-slate-800 border border-slate-600 transition-all ${themePalette === 'sapphire' ? 'ring-2 ring-sky-400 scale-125' : 'opacity-60 hover:opacity-100'}`}
+                title={lang === 'th' ? '🌙 ค่ำคืนครามเข้ม (Sapphire Dark)' : 'Sapphire Dark Theme'}
+              />
+            </div>
+          )}
+
           <button
+            type="button"
             onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white transition-colors"
           >
-            <Globe className="w-3.5 h-3.5 text-indigo-400" />
+            <Globe className="w-3.5 h-3.5 text-cyan-400" />
             <span>{lang === 'th' ? '🇹🇭 ภาษาไทย' : '🇬🇧 English'}</span>
           </button>
         </div>
@@ -236,50 +344,46 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           
           {/* Left Intro Banner */}
           <div className="lg:col-span-5 space-y-6 hidden lg:block">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Multi-Tenant School Architecture</span>
+              <span>Smart School Management &amp; LMS</span>
             </div>
 
             <div className="space-y-3">
-              <h1 className="text-3xl font-black text-white tracking-tight leading-tight">
+              <h1 className="text-3xl font-black tracking-tight leading-tight">
                 {lang === 'th' 
                   ? 'ระบบบริหารจัดการสถานศึกษา & ห้องเรียนออนไลน์' 
-                  : 'Modern Multi-School Platform & LMS'}
+                  : 'Modern School Platform & LMS'}
               </h1>
               <p className="text-xs text-slate-400 leading-relaxed">
                 {lang === 'th'
-                  ? 'รองรับหลายโรงเรียนในระบบเดียว มีระบบทะเบียนนักเรียน, บันทึกเวลาเข้าแถวและผ่านประตู, ตัดเกรด ปพ.1 อิงเกณฑ์ สพฐ., ชำระค่าเทอมด้วย PromptPay และเชื่อมต่อ LINE OA'
-                  : 'Manage multiple school branches, bilingual student records, turnstile QR gate attendance, Thai MOE transcripts, and LINE OA notifications.'}
+                  ? 'ระบบทะเบียนนักเรียนดิจิทัล, บันทึกเวลาเข้าแถวและผ่านประตูด้วย QR Code & RFID, ตัดเกรด ปพ.1 อิงเกณฑ์ สพฐ., ชำระค่าเทอมด้วย PromptPay และแจ้งเตือนผู้ปกครองผ่าน LINE OA'
+                  : 'Student information system, turnstile QR gate attendance, Thai MOE transcripts, PromptPay tuition, and real-time LINE OA parent notifications.'}
               </p>
             </div>
 
-            {/* School Directory Badges */}
+            {/* Single School Institution Card */}
             <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 space-y-2.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-indigo-400" />
-                {lang === 'th' ? 'โรงเรียนที่เปิดใช้งานในระบบ' : 'Registered Institutions'} ({schools.length})
+                <Building2 className="w-4 h-4 text-cyan-400" />
+                {lang === 'th' ? 'สถาบันการศึกษาในระบบ' : 'Registered Educational Institution'}
               </span>
-              <div className="space-y-2">
-                {schools.map((sch) => (
-                  <div
-                    key={sch.id}
-                    onClick={() => setSelectedSchoolId(sch.id)}
-                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between ${
-                      selectedSchoolId === sch.id
-                        ? 'bg-indigo-950/60 border-indigo-500 text-white'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold">{sch.nameTh}</div>
-                      <div className="text-[10px] text-slate-400">{sch.nameEn} • {sch.province}</div>
-                    </div>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300">
-                      {sch.code}
-                    </span>
-                  </div>
-                ))}
+              <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-white text-sm">{schools[0]?.nameTh}</div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                    {schools[0]?.code}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-300">{schools[0]?.nameEn}</div>
+                <div className="text-[10px] text-slate-400 pt-1 flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-rose-400" />
+                    {schools[0]?.province}
+                  </span>
+                  <span>•</span>
+                  <span>{schools[0]?.academicYear} ({schools[0]?.currentSemester})</span>
+                </div>
               </div>
             </div>
           </div>
@@ -295,14 +399,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <h2 className="text-xl font-black text-white">
                       {lang === 'th' ? 'เข้าสู่ระบบ EduVerse' : 'Log in to EduVerse'}
                     </h2>
-                    <span className="text-xs text-indigo-400 font-semibold font-mono">
-                      Multi-Tenant
+                    <span className="text-xs text-cyan-400 font-semibold font-mono">
+                      v2.6 Thai Edition
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
                     {lang === 'th' 
-                      ? 'เลือกโรงเรียนและเข้าสู่ระบบด้วยบัญชีของคุณ' 
-                      : 'Select your school and sign in to continue.'}
+                      ? 'เข้าสู่ระบบด้วยบัญชีผู้ใช้งานของคุณเพื่อดำเนินการต่อ' 
+                      : 'Sign in to access your portal and courses.'}
                   </p>
                 </div>
 
@@ -313,29 +417,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 )}
 
                 <form onSubmit={handleStandardLogin} className="space-y-4 text-xs">
-                  {/* Select School */}
+                  {/* Active Institution (Single School Display) */}
                   <div>
                     <label className="block text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                      {lang === 'th' ? 'เลือกโรงเรียน / สถาบันการศึกษา' : 'Select School / Institution'}
+                      <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                      {lang === 'th' ? 'สถาบันการศึกษา' : 'Educational Institution'}
                     </label>
-                    <select
-                      value={selectedSchoolId}
-                      onChange={(e) => setSelectedSchoolId(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-medium focus:outline-none focus:border-indigo-500"
-                    >
-                      {schools.map((sch) => (
-                        <option key={sch.id} value={sch.id}>
-                          {sch.code} - {sch.nameTh} ({sch.province})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="w-full px-3 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                      <div className="truncate">
+                        <div className="font-bold text-white text-xs">{schools[0]?.nameTh}</div>
+                        <div className="text-[10px] text-slate-400">{schools[0]?.nameEn} • {schools[0]?.province}</div>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-bold border border-cyan-500/20 shrink-0">
+                        {schools[0]?.code}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Email / Username */}
                   <div>
                     <label className="block text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                      <Mail className="w-3.5 h-3.5 text-cyan-400" />
                       {lang === 'th' ? 'อีเมล หรือ รหัสประจำตัว' : 'Email or Account ID'}
                     </label>
                     <input
@@ -343,7 +445,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       placeholder="admin@eduverse.school หรือ STU-6901"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                     />
                   </div>
 
@@ -351,13 +453,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-slate-300 font-semibold flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                        <Lock className="w-3.5 h-3.5 text-cyan-400" />
                         {lang === 'th' ? 'รหัสผ่าน' : 'Password'}
                       </label>
                       <button
                         type="button"
                         onClick={() => setLoginPassword('password123')}
-                        className="text-[11px] text-indigo-400 hover:underline"
+                        className="text-[11px] text-cyan-400 hover:underline"
                       >
                         {lang === 'th' ? 'ลืมรหัสผ่าน?' : 'Forgot password?'}
                       </button>
@@ -367,14 +469,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                     />
                   </div>
 
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-500 hover:to-sky-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30 flex items-center justify-center gap-2 transition-all"
                   >
                     <span>{lang === 'th' ? 'เข้าสู่ระบบ' : 'Sign In'}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -391,50 +493,51 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </button>
                 </form>
 
-                {/* Quick 1-Click Demo Login Roles */}
+                {/* Quick 1-Click Demo Login Roles - Super admin is hidden from general public */}
                 <div className="pt-4 border-t border-slate-800 space-y-2">
                   <div className="flex items-center justify-between text-[11px] text-slate-400">
                     <span className="font-semibold uppercase tracking-wider">
                       {lang === 'th' ? 'ทดสอบเข้าสู่ระบบด่วน 1 คลิก:' : '1-Click Quick Demo Sign In:'}
                     </span>
-                    <span className="text-[10px] text-indigo-400">ไม่ต้องกรอกรหัสผ่าน</span>
+                    <span className="text-[10px] text-cyan-400">ไม่ต้องกรอกรหัสผ่าน</span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
-                      onClick={() => handleQuickDemo('super_admin')}
-                      className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 text-center transition-colors"
-                      title="Super Admin - จัดการทุกโรงเรียน"
-                    >
-                      Super Admin
-                    </button>
-                    <button
+                      type="button"
                       onClick={() => handleQuickDemo('admin')}
-                      className="px-2 py-1.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 text-[11px] font-semibold border border-indigo-800/60 text-center transition-colors"
+                      className="px-2.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="ผู้อำนวยการ / แอดมินโรงเรียน"
                     >
-                      {lang === 'th' ? 'ผอ. / แอดมิน' : 'Principal'}
+                      <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                      <span>{lang === 'th' ? 'ผอ. / แอดมิน' : 'Principal / Admin'}</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleQuickDemo('teacher')}
-                      className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 text-center transition-colors"
+                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="อาจารย์ผู้สอน"
                     >
-                      {lang === 'th' ? 'อาจารย์' : 'Teacher'}
+                      <User className="w-4 h-4 text-sky-400" />
+                      <span>{lang === 'th' ? 'อาจารย์' : 'Teacher'}</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleQuickDemo('student')}
-                      className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 text-center transition-colors"
+                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="นักเรียน"
                     >
-                      {lang === 'th' ? 'นักเรียน' : 'Student'}
+                      <GraduationCap className="w-4 h-4 text-emerald-400" />
+                      <span>{lang === 'th' ? 'นักเรียน' : 'Student'}</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleQuickDemo('parent')}
-                      className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 text-center transition-colors"
+                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 text-center transition-all flex flex-col items-center justify-center gap-1"
                       title="ผู้ปกครอง"
                     >
-                      {lang === 'th' ? 'ผู้ปกครอง' : 'Parent'}
+                      <Building2 className="w-4 h-4 text-amber-400" />
+                      <span>{lang === 'th' ? 'ผู้ปกครอง' : 'Parent'}</span>
                     </button>
                   </div>
                 </div>
@@ -791,10 +894,116 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="py-4 border-t border-slate-800/80 px-4 text-center text-xs text-slate-500">
-        EduVerse Multi-School Management &amp; Learning Platform • Secured with Thai MOE standards &amp; Supabase Auth
+      {/* Footer & Discrete Super Admin Portal */}
+      <footer className="py-4 border-t border-slate-800/80 px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 max-w-5xl mx-auto w-full">
+        <div>
+          EduVerse School Management System • {schools[0]?.nameTh || 'EduVerse Academy'}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowSuperAdminModal(true)}
+          className="text-slate-500 hover:text-slate-400 text-[11px] flex items-center gap-1.5 transition-colors"
+          title="เข้าสู่ระบบแม่ข่ายสำหรับเจ้าของระบบ"
+        >
+          <KeyRound className="w-3 h-3 text-amber-500/70" />
+          <span>{lang === 'th' ? 'พอร์ทัลแม่ข่าย Super Admin' : 'Super Admin Console'}</span>
+        </button>
       </footer>
+
+      {/* Discrete Super Admin Modal for System Owner */}
+      {showSuperAdminModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    {lang === 'th' ? 'เข้าสู่ระบบแม่ข่าย Super Admin' : 'Super Admin Authentication'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'th' ? 'เฉพาะผู้ดูแลระบบแม่ข่าย (บุคคลทั่วไปไม่ควรเห็น)' : 'Restricted to system owners only'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuperAdminModal(false);
+                  setSuperAdminKeyError(null);
+                }}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Credential Reminder Box for the owner */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs space-y-2 text-amber-200">
+              <div className="font-bold flex items-center gap-1.5 text-amber-300">
+                <KeyRound className="w-4 h-4 text-amber-400" />
+                <span>{lang === 'th' ? 'ข้อมูลบัญชี Super Admin ของคุณ:' : 'Your Super Admin Credentials:'}</span>
+              </div>
+              <div className="font-mono text-[11px] bg-slate-950 p-2.5 rounded-xl border border-amber-500/20 text-slate-200 space-y-1">
+                <div>User / Email: <span className="text-amber-300 font-bold select-all">superadmin@eduverse.school</span></div>
+                <div>Password: <span className="text-amber-300 font-bold select-all">SuperAdmin@Edu2026!</span></div>
+              </div>
+            </div>
+
+            {superAdminKeyError && (
+              <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-600/50 text-rose-300 text-xs">
+                {superAdminKeyError}
+              </div>
+            )}
+
+            <form onSubmit={handleSuperAdminGatewayLogin} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  {lang === 'th' ? 'กรอกรหัสผ่าน Super Admin (Master Password)' : 'Super Admin Master Password'}
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="SuperAdmin@Edu2026!"
+                  value={superAdminInputKey}
+                  onChange={(e) => setSuperAdminInputKey(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuperAdminInputKey('SuperAdmin@Edu2026!');
+                  }}
+                  className="text-[11px] text-amber-400 hover:underline"
+                >
+                  {lang === 'th' ? 'เติมรหัสอัตโนมัติ' : 'Auto-fill password'}
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSuperAdminModal(false)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+                  >
+                    {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20 flex items-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'เข้าสู่ระบบแม่ข่าย' : 'Authenticate'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
