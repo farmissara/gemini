@@ -92,6 +92,17 @@ export interface SchoolSubscriptionPlan {
   expiryDate: string;
 }
 
+export interface GuardianInfo {
+  id: string;
+  name: string;
+  relation: string; // 'บิดา' | 'มารดา' | 'ผู้ปกครอง' | 'ปู่/ย่า/ตา/ยาย' | 'ญาติผู้ใหญ่'
+  phone: string;
+  email?: string;
+  lineUserId?: string;
+  occupation?: string;
+  isPrimary?: boolean;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -139,15 +150,46 @@ export interface AuthUser {
   department?: string; // e.g. "กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี"
   teachingSubjects?: string[]; // e.g. ["คณิตศาสตร์ ม.4", "วิทยาการคำนวณ ม.6"]
   homeroomClass?: string; // e.g. "ห้อง 401 (วิทย์-คณิต)"
+  homeroomClasses?: string[]; // สอนได้มากกว่า 1 ห้องเรียน
+  teachingGrades?: string[]; // สอนได้มากกว่า 1 ระดับชั้น
   teacherLicenseNo?: string; // e.g. "คส. 6210900012345"
   expertise?: string[]; // e.g. ["Active Learning", "STEM Education"]
   researchWorks?: string[];
+  isSchoolAdmin?: boolean; // ครูมีสิทธิ์เป็น admin ได้!
+
+  // Parent Profile Fields
+  occupation?: string;
+  workplace?: string;
+  childrenStudentIds?: string[]; // ผู้ปกครอง 1 คน มีนักเรียนได้มากกว่า 1 คน
 
   // School Admin Profile Fields
   adminPositionTitle?: string; // e.g. "ผู้อำนวยการสถานศึกษา", "รองผู้อำนวยการกลุ่มบริหารวิชาการ"
   adminDepartment?: string; // e.g. "ฝ่ายบริหารวิชาการและทะเบียน"
   directOfficePhone?: string;
   officeRoom?: string;
+}
+
+export interface Teacher {
+  id: string;
+  schoolId?: string;
+  teacherIdNumber: string;
+  fullNameTh: string;
+  fullNameEn: string;
+  gender: 'male' | 'female' | 'other';
+  email: string;
+  phone: string;
+  avatarUrl: string;
+  academicDegree: string;
+  major: string;
+  academicStanding: string;
+  department: string;
+  teacherLicenseNo: string;
+  teachingSubjects: string[];
+  homeroomClasses: string[]; // ครูสอนได้มากกว่า 1 ห้อง
+  teachingGrades: string[]; // ครูสอนได้มากกว่า 1 ระดับชั้น
+  isSchoolAdmin?: boolean; // ครูมีสิทธิ์เป็น admin ได้
+  lineUserId?: string;
+  lineLinked?: boolean;
 }
 
 export interface Student {
@@ -163,6 +205,7 @@ export interface Student {
   dateOfBirth: string;
   gradeLevel: string; // e.g. "Grade 10" or "มัธยมศึกษาปีที่ 4 (M.4)"
   room: string; // e.g. "Room 401"
+  enrolledRooms?: string[]; // เด็กสามารถเรียนมากกว่า 1 ห้อง / ชมรม / แผนพิเศษ
   status: StudentStatus;
   avatarUrl: string;
   gpa: number;
@@ -170,6 +213,7 @@ export interface Student {
   guardianRelation: string;
   guardianPhone: string;
   guardianEmail: string;
+  guardians?: GuardianInfo[]; // เด็ก 1 คนมีผู้ปกครองได้มากกว่า 1 คน
   lineUserId?: string;
   lineLinked: boolean;
   lineNotifyEnabled: boolean;
@@ -311,6 +355,43 @@ export interface Announcement {
   resendEmailSent: boolean;
 }
 
+export interface LineNotificationSettings {
+  lineOaId: string;
+  lineOaName: string;
+  channelId: string;
+  channelSecret: string;
+  channelAccessToken: string;
+  liffId: string;
+  webhookUrl: string;
+  addFriendUrl: string;
+  qrCodeImageUrl: string;
+  autoReplyGreeting: string;
+  schoolStartTime: string;
+  lateCutoffTime: string;
+  absenceCutoffTime: string;
+  checkoutStartTime: string;
+  behaviorAlertThreshold: number;
+  notifyAttendanceCheckIn: boolean;
+  notifyAttendanceCheckOut: boolean;
+  notifyAttendanceLate: boolean;
+  notifyAttendanceAbsence: boolean;
+  notifyInfirmaryVisit: boolean;
+  notifyBehaviorDeduction: boolean;
+  notifyBehaviorMerit: boolean;
+  notifyNewHomework: boolean;
+  notifyHomeworkDeadline: boolean;
+  notifyHomeworkGraded: boolean;
+  notifyGradeReportReleased: boolean;
+  notifyBillingInvoice: boolean;
+  notifyBillingPaymentSuccess: boolean;
+  notifyEmergencyBroadcast: boolean;
+  customHeaderColor: string;
+  customFooterNote: string;
+  notifyTargetSchool?: boolean;
+  notifyTargetParents?: boolean;
+  notifyTargetStudents?: boolean;
+}
+
 export interface SystemConfig {
   schoolNameEn: string;
   schoolNameTh: string;
@@ -325,6 +406,7 @@ export interface SystemConfig {
   thaiPdfFontEnabled: boolean;
   backupBucket: string;
   lastBackupDate: string;
+  lineNotificationSettings?: LineNotificationSettings;
 }
 
 export interface QuizQuestion {

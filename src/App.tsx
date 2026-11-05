@@ -84,6 +84,7 @@ import { SuperAdminConsoleView } from './components/SuperAdminConsoleView';
 import { SchoolPermissionSettingsView } from './components/SchoolPermissionSettingsView';
 import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
 import { UserProfileModal } from './components/UserProfileModal';
+import { SystemSettingsView } from './components/SystemSettingsView';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -580,6 +581,17 @@ export const App: React.FC = () => {
                   <SchoolPermissionSettingsView
                     activeSchool={activeSchool}
                     lang={lang}
+                  />
+                )}
+
+                {/* School Admin & Teachers: System & LINE Notifications Settings */}
+                {currentTab === 'system_settings' && (
+                  <SystemSettingsView
+                    systemConfig={systemConfig}
+                    activeSchool={activeSchool}
+                    students={schoolStudents}
+                    lang={lang}
+                    onUpdateConfig={setSystemConfig}
                   />
                 )}
 

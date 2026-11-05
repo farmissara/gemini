@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   User,
+  MessageSquare,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
@@ -25,6 +26,7 @@ import { UserRole, AppLanguage } from '../types';
 export type NavTab = 
   | 'super_admin_console'
   | 'school_permissions'
+  | 'system_settings'
   | 'dashboard' 
   | 'students' 
   | 'courses' 
@@ -212,9 +214,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      groupTitleTh: 'การบริหาร & สิทธิ์โรงเรียน',
-      groupTitleEn: 'School Admin & Roles',
+      groupTitleTh: 'การบริหาร & ตั้งค่าระบบ',
+      groupTitleEn: 'School Admin & Settings',
       items: [
+        {
+          id: 'system_settings',
+          labelTh: 'ตั้งค่าระบบ & แจ้งเตือน LINE',
+          labelEn: 'System & LINE Notifications',
+          icon: MessageSquare,
+          badge: 'LINE OA',
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
         {
           id: 'school_permissions',
           labelTh: 'กำหนดสิทธิ์ในโรงเรียน',
