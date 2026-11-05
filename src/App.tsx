@@ -55,7 +55,6 @@ import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { AuthLayout } from './components/AuthLayout';
 import { SchoolSwitcherModal } from './components/SchoolSwitcherModal';
-import { DatabaseBackupModal } from './components/DatabaseBackupModal';
 import { DashboardView } from './components/DashboardView';
 import { StudentsView } from './components/StudentsView';
 import { CoursesView } from './components/CoursesView';
@@ -66,20 +65,16 @@ import { PortfolioView } from './components/PortfolioView';
 import { GradebookView } from './components/GradebookView';
 import { BillingView } from './components/BillingView';
 import { AnnouncementsView } from './components/AnnouncementsView';
-import { IntegrationsView } from './components/IntegrationsView';
 import { LmsClassroomView } from './components/LmsClassroomView';
 import { ParentPortalView } from './components/ParentPortalView';
 import { ReportCardModal } from './components/ReportCardModal';
 import { StudentDetailModal } from './components/StudentDetailModal';
-import { SupabaseRenderModal } from './components/SupabaseRenderModal';
-import { SupabaseStudioView } from './components/SupabaseStudioView';
-import { SystemGuideModal } from './components/SystemGuideModal';
 import { TimetableScheduleView } from './components/TimetableScheduleView';
 import { BehaviorSdqView } from './components/BehaviorSdqView';
 import { DigitalIdCardView } from './components/DigitalIdCardView';
 import { InfirmaryHealthView } from './components/InfirmaryHealthView';
 import { HomeworkTrackerView } from './components/HomeworkTrackerView';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, GraduationCap, Users, Calendar, CreditCard, HeartPulse, FileCheck2, HeartHandshake } from 'lucide-react';
+import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
@@ -88,13 +83,10 @@ export const App: React.FC = () => {
   const [demoUsers, setDemoUsers] = useState<AuthUser[]>(DEMO_USERS);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
-  const [showDatabaseBackup, setShowDatabaseBackup] = useState(false);
-  const [showSupabaseRenderModal, setShowSupabaseRenderModal] = useState(false);
-  const [showSystemGuide, setShowSystemGuide] = useState(false);
 
   // Navigation, Mode, Theme & Language State
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
-  const [currentRole, setCurrentRole] = useState<UserRole>(currentUser?.role || 'admin');
+  const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
   const [lang, setLang] = useState<AppLanguage>('th');
   const [theme, setTheme] = useState<AppTheme>('light');
@@ -144,7 +136,7 @@ export const App: React.FC = () => {
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
 
-  // Auth Handlers
+  // Auth Handlers - Requires genuine authentication
   const handleLogin = (user: AuthUser, school: School) => {
     setCurrentUser(user);
     setActiveSchool(school);
@@ -159,19 +151,6 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     setCurrentUser(null);
   };
-
-  // Direct URL access for Super Admin (e.g. ?role=super_admin or #superadmin)
-  React.useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('role') === 'super_admin' || params.get('login') === 'superadmin' || window.location.hash === '#superadmin') {
-        const superUser = demoUsers.find((u) => u.role === 'super_admin') || demoUsers[0];
-        handleLogin(superUser, schools[0]);
-      }
-    } catch {
-      // Ignore URL parsing errors
-    }
-  }, []);
 
   const handleRegisterSchool = (newSchool: School, adminUser: AuthUser) => {
     setSchools((prev) => [newSchool, ...prev]);
@@ -238,41 +217,69 @@ export const App: React.FC = () => {
     remarks: string,
     method?: string
   ) => {
-    const student = students.find((s) => s.id === studentId);
-    const newRecord: AttendanceRecord = {
-      id: `att-${Date.now()}`,
-      schoolId: activeSchool.id,
-      studentId,
-      date: '2026-11-04',
-      time: new Date().toLocaleTimeString('en-GB'),
-      status,
-      checkinMethod: (method as any) || 'qr_scanner',
-      remarks,
-      lineNotificationSent: !!student?.lineLinked,
-    };
-    setAttendance((prev) => [newRecord, ...prev]);
+    const todayStr = '2026-11-04';
+    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    
+    setAttendance((prev) => {
+      const existingIdx = prev.findIndex(a => a.studentId === studentId && a.date === todayStr);
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          status,
+          remarks: remarks || updated[existingIdx].remarks,
+          checkinMethod: (method as any) || updated[existingIdx].checkinMethod,
+          time: nowTime
+        };
+        return updated;
+      } else {
+        const newRecord: AttendanceRecord = {
+          id: `att-${Date.now()}`,
+          schoolId: activeSchool.id,
+          studentId,
+          date: todayStr,
+          time: nowTime,
+          status,
+          remarks,
+          checkinMethod: (method as any) || 'qr_scanner',
+          lineNotificationSent: true
+        };
+        return [newRecord, ...prev];
+      }
+    });
+  };
+
+  const handleRecordPeriodAttendance = (records: PeriodAttendanceRecord[]) => {
+    setPeriodAttendance((prev) => {
+      const updated = [...prev];
+      for (const rec of records) {
+        const idx = updated.findIndex(
+          (p) => p.id === rec.id || (p.studentId === rec.studentId && p.courseId === rec.courseId && p.date === rec.date && p.periodNumber === rec.periodNumber)
+        );
+        if (idx >= 0) {
+          updated[idx] = rec;
+        } else {
+          updated.push(rec);
+        }
+      }
+      return updated;
+    });
   };
 
   const handleQuickCheckIn = (studentId: string) => {
-    handleRecordAttendance(studentId, 'present', 'Turnstile Optical Express Scan');
+    handleRecordAttendance(studentId, 'present', 'สแกนบัตรผ่านประตูอัตโนมัติ (Gate Turnstile)');
   };
 
-  const handleUpdateGrade = (gradeId: string, updates: Partial<GradeRecord>) => {
-    setGrades((prev) =>
-      prev.map((g) => (g.id === gradeId ? { ...g, ...updates } : g))
-    );
-  };
-
-  const handlePayInvoice = (invoiceId: string, method: TuitionInvoice['paymentMethod']) => {
+  const handlePayInvoice = (invoiceId: string, method?: TuitionInvoice['paymentMethod']) => {
     setInvoices((prev) =>
       prev.map((inv) => {
         if (inv.id === invoiceId) {
           return {
             ...inv,
             status: 'paid',
-            paymentMethod: method,
-            paidAt: '2026-11-04 10:15:32',
-            receiptNumber: `REC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+            paymentMethod: method || 'promptpay',
+            paidAt: new Date().toISOString(),
+            receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
           };
         }
         return inv;
@@ -281,11 +288,14 @@ export const App: React.FC = () => {
   };
 
   const handleSendLineReminder = (invoice: TuitionInvoice) => {
-    console.log(`LINE Notification dispatched for invoice: ${invoice.invoiceNumber}`);
+    const student = students.find((s) => s.id === invoice.studentId);
+    if (student) {
+      alert(`[LINE Official Account]\nส่งการแจ้งเตือนยอดค้างชำระ ฿${invoice.totalAmount.toLocaleString()} ไปยังผู้ปกครองของ ${student.firstNameTh} สำเร็จแล้ว`);
+    }
   };
 
-  const handleAddAnnouncement = (ann: Announcement) => {
-    setAnnouncements((prev) => [{ ...ann, schoolId: activeSchool.id }, ...prev]);
+  const handleAddAnnouncement = (newAnn: Announcement) => {
+    setAnnouncements((prev) => [{ ...newAnn, schoolId: activeSchool.id }, ...prev]);
   };
 
   const handleBroadcastLine = (announcementId: string) => {
@@ -294,72 +304,51 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleUpdateConfig = (newConfig: Partial<SystemConfig>) => {
-    setSystemConfig((prev) => ({ ...prev, ...newConfig }));
-  };
-
   const handleCompleteLesson = (lessonId: string) => {
     setLessons((prev) =>
-      prev.map((l) =>
-        l.id === lessonId && !l.completedByStudentIds.includes('stu-1')
-          ? { ...l, completedByStudentIds: [...l.completedByStudentIds, 'stu-1'] }
-          : l
-      )
+      prev.map((l) => (l.id === lessonId ? { ...l, completed: true } : l))
     );
   };
 
   const handleSubmitAssignment = (assignmentId: string) => {
     setAssignments((prev) =>
-      prev.map((a) =>
-        a.id === assignmentId && !a.submittedStudentIds.includes('stu-1')
-          ? { ...a, submittedStudentIds: [...a.submittedStudentIds, 'stu-1'] }
-          : a
-      )
+      prev.map((a) => (a.id === assignmentId ? { ...a, submitted: true } : a))
     );
   };
 
-  const handleAddQuestion = (newQ: QuizQuestion) => {
-    setQuestions((prev) => [{ ...newQ, schoolId: activeSchool.id }, ...prev]);
+  const handleAddQuestion = (question: QuizQuestion) => {
+    setQuestions((prev) => [{ ...question, schoolId: activeSchool.id }, ...prev]);
   };
 
-  const handleImportQuestions = (imported: QuizQuestion[]) => {
-    const withSchool = imported.map((q) => ({ ...q, schoolId: activeSchool.id }));
-    setQuestions((prev) => [...withSchool, ...prev]);
+  const handleImportQuestions = (newQuestions: QuizQuestion[]) => {
+    setQuestions((prev) => [...newQuestions.map(q => ({ ...q, schoolId: activeSchool.id })), ...prev]);
   };
 
   const handleEarnRewards = (userId: string, exp: number, gems: number, isWin: boolean) => {
     setPlayerScores((prev) =>
-      prev.map((p) => {
-        if (p.userId === userId) {
-          return {
-            ...p,
-            exp: p.exp + exp,
-            gems: p.gems + gems,
-            battleWins: isWin ? p.battleWins + 1 : p.battleWins,
-            streak: isWin ? p.streak + 1 : 0,
-          };
-        }
-        return p;
-      })
+      prev.map((p) =>
+        p.userId === userId
+          ? {
+              ...p,
+              exp: p.exp + exp,
+              gems: p.gems + gems,
+              battleWins: isWin ? p.battleWins + 1 : p.battleWins,
+              streak: isWin ? p.streak + 1 : 0,
+            }
+          : p
+      )
     );
   };
 
-  const handleRedeemReward = (itemId: string, costGems: number) => {
+  const handleRedeemReward = (rewardId: string, costGems: number) => {
     if (!currentUser) return;
     setPlayerScores((prev) =>
       prev.map((p) =>
-        p.userId === currentUser.id ? { ...p, gems: Math.max(0, p.gems - costGems) } : p
+        p.userId === currentUser.id && p.gems >= costGems
+          ? { ...p, gems: p.gems - costGems }
+          : p
       )
     );
-    setRewardItems((prev) =>
-      prev.map((r) =>
-        r.id === itemId ? { ...r, stock: Math.max(0, r.stock - 1) } : r
-      )
-    );
-  };
-
-  const handleRecordPeriodAttendance = (records: PeriodAttendanceRecord[]) => {
-    setPeriodAttendance((prev) => [...records, ...prev]);
   };
 
   const handleAddPortfolioItem = (item: PortfolioItem) => {
@@ -370,8 +359,8 @@ export const App: React.FC = () => {
     setTimetableSlots((prev) => [{ ...slot, schoolId: activeSchool.id }, ...prev]);
   };
 
-  const handleDeleteTimetableSlot = (id: string) => {
-    setTimetableSlots((prev) => prev.filter((s) => s.id !== id));
+  const handleDeleteTimetableSlot = (slotId: string) => {
+    setTimetableSlots((prev) => prev.filter(s => s.id !== slotId));
   };
 
   const handleAddBehaviorRecord = (record: BehaviorRecord) => {
@@ -392,60 +381,42 @@ export const App: React.FC = () => {
 
   const handleGradeHomeworkSubmission = (id: string, score: number, feedback: string) => {
     setHomeworkSubmissions((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              score,
-              teacherFeedback: feedback,
-              status: 'graded' as const,
-              gradedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-              gradedBy: currentUser?.fullNameTh || 'อ.ดร.ประเสริฐ ถาวร'
-            }
-          : s
-      )
+      prev.map((s) => s.id === id ? { ...s, score, teacherFeedback: feedback, status: 'graded' } : s)
     );
   };
 
-  // If user is not logged in: Render the Clear Main Login & Register Page
+  const handleUpdateGrade = (gradeId: string, updates: Partial<GradeRecord>) => {
+    setGrades((prev) =>
+      prev.map((g) => (g.id === gradeId ? { ...g, ...updates } : g))
+    );
+  };
+
+  // If user is not authenticated, render AuthLayout (login/register)
   if (!currentUser) {
     return (
-      <div className={`theme-${themePalette}`}>
-        <AuthLayout
-          schools={schools}
-          demoUsers={demoUsers}
-          onLogin={handleLogin}
-          onRegisterSchool={handleRegisterSchool}
-          onRegisterUser={handleRegisterUser}
-          lang={lang}
-          setLang={setLang}
-          themePalette={themePalette}
-          setThemePalette={setThemePalette}
-        />
-      </div>
+      <AuthLayout
+        schools={schools}
+        demoUsers={demoUsers}
+        onLogin={handleLogin}
+        onRegisterSchool={handleRegisterSchool}
+        onRegisterUser={handleRegisterUser}
+        lang={lang}
+        setLang={setLang}
+        themePalette={themePalette}
+        setThemePalette={setThemePalette}
+      />
     );
   }
 
-  const isLightTheme = themePalette.startsWith('light') || themePalette === 'light';
+  const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
 
   return (
-    <div className={`min-h-screen theme-${themePalette} ${
-      isLightTheme
-        ? themePalette === 'light_warm'
-          ? 'bg-[#fbf9f4] text-stone-900'
-          : themePalette === 'light_mint'
-          ? 'bg-[#f0f7f4] text-emerald-950'
-          : themePalette === 'light_lavender'
-          ? 'bg-[#f7f5fc] text-slate-900'
-          : 'bg-[#f1f5fa] text-slate-900'
-        : 'bg-[#0B0F19] text-slate-100'
-    } flex flex-col font-sans selection:bg-cyan-500 selection:text-white transition-colors duration-300`}>
-      {/* Top Navbar with Multi-School Switcher, Palette Switcher, and Logout */}
+    <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
+      {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
         activeSchool={activeSchool}
         currentRole={currentRole}
-        setCurrentRole={setCurrentRole}
         systemConfig={systemConfig}
         unreadCount={schoolAnnouncements.length}
         searchQuery={searchQuery}
@@ -459,9 +430,6 @@ export const App: React.FC = () => {
         themePalette={themePalette}
         setThemePalette={setThemePalette}
         onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
-        onOpenDatabaseBackup={() => setShowDatabaseBackup(true)}
-        onOpenSupabaseRender={() => setShowSupabaseRenderModal(true)}
-        onOpenSystemGuide={() => setShowSystemGuide(true)}
         onLogout={handleLogout}
       />
 
@@ -479,7 +447,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-24 md:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
           <div className="max-w-7xl mx-auto">
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
@@ -494,7 +462,6 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     onNavigate={setCurrentTab}
                     onQuickCheckIn={handleQuickCheckIn}
-                    onOpenSupabaseModal={() => setShowSupabaseRenderModal(true)}
                   />
                 )}
 
@@ -645,27 +612,6 @@ export const App: React.FC = () => {
                     onBroadcastLine={handleBroadcastLine}
                   />
                 )}
-
-                {currentTab === 'integrations' && (
-                  <IntegrationsView
-                    systemConfig={systemConfig}
-                    onUpdateConfig={handleUpdateConfig}
-                    onOpenSupabaseModal={() => setShowSupabaseRenderModal(true)}
-                  />
-                )}
-
-                {currentTab === 'supabase_studio' && (
-                  <SupabaseStudioView
-                    activeSchool={activeSchool}
-                    students={schoolStudents}
-                    courses={schoolCourses}
-                    grades={schoolGrades}
-                    attendance={schoolAttendance}
-                    invoices={schoolInvoices}
-                    announcements={schoolAnnouncements}
-                    lang={lang}
-                  />
-                )}
               </>
             )}
 
@@ -700,17 +646,18 @@ export const App: React.FC = () => {
         </main>
       </div>
 
-      {/* Persistent Mobile Bottom Navigation Bar (Optimized for Mobile Smartphones & Tablets) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-2 py-1.5 flex items-center justify-around shadow-2xl">
+      {/* Mobile Bottom Navigation Bar - Clean, Subtle & Ergonomic */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-sm">
         <button
+          type="button"
           onClick={() => {
             setProgramMode('school_erp');
             setCurrentTab('dashboard');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl text-[10px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'dashboard'
-              ? 'text-cyan-400 bg-cyan-500/10'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'text-blue-700 font-bold bg-blue-50'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
@@ -718,45 +665,47 @@ export const App: React.FC = () => {
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setProgramMode('school_erp');
-            setCurrentTab('mobile_checkin');
+            setCurrentTab('attendance');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl text-[10px] font-bold transition-all ${
-            programMode === 'school_erp' && currentTab === 'mobile_checkin'
-              ? 'text-emerald-400 bg-emerald-500/10'
-              : 'text-slate-400 hover:text-slate-200'
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
+            programMode === 'school_erp' && currentTab === 'attendance'
+              ? 'text-blue-700 font-bold bg-blue-50'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <QrCode className="w-5 h-5" />
           <span>เช็คชื่อ</span>
         </button>
 
-        {/* Center Highlighted Battle Royale Game Button */}
         <button
+          type="button"
           onClick={() => {
             setProgramMode('school_erp');
             setCurrentTab('games');
           }}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'games'
-              ? 'text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 shadow-lg shadow-amber-500/30 scale-105'
-              : 'text-amber-400 bg-amber-500/10 border border-amber-500/30'
+              ? 'text-blue-700 font-bold bg-blue-50'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Gamepad2 className="w-5 h-5" />
-          <span>🎮 เกม 3D</span>
+          <span>เกม O-NET</span>
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setProgramMode('school_erp');
             setCurrentTab('portfolio');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl text-[10px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'portfolio'
-              ? 'text-violet-400 bg-violet-500/10'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'text-blue-700 font-bold bg-blue-50'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Briefcase className="w-5 h-5" />
@@ -764,31 +713,21 @@ export const App: React.FC = () => {
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setProgramMode('school_erp');
             setCurrentTab('students');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl text-[10px] font-bold transition-all ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'students'
-              ? 'text-sky-400 bg-sky-500/10'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'text-blue-700 font-bold bg-blue-50'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Users className="w-5 h-5" />
           <span>นักเรียน</span>
         </button>
       </nav>
-
-
-      {/* Database Backup & Architecture Modal */}
-      {showDatabaseBackup && (
-        <DatabaseBackupModal
-          systemConfig={systemConfig}
-          activeSchool={activeSchool}
-          lang={lang}
-          onClose={() => setShowDatabaseBackup(false)}
-        />
-      )}
 
       {/* Multi-School Switcher Modal */}
       {showSchoolSwitcher && (
@@ -835,35 +774,6 @@ export const App: React.FC = () => {
             setSelectedStudentForReport(stu);
           }}
           onToggleLineSync={handleToggleLineSync}
-        />
-      )}
-
-      {/* Supabase Database & Render.com Deployment Modal */}
-      {showSupabaseRenderModal && (
-        <SupabaseRenderModal
-          activeSchool={activeSchool}
-          students={schoolStudents}
-          courses={schoolCourses}
-          grades={schoolGrades}
-          attendance={schoolAttendance}
-          invoices={schoolInvoices}
-          announcements={schoolAnnouncements}
-          lang={lang}
-          onClose={() => setShowSupabaseRenderModal(false)}
-        />
-      )}
-
-      {/* Interactive System Guide & Architecture Modal */}
-      {showSystemGuide && (
-        <SystemGuideModal
-          activeSchool={activeSchool}
-          lang={lang}
-          onClose={() => setShowSystemGuide(false)}
-          onNavigateTab={(tab) => {
-            setCurrentTab(tab);
-            setProgramMode('school_erp');
-          }}
-          onSwitchRole={(role) => setCurrentRole(role)}
         />
       )}
     </div>
