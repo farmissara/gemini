@@ -11,7 +11,8 @@ import {
   Sparkles,
   Swords,
   Smartphone,
-  FolderGit2
+  FolderGit2,
+  Database
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
 
@@ -26,7 +27,8 @@ export type NavTab =
   | 'gradebook' 
   | 'billing' 
   | 'announcements' 
-  | 'integrations';
+  | 'integrations'
+  | 'supabase_studio';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -138,6 +140,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Cpu,
       badge: 'API',
       roles: ['admin']
+    },
+    {
+      id: 'supabase_studio' as NavTab,
+      labelTh: 'Supabase Studio (SQL & ตาราง)',
+      labelEn: 'Supabase Studio',
+      icon: Database,
+      badge: 'SQL',
+      badgeColor: 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30',
+      roles: ['admin', 'teacher']
     },
   ];
 

@@ -61,6 +61,8 @@ import { LmsClassroomView } from './components/LmsClassroomView';
 import { ParentPortalView } from './components/ParentPortalView';
 import { ReportCardModal } from './components/ReportCardModal';
 import { StudentDetailModal } from './components/StudentDetailModal';
+import { SupabaseRenderModal } from './components/SupabaseRenderModal';
+import { SupabaseStudioView } from './components/SupabaseStudioView';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, GraduationCap, Users } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -71,6 +73,7 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(DEMO_USERS[1]); // Default to School Director / Admin
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
   const [showDatabaseBackup, setShowDatabaseBackup] = useState(false);
+  const [showSupabaseRenderModal, setShowSupabaseRenderModal] = useState(false);
 
   // Navigation, Mode, Theme & Language State
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -364,6 +367,7 @@ export const App: React.FC = () => {
         setThemePalette={setThemePalette}
         onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
         onOpenDatabaseBackup={() => setShowDatabaseBackup(true)}
+        onOpenSupabaseRender={() => setShowSupabaseRenderModal(true)}
         onLogout={handleLogout}
       />
 
@@ -396,6 +400,7 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     onNavigate={setCurrentTab}
                     onQuickCheckIn={handleQuickCheckIn}
+                    onOpenSupabaseModal={() => setShowSupabaseRenderModal(true)}
                   />
                 )}
 
@@ -497,6 +502,20 @@ export const App: React.FC = () => {
                   <IntegrationsView
                     systemConfig={systemConfig}
                     onUpdateConfig={handleUpdateConfig}
+                    onOpenSupabaseModal={() => setShowSupabaseRenderModal(true)}
+                  />
+                )}
+
+                {currentTab === 'supabase_studio' && (
+                  <SupabaseStudioView
+                    activeSchool={activeSchool}
+                    students={schoolStudents}
+                    courses={schoolCourses}
+                    grades={schoolGrades}
+                    attendance={schoolAttendance}
+                    invoices={schoolInvoices}
+                    announcements={schoolAnnouncements}
+                    lang={lang}
                   />
                 )}
               </>
@@ -668,6 +687,21 @@ export const App: React.FC = () => {
             setSelectedStudentForReport(stu);
           }}
           onToggleLineSync={handleToggleLineSync}
+        />
+      )}
+
+      {/* Supabase Database & Render.com Deployment Modal */}
+      {showSupabaseRenderModal && (
+        <SupabaseRenderModal
+          activeSchool={activeSchool}
+          students={schoolStudents}
+          courses={schoolCourses}
+          grades={schoolGrades}
+          attendance={schoolAttendance}
+          invoices={schoolInvoices}
+          announcements={schoolAnnouncements}
+          lang={lang}
+          onClose={() => setShowSupabaseRenderModal(false)}
         />
       )}
     </div>

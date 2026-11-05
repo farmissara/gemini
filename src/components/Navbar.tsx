@@ -11,7 +11,8 @@ import {
   LogOut, 
   ChevronDown,
   Database,
-  Palette
+  Palette,
+  Cloud
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -33,6 +34,7 @@ interface NavbarProps {
   setThemePalette: (palette: ThemePalette) => void;
   onOpenSchoolSwitcher: () => void;
   onOpenDatabaseBackup: () => void;
+  onOpenSupabaseRender?: () => void;
   onLogout: () => void;
 }
 
@@ -55,6 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setThemePalette,
   onOpenSchoolSwitcher,
   onOpenDatabaseBackup,
+  onOpenSupabaseRender,
   onLogout,
 }) => {
   return (
@@ -176,6 +179,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Clean Light Theme"
           />
         </div>
+
+        {/* Supabase & Render Deploy Shortcut */}
+        {onOpenSupabaseRender && (
+          <button
+            onClick={onOpenSupabaseRender}
+            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-1.5 transition-colors"
+            title={lang === 'th' ? 'จัดการฐานข้อมูล Supabase & นำขึ้น Render.com' : 'Supabase Database & Render.com Deploy'}
+          >
+            <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline text-[11px] font-semibold">Supabase &amp; Render</span>
+          </button>
+        )}
 
         {/* Database & Cloud Backup Shortcut */}
         <button
