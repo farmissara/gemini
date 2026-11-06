@@ -17,6 +17,7 @@ import {
   HelpCircle,
   FileSpreadsheet
 } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
   currentUser: AuthUser | null;
@@ -161,26 +162,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition ${
-              isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition ${
+              isLight ? 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50' : 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700'
             }`}
-            title="สลับภาษา"
+            title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
           >
             <Globe className="w-3 h-3 text-blue-600 shrink-0" />
-            <span className="hidden sm:inline">{lang === 'th' ? 'ไทย' : 'EN'}</span>
+            <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
           </button>
+
+          {/* PWA Install Button (Prompt to install app on home screen) */}
+          <PWAInstallButton lang={lang} variant="nav" />
 
           {/* User Guide Modal Trigger */}
           {onOpenGuide && (
             <button
               type="button"
               onClick={onOpenGuide}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-semibold transition ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
                 isLight
-                  ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
-                  : 'bg-amber-950/40 border-amber-800/60 text-amber-300 hover:bg-amber-900/60'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100'
+                  : 'bg-amber-950/40 border-amber-800/60 text-amber-200 hover:bg-amber-900/60'
               }`}
-              title={lang === 'th' ? 'คู่มือการใช้งานระบบ (Module Guide)' : 'System Guide'}
+              title={lang === 'th' ? 'คู่มือการใช้งานระบบ' : 'System Guide'}
             >
               <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
               <span className="hidden md:inline">{lang === 'th' ? 'คู่มือระบบ' : 'Guide'}</span>

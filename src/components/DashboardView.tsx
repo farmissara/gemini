@@ -16,14 +16,14 @@ import {
   Eye,
   X,
   Download,
-  Filter,
-  UserCheck,
-  Check,
   ShieldCheck,
   Smartphone,
   ChevronRight,
   LogOut,
-  LogIn
+  LogIn,
+  HeartPulse,
+  SlidersHorizontal,
+  UserCheck
 } from 'lucide-react';
 import { 
   Student, 
@@ -35,8 +35,7 @@ import {
   SystemConfig,
   School,
   AuthUser,
-  AttendanceCheckType,
-  AttendanceUserType
+  AppLanguage
 } from '../types';
 import { NavTab } from './Sidebar';
 import { getLocalDateString } from '../lib/date';
@@ -51,6 +50,7 @@ interface DashboardViewProps {
   systemConfig: SystemConfig;
   school?: School;
   currentUser?: AuthUser | null;
+  lang?: AppLanguage;
   onNavigate: (tab: NavTab) => void;
   onQuickCheckIn: (studentId: string) => void;
 }
@@ -58,15 +58,16 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   students,
   teachers = [],
+  courses,
   attendance,
   invoices,
   announcements,
   systemConfig,
   school,
   currentUser,
+  lang = 'th',
   onNavigate,
 }) => {
-  // Date and filter states for the historical selfie check-in viewer & analytics
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
   const twoDaysAgoStr = getLocalDateString(new Date(Date.now() - 2 * 86400000));
@@ -128,15 +129,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const onTimePercent = totalForDate > 0 ? Math.round((presentCount / totalForDate) * 100) : 0;
   const latePercent = totalForDate > 0 ? Math.round((lateCount / totalForDate) * 100) : 0;
 
-  // Hourly arrival distribution
+  // Hourly distribution
   const hourlyBuckets = useMemo(() => {
     const buckets = [
-      { label: '< 07:00 น.', range: 'เช้าตรู่', count: 0, color: 'bg-indigo-500' },
-      { label: '07:00 - 07:30 น.', range: 'เวลาปกติ', count: 0, color: 'bg-emerald-500' },
-      { label: '07:31 - 08:00 น.', range: 'ช่วงหนาแน่น', count: 0, color: 'bg-cyan-500' },
-      { label: '08:01 - 08:30 น.', range: 'เริ่มสาย', count: 0, color: 'bg-amber-500' },
-      { label: '> 08:30 น.', range: 'สายมาก', count: 0, color: 'bg-rose-500' },
-      { label: '15:30 - 17:30 น.', range: 'เช็กเอาท์เลิกเรียน', count: 0, color: 'bg-purple-500' }
+      { label: lang === 'th' ? 'ก่อน 07:00' : 'Before 07:00', range: '< 07:00', count: 0, color: 'bg-indigo-600' },
+      { label: lang === 'th' ? 'ช่วง 07:00 - 07:30' : '07:00 - 07:30', range: '07:00-07:30', count: 0, color: 'bg-blue-600' },
+      { label: lang === 'th' ? 'ช่วง 07:31 - 08:00' : '07:31 - 08:00', range: '07:31-08:00', count: 0, color: 'bg-emerald-600' },
+      { label: lang === 'th' ? 'ช่วง 08:01 - 08:30 (สาย)' : '08:01 - 08:30 (Late)', range: '08:01-08:30', count: 0, color: 'bg-amber-500' },
+      { label: lang === 'th' ? 'ช่วง 08:31 - 15:00' : '08:31 - 15:00', range: '08:31-15:00', count: 0, color: 'bg-rose-500' },
+      { label: lang === 'th' ? 'หลัง 15:00 (เลิกเรียน)' : 'After 15:00 (Dismissal)', range: '> 15:00', count: 0, color: 'bg-purple-600' },
     ];
 
     filteredAttendanceByDate.forEach(rec => {
@@ -165,7 +166,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       percent: totalForDate > 0 ? Math.round((b.count / totalForDate) * 100) : 0,
       barPercent: Math.round((b.count / maxCount) * 100)
     }));
-  }, [filteredAttendanceByDate, totalForDate]);
+  }, [filteredAttendanceByDate, totalForDate, lang]);
 
   // Tuition stats
   const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
@@ -177,33 +178,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Export selected date attendance to Excel CSV
   const handleExportSelectedDateCsv = () => {
-    const headers = [
+    const headers = lang === 'th' ? [
       'วันที่',
       'เวลา',
       'รหัสประจำตัว',
       'ชื่อ-นามสกุล',
       'บทบาท',
-      'ชั้น/ห้อง/กลุ่มสาระ',
+      'ชั้นหรือห้อง',
       'ประเภทการบันทึก',
       'สถานะ',
-      'จุดตรวจ/ประตู',
-      'ระยะห่าง GPS (ม.)',
+      'จุดตรวจหรือประตู',
+      'ระยะห่าง GPS (เมตร)',
       'มีรูปถ่ายเซลฟี่',
       'หมายเหตุ'
+    ] : [
+      'Date',
+      'Time',
+      'ID',
+      'Full Name',
+      'Role',
+      'Grade / Room',
+      'Record Type',
+      'Status',
+      'Gate Zone',
+      'GPS Distance (m)',
+      'Has Selfie',
+      'Remarks'
     ];
 
     const rows = filteredAttendanceByDate.map(log => [
       log.date,
       log.time,
       log.studentId,
-      `"${log.userName || (students.find(s => s.id === log.studentId)?.firstNameTh + ' ' + students.find(s => s.id === log.studentId)?.lastNameTh) || 'ผู้ใช้งาน'}"`,
-      log.userType === 'teacher' ? 'ครู' : 'นักเรียน',
+      `"${log.userName || (students.find(s => s.id === log.studentId)?.firstNameTh + ' ' + students.find(s => s.id === log.studentId)?.lastNameTh) || 'User'}"`,
+      log.userType === 'teacher' ? (lang === 'th' ? 'ครู' : 'Teacher') : (lang === 'th' ? 'นักเรียน' : 'Student'),
       log.userDepartmentOrRoom || (students.find(s => s.id === log.studentId)?.room) || '-',
-      log.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน',
-      log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : log.status === 'sick' ? 'ลาป่วย' : log.status === 'leave' ? 'ลากิจ' : 'ขาด',
-      log.location?.geofenceZoneName || 'ประตูโรงเรียน',
+      log.recordType === 'check_out' ? (lang === 'th' ? 'ออกโรงเรียน' : 'Check-out') : (lang === 'th' ? 'เข้าโรงเรียน' : 'Check-in'),
+      log.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'Present') : log.status === 'late' ? (lang === 'th' ? 'มาสาย' : 'Late') : log.status === 'sick' ? (lang === 'th' ? 'ลาป่วย' : 'Sick') : (lang === 'th' ? 'ขาด' : 'Absent'),
+      log.location?.geofenceZoneName || (lang === 'th' ? 'ประตูโรงเรียน' : 'Main Gate'),
       log.location?.distanceMeters !== undefined ? `${log.location.distanceMeters}` : '-',
-      log.photoUrl ? 'ใช่' : 'ไม่ใช่',
+      log.photoUrl ? (lang === 'th' ? 'ใช่' : 'Yes') : (lang === 'th' ? 'ไม่ใช่' : 'No'),
       `"${log.remarks || ''}"`
     ]);
 
@@ -219,126 +233,177 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Welcome Header */}
-      <div className="rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-700 text-white p-6 shadow-lg shadow-blue-900/10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
+      {/* Top Welcome Header - Modern Executive School Command Banner */}
+      <div className="rounded-2xl bg-gradient-to-r from-blue-800 via-indigo-800 to-slate-900 text-white p-6 shadow-xl shadow-blue-950/20 flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative overflow-hidden">
+        {/* Subtle decorative glow */}
+        <div className="absolute -right-20 -bottom-20 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+        
+        <div className="space-y-2 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold text-white/95 border border-white/20">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>ปีการศึกษา {systemConfig.academicYear} • ภาคเรียนที่ 1</span>
+            <span>
+              {lang === 'th' 
+                ? `ปีการศึกษา ${systemConfig.academicYear} • ภาคเรียนที่ 1` 
+                : `Academic Year ${systemConfig.academicYear} • Term 1`}
+            </span>
           </div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight">
-            ยินดีต้อนรับสู่ {systemConfig.schoolNameTh}
+
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
+            {lang === 'th'
+              ? `ยินดีต้อนรับสู่ ${systemConfig.schoolNameTh}`
+              : `Welcome to ${systemConfig.schoolNameEn}`}
           </h1>
-          <p className="text-xs text-white/80 max-w-2xl leading-relaxed">
-            {systemConfig.schoolNameEn} — ศูนย์รวมการบริหารวิชาการ ทะเบียนนักเรียน และระบบบันทึกภาพถ่ายเช็กชื่อเข้า-ออกผ่านสมาร์ตโฟนด้วย GPS
+
+          <p className="text-xs sm:text-sm text-white/85 max-w-2xl leading-relaxed">
+            {lang === 'th'
+              ? 'ศูนย์รวมการบริหารงานวิชาการ ทะเบียนนักเรียน คัดกรอง SDQ ตารางสอน และระบบเช็กชื่อภาพถ่าย GPS'
+              : 'Unified executive portal for academics, registration, SDQ screenings, timetables, and GPS attendance.'}
           </p>
         </div>
 
-        {/* Quick Functional Shortcuts with Emphasis on Mobile Selfie Check-in */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Quick Action Shortcuts */}
+        <div className="flex flex-wrap items-center gap-2.5 relative z-10">
           <button
             type="button"
             onClick={() => onNavigate('mobile_checkin')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md shadow-amber-400/20 transition transform active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
           >
-            <Camera className="w-4 h-4 text-slate-900" />
-            <span>ถ่ายรูปเช็กชื่อมือถือ</span>
+            <Camera className="w-4 h-4 text-slate-950" />
+            <span>{lang === 'th' ? 'ถ่ายรูปเช็กชื่อมือถือ' : 'Mobile Selfie Check-in'}</span>
           </button>
+          
           <button
             type="button"
             onClick={() => onNavigate('attendance')}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-medium backdrop-blur-sm transition"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
           >
             <QrCode className="w-4 h-4" />
-            <span>สแกนประตู</span>
+            <span>{lang === 'th' ? 'สแกนบัตรประตู' : 'Gate Scanner'}</span>
           </button>
+
           <button
             type="button"
-            onClick={() => onNavigate('homework')}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-medium backdrop-blur-sm transition"
+            onClick={() => onNavigate('timetable')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
           >
-            <FileCheck2 className="w-4 h-4" />
-            <span>ตรวจการบ้าน</span>
+            <Calendar className="w-4 h-4" />
+            <span>{lang === 'th' ? 'ตารางสอน' : 'Timetable'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('behavior_sdq')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
+          >
+            <Award className="w-4 h-4" />
+            <span>{lang === 'th' ? 'พฤติกรรม & SDQ' : 'SDQ & Demerit'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('infirmary')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
+          >
+            <HeartPulse className="w-4 h-4" />
+            <span>{lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary'}</span>
           </button>
         </div>
       </div>
 
-      {/* 4 Balanced High-level Overview Cards */}
+      {/* 4 Balanced High-level Overview Cards with High Contrast */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Students */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-slate-500">จำนวนนักเรียนทั้งหมด</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalStudents} <span className="text-xs font-normal text-slate-400">คน</span></h3>
-            <p className="text-[11px] text-emerald-700 mt-1 font-medium">
-              {activeStudents} คน สถานะปกติในระบบ
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students Enrolled'}
+            </p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {totalStudents} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
+            </h3>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-bold">
+              {activeStudents} {lang === 'th' ? 'คน สถานะปกติในระบบ' : 'active accounts'}
             </p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
             <Users className="w-5 h-5" />
           </div>
         </div>
 
         {/* Selected Date Attendance Rate */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-slate-500">เข้าเรียนตรงเวลา ({selectedDate === todayStr ? 'วันนี้' : selectedDate})</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{onTimePercent}%</h3>
-            <p className="text-[11px] text-slate-500 mt-1">
-              ตรงเวลา {presentCount} • สาย {lateCount}
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              {lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา' : 'On-Time Attendance Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
+            </p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {onTimePercent}%
+            </h3>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
+              {lang === 'th' ? `ตรงเวลา ${presentCount} • สาย ${lateCount}` : `On-time: ${presentCount} • Late: ${lateCount}`}
             </p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
 
         {/* Tuition Collection */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-slate-500">การจัดเก็บค่าเล่าเรียน</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{collectionRate}%</h3>
-            <p className="text-[11px] text-slate-500 mt-1">
-              ฿{totalCollected.toLocaleString()} จาก ฿{totalInvoiced.toLocaleString()}
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              {lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
+            </p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {collectionRate}%
+            </h3>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
+              ฿{totalCollected.toLocaleString()} {lang === 'th' ? 'จาก' : 'of'} ฿{totalInvoiced.toLocaleString()}
             </p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
             <Receipt className="w-5 h-5" />
           </div>
         </div>
 
         {/* LINE Guardian Sync */}
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-slate-500">ผูก LINE ผู้ปกครอง</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{linePercent}%</h3>
-            <p className="text-[11px] text-slate-500 mt-1">
-              {lineConnectedCount} จาก {totalStudents} รายชื่อ
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
+            </p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {linePercent}%
+            </h3>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
+              {lineConnectedCount} {lang === 'th' ? 'จาก' : 'of'} {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
             </p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-slate-50 text-slate-700 flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
             <MessageSquare className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* SECTION: SELFIE CHECK-IN/OUT RECORDS, DETAILED GRAPHS & HISTORICAL VIEWER */}
-      {/* ========================================================================= */}
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-xs overflow-hidden">
+      {/* Main Section: Selfie Check-in/Out Records, Detailed Graphs & Historical Viewer */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Section Header */}
-        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/60">
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/70 dark:bg-slate-850">
           <div>
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">
                 <Camera className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  ระบบข้อมูลเช็กชื่อเข้า-ออกโรงเรียน & ดูรูปถ่ายล่าสุดย้อนหลัง
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  {lang === 'th'
+                    ? 'ระบบบันทึกเวลาเข้า-ออกโรงเรียน & หลักฐานภาพถ่ายใบหน้า GPS'
+                    : 'School Gate Attendance & GPS Photo Audit Records'}
                 </h2>
-                <p className="text-xs text-slate-500">
-                  บันทึกภาพถ่ายใบหน้าพร้อมพิกัด GPS ของนักเรียนและครูจากโทรศัพท์เครื่องตัวเอง สามารถเลือกดูย้อนหลังตามวันเวลาที่กำหนด
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  {lang === 'th'
+                    ? 'บันทึกภาพถ่ายยืนยันตัวตนพร้อมพิกัด GPS ของนักเรียนและครู สามารถเลือกดูย้อนหลังตามวันที่'
+                    : 'Face verification with geofenced location stamps for students and teachers.'}
                 </p>
               </div>
             </div>
@@ -348,63 +413,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={handleExportSelectedDateCsv}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>ส่งออก Excel ({selectedDate})</span>
+              <span>{lang === 'th' ? `ส่งออกรายงาน Excel (${selectedDate})` : `Export CSV (${selectedDate})`}</span>
             </button>
             <button
               type="button"
               onClick={() => onNavigate('mobile_checkin')}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition shadow-xs"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition shadow-xs cursor-pointer"
             >
               <Smartphone className="w-4 h-4" />
-              <span>เปิดหน้าถ่ายรูปเช็กชื่อ</span>
+              <span>{lang === 'th' ? 'เปิดกล้องเช็กชื่อ' : 'Open Camera'}</span>
             </button>
           </div>
         </div>
 
         {/* Filter and Date Selector Bar */}
-        <div className="p-4 border-b border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-wrap items-center justify-between gap-3">
           {/* Quick Date Presets & Custom Date Picker */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              <span>เลือกดูวันที่:</span>
+              <span>{lang === 'th' ? 'เลือกดูวันที่:' : 'Select Date:'}</span>
             </span>
 
             <button
               type="button"
               onClick={() => setSelectedDate(todayStr)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 selectedDate === todayStr 
-                  ? 'bg-blue-600 text-white shadow-xs' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-blue-700 text-white shadow-xs' 
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              วันนี้ (Today)
+              {lang === 'th' ? 'วันนี้' : 'Today'}
             </button>
             <button
               type="button"
               onClick={() => setSelectedDate(yesterdayStr)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 selectedDate === yesterdayStr 
-                  ? 'bg-blue-600 text-white shadow-xs' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-blue-700 text-white shadow-xs' 
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              เมื่อวาน (Yesterday)
+              {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
             </button>
             <button
               type="button"
               onClick={() => setSelectedDate(twoDaysAgoStr)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 selectedDate === twoDaysAgoStr 
-                  ? 'bg-blue-600 text-white shadow-xs' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-blue-700 text-white shadow-xs' 
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              2 วันก่อน
+              {lang === 'th' ? '2 วันก่อน' : '2 Days Ago'}
             </button>
 
             {/* Custom Date Picker */}
@@ -413,7 +478,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="date"
                 value={selectedDate}
                 onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-white hover:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white bg-white dark:bg-slate-800 hover:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -424,90 +489,92 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <select
               value={selectedRoleFilter}
               onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 bg-slate-50 focus:outline-hidden"
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-800 focus:outline-hidden"
             >
-              <option value="all">ทุกบทบาท (นักเรียน & ครู)</option>
-              <option value="student">เฉพาะนักเรียน</option>
-              <option value="teacher">เฉพาะครูผู้สอน</option>
+              <option value="all">{lang === 'th' ? 'ทุกบทบาท (นักเรียน & ครู)' : 'All Roles (Students & Teachers)'}</option>
+              <option value="student">{lang === 'th' ? 'เฉพาะนักเรียน' : 'Students Only'}</option>
+              <option value="teacher">{lang === 'th' ? 'เฉพาะครูผู้สอน' : 'Teachers Only'}</option>
             </select>
 
             {/* Type Filter */}
             <select
               value={selectedTypeFilter}
               onChange={(e) => setSelectedTypeFilter(e.target.value as 'all' | 'check_in' | 'check_out')}
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 bg-slate-50 focus:outline-hidden"
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-800 focus:outline-hidden"
             >
-              <option value="all">เข้า & ออกทั้งหมด</option>
-              <option value="check_in">เฉพาะเข้าโรงเรียน (Check-in)</option>
-              <option value="check_out">เฉพาะออกโรงเรียน (Check-out)</option>
+              <option value="all">{lang === 'th' ? 'เข้า & ออกทั้งหมด' : 'All Entries & Exits'}</option>
+              <option value="check_in">{lang === 'th' ? 'เฉพาะเข้าโรงเรียน' : 'Check-in Only'}</option>
+              <option value="check_out">{lang === 'th' ? 'เฉพาะออกโรงเรียน' : 'Check-out Only'}</option>
             </select>
           </div>
         </div>
 
         {/* Detailed Visual Analytics & Graphs Section */}
-        <div className="p-5 bg-slate-50/40 border-b border-slate-100 space-y-5">
+        <div className="p-5 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 space-y-5">
           {/* Summary Metric Counters */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
-              <p className="text-[11px] text-slate-500 font-medium">บันทึกทั้งหมด</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{totalForDate}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">รายการ</p>
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 font-bold">{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{totalForDate}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{lang === 'th' ? 'รายการ' : 'records'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
-              <p className="text-[11px] text-emerald-600 font-medium flex items-center justify-center gap-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center gap-1">
                 <LogIn className="w-3 h-3" />
-                <span>เข้าโรงเรียน</span>
+                <span>{lang === 'th' ? 'เข้าโรงเรียน' : 'Check-ins'}</span>
               </p>
-              <p className="text-xl font-black text-emerald-700 mt-0.5">{checkInsCount}</p>
-              <p className="text-[10px] text-emerald-600 mt-0.5">ตรงเวลา {presentCount}</p>
+              <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5">{checkInsCount}</p>
+              <p className="text-[10px] text-emerald-600 mt-0.5">{lang === 'th' ? `ตรงเวลา ${presentCount}` : `On-time: ${presentCount}`}</p>
             </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
-              <p className="text-[11px] text-amber-600 font-medium flex items-center justify-center gap-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-bold flex items-center justify-center gap-1">
                 <Clock className="w-3 h-3" />
-                <span>มาสาย</span>
+                <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
               </p>
-              <p className="text-xl font-black text-amber-700 mt-0.5">{lateCount}</p>
-              <p className="text-[10px] text-amber-600 mt-0.5">{latePercent}% ของทั้งหมด</p>
+              <p className="text-xl font-black text-amber-700 dark:text-amber-400 mt-0.5">{lateCount}</p>
+              <p className="text-[10px] text-amber-600 mt-0.5">{latePercent}% {lang === 'th' ? 'ของทั้งหมด' : 'of total'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
-              <p className="text-[11px] text-purple-600 font-medium flex items-center justify-center gap-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
+              <p className="text-[11px] text-purple-700 dark:text-purple-400 font-bold flex items-center justify-center gap-1">
                 <LogOut className="w-3 h-3" />
-                <span>ออกโรงเรียน</span>
+                <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Check-outs'}</span>
               </p>
-              <p className="text-xl font-black text-purple-700 mt-0.5">{checkOutsCount}</p>
-              <p className="text-[10px] text-purple-500 mt-0.5">Check-outs</p>
+              <p className="text-xl font-black text-purple-700 dark:text-purple-400 mt-0.5">{checkOutsCount}</p>
+              <p className="text-[10px] text-purple-600 mt-0.5">{lang === 'th' ? 'ออกช่วงเย็น' : 'Departures'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
-              <p className="text-[11px] text-blue-600 font-medium flex items-center justify-center gap-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
+              <p className="text-[11px] text-blue-700 dark:text-blue-400 font-bold flex items-center justify-center gap-1">
                 <Camera className="w-3 h-3" />
-                <span>ภาพถ่ายยืนยัน</span>
+                <span>{lang === 'th' ? 'มีรูปภาพเซลฟี่' : 'Selfie Verified'}</span>
               </p>
-              <p className="text-xl font-black text-blue-700 mt-0.5">{selfieCount}</p>
-              <p className="text-[10px] text-blue-500 mt-0.5">มีรูปเซลฟี่ในระบบ</p>
+              <p className="text-xl font-black text-blue-700 dark:text-blue-400 mt-0.5">{selfieCount}</p>
+              <p className="text-[10px] text-blue-600 mt-0.5">{lang === 'th' ? 'มีหลักฐานภาพถ่าย' : 'With photo proof'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
-              <p className="text-[11px] text-slate-500 font-medium">สัดส่วน นักเรียน/ครู</p>
-              <p className="text-xl font-black text-slate-800 mt-0.5">{studentCheckIns}/{teacherCheckIns}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">นร. {studentCheckIns} • ครู {teacherCheckIns}</p>
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 font-bold">{lang === 'th' ? 'สัดส่วน นร./ครู' : 'Students / Teachers'}</p>
+              <p className="text-xl font-black text-slate-800 dark:text-white mt-0.5">{studentCheckIns}/{teacherCheckIns}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} • ครู ${teacherCheckIns}` : `S: ${studentCheckIns} • T: ${teacherCheckIns}`}</p>
             </div>
           </div>
 
           {/* Interactive Graph 1: Hourly Arrival & Departure Curve */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Hourly Distribution Bar Chart */}
-            <div className="lg:col-span-2 p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3">
+            <div className="lg:col-span-2 p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-blue-600" />
-                    <span>กราฟแสดงช่วงเวลาการเดินทางเข้า-ออกโรงเรียน (Hourly Distribution)</span>
+                    <span>{lang === 'th' ? 'กราฟแสดงการเดินทางเข้า-ออกโรงเรียนรายช่วงเวลา' : 'Traffic Distribution by Time Window'}</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">
-                    วิเคราะห์ความหนาแน่นของการผ่านเขตพื้นที่และประตูโรงเรียนในวันที่ {selectedDate}
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                    {lang === 'th'
+                      ? `วิเคราะห์ความหนาแน่นของการผ่านเขตพื้นที่และประตูโรงเรียนในวันที่ ${selectedDate}`
+                      : `Hourly traffic load at school perimeter on ${selectedDate}`}
                   </p>
                 </div>
-                <span className="text-[11px] font-semibold text-slate-500">
-                  รวม {totalForDate} คน
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  {lang === 'th' ? `รวม ${totalForDate} รายการ` : `Total ${totalForDate}`}
                 </span>
               </div>
 
@@ -516,16 +583,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {hourlyBuckets.map((bucket, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
                         <span>{bucket.label}</span>
-                        <span className="text-slate-400 font-normal">({bucket.range})</span>
                       </span>
-                      <span className="font-mono font-bold text-slate-800">
-                        {bucket.count} คน ({bucket.percent}%)
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        {bucket.count} {lang === 'th' ? 'คน' : 'people'} ({bucket.percent}%)
                       </span>
                     </div>
-                    <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${bucket.color} transition-all duration-500`}
                         style={{ width: `${bucket.barPercent}%` }}
@@ -537,24 +603,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Quick Analytics Card: Roles & Quality Index */}
-            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4 flex flex-col justify-between">
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4 flex flex-col justify-between">
               <div>
-                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>ดัชนีความตรงเวลา & ความปลอดภัย GPS</span>
+                  <span>{lang === 'th' ? 'ดัชนีความตรงเวลา & ความปลอดภัย GPS' : 'Punctuality & GPS Integrity'}</span>
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  การตรวจสอบระยะห่างจากใจกลางสถานศึกษา
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                  {lang === 'th' ? 'ตรวจสอบระยะห่างจากใจกลางสถานศึกษา' : 'Geofence proximity index verification'}
                 </p>
               </div>
 
               {/* Quality Progress Bar */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600 font-medium">อัตราเข้าเรียนตรงเวลา:</span>
-                  <span className="font-bold text-emerald-700 font-mono">{onTimePercent}%</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-bold">{lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา:' : 'On-Time Rate:'}</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">{onTimePercent}%</span>
                 </div>
-                <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden flex">
+                <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden flex">
                   <div
                     className="h-full bg-emerald-500 transition-all"
                     style={{ width: `${onTimePercent}%` }}
@@ -566,26 +632,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     title={`มาสาย ${lateCount} คน`}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] text-slate-500">
+                <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-400">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                    <span>ตรงเวลา ({presentCount})</span>
+                    <span>{lang === 'th' ? `ตรงเวลา (${presentCount})` : `On-time (${presentCount})`}</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                    <span>มาสาย ({lateCount})</span>
+                    <span>{lang === 'th' ? `มาสาย (${lateCount})` : `Late (${lateCount})`}</span>
                   </span>
                 </div>
               </div>
 
               {/* Geofence verification summary */}
-              <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-100 space-y-1.5 text-[11px]">
-                <div className="flex items-center gap-1.5 font-bold text-blue-900">
-                  <MapPin className="w-3.5 h-3.5 text-blue-700" />
-                  <span>รั้วเสมือน GPS Geofence (รัศมี 300 ม.)</span>
+              <div className="p-3 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 space-y-1.5 text-[11px]">
+                <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-300">
+                  <MapPin className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />
+                  <span>{lang === 'th' ? 'รั้วเสมือน GPS Geofence (รัศมี 300 ม.)' : 'GPS Geofence Perimeter (300m)'}</span>
                 </div>
-                <p className="text-slate-600 leading-relaxed text-[11px]">
-                  ทุกคนที่ลงชื่อผ่านมือถือในระบบนี้ ได้รับการบันทึกภาพถ่ายเซลฟี่จริง พร้อมประทับตราพิกัดระยะห่าง และเวลาที่ตรวจสอบย้อนหลังได้
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">
+                  {lang === 'th'
+                    ? 'ทุกคนที่ลงชื่อผ่านมือถือในระบบนี้ ได้รับการบันทึกภาพถ่ายเซลฟี่จริง พร้อมประทับตราพิกัดระยะห่าง และเวลาที่ตรวจสอบย้อนหลังได้'
+                    : 'All mobile check-ins capture facial selfies with verified timestamp and proximity coordinates.'}
                 </p>
               </div>
             </div>
@@ -596,40 +664,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span>บันทึกภาพถ่ายเช็กชื่อล่าสุดในวันที่เลือก ({selectedDate})</span>
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-xs">
-                  {displayRecords.length} รายการ
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{lang === 'th' ? `ภาพถ่ายเช็กชื่อล่าสุดในวันที่เลือก (${selectedDate})` : `Selfie Verification Logs (${selectedDate})`}</span>
+                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold text-xs">
+                  {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
                 </span>
               </h3>
-              <p className="text-xs text-slate-500">
-                คลิกที่รูปภาพหรือการ์ดเพื่อเปิดดูรูปถ่ายขนาดใหญ่พร้อมรายละเอียดวัน-เวลาและพิกัดย้อนหลัง
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                {lang === 'th'
+                  ? 'คลิกที่รูปภาพหรือการ์ดเพื่อเปิดดูรูปถ่ายขนาดใหญ่พร้อมรายละเอียดวัน-เวลาและพิกัดย้อนหลัง'
+                  : 'Click on any record card to inspect high-resolution selfie proof and metadata.'}
               </p>
             </div>
 
             {/* Simple Text Search inside table */}
             <input
               type="text"
-              placeholder="ค้นหาชื่อ, รหัสนักเรียน, หรือห้อง..."
+              placeholder={lang === 'th' ? 'ค้นหาชื่อ, รหัสนักเรียน, หรือห้อง...' : 'Search student name, ID, or room...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 w-full sm:w-64 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 w-full sm:w-64 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           {displayRecords.length === 0 ? (
-            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 space-y-2">
-              <Camera className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-semibold text-slate-700">ไม่พบบันทึกเช็กชื่อในวันที่เลือก ({selectedDate})</p>
-              <p className="text-xs text-slate-400">
-                ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน หรือกด "ถ่ายรูปเช็กชื่อมือถือ" เพื่อบันทึกข้อมูลใหม่
+            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-2">
+              <Camera className="w-10 h-10 text-slate-400 mx-auto" />
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                {lang === 'th' ? `ไม่พบบันทึกเช็กชื่อในวันที่เลือก (${selectedDate})` : `No records found for ${selectedDate}`}
+              </p>
+              <p className="text-xs text-slate-500">
+                {lang === 'th'
+                  ? 'ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน หรือกด "ถ่ายรูปเช็กชื่อมือถือ" เพื่อบันทึกข้อมูลใหม่'
+                  : 'Try selecting another date or use Mobile Check-in to capture a new record.'}
               </p>
               <button
                 type="button"
                 onClick={() => setSelectedDate(todayStr)}
-                className="mt-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+                className="mt-2 px-3 py-1.5 rounded-lg bg-blue-700 text-white text-xs font-bold hover:bg-blue-800 cursor-pointer"
               >
-                กลับมาดูวันนี้
+                {lang === 'th' ? 'กลับมาดูวันนี้' : 'Back to Today'}
               </button>
             </div>
           ) : (
@@ -643,43 +717,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div
                     key={rec.id}
                     onClick={() => setSelectedPhotoRecord(rec)}
-                    className="group relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between gap-3"
+                    className="group relative rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 p-3.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between gap-3"
                   >
                     {/* Top Row: Type & Timestamp */}
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
                         {isCheckOut ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[11px] font-bold border border-purple-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 text-[11px] font-bold border border-purple-200 dark:border-purple-800">
                             <LogOut className="w-3 h-3" />
-                            <span>ออกโรงเรียน</span>
+                            <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Exit'}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800">
                             <LogIn className="w-3 h-3" />
-                            <span>เข้าโรงเรียน</span>
+                            <span>{lang === 'th' ? 'เข้าโรงเรียน' : 'Entry'}</span>
                           </span>
                         )}
                         {isTeacher ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
-                            ครู
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800">
+                            {lang === 'th' ? 'ครู' : 'Teacher'}
                           </span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700 font-semibold">
-                            นร.
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold">
+                            {lang === 'th' ? 'นร.' : 'Student'}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-slate-600">
+                      <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
                         <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{rec.time} น.</span>
+                        <span>{rec.time} {lang === 'th' ? 'น.' : ''}</span>
                       </div>
                     </div>
 
                     {/* Middle: Photo & Person Info */}
                     <div className="flex items-center gap-3">
                       {/* Photo Thumbnail with Zoom Icon on Hover */}
-                      <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 group-hover:ring-2 group-hover:ring-blue-500 transition">
+                      <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 shrink-0 group-hover:ring-2 group-hover:ring-blue-500 transition">
                         <img
                           src={photoSrc}
                           alt={rec.userName || 'Check-in photo'}
@@ -689,7 +763,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <Eye className="w-5 h-5 drop-shadow" />
                         </div>
                         {rec.photoUrl && (
-                          <div className="absolute bottom-0.5 right-0.5 p-0.5 rounded bg-blue-600 text-white text-[9px] shadow">
+                          <div className="absolute bottom-0.5 right-0.5 p-0.5 rounded bg-blue-700 text-white text-[9px] shadow-xs">
                             <Camera className="w-2.5 h-2.5" />
                           </div>
                         )}
@@ -697,22 +771,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       {/* Info */}
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="font-bold text-xs text-slate-900 truncate">
-                          {rec.userName || 'ผู้ใช้งานระบบ'}
+                        <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                          {rec.userName || (lang === 'th' ? 'ผู้ใช้งานระบบ' : 'System User')}
                         </p>
-                        <p className="text-[11px] text-slate-500 truncate">
-                          {rec.userDepartmentOrRoom || rec.userRole || 'โรงเรียน'}
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+                          {rec.userDepartmentOrRoom || rec.userRole || (lang === 'th' ? 'โรงเรียน' : 'School')}
                         </p>
                         <div className="pt-0.5">
                           {rec.status === 'present' ? (
-                            <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
-                              <span>ตรงเวลา</span>
+                              <span>{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
                             </span>
                           ) : (
-                            <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              <span>มาสาย</span>
+                              <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
                             </span>
                           )}
                         </div>
@@ -720,18 +794,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Bottom Metadata: GPS & Action Prompt */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <div className="flex items-center gap-1 truncate text-slate-600">
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/80 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
+                      <div className="flex items-center gap-1 truncate font-medium">
                         <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
                         <span className="truncate">
                           {rec.location?.distanceMeters !== undefined 
-                            ? `ห่าง ${rec.location.distanceMeters} ม.` 
-                            : 'ในเขตพื้นที่โรงเรียน'}
+                            ? (lang === 'th' ? `ห่าง ${rec.location.distanceMeters} ม.` : `${rec.location.distanceMeters}m away`)
+                            : (lang === 'th' ? 'ในเขตพื้นที่โรงเรียน' : 'On campus')}
                         </span>
                       </div>
 
-                      <span className="text-blue-600 font-semibold group-hover:underline flex items-center gap-0.5 shrink-0 text-[10px]">
-                        <span>ดูรูปเต็ม</span>
+                      <span className="text-blue-700 dark:text-blue-400 font-bold group-hover:underline flex items-center gap-0.5 shrink-0 text-[10px]">
+                        <span>{lang === 'th' ? 'ดูรูปเต็ม' : 'View Full'}</span>
                         <ChevronRight className="w-3 h-3" />
                       </span>
                     </div>
@@ -746,63 +820,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Main Grid: Gate Attendance & Academic Honor Roll */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Realtime Attendance Log */}
-        <div className="lg:col-span-2 rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="lg:col-span-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-700" />
-              <h2 className="text-sm font-bold text-slate-900">บันทึกการผ่านประตูและเข้าเรียนวันนี้</h2>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
-                ถ่ายทอดสด
+              <Clock className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนวันนี้' : 'Live Gate & Class Check-in Feed'}
+              </h2>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                {lang === 'th' ? 'สด' : 'Live'}
               </span>
             </div>
             <button
               type="button"
               onClick={() => onNavigate('attendance')}
-              className="text-xs text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+              className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
             >
-              ดูบันทึกทั้งหมด <ArrowUpRight className="w-3.5 h-3.5" />
+              {lang === 'th' ? 'ดูบันทึกทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {displayRecords.slice(0, 5).map((rec) => {
               return (
                 <div
                   key={rec.id}
                   onClick={() => setSelectedPhotoRecord(rec)}
-                  className="py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-slate-50/80 rounded-lg px-2 transition"
+                  className="py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/60 rounded-lg px-2 transition"
                 >
                   <div className="flex items-center gap-3">
                     <img
                       src={rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
                       alt={rec.userName}
-                      className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                      className="w-9 h-9 rounded-full object-cover border border-slate-300 dark:border-slate-700"
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           {rec.userName}
                         </span>
-                        <span className="text-slate-400 font-mono text-[11px]">
+                        <span className="text-slate-500 font-mono text-[11px]">
                           ({rec.studentId})
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500">
-                        {rec.userDepartmentOrRoom || rec.userRole} • เวลา {rec.time} น. • {rec.recordType === 'check_out' ? 'ออก' : 'เข้า'}
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                        {rec.userDepartmentOrRoom || rec.userRole} • {lang === 'th' ? `เวลา ${rec.time} น.` : rec.time} • {rec.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}
                       </div>
                     </div>
                   </div>
 
                   <div>
                     {rec.status === 'present' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium text-[11px] border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] border border-emerald-200 dark:border-emerald-800">
                         <CheckCircle2 className="w-3 h-3" />
-                        <span>ตรงเวลา</span>
+                        <span>{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-medium text-[11px] border border-amber-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-200 dark:border-amber-800">
                         <Clock className="w-3 h-3" />
-                        <span>มาสาย</span>
+                        <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
                       </span>
                     )}
                   </div>
@@ -813,18 +889,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Honor Students Card */}
-        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-600" />
-              <h2 className="text-sm font-bold text-slate-900">นักเรียนผลการเรียนดีเด่น</h2>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {lang === 'th' ? 'นักเรียนผลการเรียนดีเด่น' : 'Honor Students Roll'}
+              </h2>
             </div>
             <button
               type="button"
               onClick={() => onNavigate('gradebook')}
-              className="text-xs text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+              className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
             >
-              สมุดคะแนน <ArrowUpRight className="w-3.5 h-3.5" />
+              {lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'} <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -832,7 +910,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {topStudents.map((st, idx) => (
               <div
                 key={st.id}
-                className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-xs"
+                className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 text-center font-bold text-slate-400 text-xs">
@@ -841,23 +919,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <img
                     src={st.avatarUrl}
                     alt={st.firstNameEn}
-                    className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                    className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700"
                   />
                   <div>
-                    <div className="font-semibold text-slate-900">
-                      {st.firstNameTh} {st.lastNameTh}
+                    <div className="font-bold text-slate-900 dark:text-white">
+                      {lang === 'th' ? `${st.firstNameTh} ${st.lastNameTh}` : `${st.firstNameEn} ${st.lastNameEn}`}
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      ชั้น {st.gradeLevel} ห้อง {st.room}
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                      {lang === 'th' ? `ชั้น ${st.gradeLevel} ห้อง ${st.room}` : `Grade ${st.gradeLevel} / ${st.room}`}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="font-bold text-blue-700 font-mono text-sm">
+                  <div className="font-bold text-blue-700 dark:text-blue-400 font-mono text-sm">
                     {st.gpa.toFixed(2)}
                   </div>
-                  <div className="text-[10px] text-slate-400">เกรดเฉลี่ย</div>
+                  <div className="text-[10px] text-slate-500 font-medium">GPA</div>
                 </div>
               </div>
             ))}
@@ -866,63 +944,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Announcements */}
-      <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-3">
+      <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <span>ข่าวสารและประกาศสำคัญของโรงเรียน</span>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>{lang === 'th' ? 'ข่าวสารและประกาศสำคัญของโรงเรียน' : 'Official Announcements'}</span>
           </h2>
           <button
             type="button"
             onClick={() => onNavigate('announcements')}
-            className="text-xs text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+            className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
           >
-            ดูประกาศทั้งหมด <ArrowUpRight className="w-3.5 h-3.5" />
+            {lang === 'th' ? 'ดูประกาศทั้งหมด' : 'All Announcements'} <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
           {announcements.slice(0, 2).map((item) => (
-            <div key={item.id} className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
+            <div key={item.id} className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900">{item.title}</span>
-                <span className="text-[10px] text-slate-400">{item.publishedAt}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{item.title}</span>
+                <span className="text-[10px] text-slate-500">{item.publishedAt}</span>
               </div>
-              <p className="text-slate-600 line-clamp-2 text-[11px] leading-relaxed">
+              <p className="text-slate-600 dark:text-slate-300 line-clamp-2 text-[11px] leading-relaxed">
                 {item.content}
               </p>
               <div className="text-[10px] text-slate-500 pt-1">
-                ประกาศโดย: {item.author} ({item.authorRole})
+                {lang === 'th' ? `ประกาศโดย: ${item.author} (${item.authorRole})` : `Published by: ${item.author} (${item.authorRole})`}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* LIGHTBOX MODAL: FULL CAPTURED SELFIE PHOTO & TIMESTAMP/LOCATION VIEWER */}
-      {/* ========================================================================= */}
+      {/* Lightbox Modal: Captured Selfie Photo & Metadata */}
       {selectedPhotoRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
+                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
                   <Camera className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    รูปถ่ายเช็กชื่อยืนยันตัวตน (Selfie Snapshot Verification)
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {lang === 'th' ? 'รูปถ่ายเช็กชื่อยืนยันตัวตน' : 'Selfie Verification Proof'}
                   </h3>
-                  <p className="text-[11px] text-slate-500">
-                    วันที่ {selectedPhotoRecord.date} • เวลา {selectedPhotoRecord.time} น.
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                    {lang === 'th' ? `วันที่ ${selectedPhotoRecord.date} • เวลา ${selectedPhotoRecord.time} น.` : `${selectedPhotoRecord.date} at ${selectedPhotoRecord.time}`}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedPhotoRecord(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition"
+                className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -945,76 +1021,78 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>{systemConfig.schoolNameTh} • VERIFIED CHECK</span>
                     </span>
-                    <span className="font-mono">{selectedPhotoRecord.time} น.</span>
+                    <span className="font-mono">{selectedPhotoRecord.time} {lang === 'th' ? 'น.' : ''}</span>
                   </div>
                   <div className="flex items-center justify-between text-white/80">
                     <span>{selectedPhotoRecord.userName} ({selectedPhotoRecord.userDepartmentOrRoom || selectedPhotoRecord.userRole})</span>
-                    <span>{selectedPhotoRecord.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน'}</span>
+                    <span>{selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'ออกโรงเรียน' : 'Exit') : (lang === 'th' ? 'เข้าโรงเรียน' : 'Entry')}</span>
                   </div>
                   <div className="text-[9px] text-white/60 font-mono truncate">
-                    GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} • ห่าง {selectedPhotoRecord.location?.distanceMeters || 18} ม.
+                    GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} • {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม.` : `${selectedPhotoRecord.location?.distanceMeters || 18}m away`}
                   </div>
                 </div>
               </div>
 
               {/* Information Grid */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">ชื่อผู้ลงชื่อ</span>
-                  <p className="font-bold text-slate-900">{selectedPhotoRecord.userName}</p>
-                  <p className="text-[11px] text-slate-500">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
+                  <p className="font-bold text-slate-900 dark:text-white">{selectedPhotoRecord.userName}</p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
                     {selectedPhotoRecord.userRole} • {selectedPhotoRecord.userDepartmentOrRoom}
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">ประเภทและสถานะ</span>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">{lang === 'th' ? 'ประเภทและสถานะ' : 'Type & Status'}</span>
                   <div className="flex items-center gap-2">
                     {selectedPhotoRecord.recordType === 'check_out' ? (
-                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-bold text-[11px]">
-                        เช็กชื่อออก
+                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[11px]">
+                        {lang === 'th' ? 'เช็กชื่อออก' : 'Check-out'}
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[11px]">
-                        เช็กชื่อเข้า
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                        {lang === 'th' ? 'เช็กชื่อเข้า' : 'Check-in'}
                       </span>
                     )}
                     <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                      selectedPhotoRecord.status === 'present' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                      selectedPhotoRecord.status === 'present' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
                     }`}>
-                      {selectedPhotoRecord.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}
+                      {selectedPhotoRecord.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'On-time') : (lang === 'th' ? 'มาสาย' : 'Late')}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-mono">
-                    บันทึกเวลา: {selectedPhotoRecord.time} น.
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono">
+                    {lang === 'th' ? `บันทึกเวลา: ${selectedPhotoRecord.time} น.` : `Time: ${selectedPhotoRecord.time}`}
                   </p>
                 </div>
 
-                <div className="col-span-2 p-3 rounded-xl bg-blue-50/60 border border-blue-200 space-y-1">
-                  <span className="text-[10px] text-blue-800 font-semibold uppercase flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-blue-700" />
-                    <span>ข้อมูลตำแหน่ง GPS & รั้วเสมือน (Geofence)</span>
+                <div className="col-span-2 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 space-y-1">
+                  <span className="text-[10px] text-blue-900 dark:text-blue-300 font-bold uppercase flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />
+                    <span>{lang === 'th' ? 'ข้อมูลตำแหน่ง GPS & รั้วเสมือน (Geofence)' : 'GPS & Geofence Coordinates'}</span>
                   </span>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-800 dark:text-slate-200">
                     <div>
-                      <span className="font-semibold">จุดที่บันทึก: </span>
-                      <span>{selectedPhotoRecord.location?.geofenceZoneName || 'ประตูโรงเรียน'}</span>
+                      <span className="font-bold">{lang === 'th' ? 'จุดตรวจ: ' : 'Gate Zone: '}</span>
+                      <span>{selectedPhotoRecord.location?.geofenceZoneName || (lang === 'th' ? 'ประตูโรงเรียน' : 'Main Gate')}</span>
                     </div>
-                    <div className="font-mono text-emerald-700 font-bold">
-                      ระยะห่างจากศูนย์กลาง: {selectedPhotoRecord.location?.distanceMeters || 18} เมตร (อยู่ในเขต)
+                    <div className="font-mono text-emerald-700 dark:text-emerald-400 font-bold">
+                      {lang === 'th' ? `ระยะห่าง: ${selectedPhotoRecord.location?.distanceMeters || 18} เมตร (อยู่ในเขต)` : `Distance: ${selectedPhotoRecord.location?.distanceMeters || 18}m (Verified)`}
                     </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 italic pt-0.5">
-                    หมายเหตุ: {selectedPhotoRecord.remarks || 'ลงชื่อผ่านโทรศัพท์เครื่องตัวเองด้วยการถ่ายภาพหน้าและตรวจสอบพิกัด Geofence'}
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 italic pt-0.5">
+                    {lang === 'th'
+                      ? `หมายเหตุ: ${selectedPhotoRecord.remarks || 'ลงชื่อผ่านโทรศัพท์ด้วยการถ่ายภาพหน้าและตรวจสอบพิกัด Geofence'}`
+                      : `Remarks: ${selectedPhotoRecord.remarks || 'Facial selfie verified with geofenced location'}`}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-500">
-                รหัสรายการ: {selectedPhotoRecord.id}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 font-mono">
+                ID: {selectedPhotoRecord.id}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1025,17 +1103,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     link.download = `selfie_${selectedPhotoRecord.userName}_${selectedPhotoRecord.date}.jpg`;
                     link.click();
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-bold transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>บันทึกรูปภาพ</span>
+                  <span>{lang === 'th' ? 'บันทึกรูปภาพ' : 'Save Photo'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedPhotoRecord(null)}
-                  className="px-4 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold transition"
+                  className="px-4 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition cursor-pointer"
                 >
-                  ปิดหน้าต่าง
+                  {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
                 </button>
               </div>
             </div>

@@ -22,54 +22,54 @@
 :root {
   --color-canvas: #f8fafc;
   --color-card: #ffffff;
-  --color-border: #e2e8f0;
+  --color-border: #cbd5e1;
   --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
+  --color-text-body: #1e293b;
+  --color-text-muted: #475569;
   --color-primary: #1e40af;
   --color-primary-hover: #1d4ed8;
   --color-primary-light: #eff6ff;
 }
 
-/* Light Eye-Care Warm Paper (โทนกระดาษนวลตา ไร้แสงสะท้อน) */
+/* Light Eye-Care Warm Paper (โทนกระดาษนวลตา คอนทราสต์คมชัด อ่านง่าย) */
 .theme-light_warm,
 .theme-light {
   --color-canvas: #faf8f5;
   --color-card: #ffffff;
-  --color-border: #eae4d7;
-  --color-text-title: #292524;
-  --color-text-body: #44403c;
-  --color-text-muted: #78716c;
+  --color-border: #e2dbce;
+  --color-text-title: #1c1917;
+  --color-text-body: #292524;
+  --color-text-muted: #57534e;
   --color-primary: #1e3a8a;
   --color-primary-hover: #172554;
-  --color-primary-light: #f5f3ef;
+  --color-primary-light: #f5f1ea;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
 
-/* Light Soft Sky (ฟ้าครามสุภาพ สบายตา) */
+/* Light Soft Sky (ฟ้าครามสุภาพ คมชัดสบายตา) */
 .theme-light_sky {
   --color-canvas: #f8fafc;
   --color-card: #ffffff;
-  --color-border: #e2e8f0;
+  --color-border: #cbd5e1;
   --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
+  --color-text-body: #1e293b;
+  --color-text-muted: #475569;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
   --color-primary-light: #eff6ff;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
 
-/* Soft Dark (มืดสุขุม ไม่ใช้ดำสนิท ไม่แสบตา) */
+/* Soft Dark Sapphire (มืดสุขุม คอนทราสต์มาตรฐานสูง ตัวอักษรอ่านง่าย) */
 .theme-sapphire,
 .theme-dark {
-  --color-canvas: #0f172a;
-  --color-card: #1e293b;
+  --color-canvas: #0b1120;
+  --color-card: #151f32;
   --color-border: #334155;
   --color-text-title: #f8fafc;
-  --color-text-body: #cbd5e1;
+  --color-text-body: #e2e8f0;
   --color-text-muted: #94a3b8;
   --color-primary: #3b82f6;
   --color-primary-hover: #60a5fa;
@@ -109,4 +109,50 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* ========================================================
+   OFFICIAL PRINT STYLESHEET (สำหรับใบ ปพ.1, ปพ.5 และใบเสร็จรับเงิน)
+   ======================================================== */
+@media print {
+  @page {
+    margin: 10mm;
+    size: A4 portrait;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* ซ่อนส่วนที่ไม่ต้องการพิมพ์ เช่น navbar, sidebar, ปุ่มกด, backdrop */
+  header, nav, aside, .no-print, button, [role="dialog"] > div > div:first-child:has(button) {
+    display: none !important;
+  }
+
+  /* พื้นที่ที่พิมพ์ต้องเป็นพื้นขาว กรอบคมชัด ไม่มีเงา */
+  .print-area, [data-printable="true"] {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
+  }
 }

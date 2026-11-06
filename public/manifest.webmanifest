@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "EduVerse - School Management",
+  "short_name": "EduVerse",
+  "description": "Comprehensive school management, grading, SDQ screening, virtual ID cards, and smart attendance system.",
+  "theme_color": "#1e40af",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

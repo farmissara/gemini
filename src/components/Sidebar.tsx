@@ -155,15 +155,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'attendance',
-          labelTh: 'เช็คชื่อเข้าเรียน (QR)',
-          labelEn: 'Daily Attendance (QR)',
+          labelTh: 'สแกนบัตรประตูโรงเรียน',
+          labelEn: 'Gate QR Check-in',
           icon: QrCode,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
           id: 'mobile_checkin',
-          labelTh: 'เช็คชื่อรายคาบ',
-          labelEn: 'Period Attendance',
+          labelTh: 'ถ่ายรูปเช็กชื่อ GPS',
+          labelEn: 'GPS Mobile Check-in',
           icon: Smartphone,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
@@ -176,15 +176,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'behavior_sdq',
-          labelTh: 'ความประพฤติ & SDQ',
-          labelEn: 'Behavior & SDQ',
+          labelTh: 'คัดกรอง SDQ & พฤติกรรม',
+          labelEn: 'SDQ & Behavior Screening',
           icon: HeartHandshake,
           roles: ['super_admin', 'admin', 'teacher', 'parent'],
         },
         {
           id: 'infirmary',
-          labelTh: 'ห้องพยาบาล & สุขภาพ',
-          labelEn: 'Infirmary & Health',
+          labelTh: 'ห้องพยาบาล & เวชระเบียน',
+          labelEn: 'Infirmary Clinic',
           icon: HeartPulse,
           roles: ['super_admin', 'admin', 'teacher', 'parent', 'student'],
         },
@@ -203,15 +203,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'portfolio',
-          labelTh: 'แฟ้มผลงาน Portfolio',
-          labelEn: 'Digital Portfolio',
+          labelTh: 'แฟ้มผลงานดิจิทัล',
+          labelEn: 'Student Portfolios',
           icon: FolderGit2,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
           id: 'games',
-          labelTh: 'ล่าสมบัติ (3D Quiz)',
-          labelEn: 'Treasure Hunt 3D',
+          labelTh: 'เกมตอบคำถาม 3 มิติ',
+          labelEn: 'Educational 3D Quiz',
           icon: Swords,
           badge: '3D',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
@@ -275,7 +275,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           return (
             <div key={gIdx} className="space-y-1">
-              <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                 {lang === 'th' ? group.groupTitleTh : group.groupTitleEn}
               </div>
 
@@ -289,19 +289,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => setCurrentTab(item.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 shadow-2xs'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 truncate">
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-700' : 'text-slate-400'}`} />
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
                         <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
                       </div>
 
                       {item.badge && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold">
                           {item.badge}
                         </span>
                       )}

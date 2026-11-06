@@ -104,6 +104,7 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { SystemSettingsView } from './components/SystemSettingsView';
 import { DataImportExportModal } from './components/DataImportExportModal';
 import { ModuleGuideModal } from './components/ModuleGuideModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
@@ -209,11 +210,11 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleStartDemo = () => {
+  const handleStartDemo = (targetRole: UserRole = 'admin') => {
     const school = INITIAL_SCHOOLS[0];
-    const demoUser = DEMO_USERS.find((user) => user.role === 'admin');
+    const demoUser = DEMO_USERS.find((user) => user.role === targetRole) || DEMO_USERS[0];
     if (!demoUser) {
-      setDataLoadError('Demo administrator is not configured.');
+      setDataLoadError('Demo user is not configured.');
       return;
     }
 
@@ -223,7 +224,16 @@ export const App: React.FC = () => {
     setActiveSchool(school);
     setCurrentUser(demoUser);
     setCurrentRole(demoUser.role);
-    setCurrentTab('dashboard');
+    if (demoUser.role === 'parent') {
+      setProgramMode('parent_portal');
+    } else {
+      setProgramMode('school_erp');
+    }
+    if (demoUser.role === 'super_admin') {
+      setCurrentTab('super_admin_console');
+    } else {
+      setCurrentTab('dashboard');
+    }
     setStudents(INITIAL_STUDENTS);
     setTeachers(INITIAL_TEACHERS);
     setCourses(INITIAL_COURSES);
@@ -297,18 +307,19 @@ export const App: React.FC = () => {
         setAttendance(data.attendance);
         setInvoices(data.invoices);
         setAnnouncements(data.announcements);
-        setLessons([]);
-        setAssignments([]);
-        setQuestions([]);
-        setPlayerScores([]);
-        setRewardItems([]);
-        setPeriodAttendance([]);
-        setPortfolioItems([]);
-        setTimetableSlots([]);
-        setBehaviorRecords([]);
-        setSdqAssessments([]);
-        setInfirmaryVisits([]);
-        setHomeworkSubmissions([]);
+        // Preserve module records so other school modules stay functional
+        setLessons(prev => prev.length > 0 ? prev : INITIAL_LESSONS.map(l => ({ ...l, schoolId: activeSchool.id })));
+        setAssignments(prev => prev.length > 0 ? prev : INITIAL_ASSIGNMENTS.map(a => ({ ...a, schoolId: activeSchool.id })));
+        setQuestions(prev => prev.length > 0 ? prev : INITIAL_QUESTIONS.map(q => ({ ...q, schoolId: activeSchool.id })));
+        setPlayerScores(prev => prev.length > 0 ? prev : INITIAL_PLAYER_SCORES);
+        setRewardItems(prev => prev.length > 0 ? prev : INITIAL_REWARD_ITEMS);
+        setPeriodAttendance(prev => prev.length > 0 ? prev : INITIAL_PERIOD_ATTENDANCE.map(p => ({ ...p, schoolId: activeSchool.id })));
+        setPortfolioItems(prev => prev.length > 0 ? prev : INITIAL_PORTFOLIO_ITEMS.map(p => ({ ...p, schoolId: activeSchool.id })));
+        setTimetableSlots(prev => prev.length > 0 ? prev : INITIAL_TIMETABLE_SLOTS.map(t => ({ ...t, schoolId: activeSchool.id })));
+        setBehaviorRecords(prev => prev.length > 0 ? prev : INITIAL_BEHAVIOR_RECORDS.map(b => ({ ...b, schoolId: activeSchool.id })));
+        setSdqAssessments(prev => prev.length > 0 ? prev : INITIAL_SDQ_ASSESSMENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
+        setInfirmaryVisits(prev => prev.length > 0 ? prev : INITIAL_INFIRMARY_VISITS.map(i => ({ ...i, schoolId: activeSchool.id })));
+        setHomeworkSubmissions(prev => prev.length > 0 ? prev : INITIAL_HOMEWORK_SUBMISSIONS.map(h => ({ ...h, schoolId: activeSchool.id })));
         setIsDataReady(true);
         setLoadedSchoolId(activeSchool.id);
       })
@@ -921,6 +932,7 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     school={activeSchool}
                     currentUser={currentUser}
+                    lang={lang}
                     onNavigate={setCurrentTab}
                     onQuickCheckIn={handleQuickCheckIn}
                   />
@@ -1304,6 +1316,8 @@ export const App: React.FC = () => {
           }}
         />
       )}
+      {/* Offline Status Connectivity Banner */}
+      <OfflineIndicator lang={lang} />
     </div>
   );
 };
