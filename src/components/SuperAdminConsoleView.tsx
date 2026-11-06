@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ShieldCheck, 
   KeyRound, 
   Tag, 
   Building2, 
   CheckCircle2, 
+  MailCheck,
   Plus, 
   Save, 
   RotateCcw, 
@@ -19,8 +20,14 @@ import {
   Filter,
   Check,
   X,
-  CreditCard
+  CreditCard,
+  RefreshCw,
 } from 'lucide-react';
+import {
+  approvePendingSchoolRegistration,
+  listPendingSchoolRegistrations,
+  PendingSchoolRegistration,
+} from '../lib/authDb';
 import { 
   School, 
   AuthUser, 
@@ -43,6 +50,7 @@ interface SuperAdminConsoleViewProps {
   allUsers: AuthUser[];
   onToggleUserStatus?: (userId: string) => void;
   lang: AppLanguage;
+  isDemoMode: boolean;
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -56,10 +64,40 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   onUpdateSubscriptionPlans,
   allUsers,
   lang,
+  isDemoMode,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'permissions' | 'promotions' | 'schools'>('permissions');
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools'>('approvals');
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingSchoolRegistration[]>([]);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
+  const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (activeSubTab !== 'approvals' || isDemoMode) return;
+
+    let active = true;
+    setRegistrationsLoading(true);
+    setRegistrationError(null);
+    listPendingSchoolRegistrations()
+      .then((registrations) => {
+        if (active) setPendingRegistrations(registrations);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setRegistrationError(error instanceof Error ? error.message : 'โหลดรายการสมัครที่รออนุมัติไม่สำเร็จ');
+        }
+      })
+      .finally(() => {
+        if (active) setRegistrationsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeSubTab, isDemoMode, registrationRefreshKey]);
 
   // New Promotion Form State
   const [showNewPromoModal, setShowNewPromoModal] = useState(false);
@@ -84,6 +122,25 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const showToast = (msg: string) => {
     setFeedbackToast(msg);
     setTimeout(() => setFeedbackToast(null), 3500);
+  };
+
+  const handleApproveRegistration = async (registration: PendingSchoolRegistration) => {
+    const confirmation = registration.email_confirmed
+      ? `อนุมัติบัญชีผู้ดูแล ${registration.email} และเปิดใช้งานโรงเรียน ${registration.school_name_th} หรือไม่?`
+      : `อีเมล ${registration.email} ยังไม่ยืนยันจากลิงก์ กรุณาตรวจสอบตัวตนผู้สมัครผ่านช่องทางอื่นก่อนดำเนินการ ยืนยันอีเมลและเปิดใช้งานบัญชี/โรงเรียนนี้หรือไม่?`;
+    if (!window.confirm(confirmation)) return;
+
+    setApprovingUserId(registration.user_id);
+    setRegistrationError(null);
+    try {
+      await approvePendingSchoolRegistration(registration.user_id);
+      showToast(`อนุมัติ ${registration.school_name_th} เรียบร้อยแล้ว`);
+      setRegistrationRefreshKey((current) => current + 1);
+    } catch (error) {
+      setRegistrationError(error instanceof Error ? error.message : 'อนุมัติรายการสมัครไม่สำเร็จ');
+    } finally {
+      setApprovingUserId(null);
+    }
   };
 
   // Current active role config
@@ -295,6 +352,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       <div className="flex items-center border-b border-slate-200 gap-2">
         <button
           type="button"
+          onClick={() => setActiveSubTab('approvals')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition ${
+            activeSubTab === 'approvals'
+              ? 'border-blue-700 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <MailCheck className="w-4 h-4" />
+          <span>อนุมัติการสมัครโรงเรียน</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveSubTab('permissions')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition ${
             activeSubTab === 'permissions'
@@ -332,6 +401,107 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           <span>กำกับดูแลสถานศึกษาทั้งหมด ({schools.length} แห่ง)</span>
         </button>
       </div>
+
+      {activeSubTab === 'approvals' && (
+        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">รายการสมัครโรงเรียนที่รอเปิดใช้งาน</h3>
+              <p className="text-xs text-slate-500">
+                อนุมัติเฉพาะผู้ดูแลโรงเรียนใหม่ที่ตรวจสอบตัวตนแล้ว การอนุมัติรายการที่ยังไม่ยืนยันอีเมลจะยืนยันอีเมลและเปิดใช้บัญชี/โรงเรียนด้วย
+              </p>
+            </div>
+            {!isDemoMode && (
+              <button
+                type="button"
+                onClick={() => setRegistrationRefreshKey((current) => current + 1)}
+                disabled={registrationsLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${registrationsLoading ? 'animate-spin' : ''}`} />
+                <span>รีเฟรช</span>
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs text-amber-900">
+            การอนุมัติแทนการยืนยันอีเมลเป็นการข้ามการพิสูจน์การครอบครองอีเมล โปรดตรวจสอบผู้สมัครผ่านช่องทางอื่นก่อนทุกครั้ง
+          </div>
+
+          {isDemoMode ? (
+            <p className="text-sm text-slate-500 py-6 text-center">
+              โหมดสาธิตไม่เชื่อมต่อข้อมูลผู้สมัครจริง กรุณาเข้าสู่ระบบด้วยบัญชี Super Admin เพื่อจัดการคำขอจริง
+            </p>
+          ) : (
+            <>
+              {registrationError && (
+                <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
+                  {registrationError}
+                </div>
+              )}
+              {registrationsLoading ? (
+                <p className="text-sm text-slate-500 py-6 text-center">กำลังโหลดรายการสมัคร...</p>
+              ) : pendingRegistrations.length === 0 && !registrationError ? (
+                <p className="text-sm text-slate-500 py-6 text-center">ไม่มีรายการสมัครโรงเรียนที่รออนุมัติ</p>
+              ) : pendingRegistrations.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-semibold">
+                      <tr>
+                        <th className="py-2.5 px-3">สถานศึกษา</th>
+                        <th className="py-2.5 px-3">ผู้สมัคร / อีเมล</th>
+                        <th className="py-2.5 px-3">วันที่สมัคร</th>
+                        <th className="py-2.5 px-3">สถานะอีเมล</th>
+                        <th className="py-2.5 px-3 text-right">การจัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pendingRegistrations.map((registration) => (
+                        <tr key={registration.user_id} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-900">{registration.school_name_th}</div>
+                            <div className="text-[11px] text-slate-500">{registration.province}</div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-medium text-slate-900">{registration.full_name_th}</div>
+                            <div className="text-[11px] font-mono text-slate-500">{registration.email}</div>
+                          </td>
+                          <td className="py-3 px-3 text-slate-600">
+                            {new Date(registration.registration_created_at).toLocaleString('th-TH')}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              registration.email_confirmed
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {registration.email_confirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => void handleApproveRegistration(registration)}
+                              disabled={approvingUserId !== null}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50 text-[11px] font-bold"
+                            >
+                              {approvingUserId === registration.user_id
+                                ? 'กำลังอนุมัติ...'
+                                : registration.email_confirmed
+                                ? 'อนุมัติบัญชี'
+                                : 'ยืนยันอีเมลและอนุมัติ'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
 
       {/* View 1: RBAC Role & Permission Management */}
       {activeSubTab === 'permissions' && (

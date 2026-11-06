@@ -103,8 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'super_admin_console',
-          labelTh: 'กำหนดสิทธิ์ & โปรโมชั่น',
-          labelEn: 'Permissions & Promotions',
+          labelTh: 'ศูนย์ควบคุมระบบ',
+          labelEn: 'System Control Center',
           icon: ShieldCheck,
           badge: 'MASTER',
           roles: ['super_admin'],

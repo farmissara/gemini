@@ -7,6 +7,19 @@ export interface AuthContext {
   schools: School[];
 }
 
+export interface PendingSchoolRegistration {
+  user_id: string;
+  school_id: string;
+  email: string;
+  full_name_th: string;
+  full_name_en: string;
+  school_name_th: string;
+  school_name_en: string;
+  province: string;
+  registration_created_at: string;
+  email_confirmed: boolean;
+}
+
 interface SchoolRow {
   id: string;
   code: string;
@@ -87,7 +100,9 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
   }
   if (profile.status !== 'active') {
     throw new Error(profile.status === 'pending'
-      ? 'Your account is waiting for approval from your school administrator.'
+      ? profile.role === 'admin'
+        ? 'Your school registration is waiting for approval from a Super Admin.'
+        : 'Your account is waiting for approval from your school administrator.'
       : 'Your account is suspended. Contact your school administrator.');
   }
 
@@ -287,4 +302,23 @@ export async function updateUserProfileInSupabase(user: AuthUser): Promise<void>
     })
     .eq('id', user.id);
   if (error) throw new Error(`Could not update your profile: ${error.message}`);
+}
+
+export async function listPendingSchoolRegistrations(): Promise<PendingSchoolRegistration[]> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.rpc('list_pending_school_registrations');
+  if (error) throw new Error(`Could not load pending school registrations: ${error.message}`);
+  return (data || []) as PendingSchoolRegistration[];
+}
+
+export async function approvePendingSchoolRegistration(userId: string): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client.rpc('approve_pending_school_registration', {
+    target_user_id: userId,
+  });
+  if (error) throw new Error(`Could not approve school registration: ${error.message}`);
 }

@@ -907,6 +907,7 @@ export const App: React.FC = () => {
                     onUpdateSubscriptionPlans={setSubscriptionPlans}
                     allUsers={demoUsers}
                     lang={lang}
+                    isDemoMode={isDemoMode}
                   />
                 )}
 
