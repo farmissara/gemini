@@ -816,3 +816,119 @@ export interface AtRiskStudentForecast {
     sentAt?: string;
   }[];
 }
+
+// 5. Daily Study Streaks, Season Battle Pass & Classroom Perks
+export interface ClassroomPerk {
+  id: string;
+  titleTh: string;
+  titleEn: string;
+  costTokens: number;
+  category: 'homework_pass' | 'seat_choice' | 'coop_coupon' | 'teacher_hint' | 'music_dj';
+  descriptionTh: string;
+  stock: number;
+  iconName: string;
+  redeemedCount: number;
+}
+
+export interface SeasonPassTier {
+  level: number;
+  requiredXp: number;
+  freeRewardTh: string;
+  premiumRewardTh: string;
+  isUnlocked: boolean;
+  isClaimed: boolean;
+}
+
+export interface DailyMicroQuest {
+  id: string;
+  date: string;
+  subject: string;
+  questionTh: string;
+  options: string[];
+  correctIndex: number;
+  explanationTh: string;
+  rewardTokens: number;
+  rewardXp: number;
+}
+
+// 6. Cooperative Boss Raid (Team Peer-Tutoring)
+export interface RaidPartyMember {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  roleTitle: string; // e.g. "แนวหน้าคำนวณ", "จอมเวทไวยากรณ์", "วิศวกรซ่อมแซม"
+  hasAnswered: boolean;
+  damageDealt: number;
+  isHelping: boolean;
+}
+
+export interface RaidParty {
+  id: string;
+  partyName: string;
+  totalDamage: number;
+  members: RaidPartyMember[];
+  comboMultiplier: number;
+}
+
+export interface BossRaidConfig {
+  id: string;
+  bossNameTh: string;
+  bossTitleTh: string;
+  bossMaxHp: number;
+  bossCurrentHp: number;
+  subject: string;
+  topicTh: string;
+  timeRemainingSeconds: number;
+  status: 'waiting' | 'in_battle' | 'defeated' | 'time_out';
+  activeQuestion: {
+    id: string;
+    questionTh: string;
+    options: string[];
+    correctIndex: number;
+    explanationTh: string;
+    baseDamage: number;
+  };
+}
+
+// 7. AI Socratic Voice & Chat Tutor + Teacher Insight
+export interface SocraticChatMessage {
+  id: string;
+  sender: 'student' | 'socratic_tutor';
+  textTh: string;
+  timestamp: string;
+  scaffoldingHint?: string;
+  followUpPrompt?: string;
+  audioPlaying?: boolean;
+}
+
+export interface TeacherStruggleInsight {
+  id: string;
+  subject: string;
+  topicTh: string;
+  studentStrugglePercent: number; // e.g. 34%
+  questionCount: number;
+  commonMisconceptionTh: string;
+  suggestedLessonPlanTh: string;
+  generatedAt: string;
+}
+
+// 8. Real-World Snap & Solve Quests
+export interface RealWorldSnapQuest {
+  id: string;
+  subject: 'biology' | 'math' | 'physics' | 'english' | 'social';
+  titleTh: string;
+  titleEn: string;
+  scenarioTh: string;
+  instructionTh: string;
+  exampleObjectTh: string;
+  rewardXp: number;
+  rewardTokens: number;
+  status: 'available' | 'submitted' | 'verified';
+  submittedPhotoUrl?: string;
+  aiVerificationResult?: {
+    identifiedObject: string;
+    confidencePercent: number;
+    feedbackTh: string;
+    isPass: boolean;
+  };
+}

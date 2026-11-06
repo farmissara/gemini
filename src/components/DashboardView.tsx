@@ -27,7 +27,9 @@ import {
   FlaskConical,
   BrainCircuit,
   Trophy,
-  ShieldAlert
+  ShieldAlert,
+  Flame,
+  Swords
 } from 'lucide-react';
 import { 
   Student, 
@@ -274,6 +276,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           >
             <Camera className="w-4 h-4 text-slate-950" />
             <span>{lang === 'th' ? 'ถ่ายรูปเช็กชื่อมือถือ' : 'Mobile Selfie Check-in'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('study_streak')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-xs font-black shadow-md shadow-orange-500/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <Flame className="w-4 h-4 text-yellow-300" />
+            <span>🔥 {lang === 'th' ? 'สตรีค & แลกสิทธิ์' : 'Streak & Perks'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('boss_raid')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-md shadow-red-600/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <Swords className="w-4 h-4 text-white" />
+            <span>⚔️ {lang === 'th' ? 'เรดบอสห้องเรียน' : 'Co-op Boss Raid'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('socratic_tutor')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black shadow-md shadow-teal-500/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <BrainCircuit className="w-4 h-4 text-slate-950" />
+            <span>💡 {lang === 'th' ? 'พี่รหัส AI ชวนคิด' : 'Socratic Tutor'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('realworld_quests')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <Camera className="w-4 h-4 text-slate-950" />
+            <span>📸 {lang === 'th' ? 'เควสต์ชีวิตจริง AI' : 'Snap Quests'}</span>
           </button>
 
           <button

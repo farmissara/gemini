@@ -1,0 +1,463 @@
+import React, { useState } from 'react';
+import { 
+  BrainCircuit, 
+  Sparkles, 
+  Mic, 
+  MicOff, 
+  Volume2, 
+  Send, 
+  HelpCircle, 
+  Lightbulb, 
+  BarChart3, 
+  MessageSquare, 
+  ArrowRight, 
+  Clock, 
+  User, 
+  CheckCircle2, 
+  Flame,
+  FileText,
+  SlidersHorizontal,
+  ChevronRight
+} from 'lucide-react';
+import { 
+  SocraticChatMessage, 
+  TeacherStruggleInsight, 
+  AppLanguage, 
+  UserRole 
+} from '../types';
+import { 
+  INITIAL_SOCRATIC_MESSAGES, 
+  INITIAL_TEACHER_INSIGHTS 
+} from '../data/innovativeFeaturesData';
+
+interface SocraticTutorViewProps {
+  lang?: AppLanguage;
+  currentRole?: UserRole;
+  currentUserName?: string;
+}
+
+export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
+  lang = 'th',
+  currentRole = 'student',
+  currentUserName = 'ด.ช. ภูมิใจ รักเรียน'
+}) => {
+  const [activeTab, setActiveTab] = useState<'tutor_chat' | 'teacher_insights'>(
+    currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin' 
+      ? 'teacher_insights' 
+      : 'tutor_chat'
+  );
+
+  // Chat State
+  const [messages, setMessages] = useState<SocraticChatMessage[]>(INITIAL_SOCRATIC_MESSAGES);
+  const [inputText, setInputText] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeakingId, setIsSpeakingId] = useState<string | null>(null);
+
+  // Teacher Insights State
+  const [insights, setInsights] = useState<TeacherStruggleInsight[]>(INITIAL_TEACHER_INSIGHTS);
+  const [selectedInsight, setSelectedInsight] = useState<TeacherStruggleInsight | null>(INITIAL_TEACHER_INSIGHTS[0]);
+  const [generatedTalkingPoints, setGeneratedTalkingPoints] = useState<string | null>(null);
+
+  // Send message in chat
+  const handleSendMessage = (textToSend?: string) => {
+    const text = textToSend || inputText;
+    if (!text.trim()) return;
+
+    const newStudentMsg: SocraticChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'student',
+      textTh: text,
+      timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages(prev => [...prev, newStudentMsg]);
+    setInputText('');
+
+    // Generate simulated Socratic AI response
+    setTimeout(() => {
+      let aiText = 'เป็นคำถามที่น่าสนใจมากครับน้องภูมิใจ! ลองค่อยๆ แยกแยะองค์ประกอบดูนะครับ 💡';
+      let hint = 'ลองตรวจสอบตัวแปรที่โจทย์ให้มาว่ามีอะไรบ้าง';
+      let followUp = 'ก. ความเร็ว หรือ ข. ความเร่ง?';
+
+      if (text.includes('ตก') || text.includes('ฟิสิกส์') || text.includes('ความเร่ง')) {
+        aiText = 'ทำไมวัตถุเบาและหนักถึงตกถึงพื้นพร้อมกันในสุญญากาศ? ลองนึกถึงกฎของนิวตัน $F = ma$ และ $F_g = mg$ ดูสิครับ';
+        hint = 'มวล $m$ ปรากฏอยู่ทั้งสองข้างของสมการ สามารถตัดกันได้!';
+        followUp = 'แปลว่าความเร่ง $a$ ขึ้นอยู่กับมวลของวัตถุหรือไม่?';
+      } else if (text.includes('กรด') || text.includes('เบส') || text.includes('เคมี')) {
+        aiText = 'หลักการสำคัญของกรด-เบสคือ การถ่ายโอนโปรตอน (H+) เมื่อกรดแก่แตกตัวหมด จะไม่มีการแย่ง H+ คืนกลับมา';
+        hint = 'พิจารณาว่า HCl แตกตัวให้ H+ และ Cl- ในน้ำอย่างสมบูรณ์';
+        followUp = 'สารละลายที่ได้จะมีค่า pH ต่ำกว่า 7 หรือเท่ากับ 7?';
+      } else if (text.includes('either') || text.includes('neither') || text.includes('อังกฤษ')) {
+        aiText = 'สำหรับโครงสร้าง "Either A or B" หรือ "Neither A nor B" ภาษาอังกฤษใช้หลัก Proximity Rule (ความใกล้ชิด)';
+        hint = 'มองหากริยา แล้วถอยหลังกลับไปหาประธานตัวที่อยู่ติดกริยาที่สุด';
+        followUp = 'ถ้าประธานตัวหลังเป็นเอกพจน์ กริยาต้องเติม -s หรือไม่?';
+      }
+
+      const newAiMsg: SocraticChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'socratic_tutor',
+        textTh: aiText,
+        timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+        scaffoldingHint: hint,
+        followUpPrompt: followUp,
+      };
+
+      setMessages(prev => [...prev, newAiMsg]);
+    }, 700);
+  };
+
+  // Mic Simulation
+  const handleToggleMic = () => {
+    if (!isRecording) {
+      setIsRecording(true);
+      setTimeout(() => {
+        setIsRecording(false);
+        setInputText('พี่รหัส AI ครับ ทำไมวัตถุเบากับหนักถึงตกถึงพื้นพร้อมกัน?');
+      }, 2500);
+    } else {
+      setIsRecording(false);
+    }
+  };
+
+  // TTS Simulation
+  const handleToggleSpeak = (msgId: string) => {
+    if (isSpeakingId === msgId) {
+      setIsSpeakingId(null);
+    } else {
+      setIsSpeakingId(msgId);
+      setTimeout(() => setIsSpeakingId(null), 4000);
+    }
+  };
+
+  // Teacher Generate Recap
+  const handleGenerateRecapPoints = (insight: TeacherStruggleInsight) => {
+    setGeneratedTalkingPoints(
+      `📌 แผนสรุปจุดเข้าใจผิด 2 นาที (Micro-Recap) สำหรับคาบถัดไป:\n\n` +
+      `1. [Hook 30 วินาที] ทักทายนักเรียนพร้อมชูบีกเกอร์หรือภาพ: "ใครจำได้บ้างว่าทำไมหยดฟีนอล์ฟทาลีนแล้วถึงไม่เปลี่ยนสีทันที?"\n` +
+      `2. [Clarify 1 นาที] เน้นความต่าง: จุดสมมูล (โมลกรด = โมลเบส) VS จุดยุติ (สีเปลี่ยนเพราะอินดิเคเตอร์เปลี่ยนรูป)\n` +
+      `3. [Check 30 วินาที] ถามเร็ว 1 คำถามเพื่อเช็กความเข้าใจ: "ถ้าไทเทรต HCl กับ NaOH จุดสมมูลคือ pH เท่าใด?" -> ให้นักเรียนชูนิ้ว 7 นิ้วพร้อมกัน`
+    );
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Top Banner Header */}
+      <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-teal-600/30 relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-teal-500/10 to-transparent pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-semibold">
+              <BrainCircuit className="w-4 h-4 text-teal-300" />
+              <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ข้อสงสัยครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+              <span>{lang === 'th' ? 'AI Socratic Voice Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
+            </h1>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              {lang === 'th' 
+                ? 'ระบบติวเตอร์ AI 24 ชม. ที่ไม่บอกคำตอบตรงๆ แต่ค่อยๆ ชวนคิดทีละสเต็ป พร้อมแดชบอร์ดสรุปจุดเข้าใจผิดของทั้งห้องเรียนให้คุณครูนำไปเปิดประเด็นสอนซ้ำได้ตรงเป้า'
+                : 'Scaffolding dialogue tutor that encourages deep thinking, paired with aggregated teacher struggle analytics.'}
+            </p>
+          </div>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md border border-white/20 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('tutor_chat')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === 'tutor_chat'
+                  ? 'bg-teal-500 text-slate-950 shadow-md font-black'
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>{lang === 'th' ? 'ห้องแชทติวเตอร์ AI' : 'Student AI Chat'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('teacher_insights')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === 'teacher_insights'
+                  ? 'bg-indigo-600 text-white shadow-md font-black'
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>{lang === 'th' ? 'แดชบอร์ดคุณครู' : 'Teacher Insights'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mode 1: Student Socratic Voice & Chat Tutor */}
+      {activeTab === 'tutor_chat' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Main Chat Stream */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between h-[580px]">
+            {/* Chat Messages Log */}
+            <div className="overflow-y-auto space-y-4 pr-2 flex-1">
+              {messages.map((msg) => {
+                const isStudent = msg.sender === 'student';
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex items-start gap-3 ${isStudent ? 'flex-row-reverse' : ''}`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                      isStudent 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-teal-500 text-slate-950 shadow-sm'
+                    }`}>
+                      {isStudent ? <User className="w-4 h-4" /> : <BrainCircuit className="w-4 h-4" />}
+                    </div>
+
+                    <div className={`max-w-lg space-y-2 ${isStudent ? 'text-right' : ''}`}>
+                      <div className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                        isStudent 
+                          ? 'bg-indigo-600 text-white rounded-tr-none' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-tl-none border border-slate-200 dark:border-slate-700'
+                      }`}>
+                        <p>{msg.textTh}</p>
+
+                        {/* Socratic Scaffolding Box */}
+                        {msg.scaffoldingHint && (
+                          <div className="mt-3 p-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-medium space-y-1 text-left">
+                            <p className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
+                              <Lightbulb className="w-3.5 h-3.5" />
+                              <span>{lang === 'th' ? 'คำใบ้ชวนคิด:' : 'Scaffolding Hint:'}</span>
+                            </p>
+                            <p>{msg.scaffoldingHint}</p>
+                          </div>
+                        )}
+
+                        {/* Follow up question */}
+                        {msg.followUpPrompt && (
+                          <div className="mt-2 text-left text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                            👉 {msg.followUpPrompt}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 px-1">
+                        <span>{msg.timestamp}</span>
+                        {!isStudent && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSpeak(msg.id)}
+                            className="text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                          >
+                            <Volume2 className="w-3 h-3" />
+                            <span>{isSpeakingId === msg.id ? (lang === 'th' ? 'กำลังอ่าน...' : 'Playing...') : (lang === 'th' ? 'ฟังเสียง' : 'Listen')}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Input Bar with Voice Button */}
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+              {isRecording && (
+                <div className="mb-2 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 text-rose-700 text-xs flex items-center gap-2 animate-pulse">
+                  <Mic className="w-4 h-4 text-rose-600" />
+                  <span>{lang === 'th' ? 'กำลังรับฟังเสียงพูดของคุณ... (พูดคำถามได้เลยครับ)' : 'Listening to your voice query...'}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleMic}
+                  className={`p-3 rounded-xl transition cursor-pointer ${
+                    isRecording 
+                      ? 'bg-rose-600 text-white animate-bounce' 
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                  title="Voice Input"
+                >
+                  {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </button>
+
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder={lang === 'th' ? 'พิมพ์คำถาม หรือกดไมค์เพื่อพูดคุยกับพี่รหัส AI...' : 'Ask a question or use voice mic...'}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage()}
+                  className="p-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold transition shadow-xs cursor-pointer"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Preset Curiosity Questions & Socratic Guidelines */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Quick Curiosity Starters */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>{lang === 'th' ? 'คำถามชวนสงสัยยอดฮิต' : 'Curiosity Starters'}</span>
+              </h3>
+
+              <div className="space-y-2">
+                {[
+                  'ทำไมวัตถุเบากับหนักถึงตกถึงพื้นพร้อมกันในสุญญากาศ?',
+                  'การหาจุดสะเทินกรด-เบส ข้อนี้ต้องเริ่มดูจากตรงไหน?',
+                  'เทคนิคจำกฎ Proximity ของ Neither...nor ทำอย่างไร?',
+                  'ทำไมมุมยิง 45 องศาถึงได้ระยะทางไกลที่สุด?',
+                ].map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendMessage(q)}
+                    className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-teal-50 dark:hover:bg-teal-950/30 hover:border-teal-300 text-xs text-slate-800 dark:text-slate-200 transition flex items-center justify-between cursor-pointer"
+                  >
+                    <span>{q}</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Socratic Philosophy Card */}
+            <div className="p-4 rounded-xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 text-xs text-slate-700 dark:text-slate-300 space-y-2">
+              <p className="font-bold text-teal-800 dark:text-teal-200 flex items-center gap-1.5">
+                <HelpCircle className="w-4 h-4" />
+                <span>{lang === 'th' ? 'ทำไมพี่รหัส AI ถึงไม่บอกคำตอบตรงๆ?' : 'Why Socratic Method?'}</span>
+              </p>
+              <p className="leading-relaxed text-[11px]">
+                {lang === 'th' 
+                  ? 'การได้รับคำตอบสำเร็จรูปทำให้สมองหยุดคิด แต่การค่อยๆ ต่อจิ๊กซอว์ทางความคิดทีละก้าว จะสร้างเซลล์ประสาทความจำถาวร (Long-term retention) ทำให้น้องทำข้อสอบได้เองในห้องสอบจริง!' 
+                  : 'Socratic dialogue promotes critical reasoning over rote memorization.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mode 2: Teacher Struggle Insights Dashboard */}
+      {activeTab === 'teacher_insights' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Top 5 Misconceptions List */}
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-indigo-600" />
+                <span>{lang === 'th' ? 'Top หัวข้อที่นักเรียนแอบถาม AI บ่อยที่สุดในสัปดาห์นี้' : 'Top Student Struggle Topics'}</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {lang === 'th' ? 'ประมวลผลจากคำถามแชทจริงของนักเรียนในห้องเรียน โดยไม่ระบุตัวตน' : 'Aggregated from anonymous student tutoring chats'}
+              </p>
+            </div>
+
+            <div className="space-y-3 mt-4">
+              {insights.map((insight) => {
+                const isSelected = selectedInsight?.id === insight.id;
+                return (
+                  <div
+                    key={insight.id}
+                    onClick={() => {
+                      setSelectedInsight(insight);
+                      setGeneratedTalkingPoints(null);
+                    }}
+                    className={`p-4 rounded-xl border transition cursor-pointer ${
+                      isSelected 
+                        ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300">
+                            {insight.subject}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {insight.generatedAt}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                          {insight.topicTh}
+                        </h4>
+                      </div>
+
+                      {/* Struggle Rate */}
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-semibold text-slate-500">
+                          {lang === 'th' ? 'สัดส่วนที่สงสัย' : 'Struggle Rate'}
+                        </span>
+                        <div className="text-xl font-black text-rose-600 dark:text-rose-400">
+                          {insight.studentStrugglePercent}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+                      {insight.commonMisconceptionTh}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right Column: 1-Click Lesson Recap Generator */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-teal-600" />
+                <span>{lang === 'th' ? 'สร้างบทสรุปสอนซ้ำ 2 นาที (Micro-Recap Generator)' : '2-Min Micro-Recap Generator'}</span>
+              </h3>
+
+              {selectedInsight ? (
+                <div className="space-y-4 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <p className="font-bold text-indigo-700 dark:text-indigo-300">
+                      {lang === 'th' ? 'หัวข้อที่เลือก:' : 'Selected Topic:'} {selectedInsight.topicTh}
+                    </p>
+                    <p className="text-slate-500">
+                      {selectedInsight.suggestedLessonPlanTh}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateRecapPoints(selectedInsight)}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-yellow-300" />
+                    <span>{lang === 'th' ? 'สร้างสคริปต์สอนสรุป 2 นาทีทันที' : 'Generate 2-Min Lecture Script'}</span>
+                  </button>
+
+                  {/* Output script */}
+                  {generatedTalkingPoints && (
+                    <div className="p-4 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white leading-relaxed font-mono whitespace-pre-line text-xs animate-fade-in">
+                      {generatedTalkingPoints}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  {lang === 'th' ? 'เลือกหัวข้อจากรายการทางซ้ายมือ' : 'Select a topic from the left matrix'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

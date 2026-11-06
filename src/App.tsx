@@ -109,6 +109,10 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { AiDiagnosticLearningView } from './components/AiDiagnosticLearningView';
 import { HallOfFame3DView } from './components/HallOfFame3DView';
 import { ExecutiveEarlyWarningView } from './components/ExecutiveEarlyWarningView';
+import { StudyStreakQuestPassView } from './components/StudyStreakQuestPassView';
+import { CoopBossRaidView } from './components/CoopBossRaidView';
+import { SocraticTutorView } from './components/SocraticTutorView';
+import { RealWorldSnapQuestView } from './components/RealWorldSnapQuestView';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
@@ -997,6 +1001,39 @@ export const App: React.FC = () => {
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
+                  />
+                )}
+
+                {currentTab === 'study_streak' && (
+                  <StudyStreakQuestPassView
+                    lang={lang}
+                    currentRole={currentRole}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  />
+                )}
+
+                {currentTab === 'boss_raid' && (
+                  <CoopBossRaidView
+                    lang={lang}
+                    currentRole={currentRole}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  />
+                )}
+
+                {currentTab === 'socratic_tutor' && (
+                  <SocraticTutorView
+                    lang={lang}
+                    currentRole={currentRole}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  />
+                )}
+
+                {currentTab === 'realworld_quests' && (
+                  <RealWorldSnapQuestView
+                    lang={lang}
+                    currentRole={currentRole}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                    onEarnRewards={handleEarnRewards}
                   />
                 )}
 

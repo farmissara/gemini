@@ -24,6 +24,9 @@ import {
   BrainCircuit,
   Trophy,
   ShieldAlert,
+  Flame,
+  Camera,
+  Sparkles,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
@@ -39,6 +42,9 @@ export type NavTab =
   | 'courses' 
   | 'timetable'
   | 'homework'
+  | 'study_streak'
+  | 'socratic_tutor'
+  | 'realworld_quests'
   | 'ai_diagnostic'
   | 'attendance' 
   | 'mobile_checkin'
@@ -47,6 +53,7 @@ export type NavTab =
   | 'infirmary'
   | 'subject_labs'
   | 'games'
+  | 'boss_raid'
   | 'hall_of_fame'
   | 'portfolio'
   | 'gradebook' 
@@ -214,6 +221,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'แฟ้มผลงานดิจิทัล',
           labelEn: 'Student Portfolios',
           icon: FolderGit2,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'study_streak',
+          labelTh: 'สตรีคประจำวัน & แลกสิทธิ์ (Pass)',
+          labelEn: 'Daily Streak & Perks Pass',
+          icon: Flame,
+          badge: '🔥 HOT',
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'socratic_tutor',
+          labelTh: 'พี่รหัส AI ชวนคิด & ข้อสงสัยครู',
+          labelEn: 'AI Socratic Tutor & Insights',
+          icon: Sparkles,
+          badge: '24H',
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'realworld_quests',
+          labelTh: 'เควสต์สำรวจชีวิตจริง AI Vision',
+          labelEn: 'Real-World Snap Quests',
+          icon: Camera,
+          badge: 'VISION',
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'boss_raid',
+          labelTh: 'เรดบอสห้องเรียน & ติวเพื่อน',
+          labelEn: 'Co-op Boss Raid & Assist',
+          icon: Swords,
+          badge: 'CO-OP',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
