@@ -175,6 +175,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Top honor students
   const topStudents = [...students].sort((a, b) => b.gpa - a.gpa).slice(0, 4);
 
+  // Export selected date attendance to Excel CSV
+  const handleExportSelectedDateCsv = () => {
+    const headers = [
+      'วันที่',
+      'เวลา',
+      'รหัสประจำตัว',
+      'ชื่อ-นามสกุล',
+      'บทบาท',
+      'ชั้น/ห้อง/กลุ่มสาระ',
+      'ประเภทการบันทึก',
+      'สถานะ',
+      'จุดตรวจ/ประตู',
+      'ระยะห่าง GPS (ม.)',
+      'มีรูปถ่ายเซลฟี่',
+      'หมายเหตุ'
+    ];
+
+    const rows = filteredAttendanceByDate.map(log => [
+      log.date,
+      log.time,
+      log.studentId,
+      `"${log.userName || (students.find(s => s.id === log.studentId)?.firstNameTh + ' ' + students.find(s => s.id === log.studentId)?.lastNameTh) || 'ผู้ใช้งาน'}"`,
+      log.userType === 'teacher' ? 'ครู' : 'นักเรียน',
+      log.userDepartmentOrRoom || (students.find(s => s.id === log.studentId)?.room) || '-',
+      log.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน',
+      log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : log.status === 'sick' ? 'ลาป่วย' : log.status === 'leave' ? 'ลากิจ' : 'ขาด',
+      log.location?.geofenceZoneName || 'ประตูโรงเรียน',
+      log.location?.distanceMeters !== undefined ? `${log.location.distanceMeters}` : '-',
+      log.photoUrl ? 'ใช่' : 'ไม่ใช่',
+      `"${log.remarks || ''}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `attendance_${selectedDate}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Welcome Header */}
@@ -302,14 +344,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('mobile_checkin')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition shadow-xs self-start md:self-auto"
-          >
-            <Smartphone className="w-4 h-4" />
-            <span>เปิดหน้าถ่ายรูปเช็กชื่อ</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={handleExportSelectedDateCsv}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>ส่งออก Excel ({selectedDate})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('mobile_checkin')}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition shadow-xs"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>เปิดหน้าถ่ายรูปเช็กชื่อ</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter and Date Selector Bar */}

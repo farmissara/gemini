@@ -289,6 +289,40 @@ export interface AttendanceRecord {
   lineNotificationSent: boolean;
 }
 
+export type LeaveType = 'sick' | 'personal' | 'official' | 'vacation';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected';
+
+export interface LeaveRequest {
+  id: string;
+  schoolId?: string;
+  userId: string;
+  userName: string;
+  userRole: 'student' | 'teacher';
+  gradeLevelOrDepartment?: string;
+  leaveType: LeaveType;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  reason: string;
+  attachmentUrl?: string; // photo of medical certificate or document
+  status: LeaveStatus;
+  approvedBy?: string;
+  approvalRemarks?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CampusGateGeofence {
+  id: string;
+  schoolId?: string;
+  nameTh: string;
+  nameEn: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  isPrimary: boolean;
+  type: 'main_gate' | 'north_gate' | 'canteen' | 'bus_dropoff' | 'staff_parking';
+}
+
 export interface LessonMaterial {
   name: string;
   type: 'pdf' | 'doc' | 'video' | 'link';

@@ -32,7 +32,10 @@ import {
   HomeworkSubmission,
   RolePermissionConfig,
   PromotionCampaign,
-  SchoolSubscriptionPlan
+  SchoolSubscriptionPlan,
+  LeaveRequest,
+  LeaveStatus,
+  CampusGateGeofence
 } from './types';
 import { 
   INITIAL_SCHOOLS,
@@ -59,6 +62,8 @@ import {
   INITIAL_ROLE_PERMISSIONS,
   INITIAL_PROMOTIONS,
   INITIAL_SUBSCRIPTION_PLANS,
+  DEFAULT_CAMPUS_GATES,
+  INITIAL_LEAVE_REQUESTS,
   DEMO_USERS,
 } from './data/mockData';
 import {
@@ -153,6 +158,8 @@ export const App: React.FC = () => {
   const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>(INITIAL_SDQ_ASSESSMENTS);
   const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>(INITIAL_INFIRMARY_VISITS);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(INITIAL_HOMEWORK_SUBMISSIONS);
+  const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>(DEFAULT_CAMPUS_GATES);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
 
   // Modals
   const [selectedStudentForReport, setSelectedStudentForReport] = useState<Student | null>(null);
@@ -525,6 +532,50 @@ export const App: React.FC = () => {
       }
       return updated;
     });
+  };
+
+  const handleAddLeaveRequest = (req: LeaveRequest) => {
+    setLeaveRequests(prev => [req, ...prev]);
+  };
+
+  const handleUpdateLeaveStatus = (reqId: string, status: LeaveStatus, remarks?: string) => {
+    setLeaveRequests(prev => prev.map(req => {
+      if (req.id !== reqId) return req;
+      return {
+        ...req,
+        status,
+        approvalRemarks: remarks || req.approvalRemarks,
+        approvedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ฝ่ายบริหารวิชาการ'
+      };
+    }));
+
+    // If approved and the leave covers today, automatically reflect in today's attendance
+    if (status === 'approved') {
+      const targetReq = leaveRequests.find(r => r.id === reqId);
+      if (targetReq) {
+        const todayStr = getLocalDateString();
+        if (targetReq.startDate <= todayStr && targetReq.endDate >= todayStr) {
+          const attStatus: AttendanceStatus = targetReq.leaveType === 'sick' ? 'sick' : 'leave';
+          handleRecordAttendance(
+            targetReq.userId,
+            attStatus,
+            `อนุมัติใบลาออนไลน์: ${targetReq.reason} (${targetReq.leaveType === 'sick' ? 'ลาป่วย' : 'ลากิจ'})`,
+            'manual',
+            {
+              recordType: 'check_in',
+              userName: targetReq.userName,
+              userRole: targetReq.userRole === 'student' ? 'นักเรียน' : 'ครู',
+              userDepartmentOrRoom: targetReq.gradeLevelOrDepartment,
+              userType: targetReq.userRole
+            }
+          );
+        }
+      }
+    }
+  };
+
+  const handleUpdateCampusGates = (gates: CampusGateGeofence[]) => {
+    setCampusGates(gates);
   };
 
   const handleQuickCheckIn = (studentId: string) => {
@@ -951,8 +1002,12 @@ export const App: React.FC = () => {
                 {currentTab === 'attendance' && (
                   <AttendanceView
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     attendance={schoolAttendance}
+                    leaveRequests={leaveRequests}
+                    campusGates={campusGates}
                     onRecordAttendance={handleRecordAttendance}
+                    onUpdateLeaveStatus={handleUpdateLeaveStatus}
                   />
                 )}
 
@@ -965,9 +1020,12 @@ export const App: React.FC = () => {
                     periodAttendance={schoolPeriodAttendance}
                     currentUser={currentUser}
                     school={activeSchool}
+                    campusGates={campusGates}
+                    leaveRequests={leaveRequests}
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onRecordPeriodAttendance={handleRecordPeriodAttendance}
+                    onAddLeaveRequest={handleAddLeaveRequest}
                   />
                 )}
 
@@ -1068,9 +1126,11 @@ export const App: React.FC = () => {
                 grades={schoolGrades}
                 courses={schoolCourses}
                 systemConfig={systemConfig}
+                leaveRequests={leaveRequests}
                 lang={lang}
                 onPayInvoice={handlePayInvoice}
                 onOpenReportCard={setSelectedStudentForReport}
+                onAddLeaveRequest={handleAddLeaveRequest}
               />
             )}
           </div>

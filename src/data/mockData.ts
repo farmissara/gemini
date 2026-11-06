@@ -23,7 +23,9 @@ import {
   RolePermissionConfig,
   PromotionCampaign,
   SchoolSubscriptionPlan,
-  Teacher
+  Teacher,
+  LeaveRequest,
+  CampusGateGeofence
 } from '../types';
 import { getLocalDateString } from '../lib/date';
 
@@ -2714,3 +2716,101 @@ export const INITIAL_SUBSCRIPTION_PLANS: SchoolSubscriptionPlan[] = [
     expiryDate: '2027-05-15',
   },
 ];
+
+export const DEFAULT_CAMPUS_GATES: CampusGateGeofence[] = [
+  {
+    id: 'gate-1',
+    schoolId: 'sch-1',
+    nameTh: 'ประตูใหญ่ด้านหน้า (Main Gate ถนนวิทยุ)',
+    nameEn: 'Main Gate (Witthayu Road)',
+    lat: 13.736717,
+    lng: 100.523186,
+    radiusMeters: 300,
+    isPrimary: true,
+    type: 'main_gate'
+  },
+  {
+    id: 'gate-2',
+    schoolId: 'sch-1',
+    nameTh: 'ประตูทิศเหนือ & โรงอาหาร (North Canteen Gate)',
+    nameEn: 'North Gate & Canteen',
+    lat: 13.737150,
+    lng: 100.523420,
+    radiusMeters: 250,
+    isPrimary: false,
+    type: 'north_gate'
+  },
+  {
+    id: 'gate-3',
+    schoolId: 'sch-1',
+    nameTh: 'จุดรับ-ส่งนักเรียนรถตู้โรงเรียน (School Bus Drop-off)',
+    nameEn: 'School Bus Drop-off Area',
+    lat: 13.736400,
+    lng: 100.522900,
+    radiusMeters: 200,
+    isPrimary: false,
+    type: 'bus_dropoff'
+  },
+  {
+    id: 'gate-4',
+    schoolId: 'sch-1',
+    nameTh: 'ลานจอดรถครูและบุคลากร (Staff & Faculty Parking)',
+    nameEn: 'Staff & Faculty Parking Lot',
+    lat: 13.736900,
+    lng: 100.522600,
+    radiusMeters: 200,
+    isPrimary: false,
+    type: 'staff_parking'
+  }
+];
+
+export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
+  {
+    id: 'leave-1',
+    schoolId: 'sch-1',
+    userId: 'stu-4',
+    userName: 'ณิชารีย์ โสภณกุล',
+    userRole: 'student',
+    gradeLevelOrDepartment: 'ม.5 ห้อง 501',
+    leaveType: 'sick',
+    startDate: getLocalDateString(),
+    endDate: getLocalDateString(),
+    reason: 'มีไข้สูง 38.5 องศา และเจ็บคอ แพทย์สั่งให้พักผ่อนที่บ้าน 1 วัน',
+    attachmentUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500&auto=format&fit=crop&q=80',
+    status: 'approved',
+    approvedBy: 'อ.ดร. นริศรา รัตนโกสินทร์',
+    approvalRemarks: 'อนุมัติการลาป่วย พักรักษาตัวให้หายดี',
+    createdAt: `${getLocalDateString()} 06:45:00`
+  },
+  {
+    id: 'leave-2',
+    schoolId: 'sch-1',
+    userId: 'stu-3',
+    userName: 'กิตติศักดิ์ เจริญพร',
+    userRole: 'student',
+    gradeLevelOrDepartment: 'ม.4 ห้อง 402',
+    leaveType: 'personal',
+    startDate: getLocalDateString(new Date(Date.now() + 86400000)),
+    endDate: getLocalDateString(new Date(Date.now() + 86400000)),
+    reason: 'ลากิจร่วมงานพระราชทานเพลิงศพญาติผู้ใหญ่ ณ จังหวัดเชียงใหม่',
+    status: 'pending',
+    createdAt: `${getLocalDateString()} 08:30:00`
+  },
+  {
+    id: 'leave-3',
+    schoolId: 'sch-1',
+    userId: 'tch-2',
+    userName: 'อ. พงศ์ศิริ จันทร์ทรงกลด',
+    userRole: 'teacher',
+    gradeLevelOrDepartment: 'กลุ่มสาระฯ คณิตศาสตร์',
+    leaveType: 'official',
+    startDate: getLocalDateString(new Date(Date.now() + 2 * 86400000)),
+    endDate: getLocalDateString(new Date(Date.now() + 3 * 86400000)),
+    reason: 'ไปราชการเป็นวิทยากรการอบรมสะเต็มศึกษา (STEM Education) ณ สพฐ.',
+    status: 'approved',
+    approvedBy: 'ผู้อำนวยการโรงเรียน',
+    approvalRemarks: 'อนุมัติไปราชการ พร้อมฝากสอนเรียบร้อย',
+    createdAt: `${getLocalDateString()} 09:15:00`
+  }
+];
+

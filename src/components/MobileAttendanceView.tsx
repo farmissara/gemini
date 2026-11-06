@@ -19,7 +19,15 @@ import {
   X,
   Volume2,
   VolumeX,
-  ArrowRight
+  ArrowRight,
+  FileText,
+  Send,
+  Upload,
+  Calendar,
+  MessageCircle,
+  ExternalLink,
+  ChevronRight,
+  FileCheck2
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { 
@@ -33,8 +41,12 @@ import {
   AppLanguage,
   School,
   AttendanceCheckType,
-  AttendanceUserType
+  AttendanceUserType,
+  CampusGateGeofence,
+  LeaveRequest,
+  LeaveType
 } from '../types';
+import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -44,6 +56,8 @@ interface MobileAttendanceViewProps {
   periodAttendance: PeriodAttendanceRecord[];
   currentUser: AuthUser | null;
   school?: School;
+  campusGates?: CampusGateGeofence[];
+  leaveRequests?: LeaveRequest[];
   lang: AppLanguage;
   onRecordAttendance: (
     studentId: string,
@@ -64,6 +78,7 @@ interface MobileAttendanceViewProps {
     }
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
+  onAddLeaveRequest?: (req: LeaveRequest) => void;
 }
 
 export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
@@ -73,17 +88,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   attendance: _attendance,
   periodAttendance,
   currentUser,
-  school,
+  school: _school,
+  campusGates = DEFAULT_CAMPUS_GATES,
+  leaveRequests = [],
   lang,
   onRecordAttendance,
-  onRecordPeriodAttendance
+  onRecordPeriodAttendance,
+  onAddLeaveRequest
 }) => {
-  const [subTab, setSubTab] = useState<'selfie_mobile' | 'teacher_proxy' | 'period_checkin'>('selfie_mobile');
+  const [subTab, setSubTab] = useState<'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>('selfie_mobile');
 
   // -------------------------------------------------------------
-  // 1. MOBILE SELFIE CHECK-IN/OUT STATE (REQUIREMENT 1)
+  // 1. MOBILE SELFIE CHECK-IN/OUT & MULTI-GATE STATE
   // -------------------------------------------------------------
-  // User type: student or teacher
   const [activeUserType, setActiveUserType] = useState<AttendanceUserType>(
     currentUser?.role === 'teacher' ? 'teacher' : 'student'
   );
@@ -95,16 +112,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   );
   const [checkType, setCheckType] = useState<AttendanceCheckType>('check_in');
 
-  // GPS Geofence State (School center defaults to Sathit/EduVerse Academy: 13.736717, 100.523186)
-  const schoolLat = 13.736717;
-  const schoolLng = 100.523186;
-  const geofenceRadiusLimit = 300; // in meters
+  // Selected or nearest gate
+  const [selectedGateId, setSelectedGateId] = useState<string>(campusGates[0]?.id || 'gate-1');
+  const selectedGate = campusGates.find(g => g.id === selectedGateId) || campusGates[0];
 
   const [currentGpsDistance, setCurrentGpsDistance] = useState<number>(18); // Default: 18m inside campus
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [realGpsCoords, setRealGpsCoords] = useState<{ lat: number; lng: number } | null>({
-    lat: schoolLat + 0.0001,
-    lng: schoolLng + 0.0001
+    lat: selectedGate.lat + 0.0001,
+    lng: selectedGate.lng + 0.0001
   });
 
   // Camera Live Feed & Selfie Snapshot
@@ -116,7 +132,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [isFlashActive, setIsFlashActive] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Success Feedback state
+  // Success Feedback state & LINE Flex Message Preview
   const [checkinSuccessFeedback, setCheckinSuccessFeedback] = useState<{
     userName: string;
     userRole: string;
@@ -124,10 +140,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     time: string;
     distance: number;
     photoUrl: string;
+    gateName: string;
   } | null>(null);
+  const [showLineFlexPreview, setShowLineFlexPreview] = useState(false);
 
   // -------------------------------------------------------------
-  // 2. TEACHER PROXY & PERIOD CHECKIN STATE
+  // 2. ONLINE LEAVE REQUEST STATE
+  // -------------------------------------------------------------
+  const [leaveType, setLeaveType] = useState<LeaveType>('sick');
+  const [leaveStartDate, setLeaveStartDate] = useState(getLocalDateString());
+  const [leaveEndDate, setLeaveEndDate] = useState(getLocalDateString());
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveAttachmentUrl, setLeaveAttachmentUrl] = useState('');
+  const [leaveSuccessNotice, setLeaveSuccessNotice] = useState<string | null>(null);
+
+  // -------------------------------------------------------------
+  // 3. TEACHER PROXY & PERIOD CHECKIN STATE
   // -------------------------------------------------------------
   const [proxyGradeFilter, setProxyGradeFilter] = useState<string>('all');
   const [proxyStatuses, setProxyStatuses] = useState<Record<string, AttendanceStatus>>({});
@@ -156,7 +184,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     ? selectedTeacher?.avatarUrl 
     : selectedStudent?.avatarUrl;
 
-  const isInGeofence = currentGpsDistance <= geofenceRadiusLimit;
+  const isInGeofence = currentGpsDistance <= selectedGate.radiusMeters;
 
   // Sound chime effect using Web Audio API
   const playChime = () => {
@@ -239,7 +267,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         canvas.height = videoRef.current.videoHeight || 480;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // Mirror horizontal for selfie
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
@@ -253,13 +280,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
     }
 
-    // Fallback preset selfie snapshot if camera not accessible
+    // Fallback preset selfie snapshot
     const fallbackPhoto = activePersonDefaultAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500';
     setCapturedPhotoUrl(fallbackPhoto);
     setIsCapturing(false);
   };
 
-  // Get real GPS location
+  // Refresh GPS location and detect nearest gate
   const handleRefreshGps = () => {
     setIsGpsLoading(true);
     if (navigator.geolocation) {
@@ -269,25 +296,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           const lng = pos.coords.longitude;
           setRealGpsCoords({ lat, lng });
 
-          // Calculate distance in meters using Haversine formula
+          // Calculate distance to selected gate
           const R = 6371e3;
-          const φ1 = (schoolLat * Math.PI) / 180;
+          const φ1 = (selectedGate.lat * Math.PI) / 180;
           const φ2 = (lat * Math.PI) / 180;
-          const Δφ = ((lat - schoolLat) * Math.PI) / 180;
-          const Δλ = ((lng - schoolLng) * Math.PI) / 180;
+          const Δφ = ((lat - selectedGate.lat) * Math.PI) / 180;
+          const Δλ = ((lng - selectedGate.lng) * Math.PI) / 180;
           const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
                     Math.cos(φ1) * Math.cos(φ2) *
                     Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
           const d = Math.round(R * c);
 
-          // If distance is far away in dev environment, cap or show realistic campus distance
-          setCurrentGpsDistance(d > 5000 ? 24 : d);
+          setCurrentGpsDistance(d > 5000 ? 18 : d);
           setIsGpsLoading(false);
         },
         () => {
           setIsGpsLoading(false);
-          setCurrentGpsDistance(18); // Default safe fallback
+          setCurrentGpsDistance(18);
         },
         { enableHighAccuracy: true, timeout: 5000 }
       );
@@ -300,22 +326,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // Submit and Save Attendance Record with Selfie Snapshot
   const handleConfirmCheckin = () => {
     if (!isInGeofence) {
-      alert('คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี 300 เมตร) กรุณาเข้ามาในบริเวณโรงเรียน หรือกดปุ่มจำลองให้อยู่ในพื้นที่เพื่อทดสอบ');
+      alert(`คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร) กรุณาเข้ามาในบริเวณโรงเรียน หรือกดปุ่มจำลองให้อยู่ในพื้นที่เพื่อทดสอบ`);
       return;
     }
 
     const photoToSave = capturedPhotoUrl || activePersonDefaultAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500';
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const targetId = activeUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1');
-    const remarks = `${activeUserType === 'teacher' ? 'ครู' : 'นักเรียน'}ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก'}ผ่านโทรศัพท์มือถือ (ระยะ GPS: ${currentGpsDistance} ม.)`;
+    const remarks = `${activeUserType === 'teacher' ? 'ครู' : 'นักเรียน'}ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก'}ผ่านมือถือ ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`;
 
-    // Determine status (on-time vs late for check-in)
     const [h, m] = nowTime.split(':').map(Number);
     const minutes = (h || 0) * 60 + (m || 0);
-    const isLate = checkType === 'check_in' && minutes > 8 * 60; // Late after 08:00
+    const isLate = checkType === 'check_in' && minutes > 8 * 60;
     const status: AttendanceStatus = isLate ? 'late' : 'present';
 
-    // Record attendance
     onRecordAttendance(
       targetId,
       status,
@@ -331,35 +355,61 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         userAvatar: photoToSave,
         userDepartmentOrRoom: activeUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
         location: {
-          lat: realGpsCoords?.lat || schoolLat,
-          lng: realGpsCoords?.lng || schoolLng,
+          lat: realGpsCoords?.lat || selectedGate.lat,
+          lng: realGpsCoords?.lng || selectedGate.lng,
           distanceMeters: currentGpsDistance,
           inGeofence: true,
-          geofenceZoneName: currentGpsDistance <= 25 ? 'ประตูหน้าโรงเรียน & ลานเสาธง' : 'เขตพื้นที่บริเวณโรงเรียน'
+          geofenceZoneName: selectedGate.nameTh
         }
       }
     );
 
-    // Audio chime
     playChime();
 
-    // Show feedback popup
     setCheckinSuccessFeedback({
       userName: activePersonName,
       userRole: activePersonRole,
       checkType,
       time: nowTime,
       distance: currentGpsDistance,
-      photoUrl: photoToSave
+      photoUrl: photoToSave,
+      gateName: selectedGate.nameTh
     });
 
-    // Reset captured photo
     setCapturedPhotoUrl(null);
+  };
 
-    // Auto-dismiss after 6 seconds
-    setTimeout(() => {
-      setCheckinSuccessFeedback(null);
-    }, 6000);
+  // Submit Leave Request
+  const handleSubmitLeave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leaveReason.trim()) {
+      alert('กรุณากรอกเหตุผลการลา');
+      return;
+    }
+
+    const newLeave: LeaveRequest = {
+      id: `leave-${Date.now()}`,
+      userId: activeUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1'),
+      userName: activePersonName,
+      userRole: activeUserType,
+      gradeLevelOrDepartment: activeUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
+      leaveType,
+      startDate: leaveStartDate,
+      endDate: leaveEndDate,
+      reason: leaveReason,
+      attachmentUrl: leaveAttachmentUrl || undefined,
+      status: 'pending',
+      createdAt: `${getLocalDateString()} ${new Date().toLocaleTimeString('th-TH')}`
+    };
+
+    if (onAddLeaveRequest) {
+      onAddLeaveRequest(newLeave);
+    }
+
+    setLeaveSuccessNotice(`ส่งใบ${leaveType === 'sick' ? 'ลาป่วย' : 'ลากิจ'}เรียบร้อยแล้ว รอครูประจำชั้นหรือฝ่ายวิชาการอนุมัติ`);
+    setLeaveReason('');
+    setLeaveAttachmentUrl('');
+    setTimeout(() => setLeaveSuccessNotice(null), 5000);
   };
 
   // Periods list
@@ -420,15 +470,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setTimeout(() => setPeriodSavedNotification(null), 5000);
   };
 
-  // Filter students for proxy
   const filteredProxyStudents = proxyGradeFilter === 'all' 
     ? students 
     : students.filter(s => s.gradeLevel === proxyGradeFilter);
-
-  // Filter period records
-  const currentPeriodRecords = periodAttendance.filter(
-    p => p.courseId === selectedCourseId && p.periodNumber === selectedPeriod
-  );
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -437,15 +481,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
             <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-            <span>Smart Attendance Ecosystem • GPS Geofence & Selfie Verification</span>
+            <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
           </div>
           <h1 className="text-xl md:text-2xl font-black">
             {lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
           </h1>
           <p className="text-slate-400 text-xs">
             {lang === 'th' 
-              ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนที่กำหนด (รัศมี 300 ม.)'
-              : 'Self check-in and out for students & teachers with phone camera snapshot and campus GPS radius.'}
+              ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
+              : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
           </p>
         </div>
 
@@ -474,7 +518,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       </div>
 
-      {/* Navigation Sub Tabs */}
+      {/* Navigation Sub Tabs (Now includes Online Leave Tab) */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         <button
           type="button"
@@ -486,7 +530,25 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           }`}
         >
           <Camera className="w-4 h-4" />
-          <span>{lang === 'th' ? '1. ถ่ายรูปเช็กชื่อเข้า-ออก (นักเรียน & ครู)' : '1. Selfie Check-in/out (Self Phone)'}</span>
+          <span>{lang === 'th' ? '1. ถ่ายรูปเช็กชื่อเข้า-ออก (มือถือ)' : '1. Selfie Check-in/out'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('leave_request')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            subTab === 'leave_request'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>{lang === 'th' ? '2. ยื่นใบลาออนไลน์ (Online Leave)' : '2. Online Leave Request'}</span>
+          {leaveRequests.filter(r => r.status === 'pending').length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px]">
+              {leaveRequests.filter(r => r.status === 'pending').length}
+            </span>
+          )}
         </button>
 
         <button
@@ -499,7 +561,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           }`}
         >
           <UserCheck className="w-4 h-4" />
-          <span>{lang === 'th' ? '2. ครูลงชื่อแทนนักเรียน (Proxy Check-in)' : '2. Teacher Proxy Check-in'}</span>
+          <span>{lang === 'th' ? '3. ครูลงชื่อแทนนักเรียน (Proxy)' : '3. Teacher Proxy'}</span>
         </button>
 
         <button
@@ -512,7 +574,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>{lang === 'th' ? '3. เช็คชื่อรายคาบ (Period Attendance)' : '3. Period Attendance'}</span>
+          <span>{lang === 'th' ? '4. เช็คชื่อรายคาบ (Period)' : '4. Period Attendance'}</span>
         </button>
       </div>
 
@@ -525,7 +587,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           <div className="lg:col-span-7 flex flex-col items-center">
             {/* Realistic Mobile Device Mockup Frame */}
             <div className="w-full max-w-sm rounded-[40px] bg-slate-900 p-4 shadow-2xl border-4 border-slate-800 relative">
-              {/* Phone Speaker & Dynamic Island */}
+              {/* Dynamic Island */}
               <div className="w-24 h-4 bg-slate-950 rounded-full mx-auto mb-3 flex items-center justify-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-slate-800" />
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-950 border border-blue-900" />
@@ -533,7 +595,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Screen Inner */}
               <div className="rounded-[30px] bg-slate-950 overflow-hidden relative flex flex-col border border-slate-800 aspect-9/16 sm:aspect-auto sm:min-h-[580px]">
-                {/* Screen Top Status Bar */}
+                {/* Status Bar */}
                 <div className="px-4 py-2.5 flex items-center justify-between text-[11px] text-white/70 font-semibold bg-black/40 backdrop-blur-xs">
                   <span>{new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
                   <div className="flex items-center gap-1.5">
@@ -574,9 +636,25 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 </div>
 
+                {/* Gate Location Selector Pill */}
+                <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
+                  <span className="flex items-center gap-1 text-slate-400">
+                    <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                    <span>จุดประตู:</span>
+                  </span>
+                  <select
+                    value={selectedGateId}
+                    onChange={(e) => setSelectedGateId(e.target.value)}
+                    className="bg-slate-800 text-white text-[11px] font-semibold rounded-lg px-2 py-0.5 border border-slate-700 focus:outline-hidden"
+                  >
+                    {campusGates.map(gate => (
+                      <option key={gate.id} value={gate.id}>{gate.nameTh}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Camera Viewfinder Box with Face Outline Guide */}
                 <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[320px]">
-                  {/* Camera Video Feed */}
                   <video
                     ref={videoRef}
                     autoPlay
@@ -587,7 +665,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     }`}
                   />
 
-                  {/* Captured Photo Preview (if taken) */}
                   {capturedPhotoUrl && (
                     <img
                       src={capturedPhotoUrl}
@@ -596,15 +673,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     />
                   )}
 
-                  {/* Flash Animation Overlay */}
                   {isFlashActive && (
                     <div className="absolute inset-0 bg-white z-40 animate-out fade-out duration-200" />
                   )}
 
-                  {/* Face Guide Silhouette Outline */}
                   {!capturedPhotoUrl && (
                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
-                      {/* Oval Face Guide */}
                       <div className="w-48 h-60 rounded-[50%] border-2 border-dashed border-cyan-400/70 shadow-lg shadow-cyan-500/20 flex flex-col items-center justify-center relative animate-pulse">
                         <div className="absolute top-2 w-12 h-1 bg-cyan-400/60 rounded-full" />
                         <div className="text-center px-4 space-y-1">
@@ -619,7 +693,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   )}
 
-                  {/* In-Camera Floating GPS & Time Badge */}
+                  {/* Floating GPS & Time Badge */}
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
                     <div className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-mono flex items-center gap-1.5 border border-white/20">
                       <Clock className="w-3 h-3 text-cyan-300" />
@@ -636,7 +710,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Camera Error / Permission Fallback Alert */}
                   {cameraError && !capturedPhotoUrl && (
                     <div className="absolute inset-x-4 bottom-14 p-3 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs backdrop-blur-md text-center space-y-2">
                       <p>{cameraError}</p>
@@ -654,7 +727,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 {/* Bottom Camera Controls & Shutter */}
                 <div className="p-4 bg-slate-900 border-t border-slate-800 space-y-3">
                   {capturedPhotoUrl ? (
-                    // Controls when photo is captured
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <button
@@ -678,15 +750,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                           }`}
                         >
                           <Check className="w-4 h-4" />
-                          <span>ยืนยันบันทึก {checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}</span>
+                          <span>ยืนยัน {checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}</span>
                         </button>
                       </div>
                       <p className="text-[10px] text-center text-slate-400">
-                        {isInGeofence ? '✅ ถ่ายรูปเรียบร้อย พร้อมส่งข้อมูลลงระบบ' : '⚠️ ไม่สามารถบันทึกได้เนื่องจากอยู่นอกพื้นที่โรงเรียน'}
+                        {isInGeofence ? '✅ ถ่ายรูปเรียบร้อย พร้อมส่ง LINE หาผู้ปกครอง' : '⚠️ ไม่สามารถบันทึกได้เนื่องจากอยู่นอกพื้นที่โรงเรียน'}
                       </p>
                     </div>
                   ) : (
-                    // Shutter Button to take snapshot
                     <div className="flex items-center justify-center gap-4 py-1">
                       <button
                         type="button"
@@ -697,7 +768,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         <RefreshCw className="w-4 h-4" />
                       </button>
 
-                      {/* Main Big Circular Shutter Button */}
                       <button
                         type="button"
                         onClick={handleCaptureSnapshot}
@@ -722,7 +792,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                   <div className="text-center">
                     <p className="text-[11px] text-slate-400">
-                      ผู้ใช้งานปัจจุบัน: <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
+                      ผู้ใช้งาน: <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
                     </p>
                   </div>
                 </div>
@@ -730,7 +800,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Settings, GPS Radius Selector & Person Switcher */}
+          {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & User Switcher */}
           <div className="lg:col-span-5 space-y-5">
             {/* User Profile Card & Role Switcher */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
@@ -761,7 +831,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
               </div>
 
-              {/* Selector dropdown for Student or Teacher */}
               {activeUserType === 'student' ? (
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">เลือกรายชื่อนักเรียน (จำลองเครื่องตัวเอง):</label>
@@ -794,7 +863,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
               )}
 
-              {/* Active Profile Info Box */}
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
                 <img
                   src={activePersonDefaultAvatar}
@@ -809,12 +877,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
             </div>
 
-            {/* GPS Geofence Radar & Boundary Tester */}
+            {/* Multi-Gate Geofence Radar */}
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-600" />
-                  <h3 className="text-sm font-bold text-slate-900">ระบบเขตพื้นที่โรงเรียน (Geofence)</h3>
+                  <h3 className="text-sm font-bold text-slate-900">จุดเช็กชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
                 </div>
                 <button
                   type="button"
@@ -822,12 +890,51 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
-                  <span>อัปเดต GPS</span>
+                  <span>ตรวจพิกัด</span>
                 </button>
               </div>
 
+              {/* Multi-gate Selector List */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700">เลือกประตูหรือจุดเช็กชื่อ:</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {campusGates.map(gate => {
+                    const isSelected = gate.id === selectedGateId;
+                    return (
+                      <button
+                        key={gate.id}
+                        type="button"
+                        onClick={() => setSelectedGateId(gate.id)}
+                        className={`p-3 rounded-xl border text-left flex items-center justify-between transition ${
+                          isSelected 
+                            ? 'bg-blue-50/80 border-blue-400 text-blue-900 shadow-2xs ring-1 ring-blue-400' 
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs">{gate.nameTh}</p>
+                            <p className="text-[10px] text-slate-500 font-mono">
+                              รัศมี {gate.radiusMeters} ม. • พิกัด {gate.lat.toFixed(4)}, {gate.lng.toFixed(4)}
+                            </p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-bold">
+                            จุดปัจจุบัน
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Status Badge */}
-              <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+              <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
                 isInGeofence 
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
                   : 'bg-rose-50 border-rose-200 text-rose-900'
@@ -840,11 +947,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <div className="space-y-1 text-xs">
                   <p className="font-bold">
                     {isInGeofence 
-                      ? 'คุณอยู่ในเขตพื้นที่โรงเรียน (พร้อมเช็กชื่อ)' 
-                      : 'คุณอยู่นอกพื้นที่โรงเรียน (ไม่สามารถเช็กชื่อได้)'}
+                      ? `คุณอยู่ในเขต: ${selectedGate.nameTh}` 
+                      : `คุณอยู่นอกเขต: ${selectedGate.nameTh}`}
                   </p>
                   <p className="text-[11px] opacity-80 leading-relaxed">
-                    ระยะห่างจากศูนย์กลางโรงเรียน: <strong className="font-mono">{currentGpsDistance} เมตร</strong> (รัศมีที่อนุญาตไม่เกิน {geofenceRadiusLimit} เมตร)
+                    ระยะห่าง: <strong className="font-mono">{currentGpsDistance} เมตร</strong> (รัศมีที่อนุญาต {selectedGate.radiusMeters} ม.)
                   </p>
                 </div>
               </div>
@@ -862,7 +969,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
                     }`}
                   >
-                    15 ม. (ประตู)
+                    15 ม. (ในเขต)
                   </button>
                   <button
                     type="button"
@@ -873,7 +980,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
                     }`}
                   >
-                    35 ม. (อาคาร 1)
+                    35 ม. (ในเขต)
                   </button>
                   <button
                     type="button"
@@ -884,7 +991,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
                     }`}
                   >
-                    120 ม. (สนามกีฬา)
+                    120 ม. (ในเขต)
                   </button>
                   <button
                     type="button"
@@ -899,21 +1006,243 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </button>
                 </div>
               </div>
-
-              {/* Explanation Note */}
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
-                <p className="font-bold text-slate-800">💡 การทำงานของระบบ:</p>
-                <p>1. เมื่ออยู่ในรัศมี 300 เมตร ผู้ใช้เปิดกล้องโทรศัพท์และกดถ่ายภาพหน้าตัวเอง</p>
-                <p>2. ระบบจะบันทึกรูปถ่ายพร้อมตราประทับวันเวลาและพิกัดลงฐานข้อมูลทันที โดยไม่ต้องรอ AI สแกนใบหน้า</p>
-                <p>3. ข้อมูลและรูปภาพจะส่งไปยังหน้า Dashboard ให้ครูและผู้บริหารตรวจสอบย้อนหลังได้ตลอดเวลา</p>
-              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: TEACHER PROXY BATCH CHECK-IN */}
+      {/* TAB 2: ONLINE LEAVE REQUEST SUBMISSION (ใบลาออนไลน์) */}
+      {/* ========================================================================= */}
+      {subTab === 'leave_request' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Form */}
+          <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
+              <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">ยื่นใบลาออนไลน์ผ่านโทรศัพท์</h3>
+                <p className="text-xs text-slate-500">
+                  สำหรับนักเรียน, ผู้ปกครอง และครู ยื่นขอลาป่วย/ลากิจพร้อมแนบหลักฐาน
+                </p>
+              </div>
+            </div>
+
+            {leaveSuccessNotice && (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>{leaveSuccessNotice}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitLeave} className="space-y-4 text-xs">
+              {/* Person Switcher */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="text-[11px] font-bold text-slate-700">ผู้ขอยื่นใบลา:</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveUserType('student')}
+                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+                      activeUserType === 'student' ? 'bg-blue-600 text-white' : 'bg-white border text-slate-700'
+                    }`}
+                  >
+                    นักเรียน: {selectedStudent?.firstNameTh} ({selectedStudent?.room})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveUserType('teacher')}
+                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+                      activeUserType === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-white border text-slate-700'
+                    }`}
+                  >
+                    ครู: {selectedTeacher?.fullNameTh}
+                  </button>
+                </div>
+              </div>
+
+              {/* Leave Type */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700">ประเภทการลา:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLeaveType('sick')}
+                    className={`p-2.5 rounded-xl border text-center font-bold transition ${
+                      leaveType === 'sick' 
+                        ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-2xs' 
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    🤒 ลาป่วย (Sick)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaveType('personal')}
+                    className={`p-2.5 rounded-xl border text-center font-bold transition ${
+                      leaveType === 'personal' 
+                        ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs' 
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    🚗 ลากิจ (Personal)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaveType('official')}
+                    className={`p-2.5 rounded-xl border text-center font-bold transition ${
+                      leaveType === 'official' 
+                        ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs' 
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    🏛️ ไปราชการ/อบรม
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Range */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">ตั้งแต่วันที่:</label>
+                  <input
+                    type="date"
+                    value={leaveStartDate}
+                    onChange={(e) => setLeaveStartDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">ถึงวันที่:</label>
+                  <input
+                    type="date"
+                    value={leaveEndDate}
+                    onChange={(e) => setLeaveEndDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">เหตุผลประกอบการลา:</label>
+                <textarea
+                  rows={3}
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  placeholder="ระบุอาการเจ็บป่วย หรือภารกิจจำเป็น..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  required
+                />
+              </div>
+
+              {/* Medical certificate / Document attachment */}
+              <div className="space-y-2">
+                <label className="font-bold text-slate-700">แนบรูปใบรับรองแพทย์ / เอกสารหลักฐาน (ถ้ามี):</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sampleCert = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500';
+                      setLeaveAttachmentUrl(sampleCert);
+                    }}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>แนบรูปใบรับรองแพทย์ตัวอย่าง</span>
+                  </button>
+                  {leaveAttachmentUrl && (
+                    <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>แนบเอกสารแล้ว</span>
+                    </span>
+                  )}
+                </div>
+
+                {leaveAttachmentUrl && (
+                  <div className="relative w-36 h-24 rounded-xl overflow-hidden border border-slate-300 mt-2">
+                    <img src={leaveAttachmentUrl} alt="Medical Certificate" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setLeaveAttachmentUrl('')}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-black"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                <span>ส่งคำขอใบลาให้อาจารย์ประจำชั้น</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Right: History of Leave Requests */}
+          <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <FileCheck2 className="w-4 h-4 text-emerald-600" />
+              <span>ประวัติและสถานะใบลาล่าสุด ({leaveRequests.length})</span>
+            </h4>
+
+            <div className="space-y-3">
+              {leaveRequests.map((req) => (
+                <div key={req.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      req.leaveType === 'sick' ? 'bg-rose-100 text-rose-700' :
+                      req.leaveType === 'personal' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                    </span>
+
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                      req.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="font-bold text-slate-900">{req.userName}</p>
+                    <p className="text-[11px] text-slate-500">{req.gradeLevelOrDepartment} • วันที่ {req.startDate} ถึง {req.endDate}</p>
+                  </div>
+
+                  <p className="text-slate-600 text-[11px] bg-white p-2 rounded-lg border border-slate-100">
+                    "{req.reason}"
+                  </p>
+
+                  {req.attachmentUrl && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-blue-600 font-semibold">
+                      <FileText className="w-3 h-3" />
+                      <span>มีรูปใบรับรองแพทย์แนบ</span>
+                    </div>
+                  )}
+
+                  {req.approvalRemarks && (
+                    <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-200">
+                      ผู้อนุมัติ: {req.approvedBy} ({req.approvalRemarks})
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: TEACHER PROXY BATCH CHECK-IN */}
       {/* ========================================================================= */}
       {subTab === 'teacher_proxy' && (
         <div className="space-y-4">
@@ -999,7 +1328,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: PERIOD ATTENDANCE (รายคาบ) */}
+      {/* TAB 4: PERIOD ATTENDANCE (รายคาบ) */}
       {/* ========================================================================= */}
       {subTab === 'period_checkin' && (
         <div className="space-y-4">
@@ -1052,8 +1381,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   value={periodDate}
                   onChange={(e) => setPeriodDate(e.target.value)}
                   className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800"
-                >
-                </input>
+                />
               </div>
             </div>
 
@@ -1065,7 +1393,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             )}
           </div>
 
-          {/* Student list for period attendance */}
           <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
             <div className="divide-y divide-slate-100">
               {selectedCourse.enrolledStudentIds.map((stuId) => {
@@ -1116,12 +1443,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* SUCCESS CONFIRMATION MODAL WITH SNAPSHOT PREVIEW & LINE ALERT BADGE */}
+      {/* SUCCESS CONFIRMATION MODAL & LINE FLEX MESSAGE PREVIEW POPUP */}
       {/* ========================================================================= */}
       {checkinSuccessFeedback && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4 border border-slate-100">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-100 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
               <Check className="w-8 h-8 stroke-[3]" />
             </div>
 
@@ -1147,25 +1474,87 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 className="w-full h-full object-cover"
               />
               <div className="absolute bottom-1.5 left-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white text-[9px] font-mono flex items-center justify-between">
-                <span>GPS: {checkinSuccessFeedback.distance} ม.</span>
+                <span>{checkinSuccessFeedback.gateName}</span>
                 <span>{checkinSuccessFeedback.time} น.</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
-              <div className="flex items-center justify-between">
-                <span>เวลาบันทึก:</span>
-                <span className="font-bold text-slate-900 font-mono">{checkinSuccessFeedback.time} น.</span>
+            {/* Toggle Button for LINE Flex Preview */}
+            <button
+              type="button"
+              onClick={() => setShowLineFlexPreview(!showLineFlexPreview)}
+              className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              <span>{showLineFlexPreview ? 'ซ่อนการ์ดจำลอง LINE' : 'ดูการ์ด LINE Flex Message ที่ส่งหาผู้ปกครอง'}</span>
+            </button>
+
+            {/* REALISTIC LINE FLEX MESSAGE CHAT CARD SIMULATOR */}
+            {showLineFlexPreview && (
+              <div className="p-4 rounded-2xl bg-[#7289DA]/10 border border-[#06C755]/30 text-left space-y-2 animate-fade-in">
+                {/* LINE Chat Bubble */}
+                <div className="rounded-2xl overflow-hidden bg-white shadow-md border border-slate-200">
+                  {/* Green Top Header */}
+                  <div className="bg-[#06C755] text-white p-3 flex items-center justify-between">
+                    <span className="font-bold text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>โรงเรียนเอ็ดดูเวิร์สวิทยานุสรณ์ (LINE OA)</span>
+                    </span>
+                    <span className="text-[10px] font-mono opacity-80">{checkinSuccessFeedback.time}</span>
+                  </div>
+
+                  {/* Bubble Image */}
+                  <div className="relative aspect-16/9 bg-slate-900 overflow-hidden">
+                    <img src={checkinSuccessFeedback.photoUrl} alt="LINE Flex Preview" className="w-full h-full object-cover" />
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow">
+                      VERIFIED
+                    </div>
+                  </div>
+
+                  {/* Bubble Content */}
+                  <div className="p-3.5 space-y-2 text-xs">
+                    <h5 className="font-extrabold text-slate-900 text-sm">
+                      {checkinSuccessFeedback.checkType === 'check_in' 
+                        ? '🟢 นักเรียนเดินทางถึงโรงเรียนแล้ว' 
+                        : '🟣 นักเรียนเดินทางออกจากโรงเรียนแล้ว'}
+                    </h5>
+                    <div className="space-y-1 text-slate-600 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">ชื่อนักเรียน:</span>
+                        <span className="font-bold text-slate-800">{checkinSuccessFeedback.userName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">เวลาบันทึก:</span>
+                        <span className="font-mono text-slate-800">{checkinSuccessFeedback.time} น.</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">จุดผ่านเข้า-ออก:</span>
+                        <span className="text-slate-800">{checkinSuccessFeedback.gateName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">สถานะ GPS:</span>
+                        <span className="text-emerald-700 font-bold">ในรัศมีโรงเรียน ({checkinSuccessFeedback.distance} ม.)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bubble Action Button */}
+                  <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
+                    <span className="text-[11px] font-bold text-[#06C755] flex items-center justify-center gap-1">
+                      <span>เปิดดูประวัติย้อนหลังใน Parent Portal</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span>ส่งข้อความแจ้งเตือน:</span>
-                <span className="font-bold text-emerald-700">LINE Official Account ✅</span>
-              </div>
-            </div>
+            )}
 
             <button
               type="button"
-              onClick={() => setCheckinSuccessFeedback(null)}
+              onClick={() => {
+                setCheckinSuccessFeedback(null);
+                setShowLineFlexPreview(false);
+              }}
               className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition"
             >
               ตกลงและปิดหน้าต่าง
