@@ -123,6 +123,7 @@ export const App: React.FC = () => {
   const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isSuperAdminSchoolView, setIsSuperAdminSchoolView] = useState(false);
   const demoModeRef = useRef(false);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
@@ -200,6 +201,7 @@ export const App: React.FC = () => {
   const handleLogin = (context: AuthContext) => {
     demoModeRef.current = false;
     setIsDemoMode(false);
+    setIsSuperAdminSchoolView(false);
     setSchools(context.schools);
     setCurrentUser(context.user);
     setActiveSchool(context.school);
@@ -212,6 +214,7 @@ export const App: React.FC = () => {
       schoolNameTh: context.school.nameTh,
     }));
     if (context.user.role === 'super_admin') {
+      setProgramMode('school_erp');
       setCurrentTab('super_admin_console');
     } else {
       setCurrentTab('dashboard');
@@ -228,6 +231,7 @@ export const App: React.FC = () => {
 
     demoModeRef.current = true;
     setIsDemoMode(true);
+    setIsSuperAdminSchoolView(false);
     setSchools(INITIAL_SCHOOLS);
     setActiveSchool(school);
     setCurrentUser(demoUser);
@@ -238,6 +242,7 @@ export const App: React.FC = () => {
       setProgramMode('school_erp');
     }
     if (demoUser.role === 'super_admin') {
+      setProgramMode('school_erp');
       setCurrentTab('super_admin_console');
     } else {
       setCurrentTab('dashboard');
@@ -277,6 +282,7 @@ export const App: React.FC = () => {
       demoModeRef.current = false;
       setIsDemoMode(false);
       setCurrentUser(null);
+      setIsSuperAdminSchoolView(false);
       setIsDataReady(false);
       setLoadedSchoolId(null);
       setDataLoadError(null);
@@ -284,6 +290,27 @@ export const App: React.FC = () => {
     } catch (error) {
       setDataLoadError(error instanceof Error ? error.message : String(error));
     }
+  };
+
+  const navigateToAppTab = (tab: NavTab) => {
+    if (currentRole === 'super_admin' && tab === 'super_admin_console') {
+      setIsSuperAdminSchoolView(false);
+      setProgramMode('school_erp');
+    }
+    setCurrentTab(tab);
+  };
+
+  const handleViewSchool = (school: School) => {
+    if (currentRole !== 'super_admin') return;
+    setActiveSchool(school);
+    setSystemConfig((prev) => ({
+      ...prev,
+      schoolNameEn: school.nameEn,
+      schoolNameTh: school.nameTh,
+    }));
+    setProgramMode('school_erp');
+    setIsSuperAdminSchoolView(true);
+    setCurrentTab('dashboard');
   };
 
   useEffect(() => {
@@ -793,6 +820,7 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         activeSchool={activeSchool}
         currentRole={currentRole}
+        isSuperAdminSchoolView={isSuperAdminSchoolView}
         systemConfig={systemConfig}
         unreadCount={schoolAnnouncements.length}
         searchQuery={searchQuery}
@@ -809,8 +837,8 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
-        onOpenGuide={() => setShowGuideModal(true)}
-        onOpenImportExport={() => setShowImportExportModal(true)}
+        onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
+        onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
       />
       {isDemoMode && (
         <div role="status" className="mx-4 mt-3 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm text-violet-900">
@@ -854,10 +882,11 @@ export const App: React.FC = () => {
               <Sidebar
                 currentTab={currentTab}
                 setCurrentTab={(tab) => {
-                  setCurrentTab(tab);
+                  navigateToAppTab(tab);
                   setIsMobileMenuOpen(false);
                 }}
                 currentRole={currentRole}
+                isSuperAdminSchoolView={isSuperAdminSchoolView}
                 studentsCount={schoolStudents.length}
                 teachersCount={schoolTeachers.length}
                 coursesCount={schoolCourses.length}
@@ -878,8 +907,9 @@ export const App: React.FC = () => {
           <div className="hidden md:flex shrink-0">
             <Sidebar
               currentTab={currentTab}
-              setCurrentTab={setCurrentTab}
+              setCurrentTab={navigateToAppTab}
               currentRole={currentRole}
+              isSuperAdminSchoolView={isSuperAdminSchoolView}
               studentsCount={schoolStudents.length}
               teachersCount={schoolTeachers.length}
               coursesCount={schoolCourses.length}
@@ -892,6 +922,25 @@ export const App: React.FC = () => {
         {/* Main Content Area */}
         <main className="flex-1 w-full max-w-full min-w-0 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8">
           <div className="max-w-7xl mx-auto w-full min-w-0">
+            {currentRole === 'super_admin' && isSuperAdminSchoolView && (
+              <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-bold text-blue-900">
+                    กำลังดูข้อมูลโรงเรียน: {activeSchool.nameTh}
+                  </div>
+                  <div className="text-xs text-blue-800">
+                    โหมดตรวจสอบรายโรงเรียน — ข้อมูลและเมนูปฏิบัติงานของโรงเรียนจะแสดงตามบริบทนี้
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigateToAppTab('super_admin_console')}
+                  className="shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100"
+                >
+                  กลับศูนย์ควบคุม
+                </button>
+              </div>
+            )}
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
@@ -908,6 +957,7 @@ export const App: React.FC = () => {
                     allUsers={demoUsers}
                     lang={lang}
                     isDemoMode={isDemoMode}
+                    onViewSchool={handleViewSchool}
                   />
                 )}
 
@@ -1225,6 +1275,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation Bar - Clean, Subtle & Ergonomic */}
+      {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && (
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-sm">
         <button
           type="button"
@@ -1299,6 +1350,7 @@ export const App: React.FC = () => {
           <span>โปรไฟล์</span>
         </button>
       </nav>
+      )}
 
       {/* Multi-School Switcher Modal */}
       {showSchoolSwitcher && (

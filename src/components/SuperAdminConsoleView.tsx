@@ -51,6 +51,7 @@ interface SuperAdminConsoleViewProps {
   onToggleUserStatus?: (userId: string) => void;
   lang: AppLanguage;
   isDemoMode: boolean;
+  onViewSchool: (school: School) => void;
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -65,6 +66,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   allUsers,
   lang,
   isDemoMode,
+  onViewSchool,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools'>('approvals');
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
@@ -322,10 +324,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             <span>พอร์ทัลแม่ข่ายระดับสูงสุด • Super Admin Master Console</span>
           </div>
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
-            ระบบกำหนดสิทธิ์ &amp; บริหารโปรโมชั่นโรงเรียน
+            ศูนย์ควบคุมระบบและกำกับดูแลสถานศึกษา
           </h1>
           <p className="text-xs text-slate-500 max-w-2xl">
-            จัดการบทบาทผู้ใช้งาน (RBAC), กำหนดสิทธิ์การเข้าถึงข้อมูลของครูและนักเรียน, สร้างแคมเปญโปรโมชั่นและแพ็กเกจการใช้งานสำหรับสถานศึกษาทุกแห่งในระบบ
+            ภาพรวมสถานศึกษา ตรวจสอบคำขอสมัคร และเลือกดูข้อมูลโรงเรียนเป็นรายแห่ง
           </p>
         </div>
 
@@ -335,15 +337,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             <div className="text-xs text-slate-500">โรงเรียนในระบบ</div>
             <div className="text-xl font-extrabold text-slate-900 mt-0.5">{schools.length}</div>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center min-w-[90px]">
-            <div className="text-xs text-slate-500">โปรโมชั่นที่เปิดใช้</div>
-            <div className="text-xl font-extrabold text-blue-700 mt-0.5">
-              {promotions.filter((p) => p.status === 'active').length}
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center min-w-[90px]">
+            <div className="text-xs text-amber-800">รออนุมัติ</div>
+            <div className="text-xl font-extrabold text-amber-700 mt-0.5">
+              {pendingRegistrations.length}
             </div>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center min-w-[90px]">
-            <div className="text-xs text-slate-500">บทบาทระบบ</div>
-            <div className="text-xl font-extrabold text-emerald-700 mt-0.5">{rolePermissions.length}</div>
           </div>
         </div>
       </div>
@@ -362,32 +360,6 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           <MailCheck className="w-4 h-4" />
           <span>อนุมัติการสมัครโรงเรียน</span>
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('permissions')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition ${
-            activeSubTab === 'permissions'
-              ? 'border-blue-700 text-blue-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <KeyRound className="w-4 h-4" />
-          <span>การกำหนดสิทธิ์การใช้งาน (RBAC Permissions)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('promotions')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition ${
-            activeSubTab === 'promotions'
-              ? 'border-blue-700 text-blue-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Tag className="w-4 h-4" />
-          <span>การกำหนดโปรโมชั่น &amp; แพ็กเกจสถานศึกษา</span>
-        </button>
-
         <button
           type="button"
           onClick={() => setActiveSubTab('schools')}
@@ -478,7 +450,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                               {registration.email_confirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right">
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
                             <button
                               type="button"
                               onClick={() => void handleApproveRegistration(registration)}
@@ -884,7 +856,14 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                         {s.status === 'active' ? 'เปิดใช้งาน' : 'ระงับชั่วคราว'}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right">
+                    <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => onViewSchool(s)}
+                        className="text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline mr-3"
+                      >
+                        ดูข้อมูลโรงเรียน
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleToggleSchoolStatus(s.id)}

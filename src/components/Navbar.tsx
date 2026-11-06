@@ -23,6 +23,7 @@ interface NavbarProps {
   currentUser: AuthUser | null;
   activeSchool: School;
   currentRole: UserRole;
+  isSuperAdminSchoolView: boolean;
   systemConfig: SystemConfig;
   unreadCount: number;
   searchQuery: string;
@@ -47,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   activeSchool,
   currentRole,
+  isSuperAdminSchoolView,
   searchQuery,
   setSearchQuery,
   programMode,
@@ -63,6 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenImportExport,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
+  const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
 
   const roleLabelMap: Record<UserRole, { th: string; en: string }> = {
     super_admin: { th: 'ผู้ดูแลระบบแม่ข่าย', en: 'Super Admin' },
@@ -99,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
 
             {/* School Switcher Pill */}
-            <button
+            {canAccessSchoolOperations && <button
               type="button"
               onClick={onOpenSchoolSwitcher}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] sm:text-xs font-medium transition min-w-0 max-w-[130px] sm:max-w-[200px] ${
@@ -114,12 +117,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
               </span>
               <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
-            </button>
+            </button>}
           </div>
         </div>
 
         {/* Center Search (Hidden on Mobile) */}
-        <div className="relative hidden lg:flex items-center ml-2">
+        {canAccessSchoolOperations && <div className="relative hidden lg:flex items-center ml-2">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
           <input
             type="text"
@@ -130,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               isLight ? 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400' : 'bg-slate-800 border-slate-700 text-slate-200'
             }`}
           />
-        </div>
+        </div>}
 
         {/* Right Controls: Theme, Lang, and User Identity */}
         <div className="flex items-center gap-1.5 shrink-0">
@@ -175,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <PWAInstallButton lang={lang} variant="nav" />
 
           {/* User Guide Modal Trigger */}
-          {onOpenGuide && (
+          {canAccessSchoolOperations && onOpenGuide && (
             <button
               type="button"
               onClick={onOpenGuide}
@@ -192,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Bulk Import / Export Data Trigger (For Admin & Teacher) */}
-          {onOpenImportExport && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+          {canAccessSchoolOperations && onOpenImportExport && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
             <button
               type="button"
               onClick={onOpenImportExport}
@@ -256,7 +259,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Second Row: Program Mode Selector - Horizontally Scrollable on Mobile to prevent any overflow */}
-      <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-center overflow-x-auto no-scrollbar w-full">
+      {canAccessSchoolOperations && <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-center overflow-x-auto no-scrollbar w-full">
         <div className={`inline-flex items-center p-0.5 rounded-lg border shrink-0 ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'}`}>
           <button
             type="button"
@@ -297,7 +300,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>{lang === 'th' ? 'พอร์ทัลผู้ปกครอง' : 'Parent Portal'}</span>
           </button>
         </div>
-      </div>
+      </div>}
     </header>
   );
 };

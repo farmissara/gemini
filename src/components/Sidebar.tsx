@@ -64,6 +64,7 @@ interface SidebarProps {
   currentTab: NavTab;
   setCurrentTab: (tab: NavTab) => void;
   currentRole: UserRole;
+  isSuperAdminSchoolView: boolean;
   studentsCount: number;
   coursesCount: number;
   teachersCount?: number;
@@ -90,6 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   setCurrentTab,
   currentRole,
+  isSuperAdminSchoolView,
   studentsCount,
   coursesCount,
   teachersCount = 0,
@@ -103,8 +105,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'super_admin_console',
-          labelTh: 'ศูนย์ควบคุมระบบ',
-          labelEn: 'System Control Center',
+          labelTh: isSuperAdminSchoolView ? 'กลับศูนย์ควบคุม' : 'ศูนย์ควบคุมระบบ',
+          labelEn: isSuperAdminSchoolView ? 'Back to Control Center' : 'System Control Center',
           icon: ShieldCheck,
           badge: 'MASTER',
           roles: ['super_admin'],
@@ -344,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 select-none">
       <div className="p-3.5 space-y-5 overflow-y-auto max-h-[calc(100vh-64px)]">
-        {[...superAdminGroups, ...navGroups].map((group, gIdx) => {
+        {[...superAdminGroups, ...(currentRole === 'super_admin' && !isSuperAdminSchoolView ? [] : navGroups)].map((group, gIdx) => {
           // Filter items by role
           const visibleItems = group.items.filter((item) =>
             item.roles.includes(currentRole)
@@ -395,7 +397,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Profile & Portfolio Quick Access & Footer Info */}
       <div className="p-3 border-t border-slate-100 space-y-2">
-        {onOpenProfile && (
+        {onOpenProfile && (currentRole !== 'super_admin' || isSuperAdminSchoolView) && (
           <button
             type="button"
             onClick={onOpenProfile}
