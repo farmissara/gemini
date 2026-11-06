@@ -462,15 +462,63 @@ export const INITIAL_TEACHERS: Teacher[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
     academicDegree: 'ปริญญาเอก ปร.ด. นวัตกรรมหลักสูตรและการสอน (Ph.D.)',
     major: 'วิทยาการคำนวณและเทคโนโลยีศึกษา (Computer Science & EdTech)',
+    minor: 'ปัญญาประดิษฐ์และวิทยาการข้อมูล (AI & Data Science)',
     academicStanding: 'ครูเชี่ยวชาญ (คศ.4)',
     department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
     teacherLicenseNo: 'คส. 6110900045678',
     teachingSubjects: ['ว30101 วิทยาการคำนวณ', 'ว30205 การเขียนโปรแกรมปัญญาประดิษฐ์ (AI)', 'ว30201 โครงงาน STEM'],
     homeroomClasses: ['ห้อง 401 (วิทย์-คณิต)', 'ห้อง 402 (ห้องเรียนพิเศษ AI)'],
     teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)', 'มัธยมศึกษาปีที่ 6 (M.6)'],
-    isSchoolAdmin: true, // ครูมีสิทธิ์เป็น admin ได้!
+    isSchoolAdmin: true,
     lineUserId: 'Upra_sert_line_official',
     lineLinked: true,
+    teachingExperienceYears: 16,
+    paScore: 94.5,
+    otherSkills: ['Python & PyTorch', 'หุ่นยนต์อัตโนมัติ (Robotics IoT)', 'การจัดห้องเรียน Active Learning 3D', 'การสร้างสื่อนวัตกรรม AR/VR'],
+    certifications: [
+      'วุฒิบัตรผู้เชี่ยวชาญด้านการสอนปัญญาประดิษฐ์ สสวท. (2568)',
+      'Google Certified Educator Level 2',
+      'Microsoft Innovative Educator Fellow'
+    ],
+    selfDevelopmentPlan: 'ยกระดับการจัดการเรียนรู้บูรณาการ AI Ethics สู่การยื่นขอรับการประเมินวิทยฐานะครูเชี่ยวชาญพิเศษ (คศ.5)',
+    paPortfolio: [
+      {
+        id: 'pa-101',
+        title: 'ข้อตกลงในการพัฒนางาน (PA) ประจำปีงบประมาณ 2569: การพัฒนาทักษะ Computational Thinking ด้วย 3D Gamification',
+        category: 'pa_agreement',
+        academicYear: '2569',
+        paAspect: 'ด้านที่ 1 การจัดการเรียนรู้',
+        description: 'จัดทำข้อตกลงในการพัฒนางานตามแบบ ว9/2564 ก.ค.ศ. โดยเน้นผลลัพธ์การเรียนรู้ของผู้เรียนผ่านชุดการสอนแบบ Interactive 3D',
+        evidenceType: 'pdf',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-10-01',
+        targetStanding: 'ครูเชี่ยวชาญ (คศ.4)'
+      },
+      {
+        id: 'pa-102',
+        title: 'งานวิจัยในชั้นเรียน: ผลการใช้ EduBattle Royale 3D Simulation ต่อผลสัมฤทธิ์และแรงจูงใจในการเขียนโปรแกรม AI ของนักเรียน ม.4',
+        category: 'classroom_research',
+        academicYear: '2568',
+        paAspect: 'ด้านที่ 1 การจัดการเรียนรู้',
+        description: 'งานวิจัยกึ่งทดลองเปรียบเทียบผลสัมฤทธิ์ทางการเรียนและการคิดแก้ปัญหาเชิงคำนวณ ได้รับการตีพิมพ์ในวารสารนวัตกรรมศึกษา',
+        evidenceType: 'document',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-03-15',
+        targetStanding: 'ครูเชี่ยวชาญ (คศ.4)'
+      },
+      {
+        id: 'pa-103',
+        title: 'สื่อนวัตกรรมดิจิทัล: ชุดจำลองการทำงานของ Neural Network สำหรับนักเรียนมัธยมศึกษาตอนปลาย',
+        category: 'teaching_media',
+        academicYear: '2569',
+        paAspect: 'ด้านที่ 3 การพัฒนาตนเองและวิชาชีพ',
+        description: 'ชุดสื่อการสอนแบบปฏิสัมพันธ์ผ่านเว็บ เพื่อให้นักเรียนเข้าใจกระบวนการทำงานของ Hidden Layers และ Loss Function',
+        evidenceType: 'link',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-08-20',
+        targetStanding: 'ครูเชี่ยวชาญ (คศ.4)'
+      }
+    ]
   },
   {
     id: 'tch-2',
@@ -484,6 +532,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80',
     academicDegree: 'ปริญญาโท กศ.ม. การสอนคณิตศาสตร์',
     major: 'คณิตศาสตร์และการจำลองเชิงสถิติ',
+    minor: 'ฟิสิกส์ทฤษฎีและคณิตศาสตร์ประกันภัย',
     academicStanding: 'ครูชำนาญการ (คศ.2)',
     department: 'กลุ่มสาระการเรียนรู้คณิตศาสตร์',
     teacherLicenseNo: 'คส. 6310900078912',
@@ -493,6 +542,40 @@ export const INITIAL_TEACHERS: Teacher[] = [
     isSchoolAdmin: false,
     lineUserId: 'Uwichian_line_id_88',
     lineLinked: true,
+    teachingExperienceYears: 8,
+    paScore: 88.0,
+    otherSkills: ['GeoGebra Dynamic Math', 'สถิติวิเคราะห์ Data Analysis ด้วย R', 'คณิตศาสตร์โอลิมปิกมูลนิธิ สอวน.', 'การแนะแนวทุนการศึกษา'],
+    certifications: [
+      'วิทยากรค่ายคณิตศาสตร์ สอวน. ศูนย์ กทม.',
+      'ใบรับรองผู้สอน GeoGebra ระดับสากล'
+    ],
+    selfDevelopmentPlan: 'จัดทำวิจัยและนวัตกรรมการสอนแคลคูลัสประยุกต์ เพื่อเตรียมยื่นขอมีวิทยฐานะครูชำนาญการพิเศษ (คศ.3)',
+    paPortfolio: [
+      {
+        id: 'pa-201',
+        title: 'ข้อตกลงในการพัฒนางาน (PA) 2569: การยกระดับผลสัมฤทธิ์แคลคูลัส ม.5 ผ่าน GeoGebra Visualizer',
+        category: 'pa_agreement',
+        academicYear: '2569',
+        paAspect: 'ด้านที่ 1 การจัดการเรียนรู้',
+        description: 'บันทึกข้อตกลง PA มุ่งเน้นการแก้ปัญหาความเข้าใจมโนทัศน์อนุพันธ์และปริพันธ์',
+        evidenceType: 'pdf',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-09-28',
+        targetStanding: 'ครูชำนาญการพิเศษ (คศ.3)'
+      },
+      {
+        id: 'pa-202',
+        title: 'แผนการจัดการเรียนรู้ Active Learning: สถิติกับข้อมูลในชีวิตจริง (Big Data in Daily Life)',
+        category: 'lesson_plan',
+        academicYear: '2568',
+        paAspect: 'ด้านที่ 2 การส่งเสริมสนับสนุน',
+        description: 'แผนการสอนตามแนวทางคิดวิเคราะห์ ให้ผู้เรียนเก็บข้อมูลสถิติมลพิษ PM2.5 และสร้างแบบจำลองสมการถดถอย',
+        evidenceType: 'document',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-02-10',
+        targetStanding: 'ครูชำนาญการพิเศษ (คศ.3)'
+      }
+    ]
   },
   {
     id: 'tch-3',
@@ -505,16 +588,52 @@ export const INITIAL_TEACHERS: Teacher[] = [
     phone: '083-221-5544',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
     academicDegree: 'M.A. Applied Linguistics & TESOL (Oxford)',
-    major: 'ภาษาอังกฤษและการสื่อสารสากล',
+    major: 'ภาษาอังกฤษและการสื่อสารสากล (Global Communication)',
+    minor: 'วรรณคดีเปรียบเทียบและการละครภาษาอังกฤษ (Drama & Literature)',
     academicStanding: 'ครูชำนาญการพิเศษ (คศ.3)',
     department: 'กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ',
     teacherLicenseNo: 'คส. 5910900099887',
     teachingSubjects: ['อ31101 Academic English', 'อ32201 English for Global TCAS Debate'],
     homeroomClasses: ['ห้อง 402 (ศิลป์-ภาษาอังกฤษ)', 'ห้อง 601 (English Program)'],
     teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)', 'มัธยมศึกษาปีที่ 6 (M.6)'],
-    isSchoolAdmin: true, // มีสิทธิ์เป็น Admin ฝ่ายวิชาการต่างประเทศ
+    isSchoolAdmin: true,
     lineUserId: 'Usarah_jenkins_line',
     lineLinked: true,
+    teachingExperienceYears: 13,
+    paScore: 92.5,
+    otherSkills: ['TOEFL/IELTS Examiner Certified', 'Parliamentary Debate Coach', 'Cross-Cultural Psychology', 'Public Speaking & Emceeing'],
+    certifications: [
+      'Cambridge CELTA Certified',
+      'Coach of the Year: Asian Schools Debate Championship',
+      'TESOL International Leadership Award'
+    ],
+    selfDevelopmentPlan: 'พัฒนาหลักสูตรห้องเรียนสื่อสารข้ามวัฒนธรรมและการวิจัยเพื่อเตรียมยื่นขอวิทยฐานะครูเชี่ยวชาญ (คศ.4)',
+    paPortfolio: [
+      {
+        id: 'pa-301',
+        title: 'ว.PA ข้อตกลงพัฒนางาน 2569: ยกระดับทักษะการโต้สาระและการเขียนวิชาการ Academic Writing ของนักเรียน ม.ปลาย',
+        category: 'pa_agreement',
+        academicYear: '2569',
+        paAspect: 'ด้านที่ 1 การจัดการเรียนรู้',
+        description: 'การนำเทคนิค Oxford Debate Framework มาใช้ในชั้นเรียนภาษาอังกฤษเพื่อเตรียมความพร้อมสู่ TCAS และการศึกษานานาชาติ',
+        evidenceType: 'pdf',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-10-05',
+        targetStanding: 'ครูเชี่ยวชาญ (คศ.4)'
+      },
+      {
+        id: 'pa-302',
+        title: 'รางวัลระดับนานาชาติ: ผู้ฝึกสอนยอดเยี่ยมทีมนักเรียนไทยการแข่งขัน Asian Parliamentary Debate',
+        category: 'award_honor',
+        academicYear: '2568',
+        paAspect: 'ด้านที่ 3 การพัฒนาตนเองและวิชาชีพ',
+        description: 'รางวัลเกียรติยศระดับภูมิภาคเอเชีย พานักเรียนคว้าเหรียญทองการโต้วาทีภาษาอังกฤษ',
+        evidenceType: 'image',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-05-19',
+        targetStanding: 'ครูเชี่ยวชาญ (คศ.4)'
+      }
+    ]
   },
   {
     id: 'tch-4',
@@ -527,7 +646,8 @@ export const INITIAL_TEACHERS: Teacher[] = [
     phone: '086-778-9900',
     avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
     academicDegree: 'ปริญญาโท วท.ม. ชีววิทยาโมเลกุล จุฬาฯ',
-    major: 'ชีววิทยาและเทคโนโลยีชีวภาพ',
+    major: 'ชีววิทยาและเทคโนโลยีชีวภาพ (Molecular Biology & Biotech)',
+    minor: 'สิ่งแวดล้อมศึกษาและการจัดการทรัพยากรธรรมชาติ',
     academicStanding: 'ครูเชี่ยวชาญ (คศ.4)',
     department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
     teacherLicenseNo: 'คส. 5810900011223',
@@ -537,6 +657,40 @@ export const INITIAL_TEACHERS: Teacher[] = [
     isSchoolAdmin: false,
     lineUserId: 'Uwiphada_line_bio',
     lineLinked: true,
+    teachingExperienceYears: 18,
+    paScore: 96.0,
+    otherSkills: ['การวิจัยปฏิบัติการทางพันธุศาสตร์', 'การเพาะเลี้ยงเนื้อเยื่อพืช', 'วิทยาศาสตร์สิ่งแวดล้อมและการวิเคราะห์น้ำเสีย', 'STEM Project Based Learning'],
+    certifications: [
+      'รางวัลครูวิทยาศาสตร์ดีเด่น ระดับประเทศ สมาคมวิทยาศาสตร์แห่งประเทศไทย',
+      'วิทยากรพี่เลี้ยงโครงงานชีววิทยาโอลิมปิก สสวท.'
+    ],
+    selfDevelopmentPlan: 'พัฒนางานวิจัยนวัตกรรมการเรียนรู้ชีววิทยาเชิงสังเคราะห์ (Synthetic Biology) เพื่อขอมีวิทยฐานะครูเชี่ยวชาญพิเศษ (คศ.5)',
+    paPortfolio: [
+      {
+        id: 'pa-401',
+        title: 'ว.PA 2569: แฟ้มประเมินการจัดการเรียนรู้โครงงานพันธุศาสตร์และวิศวกรรมดีเอ็นเอจำลอง',
+        category: 'pa_agreement',
+        academicYear: '2569',
+        paAspect: 'ด้านที่ 1 การจัดการเรียนรู้',
+        description: 'การนำชุดแล็บเสมือนจริง Virtual Wet Lab มาใช้ให้นักเรียนทำการสกัด DNA และวิเคราะห์ผลทางสถิติ',
+        evidenceType: 'pdf',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-10-02',
+        targetStanding: 'ครูเชี่ยวชาญพิเศษ (คศ.5)'
+      },
+      {
+        id: 'pa-402',
+        title: 'ผลงานทางวิชาการ: การศึกษาการถ่ายทอดลักษณะทางพันธุกรรมในพืชท้องถิ่นและการบูรณาการสู่หลักสูตรท้องถิ่น',
+        category: 'classroom_research',
+        academicYear: '2568',
+        paAspect: 'ด้านที่ 3 การพัฒนาตนเองและวิชาชีพ',
+        description: 'งานวิจัยได้รับการตีพิมพ์ในวารสารวิทยาศาสตร์การศึกษา พร้อมชุดตัวอย่างจริงในห้องแล็บโรงเรียน',
+        evidenceType: 'document',
+        verifiedStatus: 'approved',
+        dateSubmitted: '2026-04-12',
+        targetStanding: 'ครูเชี่ยวชาญพิเศษ (คศ.5)'
+      }
+    ]
   }
 ];
 

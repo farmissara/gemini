@@ -28,6 +28,7 @@ import {
   Tag
 } from 'lucide-react';
 import { AuthUser, PortfolioItem, AppLanguage } from '../types';
+import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 
 interface UserProfileModalProps {
   currentUser: AuthUser;
@@ -50,6 +51,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'portfolio' | 'preview_book'>('personal');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   // Editable Form State - Cloned from currentUser
   const [formData, setFormData] = useState<AuthUser>({ ...currentUser });
@@ -175,13 +177,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         {/* Modal Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="relative group">
+            <div 
+              onClick={() => setShowImageModal(true)}
+              className="relative group cursor-pointer"
+              title="แตะเพื่อถ่ายรูป หรือเปลี่ยนรูปโปรไฟล์"
+            >
               <img
                 src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                 alt={formData.fullNameTh}
-                className="w-12 h-12 rounded-2xl object-cover border-2 border-white/40 shadow-md"
+                className="w-12 h-12 rounded-2xl object-cover border-2 border-white/40 shadow-md group-hover:ring-2 group-hover:ring-blue-400 transition"
               />
-              <span className="absolute -bottom-1 -right-1 p-0.5 bg-blue-600 rounded-full text-white">
+              <span className="absolute -bottom-1 -right-1 p-1 bg-blue-600 group-hover:bg-blue-500 rounded-full text-white shadow transition">
                 <Camera className="w-3 h-3" />
               </span>
             </div>
@@ -388,24 +394,34 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </div>
                 </div>
 
-                {/* Avatar URL */}
+                {/* Avatar URL & Camera Snap */}
                 <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-slate-600 block mb-1">ลิงก์รูปภาพโปรไฟล์ (Avatar URL)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={formData.avatarUrl || ''}
-                      onChange={e => handleChange('avatarUrl', e.target.value)}
-                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono"
-                      placeholder="https://images.unsplash.com/..."
+                  <label className="text-xs font-bold text-slate-600 block mb-1">รูปถ่ายโปรไฟล์ (ถ่ายรูปสด / อัปโหลด / ใส่ลิงก์ URL)</label>
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <img
+                      src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                      alt="Avatar Preview"
+                      className="w-12 h-12 rounded-xl object-cover border-2 border-indigo-400 shadow-sm"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleChange('avatarUrl', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80')}
-                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
-                    >
-                      สุ่มรูป
-                    </button>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowImageModal(true)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>ถ่ายรูปจากกล้อง / อัปโหลดรูปใหม่</span>
+                        </button>
+                      </div>
+                      <input
+                        type="url"
+                        value={formData.avatarUrl || ''}
+                        onChange={e => handleChange('avatarUrl', e.target.value)}
+                        className="w-full px-2.5 py-1 text-[11px] rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500 font-mono text-slate-600"
+                        placeholder="หรือระบุ URL รูปภาพโดยตรง..."
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1205,6 +1221,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Profile Image Capture & Upload Modal */}
+      <ImageCaptureUploadModal
+        isOpen={showImageModal}
+        currentImageUrl={formData.avatarUrl}
+        title="อัปเดตรูปถ่ายโปรไฟล์ของคุณ"
+        onSelectImage={(newUrl) => handleChange('avatarUrl', newUrl)}
+        onClose={() => setShowImageModal(false)}
+      />
     </div>
   );
 };

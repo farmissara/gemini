@@ -13,7 +13,9 @@ import {
   Smartphone,
   ShieldCheck,
   User,
-  Menu
+  Menu,
+  HelpCircle,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -36,6 +38,8 @@ interface NavbarProps {
   onLogout: () => void;
   onToggleMobileMenu?: () => void;
   onOpenProfile?: () => void;
+  onOpenGuide?: () => void;
+  onOpenImportExport?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -54,6 +58,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onToggleMobileMenu,
   onOpenProfile,
+  onOpenGuide,
+  onOpenImportExport,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
 
@@ -163,6 +169,40 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Globe className="w-3 h-3 text-blue-600 shrink-0" />
             <span className="hidden sm:inline">{lang === 'th' ? 'ไทย' : 'EN'}</span>
           </button>
+
+          {/* User Guide Modal Trigger */}
+          {onOpenGuide && (
+            <button
+              type="button"
+              onClick={onOpenGuide}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-semibold transition ${
+                isLight
+                  ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+                  : 'bg-amber-950/40 border-amber-800/60 text-amber-300 hover:bg-amber-900/60'
+              }`}
+              title={lang === 'th' ? 'คู่มือการใช้งานระบบ (Module Guide)' : 'System Guide'}
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+              <span className="hidden md:inline">{lang === 'th' ? 'คู่มือระบบ' : 'Guide'}</span>
+            </button>
+          )}
+
+          {/* Bulk Import / Export Data Trigger (For Admin & Teacher) */}
+          {onOpenImportExport && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+            <button
+              type="button"
+              onClick={onOpenImportExport}
+              className={`hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+                isLight
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
+                  : 'bg-indigo-950/40 border-indigo-800/60 text-indigo-300 hover:bg-indigo-900/60'
+              }`}
+              title={lang === 'th' ? 'นำเข้า/ส่งออกข้อมูล Excel & CSV' : 'Import / Export Excel'}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="hidden xl:inline">{lang === 'th' ? 'นำเข้า/ส่งออก' : 'Import/Export'}</span>
+            </button>
+          )}
 
           {/* User Avatar & Profile Trigger & Logout */}
           <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200">

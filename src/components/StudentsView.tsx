@@ -13,8 +13,13 @@ import {
   CheckCircle,
   XCircle,
   FileText,
-  UserCheck
+  UserCheck,
+  Edit3,
+  Trash2,
+  FileSpreadsheet,
+  Camera
 } from 'lucide-react';
+import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 
 interface StudentsViewProps {
   students: Student[];
@@ -22,6 +27,9 @@ interface StudentsViewProps {
   onOpenReportCard: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
   onAddStudent: (newStudent: Student) => void;
+  onUpdateStudent?: (student: Student) => void;
+  onDeleteStudent?: (studentId: string) => void;
+  onOpenImportExport?: () => void;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -30,10 +38,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onOpenReportCard,
   onToggleLineSync,
   onAddStudent,
+  onUpdateStudent,
+  onDeleteStudent,
+  onOpenImportExport,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   // New student form state
   const [formData, setFormData] = useState({
@@ -51,6 +64,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     guardianPhone: '081-',
     guardianEmail: '',
     gpa: 3.50,
+    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
   });
 
   const filteredStudents = students.filter((s) => {
@@ -67,9 +81,56 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     return matchesSearch && matchesGrade;
   });
 
+  const handleOpenEdit = (student: Student) => {
+    setEditingStudent(student);
+    setFormData({
+      firstNameEn: student.firstNameEn,
+      lastNameEn: student.lastNameEn,
+      firstNameTh: student.firstNameTh,
+      lastNameTh: student.lastNameTh,
+      studentIdNumber: student.studentIdNumber,
+      nationalId: student.nationalId || '',
+      gender: student.gender,
+      dateOfBirth: student.dateOfBirth,
+      gradeLevel: student.gradeLevel,
+      room: student.room,
+      guardianName: student.guardianName,
+      guardianPhone: student.guardianPhone,
+      guardianEmail: student.guardianEmail,
+      gpa: student.gpa,
+      avatarUrl: student.avatarUrl,
+    });
+    setShowAddModal(true);
+  };
+
   const handleCreateStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.firstNameEn || !formData.lastNameEn || !formData.firstNameTh) return;
+
+    if (editingStudent) {
+      const updated: Student = {
+        ...editingStudent,
+        firstNameEn: formData.firstNameEn,
+        lastNameEn: formData.lastNameEn,
+        firstNameTh: formData.firstNameTh,
+        lastNameTh: formData.lastNameTh,
+        studentIdNumber: formData.studentIdNumber,
+        nationalId: formData.nationalId,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        gradeLevel: formData.gradeLevel,
+        room: formData.room,
+        guardianName: formData.guardianName || 'Parent / Guardian',
+        guardianPhone: formData.guardianPhone || '081-000-0000',
+        guardianEmail: formData.guardianEmail || 'guardian@email.com',
+        gpa: Number(formData.gpa),
+        avatarUrl: formData.avatarUrl || editingStudent.avatarUrl,
+      };
+      onUpdateStudent?.(updated);
+      setEditingStudent(null);
+      setShowAddModal(false);
+      return;
+    }
 
     const newStudent: Student = {
       id: `stu-${Date.now()}`,
@@ -115,13 +176,45 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Student</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {onOpenImportExport && (
+            <button
+              type="button"
+              onClick={onOpenImportExport}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold shadow-xs transition"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>นำเข้า/ส่งออก (Excel)</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setEditingStudent(null);
+              setFormData({
+                firstNameEn: '',
+                lastNameEn: '',
+                firstNameTh: '',
+                lastNameTh: '',
+                studentIdNumber: `ED-${Math.floor(6900 + Math.random() * 90)}`,
+                nationalId: '1-1002-00' + Math.floor(100 + Math.random() * 899) + '-44-1',
+                gender: 'male' as 'male' | 'female' | 'other',
+                dateOfBirth: '2008-05-10',
+                gradeLevel: 'Grade 10 (M.4)',
+                room: 'Room 401 (Sci-Math)',
+                guardianName: '',
+                guardianPhone: '081-',
+                guardianEmail: '',
+                gpa: 3.50,
+              });
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Student</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -257,6 +350,30 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     >
                       Profile
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(student)}
+                      className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-blue-400 hover:text-blue-300 transition-colors"
+                      title="Edit Student"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {onDeleteStudent && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`ต้องการลบข้อมูลนักเรียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) ออกจากระบบหรือไม่?`)) {
+                            onDeleteStudent(student.id);
+                          }
+                        }}
+                        className="p-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-400 hover:text-rose-300 transition-colors"
+                        title="Delete Student"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -273,9 +390,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-indigo-400" />
-                  Enroll New Student (เพิ่มนักเรียนใหม่)
+                  {editingStudent ? 'Edit Student Profile (แก้ไขข้อมูลนักเรียน)' : 'Enroll New Student (เพิ่มนักเรียนใหม่)'}
                 </h3>
-                <p className="text-xs text-slate-400">Register student with bilingual Thai and English credentials.</p>
+                <p className="text-xs text-slate-400">
+                  {editingStudent ? 'Update student records and guardian information.' : 'Register student with bilingual Thai and English credentials.'}
+                </p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -286,6 +405,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
 
             <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
+              {/* Photo Preview & Capture */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700">
+                <img
+                  src={formData.avatarUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200'}
+                  alt="Student Avatar"
+                  className="w-12 h-12 rounded-xl object-cover border-2 border-indigo-500 shadow-sm"
+                />
+                <div className="flex-1 space-y-1">
+                  <span className="font-semibold text-slate-300 block">รูปถ่ายประจำตัวนักเรียน</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoModal(true)}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-sm text-xs"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>ถ่ายรูปจากกล้อง / เลือกรูปภาพ</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-medium mb-1">First Name (English)</label>
@@ -404,13 +543,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30"
                 >
-                  Save &amp; Enroll
+                  {editingStudent ? 'บันทึกการแก้ไข (Save Changes)' : 'Save & Enroll'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Student Photo Modal */}
+      <ImageCaptureUploadModal
+        isOpen={showPhotoModal}
+        currentImageUrl={formData.avatarUrl}
+        title="ถ่ายรูปสดหรือเลือกรูปถ่ายนักเรียน"
+        onSelectImage={(newUrl) => setFormData((prev) => ({ ...prev, avatarUrl: newUrl }))}
+        onClose={() => setShowPhotoModal(false)}
+      />
     </div>
   );
 };

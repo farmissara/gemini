@@ -27,7 +27,11 @@ import {
   Shield,
   Wind,
   Target,
-  BookOpen
+  BookOpen,
+  Menu,
+  Settings,
+  LogOut,
+  ChevronRight
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
 import { 
@@ -43,6 +47,11 @@ interface EduBattleRoyale3DViewProps {
   currentUser: AuthUser | null;
   lang: AppLanguage;
   rewardItems: RewardItem[];
+  initialCategory?: ExamCategoryFilter;
+  initialGrade?: ExamGradeFilter;
+  initialGameMode?: 'solo' | 'classroom';
+  roomCodeProp?: string;
+  roomNameProp?: string;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onExit: () => void;
 }

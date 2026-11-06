@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   User,
+  GraduationCap,
   MessageSquare,
   LucideIcon
 } from 'lucide-react';
@@ -29,6 +30,7 @@ export type NavTab =
   | 'system_settings'
   | 'dashboard' 
   | 'students' 
+  | 'teachers'
   | 'courses' 
   | 'timetable'
   | 'homework'
@@ -49,6 +51,7 @@ interface SidebarProps {
   currentRole: UserRole;
   studentsCount: number;
   coursesCount: number;
+  teachersCount?: number;
   lang: AppLanguage;
   onOpenProfile?: () => void;
 }
@@ -74,6 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentRole,
   studentsCount,
   coursesCount,
+  teachersCount = 0,
   lang,
   onOpenProfile,
 }) => {
@@ -112,6 +116,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Users,
           badge: studentsCount > 0 ? studentsCount.toString() : null,
           roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'teachers',
+          labelTh: 'ทำเนียบคณาจารย์',
+          labelEn: 'Faculty & Teachers',
+          icon: GraduationCap,
+          badge: teachersCount > 0 ? teachersCount.toString() : null,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
           id: 'courses',

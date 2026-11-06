@@ -169,6 +169,20 @@ export interface AuthUser {
   officeRoom?: string;
 }
 
+export interface TeacherPortfolioWork {
+  id: string;
+  title: string;
+  category: 'pa_agreement' | 'classroom_research' | 'lesson_plan' | 'teaching_media' | 'award_honor' | 'social_contribution';
+  academicYear: string;
+  paAspect: 'ด้านที่ 1 การจัดการเรียนรู้' | 'ด้านที่ 2 การส่งเสริมสนับสนุน' | 'ด้านที่ 3 การพัฒนาตนเองและวิชาชีพ';
+  description: string;
+  fileUrl?: string;
+  evidenceType: 'pdf' | 'link' | 'image' | 'document';
+  verifiedStatus: 'draft' | 'submitted' | 'approved';
+  dateSubmitted: string;
+  targetStanding?: string;
+}
+
 export interface Teacher {
   id: string;
   schoolId?: string;
@@ -181,6 +195,7 @@ export interface Teacher {
   avatarUrl: string;
   academicDegree: string;
   major: string;
+  minor?: string; // วิชาโท
   academicStanding: string;
   department: string;
   teacherLicenseNo: string;
@@ -190,6 +205,12 @@ export interface Teacher {
   isSchoolAdmin?: boolean; // ครูมีสิทธิ์เป็น admin ได้
   lineUserId?: string;
   lineLinked?: boolean;
+  otherSkills?: string[]; // ความสามารถพิเศษอื่นๆ
+  certifications?: string[]; // วุฒิบัตร/ใบรับรอง
+  teachingExperienceYears?: number; // อายุราชการ/ประสบการณ์สอน (ปี)
+  paPortfolio?: TeacherPortfolioWork[]; // แฟ้มผลงานเพิ่มวิทยฐานะ ว.PA
+  paScore?: number; // คะแนนประเมิน PA
+  selfDevelopmentPlan?: string; // แผนพัฒนาตนเอง (ID Plan)
 }
 
 export interface Student {
@@ -470,6 +491,30 @@ export interface RoomClassmate {
   z: number;
   avatarUrl: string;
   status: string;
+}
+
+export interface TournamentParticipant {
+  id: string;
+  name: string;
+  role: 'student' | 'teacher';
+  avatarUrl: string;
+  score: number;
+  isReady: boolean;
+  chestsOpened?: number;
+}
+
+export interface BattleTournamentRoom {
+  id: string;
+  roomCode: string;
+  roomName: string;
+  hostTeacherId: string;
+  hostTeacherName: string;
+  subject: string;
+  gradeLevel: string;
+  durationMinutes: number;
+  status: 'waiting' | 'in_progress' | 'completed';
+  participants: TournamentParticipant[];
+  createdAt: string;
 }
 
 
