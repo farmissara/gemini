@@ -21,6 +21,9 @@ import {
   GraduationCap,
   MessageSquare,
   FlaskConical,
+  BrainCircuit,
+  Trophy,
+  ShieldAlert,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
@@ -29,12 +32,14 @@ export type NavTab =
   | 'super_admin_console'
   | 'school_permissions'
   | 'system_settings'
+  | 'executive_warning'
   | 'dashboard' 
   | 'students' 
   | 'teachers'
   | 'courses' 
   | 'timetable'
   | 'homework'
+  | 'ai_diagnostic'
   | 'attendance' 
   | 'mobile_checkin'
   | 'behavior_sdq'
@@ -42,6 +47,7 @@ export type NavTab =
   | 'infirmary'
   | 'subject_labs'
   | 'games'
+  | 'hall_of_fame'
   | 'portfolio'
   | 'gradebook' 
   | 'billing' 
@@ -211,6 +217,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
+          id: 'ai_diagnostic',
+          labelTh: 'AI วินิจฉัย & ซ่อมเสริม 8 มิติ',
+          labelEn: 'AI Competency & Remedial',
+          icon: BrainCircuit,
+          badge: 'AI',
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
           id: 'subject_labs',
           labelTh: 'แล็บจำลองรายวิชา & เคมีระเบิด',
           labelEn: 'Subject Labs & Chemistry',
@@ -227,6 +241,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
+          id: 'hall_of_fame',
+          labelTh: 'หอเกียรติยศ 3 มิติ & เกียรติบัตร',
+          labelEn: '3D Hall of Fame & Certs',
+          icon: Trophy,
+          badge: '3D',
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
           id: 'announcements',
           labelTh: 'ข่าวสาร & ประกาศ',
           labelEn: 'Announcements',
@@ -239,6 +261,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       groupTitleTh: 'การบริหาร & ตั้งค่าระบบ',
       groupTitleEn: 'School Admin & Settings',
       items: [
+        {
+          id: 'executive_warning',
+          labelTh: 'ระบบพยากรณ์ความเสี่ยงผู้บริหาร',
+          labelEn: 'Executive Early Warning',
+          icon: ShieldAlert,
+          badge: 'PREDICT',
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
         {
           id: 'system_settings',
           labelTh: 'ตั้งค่าระบบ & แจ้งเตือน LINE',

@@ -24,7 +24,10 @@ import {
   HeartPulse,
   SlidersHorizontal,
   UserCheck,
-  FlaskConical
+  FlaskConical,
+  BrainCircuit,
+  Trophy,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   Student, 
@@ -275,11 +278,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <button
             type="button"
-            onClick={() => onNavigate('subject_labs')}
+            onClick={() => onNavigate('ai_diagnostic')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-black shadow-md shadow-cyan-400/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <BrainCircuit className="w-4 h-4 text-slate-950" />
+            <span>🧠 {lang === 'th' ? 'AI วินิจฉัย & ซ่อมเสริม' : 'AI Diagnostic 8D'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('hall_of_fame')}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
           >
-            <FlaskConical className="w-4 h-4 text-slate-950 fill-current" />
-            <span>🧪 {lang === 'th' ? 'แล็บเคมีระเบิด & จำลองวิชา' : 'Subject Labs & Chemistry'}</span>
+            <Trophy className="w-4 h-4 text-slate-950" />
+            <span>🏆 {lang === 'th' ? 'หอเกียรติยศ 3 มิติ' : '3D Hall of Fame'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('executive_warning')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-black shadow-md shadow-rose-500/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <ShieldAlert className="w-4 h-4 text-white" />
+            <span>🚨 {lang === 'th' ? 'พยากรณ์ความเสี่ยง มส./ร.' : 'Early Warning'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('subject_labs')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
+          >
+            <FlaskConical className="w-4 h-4 text-white" />
+            <span>🧪 {lang === 'th' ? 'แล็บเคมีระเบิด' : 'Labs & Chemistry'}</span>
           </button>
           
           <button

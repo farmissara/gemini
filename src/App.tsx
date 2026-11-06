@@ -106,6 +106,9 @@ import { SystemSettingsView } from './components/SystemSettingsView';
 import { DataImportExportModal } from './components/DataImportExportModal';
 import { ModuleGuideModal } from './components/ModuleGuideModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { AiDiagnosticLearningView } from './components/AiDiagnosticLearningView';
+import { HallOfFame3DView } from './components/HallOfFame3DView';
+import { ExecutiveEarlyWarningView } from './components/ExecutiveEarlyWarningView';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
@@ -922,6 +925,14 @@ export const App: React.FC = () => {
                   />
                 )}
 
+                {currentTab === 'executive_warning' && (
+                  <ExecutiveEarlyWarningView
+                    lang={lang}
+                    currentRole={currentRole}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้บริหารสถานศึกษา'}
+                  />
+                )}
+
                 {currentTab === 'dashboard' && (
                   <DashboardView
                     students={schoolStudents}
@@ -989,6 +1000,14 @@ export const App: React.FC = () => {
                   />
                 )}
 
+                {currentTab === 'ai_diagnostic' && (
+                  <AiDiagnosticLearningView
+                    lang={lang}
+                    currentRole={currentRole}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  />
+                )}
+
                 {currentTab === 'subject_labs' && (
                   <SubjectLabSimulationView
                     currentUserRole={currentUser?.role}
@@ -996,6 +1015,13 @@ export const App: React.FC = () => {
                     lang={lang}
                     onEarnRewards={handleEarnRewards}
                     onBackToGames={() => setCurrentTab('games')}
+                  />
+                )}
+
+                {currentTab === 'hall_of_fame' && (
+                  <HallOfFame3DView
+                    lang={lang}
+                    school={activeSchool}
                   />
                 )}
 

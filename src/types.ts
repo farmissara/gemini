@@ -752,3 +752,67 @@ export interface LabSimulationQuest {
   gemReward: number;
   createdByTeacherName?: string;
 }
+
+export interface CompetencyDimension {
+  id: string;
+  nameTh: string;
+  nameEn: string;
+  score: number;
+  benchmark: number;
+  status: 'mastered' | 'proficient' | 'developing' | 'needs_support';
+  color: string;
+}
+
+export interface StudentWeaknessDiagnostic {
+  id: string;
+  studentId: string;
+  studentName: string;
+  subject: string;
+  topicTh: string;
+  accuracyRate: number;
+  rootCauseTh: string;
+  recommendedActionTh: string;
+  microQuests: {
+    questionTh: string;
+    options: string[];
+    correctIndex: number;
+    explanationTh: string;
+  }[];
+  isResolved: boolean;
+}
+
+export interface HallOfFameTrophy {
+  id: string;
+  trophyType: 'grand_champion' | 'master_chemist' | 'orbital_astronaut' | 'eduarena_mvp';
+  titleTh: string;
+  titleEn: string;
+  recipientStudentId: string;
+  recipientName: string;
+  studentRoom: string;
+  avatarUrl: string;
+  achievedDate: string;
+  certificateCode: string;
+  descriptionTh: string;
+  primaryColor: string;
+  materialName: string;
+  pointsEarned: number;
+}
+
+export interface AtRiskStudentForecast {
+  studentId: string;
+  studentName: string;
+  studentRoom: string;
+  riskLevel: 'high' | 'moderate' | 'low';
+  attendanceRate: number;
+  homeworkCompletionRate: number;
+  midtermAverageScore: number;
+  sdqRiskStatus: 'normal' | 'risk' | 'problem';
+  predictedOutcome: 'เสี่ยง มส. (เวลาเรียนไม่พอ)' | 'เสี่ยง ร. (งานค้างส่ง)' | 'เสี่ยงเกรดตกต่ำกว่าเกณฑ์' | 'ปกติ';
+  earlyInterventionActions: {
+    id: string;
+    actionType: 'line_parent_alert' | 'counselor_meeting' | 'remedial_task';
+    titleTh: string;
+    status: 'pending' | 'in_progress' | 'completed';
+    sentAt?: string;
+  }[];
+}
