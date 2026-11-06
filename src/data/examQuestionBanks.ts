@@ -34,10 +34,10 @@ export const EXAM_CATEGORIES: ExamCategoryMeta[] = [
   },
   {
     id: 'onet',
-    labelTh: 'คลังข้อสอบมาตรฐานระดับชาติ',
-    labelEn: 'National Standard Exam',
+    labelTh: 'ชุดโจทย์ฝึกหัดตัวอย่าง',
+    labelEn: 'Sample Practice Questions',
     icon: '📘',
-    descriptionTh: 'คลังข้อสอบมาตรฐานวัดผลสัมฤทธิ์ทางการศึกษาระดับชาติ ม.3 และ ม.6',
+    descriptionTh: 'โจทย์ตัวอย่างสำหรับฝึกทำ ไม่ใช่ข้อสอบทางการหรือข้อสอบจากหน่วยงานใด',
   },
   {
     id: 'midterm_final',
@@ -92,11 +92,11 @@ export const EXAM_GRADE_LEVELS = [
 
 export const COMPREHENSIVE_QUESTION_BANK: QuizQuestion[] = [
   // ==========================================
-  // 1. NATIONAL STANDARD EXAMS
+  // 1. SAMPLE PRACTICE QUESTIONS
   // ==========================================
   {
     id: 'onet-m6-math-1',
-    subject: 'คณิตศาสตร์ (มาตรฐานระดับชาติ)',
+    subject: 'คณิตศาสตร์ (โจทย์ฝึกหัดตัวอย่าง)',
     gradeLevel: 'มัธยมศึกษาตอนปลาย (ม.4 - ม.6)',
     category: 'onet',
     questionTh: 'กล่องใบหนึ่งมีลูกบอลสีแดง 4 ลูก และสีขาว 6 ลูก หากสุ่มหยิบลูกบอล 2 ลูกพร้อมกัน ความน่าจะเป็นที่จะได้ลูกบอลสีแดงทั้งสองลูกมีค่าเท่ากับข้อใด?',
@@ -108,7 +108,7 @@ export const COMPREHENSIVE_QUESTION_BANK: QuizQuestion[] = [
   },
   {
     id: 'onet-m6-sci-1',
-    subject: 'วิทยาศาสตร์กายภาพ (มาตรฐานระดับชาติ)',
+    subject: 'วิทยาศาสตร์กายภาพ (โจทย์ฝึกหัดตัวอย่าง)',
     gradeLevel: 'มัธยมศึกษาตอนปลาย (ม.4 - ม.6)',
     category: 'onet',
     questionTh: 'คลื่นแม่เหล็กไฟฟ้าชนิดใดมีความถี่สูงสุดและมีพลังงานต่อโฟตอนมากที่สุด?',
@@ -120,7 +120,7 @@ export const COMPREHENSIVE_QUESTION_BANK: QuizQuestion[] = [
   },
   {
     id: 'onet-m3-eng-1',
-    subject: 'ภาษาอังกฤษ (English Assessment)',
+    subject: 'ภาษาอังกฤษ (โจทย์ฝึกหัดตัวอย่าง)',
     gradeLevel: 'มัธยมศึกษาตอนต้น (ม.1 - ม.3)',
     category: 'onet',
     questionTh: 'Choose the correct answer: "Neither the teacher nor the students _____ in the science lab right now."',
@@ -132,7 +132,7 @@ export const COMPREHENSIVE_QUESTION_BANK: QuizQuestion[] = [
   },
   {
     id: 'onet-m3-thai-1',
-    subject: 'ภาษาไทย (มาตรฐานระดับชาติ)',
+    subject: 'ภาษาไทย (โจทย์ฝึกหัดตัวอย่าง)',
     gradeLevel: 'มัธยมศึกษาตอนต้น (ม.1 - ม.3)',
     category: 'onet',
     questionTh: 'สำนวนไทยข้อใดมีความหมายตรงกับ "ทำเป็นไม่รู้ไม่ชี้ หรือทำเป็นไม่เห็นเหตุการณ์ที่เกิดขึ้น"?',

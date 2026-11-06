@@ -36,6 +36,10 @@ import {
   type AuthContext,
 } from '../lib/authDb';
 import { PWAInstallButton } from './PWAInstallButton';
+import heroImage from '../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
+import featureLmsImage from '../assets/images/classroom_teaching_learning_1793958766838.jpg';
+import featureArenaImage from '../assets/images/feature_eduarena_game_learning_1793951856246.jpg';
+import featureClinicImage from '../assets/images/feature_smart_student_health_clinic_1793951856130.jpg';
 
 interface AuthLayoutProps {
   onLogin: (context: AuthContext) => void;
@@ -46,12 +50,6 @@ interface AuthLayoutProps {
   themePalette?: ThemePalette;
   setThemePalette?: (palette: ThemePalette) => void;
 }
-
-// Generated high-fidelity visual assets - Authentic Thai Students & Teachers Classroom
-const HERO_IMAGE_PATH = '/src/assets/images/hero_classroom_teacher_students_1793958712620.jpg';
-const FEATURE_LMS_IMAGE_PATH = '/src/assets/images/classroom_teaching_learning_1793958766838.jpg';
-const FEATURE_ARENA_IMAGE_PATH = '/src/assets/images/feature_eduarena_game_learning_1793951856246.jpg';
-const FEATURE_CLINIC_IMAGE_PATH = '/src/assets/images/feature_smart_student_health_clinic_1793951856130.jpg';
 
 function getAuthErrorMessage(message: string, lang: AppLanguage): string {
   if (/error sending confirmation email|could not resend confirmation email/i.test(message)) {
@@ -504,7 +502,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <div className="relative group">
               <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-slate-900 shadow-2xl">
                 <img
-                  src={HERO_IMAGE_PATH}
+                  src={heroImage}
                   alt="EduVerse Happy Students and Teacher in Modern Classroom"
                   className="w-full h-auto aspect-[16/10] object-cover transition-transform duration-700 group-hover:scale-102"
                   referrerPolicy="no-referrer"
@@ -554,7 +552,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-blue-400 dark:hover:border-blue-600 transition">
                 <div className="relative h-48 overflow-hidden bg-slate-950">
                   <img
-                    src={FEATURE_LMS_IMAGE_PATH}
+                    src={featureLmsImage}
                     alt="Digital LMS Classroom"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
@@ -585,7 +583,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-amber-400 dark:hover:border-amber-600 transition">
                 <div className="relative h-48 overflow-hidden bg-slate-950">
                   <img
-                    src={FEATURE_ARENA_IMAGE_PATH}
+                    src={featureArenaImage}
                     alt="EduArena 3D Learning Arena"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
@@ -616,7 +614,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-emerald-400 dark:hover:border-emerald-600 transition">
                 <div className="relative h-48 overflow-hidden bg-slate-950">
                   <img
-                    src={FEATURE_CLINIC_IMAGE_PATH}
+                    src={featureClinicImage}
                     alt="Digital Infirmary & Wellness"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
@@ -797,7 +795,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     {schools.length > 0 ? (
                       schools.map(s => (
                         <span key={s.id} className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium">
-                          {lang === 'th' ? s.nameTh : s.nameEn} ({s.code})
+                          {lang === 'th' ? s.nameTh : s.nameEn}
                         </span>
                       ))
                     ) : (
@@ -940,7 +938,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           >
                             {schools.map((school) => (
                               <option key={school.id} value={school.id}>
-                                {lang === 'th' ? school.nameTh : school.nameEn} ({school.code})
+                                {lang === 'th' ? school.nameTh : school.nameEn}
                               </option>
                             ))}
                           </select>

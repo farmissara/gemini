@@ -69,7 +69,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   // New Question Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSubject, setNewSubject] = useState('คณิตศาสตร์ (Mathematics)');
-  const [newGradeLevel, setNewGradeLevel] = useState('ม.6 (มาตรฐานระดับชาติ)');
+  const [newGradeLevel, setNewGradeLevel] = useState('ม.6');
   const [newCategory, setNewCategory] = useState<'standard_exam' | 'onet' | 'general' | 'review' | 'exam'>('standard_exam');
   const [newQuestionTh, setNewQuestionTh] = useState('');
   const [newQuestionEn, setNewQuestionEn] = useState('');
@@ -308,14 +308,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
               <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-              <span>EduVerse Gamification Engine • คลังข้อสอบมาตรฐาน & แบทเทิล 1v1</span>
+              <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
             </h1>
             <p className="text-white/80 text-sm max-w-2xl">
               {lang === 'th'
-                ? 'ฝึกฝนทบทวนข้อสอบมาตรฐานระดับชาติและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
+                ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
                 : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
             </p>
           </div>
@@ -499,7 +499,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        { id: 'all', label: 'ทุกวิชา (รวมข้อสอบมาตรฐาน)' },
+                        { id: 'all', label: 'ทุกวิชา (รวมโจทย์ตัวอย่าง)' },
                         { id: 'คณิตศาสตร์', label: 'คณิตศาสตร์ (Math)' },
                         { id: 'วิทยาศาสตร์', label: 'วิทยาศาสตร์ (Science)' },
                         { id: 'วิทยาการคำนวณ', label: 'วิทยาการคำนวณ (CS)' },
@@ -1094,7 +1094,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     onChange={(e) => setNewCategory(e.target.value as any)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
                   >
-                    <option value="standard_exam">ข้อสอบมาตรฐานระดับชาติ</option>
+                    <option value="standard_exam">โจทย์ฝึกหัดตัวอย่าง</option>
                     <option value="review">ทบทวนบทเรียน</option>
                     <option value="exam">ข้อสอบกลางภาค/ปลายภาค</option>
                     <option value="general">ความรู้ทั่วไป</option>

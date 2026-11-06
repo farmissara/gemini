@@ -1492,7 +1492,7 @@ export const INITIAL_QUESTIONS: QuizQuestion[] = [
     id: 'q-1',
     schoolId: 'sch-1',
     subject: 'คณิตศาสตร์ (Mathematics)',
-    gradeLevel: 'ม.6 (มาตรฐานระดับชาติ)',
+    gradeLevel: 'ม.6 (โจทย์ฝึกหัดตัวอย่าง)',
     category: 'standard_exam',
     questionTh: 'ถ้า f(x) = 3x^2 - 4x + 5 แล้ว ค่าของ f\'(2) มีค่าเท่ากับข้อใด?',
     questionEn: 'If f(x) = 3x^2 - 4x + 5, what is the value of f\'(2)?',
@@ -1505,7 +1505,7 @@ export const INITIAL_QUESTIONS: QuizQuestion[] = [
     id: 'q-2',
     schoolId: 'sch-1',
     subject: 'วิทยาศาสตร์ (Science)',
-    gradeLevel: 'ม.6 (มาตรฐานระดับชาติ)',
+    gradeLevel: 'ม.6 (โจทย์ฝึกหัดตัวอย่าง)',
     category: 'standard_exam',
     questionTh: 'กระบวนการสังเคราะห์ด้วยแสงของพืชเกิดขึ้นที่ออร์แกเนลล์ใด และใช้สารใดเป็นสารตั้งต้นหลัก?',
     questionEn: 'In which organelle does plant photosynthesis take place, and what are the main reactants?',
@@ -1541,7 +1541,7 @@ export const INITIAL_QUESTIONS: QuizQuestion[] = [
     id: 'q-4',
     schoolId: 'sch-1',
     subject: 'ภาษาอังกฤษ (English Assessment)',
-    gradeLevel: 'ม.6 (มาตรฐานระดับชาติ)',
+    gradeLevel: 'ม.6 (โจทย์ฝึกหัดตัวอย่าง)',
     category: 'standard_exam',
     questionTh: 'Choose the best word to complete the sentence: "The principal congratulated all students _____ passed the scholarship exam."',
     questionEn: 'Choose the best relative pronoun to complete the sentence.',
@@ -1554,7 +1554,7 @@ export const INITIAL_QUESTIONS: QuizQuestion[] = [
     id: 'q-5',
     schoolId: 'sch-1',
     subject: 'ภาษาไทย (Thai Language)',
-    gradeLevel: 'ม.6 (มาตรฐานระดับชาติ)',
+    gradeLevel: 'ม.6 (โจทย์ฝึกหัดตัวอย่าง)',
     category: 'standard_exam',
     questionTh: 'ข้อใดใช้สำนวนไทยได้ถูกต้องและตรงตามความหมาย?',
     questionEn: 'Which Thai idiom is used correctly according to its traditional meaning?',
@@ -2813,4 +2813,3 @@ export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
     createdAt: `${getLocalDateString()} 09:15:00`
   }
 ];
-

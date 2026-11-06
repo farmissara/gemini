@@ -667,7 +667,7 @@ export const MODULE_GUIDES: GuideItem[] = [
       {
         titleTh: 'สังเวียนประลองความรู้ 1v1 (Arena)',
         titleEn: '1v1 Quiz Duels',
-        descTh: 'ดวลตอบคำถามมาตรฐานระดับชาติ, TCAS, วิทย์, คณิต, อังกฤษ เลือดลดเมื่อตอบผิด ชนะรับ EXP และ Coins',
+        descTh: 'ดวลตอบโจทย์ฝึกหัดตัวอย่าง วิทย์ คณิต และอังกฤษ เลือดลดเมื่อตอบผิด ชนะรับ EXP และ Coins',
         descEn: '1v1 academic quiz duels. Wrong answers deal HP damage; victories award coins and experience.'
       },
       {
