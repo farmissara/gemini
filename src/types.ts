@@ -257,15 +257,34 @@ export interface Student {
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'sick' | 'leave';
+export type AttendanceCheckType = 'check_in' | 'check_out';
+export type AttendanceUserType = 'student' | 'teacher';
 
 export interface AttendanceRecord {
   id: string;
   schoolId?: string;
   studentId: string;
+  teacherId?: string;
+  userType?: AttendanceUserType;
+  userName?: string;
+  userRole?: string;
+  userAvatar?: string;
+  userDepartmentOrRoom?: string;
+  recordType?: AttendanceCheckType; // 'check_in' | 'check_out'
   date: string; // YYYY-MM-DD
   time: string; // HH:mm:ss
+  checkOutTime?: string;
   status: AttendanceStatus;
-  checkinMethod: 'qr_scanner' | 'rfid' | 'manual' | 'mobile_geofence' | 'teacher_proxy';
+  checkinMethod: 'qr_scanner' | 'rfid' | 'manual' | 'mobile_geofence' | 'teacher_proxy' | 'selfie_geofence';
+  photoUrl?: string; // Captured selfie image from phone
+  location?: {
+    lat: number;
+    lng: number;
+    accuracy?: number;
+    distanceMeters: number;
+    inGeofence: boolean;
+    geofenceZoneName?: string;
+  };
   remarks?: string;
   lineNotificationSent: boolean;
 }

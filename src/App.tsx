@@ -12,6 +12,8 @@ import {
   Announcement, 
   SystemConfig, 
   AttendanceStatus,
+  AttendanceCheckType,
+  AttendanceUserType,
   AppProgramMode,
   AppLanguage,
   AppTheme,
@@ -443,37 +445,68 @@ export const App: React.FC = () => {
     studentId: string, 
     status: AttendanceStatus, 
     remarks: string,
-    method?: AttendanceRecord['checkinMethod']
+    method?: AttendanceRecord['checkinMethod'],
+    extra?: {
+      recordType?: AttendanceCheckType;
+      photoUrl?: string;
+      location?: AttendanceRecord['location'];
+      userType?: AttendanceUserType;
+      teacherId?: string;
+      userName?: string;
+      userRole?: string;
+      userAvatar?: string;
+      userDepartmentOrRoom?: string;
+      date?: string;
+    }
   ) => {
-    const todayStr = getLocalDateString();
-    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const todayStr = extra?.date || getLocalDateString();
+    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
     setAttendance((prev) => {
-      const existingIdx = prev.findIndex(a => a.studentId === studentId && a.date === todayStr);
-      if (existingIdx >= 0) {
-        const updated = [...prev];
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          status,
-          remarks: remarks || updated[existingIdx].remarks,
-          checkinMethod: method || updated[existingIdx].checkinMethod,
-          time: nowTime
-        };
-        return updated;
-      } else {
-        const newRecord: AttendanceRecord = {
-          id: `att-${Date.now()}`,
-          schoolId: activeSchool.id,
-          studentId,
-          date: todayStr,
-          time: nowTime,
-          status,
-          remarks,
-          checkinMethod: method || 'qr_scanner',
-          lineNotificationSent: false
-        };
-        return [newRecord, ...prev];
+      const isCheckOut = extra?.recordType === 'check_out';
+      const st = schoolStudents.find(s => s.id === studentId);
+      const tc = schoolTeachers.find(t => t.id === studentId || t.id === extra?.teacherId);
+
+      const resolvedUserType: AttendanceUserType = extra?.userType || (tc ? 'teacher' : 'student');
+      const resolvedName = extra?.userName || (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'ผู้ใช้งาน'));
+      const resolvedRole = extra?.userRole || (st ? `นักเรียน (${st.gradeLevel})` : (tc ? tc.academicStanding : 'ครู/บุคลากร'));
+      const resolvedAvatar = extra?.photoUrl || extra?.userAvatar || (st ? st.avatarUrl : (tc ? tc.avatarUrl : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'));
+      const resolvedDeptOrRoom = extra?.userDepartmentOrRoom || (st ? st.room : (tc ? tc.department : ''));
+
+      const newRecord: AttendanceRecord = {
+        id: `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        schoolId: activeSchool.id,
+        studentId,
+        teacherId: extra?.teacherId || (resolvedUserType === 'teacher' ? studentId : undefined),
+        userType: resolvedUserType,
+        userName: resolvedName,
+        userRole: resolvedRole,
+        userAvatar: resolvedAvatar,
+        userDepartmentOrRoom: resolvedDeptOrRoom,
+        recordType: extra?.recordType || 'check_in',
+        date: todayStr,
+        time: nowTime,
+        status,
+        remarks,
+        checkinMethod: method || (extra?.photoUrl ? 'selfie_geofence' : 'qr_scanner'),
+        photoUrl: extra?.photoUrl,
+        location: extra?.location,
+        lineNotificationSent: true
+      };
+
+      if (isCheckOut) {
+        const checkInIdx = prev.findIndex(a => a.studentId === studentId && a.date === todayStr && a.recordType !== 'check_out');
+        if (checkInIdx >= 0) {
+          const updated = [...prev];
+          updated[checkInIdx] = {
+            ...updated[checkInIdx],
+            checkOutTime: nowTime
+          };
+          return [newRecord, ...updated];
+        }
       }
+
+      return [newRecord, ...prev];
     });
   };
 
@@ -829,11 +862,14 @@ export const App: React.FC = () => {
                 {currentTab === 'dashboard' && (
                   <DashboardView
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     courses={schoolCourses}
                     attendance={schoolAttendance}
                     invoices={schoolInvoices}
                     announcements={schoolAnnouncements}
                     systemConfig={systemConfig}
+                    school={activeSchool}
+                    currentUser={currentUser}
                     onNavigate={setCurrentTab}
                     onQuickCheckIn={handleQuickCheckIn}
                   />
@@ -923,10 +959,12 @@ export const App: React.FC = () => {
                 {currentTab === 'mobile_checkin' && (
                   <MobileAttendanceView
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     courses={schoolCourses}
                     attendance={schoolAttendance}
                     periodAttendance={schoolPeriodAttendance}
                     currentUser={currentUser}
+                    school={activeSchool}
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onRecordPeriodAttendance={handleRecordPeriodAttendance}
