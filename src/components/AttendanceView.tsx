@@ -13,6 +13,7 @@ import {
   Sparkles,
   UserCheck
 } from 'lucide-react';
+import { getLocalDateString } from '../lib/date';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -32,7 +33,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [scannerResult, setScannerResult] = useState<string | null>(null);
 
   // Filter logs by date
-  const [dateFilter, setDateFilter] = useState('2026-11-04');
+  const [dateFilter, setDateFilter] = useState(getLocalDateString);
 
   const filteredLogs = attendance.filter(a => a.date === dateFilter);
 

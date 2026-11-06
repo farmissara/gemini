@@ -28,4 +28,8 @@ npm install
 npm run dev
 ```
 
+Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` before signing in. Run the SQL in [`supabase/schema.sql`](./supabase/schema.sql). Schools can register separate tenants from the sign-up screen; the first registrant becomes that school's administrator and the tenant activates after email confirmation. See [`DEPLOY_SUPABASE_RENDER.md`](./DEPLOY_SUPABASE_RENDER.md) for email confirmation and existing-school setup. The browser uses Supabase Auth and the public anon key; never put a `service_role` key in frontend configuration.
+
+The current Supabase persistence covers students, courses, grades, attendance, invoices, and announcements. Other modules and third-party integrations are not yet production-backed.
+
 Built with React 19, TypeScript, Tailwind CSS v4, Lucide Icons, and Vite.

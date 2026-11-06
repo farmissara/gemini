@@ -314,7 +314,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 }}
                 className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
               >
-                Simulate Payment OK
+                Payment unavailable
               </button>
             </div>
           </div>

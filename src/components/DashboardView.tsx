@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Student, Course, AttendanceRecord, TuitionInvoice, Announcement, SystemConfig } from '../types';
 import { NavTab } from './Sidebar';
+import { getLocalDateString } from '../lib/date';
 
 interface DashboardViewProps {
   students: Student[];
@@ -41,7 +42,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const linePercent = totalStudents > 0 ? Math.round((lineConnectedCount / totalStudents) * 100) : 0;
 
   // Attendance stats today
-  const todayAttendance = attendance.filter(a => a.date === '2026-11-04');
+  const todayAttendance = attendance.filter(a => a.date === getLocalDateString());
   const presentCount = todayAttendance.filter(a => a.status === 'present').length;
   const lateCount = todayAttendance.filter(a => a.status === 'late').length;
   const sickCount = todayAttendance.filter(a => a.status === 'sick' || a.status === 'leave').length;

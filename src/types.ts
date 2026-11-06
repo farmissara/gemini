@@ -244,7 +244,7 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   time: string; // HH:mm:ss
   status: AttendanceStatus;
-  checkinMethod: 'qr_scanner' | 'rfid' | 'manual';
+  checkinMethod: 'qr_scanner' | 'rfid' | 'manual' | 'mobile_geofence' | 'teacher_proxy';
   remarks?: string;
   lineNotificationSent: boolean;
 }
@@ -612,4 +612,3 @@ export interface HomeworkSubmission {
   gradedAt?: string;
   gradedBy?: string;
 }
-

@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   Download
 } from 'lucide-react';
+import { getLocalDateString } from '../lib/date';
 import { 
   Student, 
   Course, 
@@ -34,7 +35,12 @@ interface MobileAttendanceViewProps {
   periodAttendance: PeriodAttendanceRecord[];
   currentUser: AuthUser | null;
   lang: AppLanguage;
-  onRecordAttendance: (studentId: string, status: AttendanceStatus, remarks: string, method?: string) => void;
+  onRecordAttendance: (
+    studentId: string,
+    status: AttendanceStatus,
+    remarks: string,
+    method?: AttendanceRecord['checkinMethod']
+  ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
 }
 
@@ -64,7 +70,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // Period Attendance State
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || 'crs-1');
   const [selectedPeriod, setSelectedPeriod] = useState<number>(1);
-  const [periodDate, setPeriodDate] = useState<string>('2026-11-04');
+  const [periodDate, setPeriodDate] = useState<string>(getLocalDateString);
   const [periodStatuses, setPeriodStatuses] = useState<Record<string, 'present' | 'late' | 'absent' | 'excused'>>({});
   const [periodSavedNotification, setPeriodSavedNotification] = useState<string | null>(null);
 
@@ -507,15 +513,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         <td className="p-4 text-slate-300 font-semibold">{s.gradeLevel}</td>
                         <td className="p-4">
                           <div className="flex items-center gap-1.5">
-                            {[
+                            {([
                               { id: 'present', label: 'มาเรียน', color: 'hover:bg-emerald-600/30 text-emerald-400 border-emerald-500/40' },
                               { id: 'late', label: 'มาสาย', color: 'hover:bg-amber-600/30 text-amber-400 border-amber-500/40' },
                               { id: 'leave', label: 'ลา', color: 'hover:bg-indigo-600/30 text-indigo-400 border-indigo-500/40' },
                               { id: 'absent', label: 'ขาดเรียน', color: 'hover:bg-rose-600/30 text-rose-400 border-rose-500/40' }
-                            ].map(opt => (
+                            ] as const).map(opt => (
                               <button
                                 key={opt.id}
-                                onClick={() => setProxyStatuses(prev => ({ ...prev, [s.id]: opt.id as any }))}
+                                onClick={() => setProxyStatuses(prev => ({ ...prev, [s.id]: opt.id }))}
                                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
                                   currentStatus === opt.id
                                     ? opt.id === 'present' ? 'bg-emerald-600 text-white border-emerald-500' :
@@ -663,15 +669,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-1.5">
-                            {[
+                            {([
                               { id: 'present', label: 'เข้าเรียนตรงเวลา' },
                               { id: 'late', label: 'เข้าสาย' },
                               { id: 'absent', label: 'ขาดเรียน' },
                               { id: 'excused', label: 'มีใบลา' }
-                            ].map(opt => (
+                            ] as const).map(opt => (
                               <button
                                 key={opt.id}
-                                onClick={() => setPeriodStatuses(prev => ({ ...prev, [stuId]: opt.id as any }))}
+                                onClick={() => setPeriodStatuses(prev => ({ ...prev, [stuId]: opt.id }))}
                                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
                                   currentStatus === opt.id
                                     ? opt.id === 'present' ? 'bg-emerald-600 text-white border-emerald-500' :

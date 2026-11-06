@@ -4,7 +4,6 @@ import {
   Building2, 
   X, 
   Check, 
-  Plus, 
   MapPin, 
   Users, 
   ExternalLink,
@@ -15,7 +14,6 @@ interface SchoolSwitcherModalProps {
   schools: School[];
   activeSchool: School;
   onSelectSchool: (school: School) => void;
-  onOpenRegisterSchool: () => void;
   onClose: () => void;
   lang: AppLanguage;
 }
@@ -24,7 +22,6 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
   schools,
   activeSchool,
   onSelectSchool,
-  onOpenRegisterSchool,
   onClose,
   lang,
 }) => {
@@ -41,7 +38,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                 {lang === 'th' ? 'ข้อมูลสถาบันการศึกษา (School Institution)' : 'School Institution Info'}
               </h3>
               <p className="text-xs text-slate-400">
-                {lang === 'th' ? 'ระบบทำงานในรูปแบบโรงเรียนเดี่ยว (Dedicated Single School Demo)' : 'Operating in dedicated single school mode.'}
+                {lang === 'th' ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง' : 'Only schools your account is authorized to access are shown.'}
               </p>
             </div>
           </div>
@@ -117,22 +114,10 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
           })}
         </div>
 
-        {/* Action button: Register New School */}
-        <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+        <div className="pt-3 border-t border-slate-800">
           <span className="text-xs text-slate-400">
             {lang === 'th' ? `ระบบมีทั้งหมด ${schools.length} โรงเรียน` : `Total ${schools.length} Schools`}
           </span>
-
-          <button
-            onClick={() => {
-              onClose();
-              onOpenRegisterSchool();
-            }}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{lang === 'th' ? '+ ลงทะเบียนเปิดโรงเรียนใหม่' : '+ Add New School'}</span>
-          </button>
         </div>
       </div>
     </div>

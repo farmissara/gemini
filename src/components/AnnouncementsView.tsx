@@ -13,6 +13,7 @@ import {
   Sparkles,
   AlertCircle
 } from 'lucide-react';
+import { getLocalDateString } from '../lib/date';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -52,23 +53,23 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       content: formData.content,
       category: formData.category,
       targetAudience: formData.targetAudience,
-      publishedAt: '2026-11-04 09:00',
+      publishedAt: `${getLocalDateString()} ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`,
       author: formData.author,
       authorRole: formData.authorRole,
       pinned: formData.pinned,
-      lineBroadcastSent: true,
-      resendEmailSent: true,
+      lineBroadcastSent: false,
+      resendEmailSent: false,
     };
 
     onAddAnnouncement(newAnn);
     setShowComposeModal(false);
-    setBroadcastToast(`Broadcast published and pushed via LINE OA to ${formData.targetAudience.toUpperCase()}`);
+    setBroadcastToast('Announcement added. LINE OA and email were not sent.');
     setTimeout(() => setBroadcastToast(null), 4000);
   };
 
   const handleManualLineBroadcast = (id: string, title: string) => {
     onBroadcastLine(id);
-    setBroadcastToast(`LINE OA Multi-Cast broadcast re-sent for "${title}"`);
+    setBroadcastToast(`LINE OA is not configured. No message was sent for "${title}".`);
     setTimeout(() => setBroadcastToast(null), 4000);
   };
 

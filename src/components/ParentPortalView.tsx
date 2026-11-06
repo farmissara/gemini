@@ -15,6 +15,7 @@ import {
   Phone,
   Download
 } from 'lucide-react';
+import { getLocalDateString } from '../lib/date';
 
 interface ParentPortalViewProps {
   students: Student[];
@@ -46,7 +47,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const studentAttendance = attendance.filter((a) => a.studentId === student?.id);
   const studentInvoices = invoices.filter((i) => i.studentId === student?.id);
   const studentGrades = grades.filter((g) => g.studentId === student?.id);
-  const todayRecord = studentAttendance.find((a) => a.date === '2026-11-04');
+  const todayRecord = studentAttendance.find((a) => a.date === getLocalDateString());
 
   const pendingInvoice = studentInvoices.find((i) => i.status !== 'paid');
 
@@ -299,7 +300,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 }}
                 className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
               >
-                ยืนยันการชำระเงิน
+                ระบบชำระเงินยังไม่พร้อม
               </button>
             </div>
           </div>

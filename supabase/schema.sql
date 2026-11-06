@@ -6,6 +6,32 @@
 -- Enable UUID extension if not enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Revoke the legacy unrestricted policies before any migration can fail.
+DO $$
+BEGIN
+    IF to_regclass('public.schools') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public schools access" ON public.schools;
+    END IF;
+    IF to_regclass('public.students') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public students access" ON public.students;
+    END IF;
+    IF to_regclass('public.courses') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public courses access" ON public.courses;
+    END IF;
+    IF to_regclass('public.grades') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public grades access" ON public.grades;
+    END IF;
+    IF to_regclass('public.attendance') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public attendance access" ON public.attendance;
+    END IF;
+    IF to_regclass('public.invoices') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public invoices access" ON public.invoices;
+    END IF;
+    IF to_regclass('public.announcements') IS NOT NULL THEN
+        DROP POLICY IF EXISTS "Public announcements access" ON public.announcements;
+    END IF;
+END $$;
+
 -- 1. SCHOOLS TABLE
 CREATE TABLE IF NOT EXISTS public.schools (
     id TEXT PRIMARY KEY,
@@ -54,8 +80,21 @@ CREATE TABLE IF NOT EXISTS public.students (
     line_linked BOOLEAN DEFAULT false,
     line_notify_enabled BOOLEAN DEFAULT false,
     enrolled_date TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT students_id_school_unique UNIQUE (id, school_id)
 );
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.students'::regclass
+          AND conname = 'students_id_school_unique'
+    ) THEN
+        ALTER TABLE public.students
+            ADD CONSTRAINT students_id_school_unique UNIQUE (id, school_id);
+    END IF;
+END $$;
 
 -- 3. COURSES TABLE
 CREATE TABLE IF NOT EXISTS public.courses (
@@ -76,8 +115,21 @@ CREATE TABLE IF NOT EXISTS public.courses (
     enrolled_student_ids JSONB DEFAULT '[]'::jsonb,
     description TEXT,
     cover_image TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT courses_id_school_unique UNIQUE (id, school_id)
 );
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.courses'::regclass
+          AND conname = 'courses_id_school_unique'
+    ) THEN
+        ALTER TABLE public.courses
+            ADD CONSTRAINT courses_id_school_unique UNIQUE (id, school_id);
+    END IF;
+END $$;
 
 -- 4. GRADES TABLE
 CREATE TABLE IF NOT EXISTS public.grades (
@@ -94,7 +146,13 @@ CREATE TABLE IF NOT EXISTS public.grades (
     total_score NUMERIC(5,2) DEFAULT 0,
     letter_grade TEXT DEFAULT 'F',
     grade_point NUMERIC(3,2) DEFAULT 0.00,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT grades_student_school_fk
+        FOREIGN KEY (student_id, school_id)
+        REFERENCES public.students(id, school_id) ON DELETE CASCADE,
+    CONSTRAINT grades_course_school_fk
+        FOREIGN KEY (course_id, school_id)
+        REFERENCES public.courses(id, school_id) ON DELETE CASCADE
 );
 
 -- 5. ATTENDANCE TABLE
@@ -108,7 +166,10 @@ CREATE TABLE IF NOT EXISTS public.attendance (
     checkin_method TEXT DEFAULT 'qr_scanner',
     remarks TEXT,
     line_notification_sent BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT attendance_student_school_fk
+        FOREIGN KEY (student_id, school_id)
+        REFERENCES public.students(id, school_id) ON DELETE CASCADE
 );
 
 -- 6. INVOICES TABLE
@@ -127,7 +188,10 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     payment_method TEXT,
     paid_at TEXT,
     receipt_number TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT invoices_student_school_fk
+        FOREIGN KEY (student_id, school_id)
+        REFERENCES public.students(id, school_id) ON DELETE CASCADE
 );
 
 -- 7. ANNOUNCEMENTS TABLE
@@ -147,6 +211,306 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.grades'::regclass AND conname = 'grades_student_school_fk'
+    ) THEN
+        ALTER TABLE public.grades
+            ADD CONSTRAINT grades_student_school_fk
+            FOREIGN KEY (student_id, school_id)
+            REFERENCES public.students(id, school_id) ON DELETE CASCADE;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.grades'::regclass AND conname = 'grades_course_school_fk'
+    ) THEN
+        ALTER TABLE public.grades
+            ADD CONSTRAINT grades_course_school_fk
+            FOREIGN KEY (course_id, school_id)
+            REFERENCES public.courses(id, school_id) ON DELETE CASCADE;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.attendance'::regclass AND conname = 'attendance_student_school_fk'
+    ) THEN
+        ALTER TABLE public.attendance
+            ADD CONSTRAINT attendance_student_school_fk
+            FOREIGN KEY (student_id, school_id)
+            REFERENCES public.students(id, school_id) ON DELETE CASCADE;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.invoices'::regclass AND conname = 'invoices_student_school_fk'
+    ) THEN
+        ALTER TABLE public.invoices
+            ADD CONSTRAINT invoices_student_school_fk
+            FOREIGN KEY (student_id, school_id)
+            REFERENCES public.students(id, school_id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- Authenticated identity and school membership. Administrative roles must be
+-- assigned by a trusted operator, never from client-provided signup metadata.
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'student'
+        CHECK (role IN ('super_admin', 'admin', 'teacher', 'student', 'parent')),
+    student_id TEXT REFERENCES public.students(id) ON DELETE SET NULL,
+    full_name_th TEXT NOT NULL DEFAULT '',
+    full_name_en TEXT NOT NULL DEFAULT '',
+    avatar_url TEXT NOT NULL DEFAULT '',
+    phone TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (role = 'super_admin' OR school_id IS NOT NULL),
+    CONSTRAINT user_profiles_id_school_unique UNIQUE (id, school_id),
+    CONSTRAINT user_profiles_status_check CHECK (status IN ('pending', 'active', 'suspended'))
+);
+
+ALTER TABLE public.user_profiles
+    ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.user_profiles'::regclass
+          AND conname = 'user_profiles_status_check'
+    ) THEN
+        ALTER TABLE public.user_profiles
+            ADD CONSTRAINT user_profiles_status_check
+            CHECK (status IN ('pending', 'active', 'suspended'));
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.user_profiles'::regclass
+          AND conname = 'user_profiles_id_school_unique'
+    ) THEN
+        ALTER TABLE public.user_profiles
+            ADD CONSTRAINT user_profiles_id_school_unique UNIQUE (id, school_id);
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.parent_student_links (
+    profile_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+    school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
+    PRIMARY KEY (profile_id, student_id),
+    CONSTRAINT parent_link_profile_school_fk
+        FOREIGN KEY (profile_id, school_id)
+        REFERENCES public.user_profiles(id, school_id) ON DELETE CASCADE,
+    CONSTRAINT parent_link_student_school_fk
+        FOREIGN KEY (student_id, school_id)
+        REFERENCES public.students(id, school_id) ON DELETE CASCADE
+);
+
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS TEXT
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+    SELECT role FROM public.user_profiles WHERE id = auth.uid()
+$$;
+
+CREATE OR REPLACE FUNCTION public.current_user_school_id()
+RETURNS TEXT
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+    SELECT school_id FROM public.user_profiles WHERE id = auth.uid()
+$$;
+
+CREATE OR REPLACE FUNCTION public.has_school_role(target_school_id TEXT, allowed_roles TEXT[])
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.user_profiles
+        WHERE id = auth.uid()
+          AND status = 'active'
+          AND role = ANY (allowed_roles)
+          AND (role = 'super_admin' OR school_id = target_school_id)
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_access_student(target_student_id TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.students s
+        JOIN public.user_profiles p ON p.id = auth.uid()
+        WHERE s.id = target_student_id
+          AND p.status = 'active'
+          AND (
+              p.role = 'super_admin'
+              OR (
+                  p.role = 'student'
+                  AND p.school_id = s.school_id
+                  AND p.student_id = s.id
+              )
+              OR (
+                  p.role = 'parent'
+                  AND EXISTS (
+                  SELECT 1
+                  FROM public.parent_student_links l
+                  WHERE l.profile_id = p.id AND l.student_id = s.id AND l.school_id = s.school_id
+                  )
+              )
+          )
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION public.handle_auth_user_signup()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    signup_type TEXT := NEW.raw_user_meta_data ->> 'signup_type';
+    requested_school_id TEXT := NEW.raw_user_meta_data ->> 'school_id';
+    new_school_id TEXT;
+    school_name_th TEXT := NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'school_name_th'), '');
+    school_name_en TEXT := NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'school_name_en'), '');
+    school_type TEXT := COALESCE(NEW.raw_user_meta_data ->> 'school_type', 'public');
+    school_province TEXT := NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'school_province'), '');
+    school_slug TEXT;
+    school_status TEXT;
+BEGIN
+    IF signup_type IS NULL AND requested_school_id IS NOT NULL THEN
+        signup_type := 'student';
+    END IF;
+    IF signup_type IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF signup_type = 'school_admin' THEN
+        IF school_name_th IS NULL OR school_province IS NULL THEN
+            RAISE EXCEPTION 'School name and province are required';
+        END IF;
+        IF school_type NOT IN ('public', 'private', 'international', 'demonstration') THEN
+            RAISE EXCEPTION 'Invalid school type';
+        END IF;
+
+        new_school_id := 'school-' || NEW.id::TEXT;
+        school_slug := TRIM(BOTH '-' FROM REGEXP_REPLACE(
+            LOWER(COALESCE(school_name_en, 'school')),
+            '[^a-z0-9]+',
+            '-',
+            'g'
+        ));
+        IF school_slug = '' THEN
+            school_slug := 'school';
+        END IF;
+        school_slug := school_slug || '-' || REPLACE(NEW.id::TEXT, '-', '');
+        school_status := CASE WHEN NEW.email_confirmed_at IS NOT NULL THEN 'active' ELSE 'pending' END;
+
+        INSERT INTO public.schools (
+            id, code, name_th, name_en, slug, type, province, email, phone, status
+        ) VALUES (
+            new_school_id,
+            'EDU-' || UPPER(REPLACE(NEW.id::TEXT, '-', '')),
+            school_name_th,
+            COALESCE(school_name_en, school_name_th),
+            school_slug,
+            school_type,
+            school_province,
+            NEW.email,
+            NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'phone'), ''),
+            school_status
+        );
+
+        INSERT INTO public.user_profiles (
+            id, school_id, role, full_name_th, full_name_en, phone, status
+        ) VALUES (
+            NEW.id,
+            new_school_id,
+            'admin',
+            COALESCE(NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'full_name_th'), ''), school_name_th),
+            COALESCE(NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'full_name_en'), ''), school_name_en, school_name_th),
+            NULLIF(BTRIM(NEW.raw_user_meta_data ->> 'phone'), ''),
+            school_status
+        );
+    ELSIF signup_type = 'student' THEN
+        IF requested_school_id IS NULL OR NOT EXISTS (
+            SELECT 1 FROM public.schools
+            WHERE id = requested_school_id AND status = 'active'
+        ) THEN
+            RAISE EXCEPTION 'A valid active school is required to register';
+        END IF;
+
+        INSERT INTO public.user_profiles (
+            id, school_id, role, full_name_th, full_name_en, avatar_url, phone, status
+        ) VALUES (
+            NEW.id,
+            requested_school_id,
+            'student',
+            COALESCE(NEW.raw_user_meta_data ->> 'full_name_th', ''),
+            COALESCE(NEW.raw_user_meta_data ->> 'full_name_en', ''),
+            COALESCE(NEW.raw_user_meta_data ->> 'avatar_url', ''),
+            NEW.raw_user_meta_data ->> 'phone',
+            'pending'
+        );
+    ELSE
+        RAISE EXCEPTION 'Invalid account registration type';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.activate_verified_school_signup()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF OLD.email_confirmed_at IS NULL AND NEW.email_confirmed_at IS NOT NULL THEN
+        UPDATE public.user_profiles
+        SET status = 'active'
+        WHERE id = NEW.id AND role = 'admin' AND status = 'pending';
+
+        UPDATE public.schools s
+        SET status = 'active'
+        FROM public.user_profiles p
+        WHERE p.id = NEW.id
+          AND p.role = 'admin'
+          AND p.school_id = s.id
+          AND s.status = 'pending';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
+CREATE TRIGGER on_auth_user_created_profile
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_auth_user_signup();
+
+DROP TRIGGER IF EXISTS on_auth_user_email_confirmed ON auth.users;
+CREATE TRIGGER on_auth_user_email_confirmed
+    AFTER UPDATE OF email_confirmed_at ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.activate_verified_school_signup();
+
+DROP FUNCTION IF EXISTS public.create_student_profile_for_signup();
+
 -- Indexes for high performance
 CREATE INDEX IF NOT EXISTS idx_students_school ON public.students(school_id);
 CREATE INDEX IF NOT EXISTS idx_courses_school ON public.courses(school_id);
@@ -154,6 +518,8 @@ CREATE INDEX IF NOT EXISTS idx_grades_student ON public.grades(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_student_date ON public.attendance(student_id, date);
 CREATE INDEX IF NOT EXISTS idx_invoices_student ON public.invoices(student_id);
 CREATE INDEX IF NOT EXISTS idx_announcements_school ON public.announcements(school_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_school ON public.user_profiles(school_id);
+CREATE INDEX IF NOT EXISTS idx_parent_links_student ON public.parent_student_links(student_id);
 
 -- Enable Row Level Security (RLS) on all tables
 ALTER TABLE public.schools ENABLE ROW LEVEL SECURITY;
@@ -163,28 +529,176 @@ ALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.parent_student_links ENABLE ROW LEVEL SECURITY;
 
--- Create Open Access Policies for Web Application (Can be restricted later)
+-- Remove the previous unrestricted policies and replace them with membership-
+-- and role-scoped policies. RLS is fail-closed until a user has a profile.
 DO $$
 BEGIN
     DROP POLICY IF EXISTS "Public schools access" ON public.schools;
-    CREATE POLICY "Public schools access" ON public.schools FOR ALL USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "Public students access" ON public.students;
-    CREATE POLICY "Public students access" ON public.students FOR ALL USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "Public courses access" ON public.courses;
-    CREATE POLICY "Public courses access" ON public.courses FOR ALL USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "Public grades access" ON public.grades;
-    CREATE POLICY "Public grades access" ON public.grades FOR ALL USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "Public attendance access" ON public.attendance;
-    CREATE POLICY "Public attendance access" ON public.attendance FOR ALL USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "Public invoices access" ON public.invoices;
-    CREATE POLICY "Public invoices access" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "Public announcements access" ON public.announcements;
-    CREATE POLICY "Public announcements access" ON public.announcements FOR ALL USING (true) WITH CHECK (true);
 END $$;
+
+DROP POLICY IF EXISTS "School members can read their school" ON public.schools;
+CREATE POLICY "School members can read their school" ON public.schools
+    FOR SELECT USING (
+        status = 'active' AND auth.uid() IS NULL
+        OR public.has_school_role(id, ARRAY['super_admin', 'admin', 'teacher', 'student', 'parent'])
+    );
+DROP POLICY IF EXISTS "School admins can update their school" ON public.schools;
+CREATE POLICY "School admins can update their school" ON public.schools
+    FOR UPDATE USING (public.has_school_role(id, ARRAY['super_admin', 'admin']))
+    WITH CHECK (public.has_school_role(id, ARRAY['super_admin', 'admin']));
+
+DROP POLICY IF EXISTS "Users can read permitted profiles" ON public.user_profiles;
+CREATE POLICY "Users can read permitted profiles" ON public.user_profiles
+    FOR SELECT USING (
+        id = auth.uid()
+        OR public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    );
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
+CREATE POLICY "Users can update their own profile" ON public.user_profiles
+    FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "Members can read school students" ON public.students;
+CREATE POLICY "Members can read school students" ON public.students
+    FOR SELECT USING (
+        school_id IS NOT NULL
+        AND (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+        OR public.can_access_student(id)
+        )
+    );
+DROP POLICY IF EXISTS "School staff can add students" ON public.students;
+CREATE POLICY "School staff can add students" ON public.students
+    FOR INSERT WITH CHECK (
+        school_id IS NOT NULL
+        AND public.has_school_role(school_id, ARRAY['super_admin', 'admin'])
+    );
+DROP POLICY IF EXISTS "School admins can update students" ON public.students;
+CREATE POLICY "School admins can update students" ON public.students
+    FOR UPDATE USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin']))
+    WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin']));
+DROP POLICY IF EXISTS "School admins can delete students" ON public.students;
+CREATE POLICY "School admins can delete students" ON public.students
+    FOR DELETE USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin']));
+
+DROP POLICY IF EXISTS "School members can read courses" ON public.courses;
+CREATE POLICY "School members can read courses" ON public.courses
+    FOR SELECT USING (
+        school_id IS NOT NULL
+        AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher', 'student', 'parent'])
+    );
+DROP POLICY IF EXISTS "School staff can manage courses" ON public.courses;
+CREATE POLICY "School staff can manage courses" ON public.courses
+    FOR ALL USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
+    WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+
+DROP POLICY IF EXISTS "Users can read permitted grades" ON public.grades;
+CREATE POLICY "Users can read permitted grades" ON public.grades
+    FOR SELECT USING (
+        school_id IS NOT NULL
+        AND (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+        OR public.can_access_student(student_id)
+        )
+    );
+DROP POLICY IF EXISTS "School staff can manage grades" ON public.grades;
+CREATE POLICY "School staff can manage grades" ON public.grades
+    FOR ALL USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
+    WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+
+DROP POLICY IF EXISTS "Users can read permitted attendance" ON public.attendance;
+CREATE POLICY "Users can read permitted attendance" ON public.attendance
+    FOR SELECT USING (
+        school_id IS NOT NULL
+        AND (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+        OR public.can_access_student(student_id)
+        )
+    );
+DROP POLICY IF EXISTS "School staff can manage attendance" ON public.attendance;
+CREATE POLICY "School staff can manage attendance" ON public.attendance
+    FOR ALL USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
+    WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+
+DROP POLICY IF EXISTS "Users can read permitted invoices" ON public.invoices;
+CREATE POLICY "Users can read permitted invoices" ON public.invoices
+    FOR SELECT USING (
+        school_id IS NOT NULL
+        AND (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin'])
+        OR public.can_access_student(student_id)
+        )
+    );
+DROP POLICY IF EXISTS "School admins can manage invoices" ON public.invoices;
+CREATE POLICY "School admins can manage invoices" ON public.invoices
+    FOR ALL USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin']))
+    WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin']));
+
+DROP POLICY IF EXISTS "School members can read announcements" ON public.announcements;
+CREATE POLICY "School members can read announcements" ON public.announcements
+    FOR SELECT USING (
+        school_id IS NOT NULL
+        AND (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+        OR (
+            target_audience = 'all'
+            AND public.has_school_role(school_id, ARRAY['student', 'parent'])
+        )
+        OR (
+            target_audience = 'students'
+            AND public.has_school_role(school_id, ARRAY['student'])
+        )
+        OR (
+            target_audience = 'parents'
+            AND public.has_school_role(school_id, ARRAY['parent'])
+        )
+        )
+    );
+DROP POLICY IF EXISTS "School staff can manage announcements" ON public.announcements;
+CREATE POLICY "School staff can manage announcements" ON public.announcements
+    FOR ALL USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
+    WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+
+DROP POLICY IF EXISTS "Users can read permitted parent links" ON public.parent_student_links;
+CREATE POLICY "Users can read permitted parent links" ON public.parent_student_links
+    FOR SELECT USING (
+        profile_id = auth.uid()
+        OR public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    );
+DROP POLICY IF EXISTS "School admins can manage parent links" ON public.parent_student_links;
+CREATE POLICY "School admins can manage parent links" ON public.parent_student_links
+    FOR ALL USING (public.has_school_role(school_id, ARRAY['super_admin', 'admin']))
+    WITH CHECK (public.has_school_role(school_id, ARRAY['super_admin', 'admin']));
+
+REVOKE ALL ON public.schools, public.students, public.courses, public.grades,
+    public.attendance, public.invoices, public.announcements,
+    public.user_profiles, public.parent_student_links FROM anon, authenticated;
+GRANT SELECT ON public.schools TO anon;
+GRANT SELECT ON public.schools, public.students, public.courses, public.grades,
+    public.attendance, public.invoices, public.announcements,
+    public.user_profiles, public.parent_student_links TO authenticated;
+GRANT UPDATE ON public.schools TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.students, public.courses, public.grades,
+    public.attendance, public.invoices, public.announcements,
+    public.parent_student_links TO authenticated;
+GRANT UPDATE (full_name_th, full_name_en, avatar_url, phone)
+    ON public.user_profiles TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.handle_auth_user_signup() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.activate_verified_school_signup() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.current_user_role() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.current_user_school_id() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.has_school_role(TEXT, TEXT[]) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.can_access_student(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.current_user_school_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_school_role(TEXT, TEXT[]) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.can_access_student(TEXT) TO authenticated;

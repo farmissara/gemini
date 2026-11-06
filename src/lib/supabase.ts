@@ -6,8 +6,10 @@ import {
   GradeRecord, 
   AttendanceRecord, 
   TuitionInvoice, 
-  Announcement 
+  Announcement,
+  UserRole,
 } from '../types';
+import schemaSql from '../../supabase/schema.sql?raw';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -80,168 +82,7 @@ export function clearCustomSupabaseCredentials() {
   }
 }
 
-export const SUPABASE_SCHEMA_SQL = `-- EduVerse PostgreSQL Schema for Supabase
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-CREATE TABLE IF NOT EXISTS public.schools (
-    id TEXT PRIMARY KEY,
-    code TEXT NOT NULL UNIQUE,
-    name_th TEXT NOT NULL,
-    name_en TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    type TEXT DEFAULT 'public',
-    province TEXT DEFAULT 'กรุงเทพมหานคร',
-    address TEXT,
-    phone TEXT,
-    email TEXT,
-    logo_url TEXT,
-    primary_color TEXT DEFAULT '#0284c7',
-    students_count INTEGER DEFAULT 0,
-    teachers_count INTEGER DEFAULT 0,
-    academic_year TEXT DEFAULT '2569 (2026)',
-    current_semester TEXT DEFAULT '1',
-    line_oa_id TEXT DEFAULT '@eduverse_th',
-    status TEXT DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.students (
-    id TEXT PRIMARY KEY,
-    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
-    student_id_number TEXT NOT NULL,
-    national_id TEXT,
-    first_name_en TEXT NOT NULL,
-    last_name_en TEXT NOT NULL,
-    first_name_th TEXT NOT NULL,
-    last_name_th TEXT NOT NULL,
-    gender TEXT DEFAULT 'other',
-    date_of_birth TEXT,
-    grade_level TEXT,
-    room TEXT,
-    status TEXT DEFAULT 'active',
-    avatar_url TEXT,
-    gpa NUMERIC(3,2) DEFAULT 0.00,
-    guardian_name TEXT,
-    guardian_relation TEXT,
-    guardian_phone TEXT,
-    guardian_email TEXT,
-    line_user_id TEXT,
-    line_linked BOOLEAN DEFAULT false,
-    line_notify_enabled BOOLEAN DEFAULT false,
-    enrolled_date TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.courses (
-    id TEXT PRIMARY KEY,
-    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
-    code TEXT NOT NULL,
-    title_en TEXT NOT NULL,
-    title_th TEXT NOT NULL,
-    category TEXT DEFAULT 'core',
-    credits NUMERIC(3,1) DEFAULT 1.0,
-    teacher_name TEXT,
-    teacher_email TEXT,
-    department TEXT,
-    schedule TEXT,
-    room TEXT,
-    academic_year TEXT,
-    semester TEXT DEFAULT '1',
-    enrolled_student_ids JSONB DEFAULT '[]'::jsonb,
-    description TEXT,
-    cover_image TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.grades (
-    id TEXT PRIMARY KEY,
-    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
-    student_id TEXT REFERENCES public.students(id) ON DELETE CASCADE,
-    course_id TEXT REFERENCES public.courses(id) ON DELETE CASCADE,
-    academic_year TEXT,
-    semester TEXT,
-    midterm_score NUMERIC(5,2) DEFAULT 0,
-    final_score NUMERIC(5,2) DEFAULT 0,
-    assignment_score NUMERIC(5,2) DEFAULT 0,
-    quiz_score NUMERIC(5,2) DEFAULT 0,
-    total_score NUMERIC(5,2) DEFAULT 0,
-    letter_grade TEXT DEFAULT 'F',
-    grade_point NUMERIC(3,2) DEFAULT 0.00,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.attendance (
-    id TEXT PRIMARY KEY,
-    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
-    student_id TEXT REFERENCES public.students(id) ON DELETE CASCADE,
-    date TEXT NOT NULL,
-    time TEXT NOT NULL,
-    status TEXT DEFAULT 'present',
-    checkin_method TEXT DEFAULT 'qr_scanner',
-    remarks TEXT,
-    line_notification_sent BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.invoices (
-    id TEXT PRIMARY KEY,
-    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
-    invoice_number TEXT NOT NULL,
-    student_id TEXT REFERENCES public.students(id) ON DELETE CASCADE,
-    semester TEXT,
-    academic_year TEXT,
-    issue_date TEXT,
-    due_date TEXT,
-    total_amount NUMERIC(10,2) DEFAULT 0,
-    status TEXT DEFAULT 'pending',
-    items JSONB DEFAULT '[]'::jsonb,
-    payment_method TEXT,
-    paid_at TEXT,
-    receipt_number TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.announcements (
-    id TEXT PRIMARY KEY,
-    school_id TEXT REFERENCES public.schools(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    category TEXT DEFAULT 'general',
-    target_audience TEXT DEFAULT 'all',
-    published_at TEXT,
-    author TEXT,
-    author_role TEXT,
-    pinned BOOLEAN DEFAULT false,
-    line_broadcast_sent BOOLEAN DEFAULT false,
-    resend_email_sent BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- RLS Policies
-ALTER TABLE public.schools ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-
-DO $$ BEGIN
-    DROP POLICY IF EXISTS "Public schools access" ON public.schools;
-    CREATE POLICY "Public schools access" ON public.schools FOR ALL USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "Public students access" ON public.students;
-    CREATE POLICY "Public students access" ON public.students FOR ALL USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "Public courses access" ON public.courses;
-    CREATE POLICY "Public courses access" ON public.courses FOR ALL USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "Public grades access" ON public.grades;
-    CREATE POLICY "Public grades access" ON public.grades FOR ALL USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "Public attendance access" ON public.attendance;
-    CREATE POLICY "Public attendance access" ON public.attendance FOR ALL USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "Public invoices access" ON public.invoices;
-    CREATE POLICY "Public invoices access" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
-    DROP POLICY IF EXISTS "Public announcements access" ON public.announcements;
-    CREATE POLICY "Public announcements access" ON public.announcements FOR ALL USING (true) WITH CHECK (true);
-END $$;`;
+export const SUPABASE_SCHEMA_SQL = schemaSql;
 
 export async function testSupabaseConnection(): Promise<{
   ok: boolean;
@@ -308,9 +149,137 @@ export async function testSupabaseConnection(): Promise<{
   }
 }
 
+export interface SchoolData {
+  students: Student[];
+  courses: Course[];
+  grades: GradeRecord[];
+  attendance: AttendanceRecord[];
+  invoices: TuitionInvoice[];
+  announcements: Announcement[];
+}
+
+export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const tableNames = ['students', 'courses', 'grades', 'attendance', 'invoices', 'announcements'] as const;
+  const results = await Promise.all(
+    tableNames.map((table) => client.from(table).select('*').eq('school_id', schoolId))
+  );
+  const failedQuery = results.find((result) => result.error);
+  if (failedQuery?.error) {
+    throw new Error(`Could not load school data: ${failedQuery.error.message}`);
+  }
+
+  const [studentResult, courseResult, gradeResult, attendanceResult, invoiceResult, announcementResult] = results;
+  const students: Student[] = (studentResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    studentIdNumber: row.student_id_number,
+    nationalId: row.national_id || undefined,
+    firstNameEn: row.first_name_en,
+    lastNameEn: row.last_name_en,
+    firstNameTh: row.first_name_th,
+    lastNameTh: row.last_name_th,
+    gender: row.gender,
+    dateOfBirth: row.date_of_birth || '',
+    gradeLevel: row.grade_level || '',
+    room: row.room || '',
+    status: row.status,
+    avatarUrl: row.avatar_url || '',
+    gpa: Number(row.gpa || 0),
+    guardianName: row.guardian_name || '',
+    guardianRelation: row.guardian_relation || '',
+    guardianPhone: row.guardian_phone || '',
+    guardianEmail: row.guardian_email || '',
+    lineUserId: row.line_user_id || undefined,
+    lineLinked: Boolean(row.line_linked),
+    lineNotifyEnabled: Boolean(row.line_notify_enabled),
+    enrolledDate: row.enrolled_date || '',
+  }));
+  const courses: Course[] = (courseResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    code: row.code,
+    titleEn: row.title_en,
+    titleTh: row.title_th,
+    category: row.category,
+    credits: Number(row.credits || 0),
+    teacherName: row.teacher_name || '',
+    teacherEmail: row.teacher_email || '',
+    department: row.department || '',
+    schedule: row.schedule || '',
+    room: row.room || '',
+    academicYear: row.academic_year || '',
+    semester: row.semester,
+    enrolledStudentIds: row.enrolled_student_ids || [],
+    description: row.description || '',
+    coverImage: row.cover_image || undefined,
+  }));
+  const grades: GradeRecord[] = (gradeResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    studentId: row.student_id,
+    courseId: row.course_id,
+    academicYear: row.academic_year || '',
+    semester: row.semester || '',
+    midtermScore: Number(row.midterm_score || 0),
+    finalScore: Number(row.final_score || 0),
+    assignmentScore: Number(row.assignment_score || 0),
+    quizScore: Number(row.quiz_score || 0),
+    totalScore: Number(row.total_score || 0),
+    letterGrade: row.letter_grade,
+    gradePoint: Number(row.grade_point || 0),
+  }));
+  const attendance: AttendanceRecord[] = (attendanceResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    studentId: row.student_id,
+    date: row.date,
+    time: row.time,
+    status: row.status,
+    checkinMethod: row.checkin_method,
+    remarks: row.remarks || undefined,
+    lineNotificationSent: Boolean(row.line_notification_sent),
+  }));
+  const invoices: TuitionInvoice[] = (invoiceResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    invoiceNumber: row.invoice_number,
+    studentId: row.student_id,
+    semester: row.semester || '',
+    academicYear: row.academic_year || '',
+    issueDate: row.issue_date || '',
+    dueDate: row.due_date || '',
+    totalAmount: Number(row.total_amount || 0),
+    status: row.status,
+    items: row.items || [],
+    paymentMethod: row.payment_method || undefined,
+    paidAt: row.paid_at || undefined,
+    receiptNumber: row.receipt_number || undefined,
+  }));
+  const announcements: Announcement[] = (announcementResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    title: row.title,
+    content: row.content,
+    category: row.category,
+    targetAudience: row.target_audience,
+    publishedAt: row.published_at || '',
+    author: row.author || '',
+    authorRole: row.author_role || '',
+    pinned: Boolean(row.pinned),
+    lineBroadcastSent: Boolean(row.line_broadcast_sent),
+    resendEmailSent: Boolean(row.resend_email_sent),
+  }));
+
+  return { students, courses, grades, attendance, invoices, announcements };
+}
+
 // Convert camelCase models to snake_case Postgres columns and back
 export async function syncDataToSupabase(payload: {
   school: School;
+  role: UserRole;
   students: Student[];
   courses: Course[];
   grades: GradeRecord[];
@@ -324,31 +293,8 @@ export async function syncDataToSupabase(payload: {
   }
 
   try {
-    // 1. Upsert School
-    const { error: schoolErr } = await client.from('schools').upsert({
-      id: payload.school.id,
-      code: payload.school.code,
-      name_th: payload.school.nameTh,
-      name_en: payload.school.nameEn,
-      slug: payload.school.slug,
-      type: payload.school.type,
-      province: payload.school.province,
-      address: payload.school.address,
-      phone: payload.school.phone,
-      email: payload.school.email,
-      logo_url: payload.school.logoUrl,
-      primary_color: payload.school.primaryColor,
-      students_count: payload.school.studentsCount,
-      teachers_count: payload.school.teachersCount,
-      academic_year: payload.school.academicYear,
-      current_semester: payload.school.currentSemester,
-      line_oa_id: payload.school.lineOaId,
-      status: payload.school.status,
-    });
-    if (schoolErr) throw new Error(`Schools sync error: ${schoolErr.message}`);
-
-    // 2. Upsert Students
-    if (payload.students.length > 0) {
+    // School identity is provisioned by an administrator and is never upserted by the client.
+    if (['super_admin', 'admin'].includes(payload.role) && payload.students.length > 0) {
       const studentRows = payload.students.map((s) => ({
         id: s.id,
         school_id: payload.school.id,
@@ -442,7 +388,7 @@ export async function syncDataToSupabase(payload: {
     }
 
     // 6. Upsert Invoices
-    if (payload.invoices.length > 0) {
+    if (['super_admin', 'admin'].includes(payload.role) && payload.invoices.length > 0) {
       const invRows = payload.invoices.map((i) => ({
         id: i.id,
         school_id: payload.school.id,

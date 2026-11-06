@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   UserRole, 
   School,
@@ -33,7 +33,6 @@ import {
 } from './types';
 import { 
   INITIAL_SCHOOLS,
-  DEMO_USERS,
   INITIAL_STUDENTS, 
   INITIAL_COURSES, 
   INITIAL_GRADES, 
@@ -55,8 +54,16 @@ import {
   INITIAL_HOMEWORK_SUBMISSIONS,
   INITIAL_ROLE_PERMISSIONS,
   INITIAL_PROMOTIONS,
-  INITIAL_SUBSCRIPTION_PLANS
+  INITIAL_SUBSCRIPTION_PLANS,
+  DEMO_USERS,
 } from './data/mockData';
+import {
+  restoreSupabaseSession,
+  signOutFromSupabase,
+  updateUserProfileInSupabase,
+} from './lib/authDb';
+import type { AuthContext } from './lib/authDb';
+import { loadSchoolData, syncDataToSupabase } from './lib/supabase';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { AuthLayout } from './components/AuthLayout';
@@ -85,15 +92,23 @@ import { SchoolPermissionSettingsView } from './components/SchoolPermissionSetti
 import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
 import { UserProfileModal } from './components/UserProfileModal';
 import { SystemSettingsView } from './components/SystemSettingsView';
+import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
-  const [schools, setSchools] = useState<School[]>(INITIAL_SCHOOLS);
+  const [schools, setSchools] = useState<School[]>([]);
   const [activeSchool, setActiveSchool] = useState<School>(INITIAL_SCHOOLS[0]);
-  const [demoUsers, setDemoUsers] = useState<AuthUser[]>(DEMO_USERS);
+  const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const demoModeRef = useRef(false);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [loadedSchoolId, setLoadedSchoolId] = useState<string | null>(null);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  const [dataSyncError, setDataSyncError] = useState<string | null>(null);
+  const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Super Admin Management State (RBAC, Promotions, Subscription Plans)
   const [rolePermissions, setRolePermissions] = useState<RolePermissionConfig[]>(INITIAL_ROLE_PERMISSIONS);
@@ -154,45 +169,179 @@ export const App: React.FC = () => {
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
 
-  // Auth Handlers - Requires genuine authentication
-  const handleLogin = (user: AuthUser, school: School) => {
-    setCurrentUser(user);
-    setActiveSchool(school);
-    setCurrentRole(user.role);
+  // Keep the live Supabase account flow separate from the local demo session.
+  const handleLogin = (context: AuthContext) => {
+    demoModeRef.current = false;
+    setIsDemoMode(false);
+    setSchools(context.schools);
+    setCurrentUser(context.user);
+    setActiveSchool(context.school);
+    setCurrentRole(context.user.role);
+    setDataLoadError(null);
+    setLoadedSchoolId(null);
     setSystemConfig((prev) => ({
       ...prev,
-      schoolNameEn: school.nameEn,
-      schoolNameTh: school.nameTh,
+      schoolNameEn: context.school.nameEn,
+      schoolNameTh: context.school.nameTh,
     }));
-    if (user.role === 'super_admin') {
+    if (context.user.role === 'super_admin') {
       setCurrentTab('super_admin_console');
     } else {
       setCurrentTab('dashboard');
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleStartDemo = () => {
+    const school = INITIAL_SCHOOLS[0];
+    const demoUser = DEMO_USERS.find((user) => user.role === 'admin');
+    if (!demoUser) {
+      setDataLoadError('Demo administrator is not configured.');
+      return;
+    }
+
+    demoModeRef.current = true;
+    setIsDemoMode(true);
+    setSchools(INITIAL_SCHOOLS);
+    setActiveSchool(school);
+    setCurrentUser(demoUser);
+    setCurrentRole(demoUser.role);
+    setCurrentTab('dashboard');
+    setStudents(INITIAL_STUDENTS);
+    setCourses(INITIAL_COURSES);
+    setGrades(INITIAL_GRADES);
+    setAttendance(INITIAL_ATTENDANCE);
+    setInvoices(INITIAL_INVOICES);
+    setAnnouncements(INITIAL_ANNOUNCEMENTS);
+    setSystemConfig(INITIAL_SYSTEM_CONFIG);
+    setLessons(INITIAL_LESSONS);
+    setAssignments(INITIAL_ASSIGNMENTS);
+    setQuestions(INITIAL_QUESTIONS);
+    setPlayerScores(INITIAL_PLAYER_SCORES);
+    setRewardItems(INITIAL_REWARD_ITEMS);
+    setPeriodAttendance(INITIAL_PERIOD_ATTENDANCE);
+    setPortfolioItems(INITIAL_PORTFOLIO_ITEMS);
+    setTimetableSlots(INITIAL_TIMETABLE_SLOTS);
+    setBehaviorRecords(INITIAL_BEHAVIOR_RECORDS);
+    setSdqAssessments(INITIAL_SDQ_ASSESSMENTS);
+    setInfirmaryVisits(INITIAL_INFIRMARY_VISITS);
+    setHomeworkSubmissions(INITIAL_HOMEWORK_SUBMISSIONS);
+    setRolePermissions(INITIAL_ROLE_PERMISSIONS);
+    setPromotions(INITIAL_PROMOTIONS);
+    setSubscriptionPlans(INITIAL_SUBSCRIPTION_PLANS);
+    setIsDataReady(true);
+    setLoadedSchoolId(school.id);
+    setDataLoadError(null);
+    setDataSyncError(null);
   };
 
-  const handleRegisterSchool = (newSchool: School, adminUser: AuthUser) => {
-    setSchools((prev) => [newSchool, ...prev]);
-    setDemoUsers((prev) => [adminUser, ...prev]);
-    setActiveSchool(newSchool);
-    setCurrentUser(adminUser);
-    setCurrentRole('admin');
-    setSystemConfig((prev) => ({
-      ...prev,
-      schoolNameEn: newSchool.nameEn,
-      schoolNameTh: newSchool.nameTh,
-    }));
+  const handleLogout = async () => {
+    try {
+      if (!isDemoMode) await signOutFromSupabase();
+      demoModeRef.current = false;
+      setIsDemoMode(false);
+      setCurrentUser(null);
+      setIsDataReady(false);
+      setLoadedSchoolId(null);
+      setDataLoadError(null);
+      setDataSyncError(null);
+    } catch (error) {
+      setDataLoadError(error instanceof Error ? error.message : String(error));
+    }
   };
 
-  const handleRegisterUser = (newUser: AuthUser) => {
-    setDemoUsers((prev) => [newUser, ...prev]);
-    const targetSchool = schools.find((s) => s.id === newUser.schoolId) || schools[0];
-    handleLogin(newUser, targetSchool);
-  };
+  useEffect(() => {
+    let active = true;
+    restoreSupabaseSession()
+      .then((context) => {
+        if (active && context && !demoModeRef.current) handleLogin(context);
+      })
+      .catch((error: unknown) => {
+        if (active) setDataLoadError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser || isDemoMode) return;
+    let active = true;
+    setIsDataReady(false);
+    setLoadedSchoolId(null);
+    setDataLoadError(null);
+    loadSchoolData(activeSchool.id)
+      .then((data) => {
+        if (!active) return;
+        setStudents(data.students);
+        setCourses(data.courses);
+        setGrades(data.grades);
+        setAttendance(data.attendance);
+        setInvoices(data.invoices);
+        setAnnouncements(data.announcements);
+        setLessons([]);
+        setAssignments([]);
+        setQuestions([]);
+        setPlayerScores([]);
+        setRewardItems([]);
+        setPeriodAttendance([]);
+        setPortfolioItems([]);
+        setTimetableSlots([]);
+        setBehaviorRecords([]);
+        setSdqAssessments([]);
+        setInfirmaryVisits([]);
+        setHomeworkSubmissions([]);
+        setIsDataReady(true);
+        setLoadedSchoolId(activeSchool.id);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setDataLoadError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id, activeSchool.id, isDemoMode]);
+
+  useEffect(() => {
+    if (
+      !currentUser ||
+      isDemoMode ||
+      !['super_admin', 'admin', 'teacher'].includes(currentUser.role) ||
+      !isDataReady ||
+      loadedSchoolId !== activeSchool.id
+    ) return;
+    const timeoutId = window.setTimeout(() => {
+      syncQueueRef.current = syncQueueRef.current.then(async () => {
+        const result = await syncDataToSupabase({
+          school: activeSchool,
+          role: currentUser.role,
+          students: students.filter((item) => item.schoolId === activeSchool.id),
+          courses: courses.filter((item) => item.schoolId === activeSchool.id),
+          grades: grades.filter((item) => item.schoolId === activeSchool.id),
+          attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
+          invoices: invoices.filter((item) => item.schoolId === activeSchool.id),
+          announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
+        });
+        setDataSyncError(result.success ? null : result.message);
+      }).catch((error: unknown) => {
+        setDataSyncError(error instanceof Error ? error.message : String(error));
+      });
+    }, 500);
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    currentUser?.id,
+    currentUser?.role,
+    isDemoMode,
+    isDataReady,
+    loadedSchoolId,
+    activeSchool,
+    students,
+    courses,
+    grades,
+    attendance,
+    invoices,
+    announcements,
+  ]);
 
   // Domain Handlers
   const handleAddStudent = (newStudent: Student) => {
@@ -200,20 +349,7 @@ export const App: React.FC = () => {
   };
 
   const handleToggleLineSync = (studentId: string) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          const nextLinked = !s.lineLinked;
-          return {
-            ...s,
-            lineLinked: nextLinked,
-            lineNotifyEnabled: nextLinked,
-            lineUserId: nextLinked ? `U${Math.random().toString(36).substring(2, 12)}` : '',
-          };
-        }
-        return s;
-      })
-    );
+    setDataSyncError(`LINE OA linking is not configured. Student ${studentId} was not changed.`);
   };
 
   const handleAddCourse = (newCourse: Course) => {
@@ -238,9 +374,9 @@ export const App: React.FC = () => {
     studentId: string, 
     status: AttendanceStatus, 
     remarks: string,
-    method?: string
+    method?: AttendanceRecord['checkinMethod']
   ) => {
-    const todayStr = '2026-11-04';
+    const todayStr = getLocalDateString();
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     
     setAttendance((prev) => {
@@ -251,7 +387,7 @@ export const App: React.FC = () => {
           ...updated[existingIdx],
           status,
           remarks: remarks || updated[existingIdx].remarks,
-          checkinMethod: (method as any) || updated[existingIdx].checkinMethod,
+          checkinMethod: method || updated[existingIdx].checkinMethod,
           time: nowTime
         };
         return updated;
@@ -264,8 +400,8 @@ export const App: React.FC = () => {
           time: nowTime,
           status,
           remarks,
-          checkinMethod: (method as any) || 'qr_scanner',
-          lineNotificationSent: true
+          checkinMethod: method || 'qr_scanner',
+          lineNotificationSent: false
         };
         return [newRecord, ...prev];
       }
@@ -293,28 +429,12 @@ export const App: React.FC = () => {
     handleRecordAttendance(studentId, 'present', 'สแกนบัตรผ่านประตูอัตโนมัติ (Gate Turnstile)');
   };
 
-  const handlePayInvoice = (invoiceId: string, method?: TuitionInvoice['paymentMethod']) => {
-    setInvoices((prev) =>
-      prev.map((inv) => {
-        if (inv.id === invoiceId) {
-          return {
-            ...inv,
-            status: 'paid',
-            paymentMethod: method || 'promptpay',
-            paidAt: new Date().toISOString(),
-            receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
-          };
-        }
-        return inv;
-      })
-    );
+  const handlePayInvoice = (invoiceId: string, _method?: TuitionInvoice['paymentMethod']) => {
+    setDataSyncError(`Payment processing is not configured. Invoice ${invoiceId} was not marked as paid.`);
   };
 
   const handleSendLineReminder = (invoice: TuitionInvoice) => {
-    const student = students.find((s) => s.id === invoice.studentId);
-    if (student) {
-      alert(`[LINE Official Account]\nส่งการแจ้งเตือนยอดค้างชำระ ฿${invoice.totalAmount.toLocaleString()} ไปยังผู้ปกครองของ ${student.firstNameTh} สำเร็จแล้ว`);
-    }
+    setDataSyncError(`LINE OA is not configured. No reminder was sent for invoice ${invoice.invoiceNumber}.`);
   };
 
   const handleAddAnnouncement = (newAnn: Announcement) => {
@@ -322,9 +442,7 @@ export const App: React.FC = () => {
   };
 
   const handleBroadcastLine = (announcementId: string) => {
-    setAnnouncements((prev) =>
-      prev.map((a) => (a.id === announcementId ? { ...a, lineBroadcastSent: true } : a))
-    );
+    setDataSyncError(`LINE OA is not configured. Announcement ${announcementId} was not broadcast.`);
   };
 
   const handleCompleteLesson = (lessonId: string) => {
@@ -382,41 +500,28 @@ export const App: React.FC = () => {
     setPortfolioItems((prev) => prev.filter((p) => p.id !== itemId));
   };
 
-  const handleUpdateUserProfile = (updatedUser: AuthUser) => {
-    setCurrentUser(updatedUser);
-    setDemoUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
-
-    // Synchronize with students state if role is student to keep records coherent
-    if (updatedUser.role === 'student') {
-      setStudents((prev) =>
-        prev.map((s) => {
-          if (s.id === updatedUser.id || (updatedUser.studentIdNumber && s.studentIdNumber === updatedUser.studentIdNumber)) {
-            const namePartsTh = (updatedUser.fullNameTh || '').trim().split(' ');
-            const namePartsEn = (updatedUser.fullNameEn || '').trim().split(' ');
-            return {
-              ...s,
-              firstNameTh: namePartsTh[0] || s.firstNameTh,
-              lastNameTh: namePartsTh.slice(1).join(' ') || s.lastNameTh,
-              firstNameEn: namePartsEn[0] || s.firstNameEn,
-              lastNameEn: namePartsEn.slice(1).join(' ') || s.lastNameEn,
-              avatarUrl: updatedUser.avatarUrl || s.avatarUrl,
-              gradeLevel: updatedUser.gradeLevel || s.gradeLevel,
-              room: updatedUser.room || s.room,
-              academicTrack: updatedUser.academicTrack || s.academicTrack,
-              gpa: updatedUser.gpax ?? s.gpa,
-              skills: updatedUser.skills || s.skills,
-              phone: updatedUser.phone || s.phone,
-              bloodType: updatedUser.bloodType || s.bloodType,
-              allergies: updatedUser.allergies || s.allergies,
-              chronicDiseases: updatedUser.chronicDiseases || s.chronicDiseases,
-              emergencyContact: updatedUser.emergencyContact || s.emergencyContact,
-              emergencyPhone: updatedUser.emergencyPhone || s.emergencyPhone,
-              address: updatedUser.address || s.address,
-            };
-          }
-          return s;
-        })
-      );
+  const handleUpdateUserProfile = async (updatedUser: AuthUser) => {
+    if (!currentUser) return;
+    const user = {
+      ...currentUser,
+      fullNameTh: updatedUser.fullNameTh,
+      fullNameEn: updatedUser.fullNameEn,
+      avatarUrl: updatedUser.avatarUrl,
+      phone: updatedUser.phone,
+      role: currentUser?.role || 'student',
+      schoolId: activeSchool.id,
+    };
+    if (isDemoMode) {
+      setCurrentUser(user);
+      return;
+    }
+    try {
+      await updateUserProfileInSupabase(user);
+      setCurrentUser(user);
+      setDataSyncError(null);
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      return;
     }
   };
 
@@ -456,20 +561,36 @@ export const App: React.FC = () => {
     );
   };
 
-  // If user is not authenticated, render AuthLayout (login/register)
+  // Live accounts must load their school data; demo sessions use local fixtures.
   if (!currentUser) {
     return (
       <AuthLayout
-        schools={schools}
-        demoUsers={demoUsers}
         onLogin={handleLogin}
-        onRegisterSchool={handleRegisterSchool}
-        onRegisterUser={handleRegisterUser}
+        onStartDemo={handleStartDemo}
+        initialError={dataLoadError}
         lang={lang}
         setLang={setLang}
         themePalette={themePalette}
         setThemePalette={setThemePalette}
       />
+    );
+  }
+
+  if (!isDataReady || loadedSchoolId !== activeSchool.id) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-white">
+        <div className="max-w-lg space-y-4 text-center">
+          <h1 className="text-xl font-bold">
+            {dataLoadError ? 'โหลดข้อมูลโรงเรียนไม่สำเร็จ' : 'กำลังโหลดข้อมูลโรงเรียน...'}
+          </h1>
+          {dataLoadError && <p role="alert" className="text-sm text-rose-300">{dataLoadError}</p>}
+          {dataLoadError && (
+            <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold">
+              ลองใหม่
+            </button>
+          )}
+        </div>
+      </main>
     );
   }
 
@@ -499,6 +620,25 @@ export const App: React.FC = () => {
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
       />
+      {isDemoMode && (
+        <div role="status" className="mx-4 mt-3 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm text-violet-900">
+          {lang === 'th'
+            ? 'โหมด Demo — ข้อมูลตัวอย่างสำหรับทดลอง การเปลี่ยนแปลงจะไม่บันทึกลงฐานข้อมูลจริง'
+            : 'Demo mode — sample data for exploration. Changes are not saved to the live database.'}
+        </div>
+      )}
+      {dataSyncError && (
+        <div role="alert" className="mx-4 mt-3 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}
+        </div>
+      )}
+      {!isDemoMode && (
+        <div role="status" className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          {lang === 'th'
+            ? 'บันทึกถาวรรองรับเฉพาะข้อมูลหลัก 6 หมวด; โมดูลอื่นและรายละเอียดโปรไฟล์เพิ่มเติมยังไม่บันทึกลง Supabase'
+            : 'Only six core data areas are persisted. Other modules and extended profile fields are not stored in Supabase yet.'}
+        </div>
+      )}
 
       {/* Mobile Drawer Overlay and Sidebar */}
       {isMobileMenuOpen && (
@@ -864,9 +1004,6 @@ export const App: React.FC = () => {
               schoolNameEn: school.nameEn,
               schoolNameTh: school.nameTh,
             }));
-          }}
-          onOpenRegisterSchool={() => {
-            setCurrentUser(null);
           }}
           onClose={() => setShowSchoolSwitcher(false)}
           lang={lang}

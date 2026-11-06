@@ -1,291 +1,290 @@
-import { AuthUser, UserRole } from '../types';
+import { AuthUser, School, UserRole } from '../types';
+import { getSupabaseClient } from './supabase';
 
-export interface StoredUserAccount {
+export interface AuthContext {
+  user: AuthUser;
+  school: School;
+  schools: School[];
+}
+
+interface SchoolRow {
   id: string;
-  email: string;
-  passwordHash: string; // SHA-256 hex digest
-  fullNameTh: string;
-  fullNameEn: string;
-  role: UserRole;
-  schoolId: string;
-  avatarUrl: string;
-  lineConnected: boolean;
-  phone?: string;
-  createdAt: string;
-}
+  code: string;
+  name_th: string;
+  name_en: string;
+  slug: string;
+  type: School['type'];
+  province: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  logo_url: string | null;
+  primary_color: string;
+  students_count: number;
+  teachers_count: number;
+  academic_year: string;
+  current_semester: string;
+  line_oa_id: string;
+  created_at: string;
+  status: School['status'];
+};
 
-const STORAGE_USERS_KEY = 'eduverse_users_database';
-
-// Compute SHA-256 hash using Web Crypto API
-export async function hashPassword(plainText: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plainText.trim() + ':eduverse_secure_salt_2026');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Initial seed accounts stored securely in the database
-const INITIAL_DB_ACCOUNTS: Array<{
+interface UserProfileRow {
   id: string;
-  email: string;
-  plainPassword: string;
-  fullNameTh: string;
-  fullNameEn: string;
+  email?: string;
+  school_id: string | null;
   role: UserRole;
-  schoolId: string;
-  avatarUrl: string;
-  lineConnected: boolean;
-  phone?: string;
-}> = [
-  {
-    id: 'usr-super',
-    email: 'superadmin@eduverse.school',
-    plainPassword: 'SuperAdmin@Edu2026!',
-    fullNameTh: 'ดร.กิตติพงษ์ ศรีสุวรรณ',
-    fullNameEn: 'Dr. Kittipong Srisuwan',
-    role: 'super_admin',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '081-999-8888',
-  },
-  {
-    id: 'usr-admin',
-    email: 'admin@eduverse.school',
-    plainPassword: 'Admin@Edu2026!',
-    fullNameTh: 'ดร.ธนพร กิตติศักดิ์ (ผู้อำนวยการ)',
-    fullNameEn: 'Dr. Thanaporn Kittisak (Principal)',
-    role: 'admin',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '081-234-5678',
-  },
-  {
-    id: 'usr-teacher',
-    email: 'teacher@eduverse.school',
-    plainPassword: 'Teacher@Edu2026!',
-    fullNameTh: 'อ.ดร.ประเสริฐ ถาวร (หัวหน้ากลุ่มสาระ)',
-    fullNameEn: 'Ajarn Dr. Prasert Thaworn',
-    role: 'teacher',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '089-112-3344',
-  },
-  {
-    id: 'usr-student',
-    email: 'student@eduverse.school',
-    plainPassword: 'Student@Edu2026!',
-    fullNameTh: 'นายธนาธร สมชาย (ม.4/1)',
-    fullNameEn: 'Thanatorn Somchai (STU-6901)',
-    role: 'student',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '081-456-7890',
-  },
-  {
-    id: 'usr-parent',
-    email: 'parent@eduverse.school',
-    plainPassword: 'Parent@Edu2026!',
-    fullNameTh: 'นายประภาส สมชาย (ผู้ปกครอง)',
-    fullNameEn: 'Mr. Prapas Somchai',
-    role: 'parent',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '086-554-3322',
-  },
-];
-
-// Initialize database with hashed passwords
-export async function initAuthDatabase(): Promise<StoredUserAccount[]> {
-  if (typeof window === 'undefined') return [];
-
-  const existingRaw = localStorage.getItem(STORAGE_USERS_KEY);
-  if (existingRaw) {
-    try {
-      const parsed: StoredUserAccount[] = JSON.parse(existingRaw);
-      // Ensure superadmin has correct hashed credentials
-      const superIndex = parsed.findIndex((u) => u.email === 'superadmin@eduverse.school');
-      if (superIndex >= 0) {
-        return parsed;
-      }
-    } catch {
-      // Re-seed on corruption
-    }
-  }
-
-  const seeded: StoredUserAccount[] = [];
-  for (const acc of INITIAL_DB_ACCOUNTS) {
-    const hash = await hashPassword(acc.plainPassword);
-    seeded.push({
-      id: acc.id,
-      email: acc.email,
-      passwordHash: hash,
-      fullNameTh: acc.fullNameTh,
-      fullNameEn: acc.fullNameEn,
-      role: acc.role,
-      schoolId: acc.schoolId,
-      avatarUrl: acc.avatarUrl,
-      lineConnected: acc.lineConnected,
-      phone: acc.phone,
-      createdAt: new Date().toISOString(),
-    });
-  }
-
-  localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(seeded));
-  return seeded;
+  status: 'pending' | 'active' | 'suspended';
+  full_name_th: string;
+  full_name_en: string;
+  avatar_url: string;
+  phone: string | null;
 }
 
-// Get all user accounts stored in the database (safely stripped of passwordHash)
-export function getStoredAuthUsers(): AuthUser[] {
-  if (typeof window === 'undefined') return [];
-  const raw = localStorage.getItem(STORAGE_USERS_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed: StoredUserAccount[] = JSON.parse(raw);
-    return parsed.map((acc) => ({
-      id: acc.id,
-      email: acc.email,
-      fullNameTh: acc.fullNameTh,
-      fullNameEn: acc.fullNameEn,
-      role: acc.role,
-      schoolId: acc.schoolId,
-      avatarUrl: acc.avatarUrl,
-      lineConnected: acc.lineConnected,
-      phone: acc.phone,
-    }));
-  } catch {
-    return [];
-  }
+function mapSchool(row: SchoolRow): School {
+  return {
+    id: row.id,
+    code: row.code,
+    nameTh: row.name_th,
+    nameEn: row.name_en,
+    slug: row.slug,
+    type: row.type,
+    province: row.province,
+    address: row.address || '',
+    phone: row.phone || '',
+    email: row.email || '',
+    logoUrl: row.logo_url || undefined,
+    primaryColor: row.primary_color,
+    studentsCount: row.students_count,
+    teachersCount: row.teachers_count,
+    academicYear: row.academic_year,
+    currentSemester: row.current_semester,
+    lineOaId: row.line_oa_id,
+    createdAt: row.created_at,
+    status: row.status,
+  };
 }
 
-// Authenticate user against database password hashes
-export async function authenticateWithDatabase(
-  identifier: string,
-  plainPassword: string
-): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  const cleanId = identifier.trim().toLowerCase();
-  const cleanPassword = plainPassword.trim();
+function isUserRole(role: string): role is UserRole {
+  return ['super_admin', 'admin', 'teacher', 'student', 'parent'].includes(role);
+}
 
-  if (!cleanId || !cleanPassword) {
-    return {
-      success: false,
-      error: 'กรุณากรอกอีเมล/ชื่อผู้ใช้ และรหัสผ่านให้ครบถ้วน (Please provide username and password)',
-    };
+async function loadAuthContext(userId: string, email: string): Promise<AuthContext> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+
+  const { data: profile, error: profileError } = await client
+    .from('user_profiles')
+    .select('id, school_id, role, status, full_name_th, full_name_en, avatar_url, phone')
+    .eq('id', userId)
+    .single();
+
+  if (profileError) {
+    throw new Error(`Could not load your school profile: ${profileError.message}`);
+  }
+  if (!isUserRole(profile.role)) {
+    throw new Error('Your account has an invalid application role. Contact your school administrator.');
+  }
+  if (profile.status !== 'active') {
+    throw new Error(profile.status === 'pending'
+      ? 'Your account is waiting for approval from your school administrator.'
+      : 'Your account is suspended. Contact your school administrator.');
   }
 
-  // Ensure DB is initialized
-  let accounts: StoredUserAccount[] = [];
-  const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_USERS_KEY) : null;
-  if (!raw) {
-    accounts = await initAuthDatabase();
-  } else {
-    try {
-      accounts = JSON.parse(raw);
-    } catch {
-      accounts = await initAuthDatabase();
-    }
+  const { data: schoolRows, error: schoolsError } = await client
+    .from('schools')
+    .select('*')
+    .eq('status', 'active')
+    .order('name_th');
+
+  if (schoolsError) {
+    throw new Error(`Could not load school information: ${schoolsError.message}`);
   }
 
-  // Find user by email or by username prefix
-  const target = accounts.find(
-    (acc) =>
-      acc.email.toLowerCase() === cleanId ||
-      acc.email.split('@')[0].toLowerCase() === cleanId ||
-      acc.id.toLowerCase() === cleanId
+  const schools = (schoolRows as SchoolRow[]).map(mapSchool);
+  const school = schools.find((item) => item.id === profile.school_id) || (
+    profile.role === 'super_admin' ? schools[0] : undefined
   );
-
-  if (!target) {
-    return {
-      success: false,
-      error: 'ไม่พบบัญชีผู้ใช้งานในฐานข้อมูล (Account not found in database)',
-    };
+  if (!school) {
+    throw new Error('Your account is not assigned to an active school. Contact your school administrator.');
   }
 
-  const computedHash = await hashPassword(cleanPassword);
-  if (target.passwordHash !== computedHash) {
-    return {
-      success: false,
-      error: 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านอีกครั้ง (Invalid password)',
-    };
-  }
-
-  // Authentication succeeded, return AuthUser without leaking passwordHash
-  const authUser: AuthUser = {
-    id: target.id,
-    email: target.email,
-    fullNameTh: target.fullNameTh,
-    fullNameEn: target.fullNameEn,
-    role: target.role,
-    schoolId: target.schoolId,
-    avatarUrl: target.avatarUrl,
-    lineConnected: target.lineConnected,
-    phone: target.phone,
+  const profileRow = profile as UserProfileRow;
+  const user: AuthUser = {
+    id: profileRow.id,
+    email,
+    fullNameTh: profileRow.full_name_th,
+    fullNameEn: profileRow.full_name_en,
+    role: profileRow.role,
+    schoolId: school.id,
+    avatarUrl: profileRow.avatar_url,
+    lineConnected: false,
+    phone: profileRow.phone || undefined,
   };
 
-  return { success: true, user: authUser };
+  return {
+    user,
+    school,
+    schools: profile.role === 'super_admin' ? schools : [school],
+  };
 }
 
-// Register a new user in the database
-export async function registerUserInDatabase(params: {
+export async function listActiveSchools(): Promise<School[]> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+
+  const { data, error } = await client
+    .from('schools')
+    .select('*')
+    .eq('status', 'active')
+    .order('name_th');
+  if (error) throw new Error(`Could not load active schools: ${error.message}`);
+  return (data as SchoolRow[]).map(mapSchool);
+}
+
+export async function authenticateWithSupabase(
+  email: string,
+  password: string
+): Promise<AuthContext> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error('Supabase did not return an authenticated user.');
+
+  try {
+    return await loadAuthContext(data.user.id, data.user.email || '');
+  } catch (error) {
+    await client.auth.signOut();
+    throw error;
+  }
+}
+
+export async function registerStudentWithSupabase(params: {
   email: string;
   password: string;
   fullNameTh: string;
   fullNameEn: string;
-  role: UserRole;
   schoolId: string;
   phone?: string;
-  lineConnected?: boolean;
-}): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  const cleanEmail = params.email.trim().toLowerCase();
-  if (!cleanEmail || !params.password) {
-    return { success: false, error: 'ข้อมูลไม่ครบถ้วน' };
+}): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+
+  const { data, error } = await client.auth.signUp({
+    email: params.email.trim().toLowerCase(),
+    password: params.password,
+    options: {
+      emailRedirectTo: typeof window === 'undefined' ? undefined : window.location.origin,
+      data: {
+        school_id: params.schoolId,
+        signup_type: 'student',
+        full_name_th: params.fullNameTh,
+        full_name_en: params.fullNameEn || params.fullNameTh,
+        phone: params.phone || null,
+      },
+    },
+  });
+  if (error) throw new Error(error.message);
+
+  if (data.session) {
+    const { error: signOutError } = await client.auth.signOut();
+    if (signOutError) throw new Error(`Account created, but could not end the temporary session: ${signOutError.message}`);
   }
+}
 
-  const accounts: StoredUserAccount[] = typeof window !== 'undefined' 
-    ? JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]')
-    : [];
+export async function registerSchoolWithSupabase(params: {
+  email: string;
+  password: string;
+  fullNameTh: string;
+  fullNameEn: string;
+  phone?: string;
+  schoolNameTh: string;
+  schoolNameEn: string;
+  schoolType: School['type'];
+  province: string;
+}): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 
-  if (accounts.some((a) => a.email.toLowerCase() === cleanEmail)) {
-    return { success: false, error: 'อีเมลนี้มีอยู่ในฐานข้อมูลแล้ว (Email already registered)' };
+  const { data, error } = await client.auth.signUp({
+    email: params.email.trim().toLowerCase(),
+    password: params.password,
+    options: {
+      emailRedirectTo: typeof window === 'undefined' ? undefined : window.location.origin,
+      data: {
+        signup_type: 'school_admin',
+        full_name_th: params.fullNameTh.trim(),
+        full_name_en: params.fullNameEn.trim() || params.fullNameTh.trim(),
+        phone: params.phone?.trim() || null,
+        school_name_th: params.schoolNameTh.trim(),
+        school_name_en: params.schoolNameEn.trim() || params.schoolNameTh.trim(),
+        school_type: params.schoolType,
+        school_province: params.province.trim(),
+      },
+    },
+  });
+  if (error) throw new Error(error.message);
+
+  if (data.session) {
+    const { error: signOutError } = await client.auth.signOut();
+    if (signOutError) throw new Error(`Account created, but could not end the temporary session: ${signOutError.message}`);
   }
+}
 
-  const passwordHash = await hashPassword(params.password);
-  const newAccount: StoredUserAccount = {
-    id: `usr-${Date.now()}`,
-    email: cleanEmail,
-    passwordHash,
-    fullNameTh: params.fullNameTh,
-    fullNameEn: params.fullNameEn || params.fullNameTh,
-    role: params.role,
-    schoolId: params.schoolId,
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-    lineConnected: params.lineConnected ?? false,
-    phone: params.phone,
-    createdAt: new Date().toISOString(),
-  };
+export async function resendSignupConfirmation(email: string): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 
-  accounts.push(newAccount);
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(accounts));
+  const { error } = await client.auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: {
+      emailRedirectTo: typeof window === 'undefined' ? undefined : window.location.origin,
+    },
+  });
+  if (error) throw new Error(`Could not resend confirmation email: ${error.message}`);
+}
+
+export async function restoreSupabaseSession(): Promise<AuthContext | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  const { data, error } = await client.auth.getSession();
+  if (error) throw new Error(`Could not restore your sign-in session: ${error.message}`);
+  if (!data.session?.user) return null;
+
+  try {
+    return await loadAuthContext(data.session.user.id, data.session.user.email || '');
+  } catch (error) {
+    await client.auth.signOut();
+    throw error;
   }
+}
 
-  const authUser: AuthUser = {
-    id: newAccount.id,
-    email: newAccount.email,
-    fullNameTh: newAccount.fullNameTh,
-    fullNameEn: newAccount.fullNameEn,
-    role: newAccount.role,
-    schoolId: newAccount.schoolId,
-    avatarUrl: newAccount.avatarUrl,
-    lineConnected: newAccount.lineConnected,
-    phone: newAccount.phone,
-  };
+export async function signOutFromSupabase(): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) return;
+  const { error } = await client.auth.signOut();
+  if (error) throw new Error(`Could not sign out: ${error.message}`);
+}
 
-  return { success: true, user: authUser };
+export async function updateUserProfileInSupabase(user: AuthUser): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client
+    .from('user_profiles')
+    .update({
+      full_name_th: user.fullNameTh,
+      full_name_en: user.fullNameEn,
+      avatar_url: user.avatarUrl,
+      phone: user.phone || null,
+    })
+    .eq('id', user.id);
+  if (error) throw new Error(`Could not update your profile: ${error.message}`);
 }

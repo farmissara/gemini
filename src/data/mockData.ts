@@ -25,6 +25,7 @@ import {
   SchoolSubscriptionPlan,
   Teacher
 } from '../types';
+import { getLocalDateString } from '../lib/date';
 
 export const INITIAL_SCHOOLS: School[] = [
   {
@@ -144,7 +145,6 @@ export const DEMO_USERS: AuthUser[] = [
     studentIdNumber: 'ED-6901',
     gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
     room: 'ห้อง 401 (วิทย์-คณิต)',
-    enrolledRooms: ['ห้อง 401 (วิทย์-คณิต)', 'ห้องปฏิบัติการ AI LAB', 'ชมรมโอลิมปิกคอมพิวเตอร์ POSN'],
     academicTrack: 'วิทยาศาสตร์ - คณิตศาสตร์ (Gifted STEM)',
     advisorName: 'อ.ดร.ประเสริฐ ถาวร',
     gpax: 3.92,
@@ -719,7 +719,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
     id: 'att-1',
     schoolId: 'sch-1',
     studentId: 'stu-1',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     time: '07:42:15',
     status: 'present',
     checkinMethod: 'qr_scanner',
@@ -730,7 +730,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
     id: 'att-2',
     schoolId: 'sch-1',
     studentId: 'stu-2',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     time: '07:35:40',
     status: 'present',
     checkinMethod: 'rfid',
@@ -741,7 +741,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
     id: 'att-3',
     schoolId: 'sch-1',
     studentId: 'stu-3',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     time: '08:15:22',
     status: 'late',
     checkinMethod: 'qr_scanner',
@@ -752,7 +752,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
     id: 'att-7',
     schoolId: 'sch-1',
     studentId: 'stu-7',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     time: '07:40:02',
     status: 'present',
     checkinMethod: 'qr_scanner',
@@ -763,7 +763,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
     id: 'att-9',
     schoolId: 'sch-1',
     studentId: 'stu-9',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     time: '07:50:18',
     status: 'present',
     checkinMethod: 'rfid',
@@ -1206,7 +1206,7 @@ export const INITIAL_PERIOD_ATTENDANCE: PeriodAttendanceRecord[] = [
     courseCode: 'ว30201',
     periodNumber: 1,
     timeSlot: '09:00 - 09:50',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     studentId: 'stu-1',
     status: 'present',
     verifiedByTeacherId: 'usr-teacher',
@@ -1221,7 +1221,7 @@ export const INITIAL_PERIOD_ATTENDANCE: PeriodAttendanceRecord[] = [
     courseCode: 'ว30201',
     periodNumber: 1,
     timeSlot: '09:00 - 09:50',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     studentId: 'stu-2',
     status: 'present',
     verifiedByTeacherId: 'usr-teacher',
@@ -1236,7 +1236,7 @@ export const INITIAL_PERIOD_ATTENDANCE: PeriodAttendanceRecord[] = [
     courseCode: 'ว30201',
     periodNumber: 1,
     timeSlot: '09:00 - 09:50',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     studentId: 'stu-3',
     status: 'late',
     verifiedByTeacherId: 'usr-teacher',
@@ -1251,7 +1251,7 @@ export const INITIAL_PERIOD_ATTENDANCE: PeriodAttendanceRecord[] = [
     courseCode: 'ค30201',
     periodNumber: 2,
     timeSlot: '10:00 - 10:50',
-    date: '2026-11-04',
+    date: getLocalDateString(),
     studentId: 'stu-1',
     status: 'present',
     verifiedByTeacherId: 'usr-admin',
@@ -2198,4 +2198,3 @@ export const INITIAL_SUBSCRIPTION_PLANS: SchoolSubscriptionPlan[] = [
     expiryDate: '2027-05-15',
   },
 ];
-
