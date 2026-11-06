@@ -710,3 +710,45 @@ export interface HomeworkSubmission {
   gradedAt?: string;
   gradedBy?: string;
 }
+
+export type LabSubjectCategory = 'chemistry' | 'math' | 'english' | 'computer' | 'thai';
+
+export interface LabChemicalItem {
+  id: string;
+  nameTh: string;
+  nameEn: string;
+  formula: string;
+  color: string;
+  state: 'liquid' | 'solid' | 'gas';
+  ph?: number;
+  hazard?: string;
+  descriptionTh: string;
+}
+
+export interface LabSimulationQuest {
+  id: string;
+  schoolId?: string;
+  subject: LabSubjectCategory;
+  titleTh: string;
+  titleEn: string;
+  gradeLevel: string;
+  conceptTh: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  scenarioTh: string;
+  targetGoalTh: string;
+  availableItems: LabChemicalItem[];
+  correctItemIds: string[];
+  requiresHeating?: boolean;
+  requiresStirring?: boolean;
+  successTitleTh: string;
+  successDescTh: string;
+  successProductColor: string;
+  successAnimation: 'bubbling_glow' | 'golden_crystal' | 'rocket_orbit' | 'gourmet_dish' | 'robot_dance' | 'lotus_aura';
+  failTitleTh: string;
+  failDescTh: string;
+  failAnimation: 'lab_explosion' | 'rocket_crash' | 'burnt_food' | 'short_circuit' | 'banana_slip';
+  scientificExplanationTh: string;
+  expReward: number;
+  gemReward: number;
+  createdByTeacherName?: string;
+}

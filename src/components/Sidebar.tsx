@@ -20,6 +20,7 @@ import {
   User,
   GraduationCap,
   MessageSquare,
+  FlaskConical,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
@@ -39,6 +40,7 @@ export type NavTab =
   | 'behavior_sdq'
   | 'student_id_cards'
   | 'infirmary'
+  | 'subject_labs'
   | 'games'
   | 'portfolio'
   | 'gradebook' 
@@ -206,6 +208,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'แฟ้มผลงานดิจิทัล',
           labelEn: 'Student Portfolios',
           icon: FolderGit2,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'subject_labs',
+          labelTh: 'แล็บจำลองรายวิชา & เคมีระเบิด',
+          labelEn: 'Subject Labs & Chemistry',
+          icon: FlaskConical,
+          badge: 'BOOM!',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {

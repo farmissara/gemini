@@ -23,7 +23,8 @@ import {
   LogIn,
   HeartPulse,
   SlidersHorizontal,
-  UserCheck
+  UserCheck,
+  FlaskConical
 } from 'lucide-react';
 import { 
   Student, 
@@ -270,6 +271,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           >
             <Camera className="w-4 h-4 text-slate-950" />
             <span>{lang === 'th' ? 'ถ่ายรูปเช็กชื่อมือถือ' : 'Mobile Selfie Check-in'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('subject_labs')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
+          >
+            <FlaskConical className="w-4 h-4 text-slate-950 fill-current" />
+            <span>🧪 {lang === 'th' ? 'แล็บเคมีระเบิด & จำลองวิชา' : 'Subject Labs & Chemistry'}</span>
           </button>
           
           <button

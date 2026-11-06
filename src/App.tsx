@@ -100,6 +100,7 @@ import { HomeworkTrackerView } from './components/HomeworkTrackerView';
 import { SuperAdminConsoleView } from './components/SuperAdminConsoleView';
 import { SchoolPermissionSettingsView } from './components/SchoolPermissionSettingsView';
 import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
+import { SubjectLabSimulationView } from './components/SubjectLabSimulationView';
 import { UserProfileModal } from './components/UserProfileModal';
 import { SystemSettingsView } from './components/SystemSettingsView';
 import { DataImportExportModal } from './components/DataImportExportModal';
@@ -985,6 +986,16 @@ export const App: React.FC = () => {
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
+                  />
+                )}
+
+                {currentTab === 'subject_labs' && (
+                  <SubjectLabSimulationView
+                    currentUserRole={currentUser?.role}
+                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                    lang={lang}
+                    onEarnRewards={handleEarnRewards}
+                    onBackToGames={() => setCurrentTab('games')}
                   />
                 )}
 

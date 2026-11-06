@@ -21,10 +21,12 @@ import {
   Zap,
   RotateCcw,
   BookOpen,
-  Gamepad2
+  Gamepad2,
+  FlaskConical
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
+import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 
 interface EduBattleGameViewProps {
   questions: QuizQuestion[];
@@ -49,7 +51,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onEarnRewards,
   onRedeemReward
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'battle_royale_3d' | 'arena' | 'bank' | 'leaderboard' | 'shop'>('battle_royale_3d');
+  const [activeSubTab, setActiveSubTab] = useState<'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop'>('battle_royale_3d');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [searchBankQuery, setSearchBankQuery] = useState('');
 
@@ -369,6 +371,22 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </span>
           </button>
 
+          {/* New Subject Labs & Chemistry Simulation Tab Button */}
+          <button
+            onClick={() => setActiveSubTab('subject_labs')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeSubTab === 'subject_labs'
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 scale-105 border border-cyan-300'
+                : 'bg-blue-500/10 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20'
+            }`}
+          >
+            <FlaskConical className="w-4 h-4 text-cyan-300 fill-current" />
+            <span>🧪 {lang === 'th' ? 'แล็บจำลอง & เคมีระเบิด' : 'Subject Labs & Chemistry'}</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-400 text-slate-950 font-bold animate-pulse">
+              NEW
+            </span>
+          </button>
+
           <button
             onClick={() => setActiveSubTab('arena')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -439,6 +457,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           rewardItems={rewardItems}
           onEarnRewards={onEarnRewards}
           onExit={() => setActiveSubTab('arena')}
+        />
+      )}
+
+      {/* TAB 0.5: Subject Labs & Crazy Chemistry Simulation */}
+      {activeSubTab === 'subject_labs' && (
+        <SubjectLabSimulationView
+          currentUserRole={currentUser?.role}
+          currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+          lang={lang}
+          onEarnRewards={onEarnRewards}
+          onBackToGames={() => setActiveSubTab('battle_royale_3d')}
         />
       )}
 
