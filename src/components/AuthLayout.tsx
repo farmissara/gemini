@@ -47,9 +47,9 @@ interface AuthLayoutProps {
   setThemePalette?: (palette: ThemePalette) => void;
 }
 
-// Generated high-fidelity visual assets
-const HERO_IMAGE_PATH = '/src/assets/images/hero_smart_education_campus_1793951854672.jpg';
-const FEATURE_LMS_IMAGE_PATH = '/src/assets/images/feature_smart_lms_classroom_1793951856137.jpg';
+// Generated high-fidelity visual assets - Authentic Thai Students & Teachers Classroom
+const HERO_IMAGE_PATH = '/src/assets/images/hero_classroom_teacher_students_1793958712620.jpg';
+const FEATURE_LMS_IMAGE_PATH = '/src/assets/images/classroom_teaching_learning_1793958766838.jpg';
 const FEATURE_ARENA_IMAGE_PATH = '/src/assets/images/feature_eduarena_game_learning_1793951856246.jpg';
 const FEATURE_CLINIC_IMAGE_PATH = '/src/assets/images/feature_smart_student_health_clinic_1793951856130.jpg';
 
@@ -505,7 +505,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-slate-900 shadow-2xl">
                 <img
                   src={HERO_IMAGE_PATH}
-                  alt="EduVerse Smart Education Campus"
+                  alt="EduVerse Happy Students and Teacher in Modern Classroom"
                   className="w-full h-auto aspect-[16/10] object-cover transition-transform duration-700 group-hover:scale-102"
                   referrerPolicy="no-referrer"
                 />
