@@ -475,7 +475,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     const sampleRow2 = [
       'คณิตศาสตร์',
       'ม.4',
-      'onet',
+      'standard_exam',
       'ถ้า log10(x) = 3 ค่าของ x เท่ากับข้อใด?',
       'If log10(x) = 3, what is the value of x?',
       '30',

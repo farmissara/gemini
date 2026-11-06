@@ -67,8 +67,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   // New Question Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSubject, setNewSubject] = useState('คณิตศาสตร์ (Mathematics)');
-  const [newGradeLevel, setNewGradeLevel] = useState('ม.6 (O-NET)');
-  const [newCategory, setNewCategory] = useState<'onet' | 'general' | 'review' | 'exam'>('onet');
+  const [newGradeLevel, setNewGradeLevel] = useState('ม.6 (มาตรฐานระดับชาติ)');
+  const [newCategory, setNewCategory] = useState<'standard_exam' | 'onet' | 'general' | 'review' | 'exam'>('standard_exam');
   const [newQuestionTh, setNewQuestionTh] = useState('');
   const [newQuestionEn, setNewQuestionEn] = useState('');
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
@@ -227,7 +227,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   id: `csv-${Date.now()}-${i}`,
                   subject: cols[1] || 'วิชาทั่วไป',
                   gradeLevel: cols[2] || 'ม.6',
-                  category: (cols[3] as any) || 'onet',
+                  category: (cols[3] as any) || 'standard_exam',
                   questionTh: cols[4] || '',
                   questionEn: cols[4] || '',
                   options: [cols[5] || 'ก', cols[6] || 'ข', cols[7] || 'ค', cols[8] || 'ง'],
@@ -306,15 +306,15 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
               <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-              <span>EduVerse Gamification Engine • ข้อสอบ O-NET & แบทเทิล 1v1</span>
+              <span>EduVerse Gamification Engine • คลังข้อสอบมาตรฐาน & แบทเทิล 1v1</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
             </h1>
             <p className="text-white/80 text-sm max-w-2xl">
               {lang === 'th'
-                ? 'ฝึกฝนทบทวนเนื้อหา O-NET และบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
-                : 'Interactive 1v1 knowledge battles and comprehensive O-NET quest modules with real EXP & Gem rewards.'}
+                ? 'ฝึกฝนทบทวนข้อสอบมาตรฐานระดับชาติและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
+                : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
             </p>
           </div>
 
@@ -353,7 +353,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {/* Sub Tabs Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Flagship 3D PUBG / Free Fire Battle Royale Button */}
+          {/* Flagship 3D EduArena Battle Royale Button */}
           <button
             onClick={() => setActiveSubTab('battle_royale_3d')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
@@ -363,7 +363,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             }`}
           >
             <Gamepad2 className="w-4 h-4 text-slate-950 fill-current" />
-            <span>🎮 {lang === 'th' ? '3D PUBG ล่าสมบัติ O-NET (แข่งทั้งห้อง)' : '3D Battle Royale (PUBG/Free Fire)'}</span>
+            <span>🎮 {lang === 'th' ? '3D EduArena สนามประลองปัญญา 3 มิติ' : '3D EduArena Battle Royale'}</span>
             <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-bold animate-pulse">
               HOT
             </span>
@@ -430,7 +430,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         )}
       </div>
 
-      {/* TAB 0: 3D PUBG / Free Fire Battle Royale & O-NET Treasure Hunt */}
+      {/* TAB 0: 3D EduArena Battle Royale & Knowledge Treasure Hunt */}
       {activeSubTab === 'battle_royale_3d' && (
         <EduBattleRoyale3DView
           questions={questions}
@@ -460,7 +460,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     {lang === 'th' ? 'เลือกวิชาแล้วกด "เริ่มประลอง 1v1"' : 'Select Subject and Start Battle'}
                   </h2>
                   <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
-                    ระบบจะจับคู่คำถาม O-NET และข้อสอบทบทวนบทเรียน ตอบถูกเร็วได้โบนัสดาเมจต่อเนื่อง ยิ่งทำคอมโบติดกัน ยิ่งรับ EXP และ Gems เพิ่มเป็นทวีคูณ
+                    ระบบจะจับคู่คำถามแบบทดสอบมาตรฐานและข้อสอบทบทวนบทเรียน ตอบถูกเร็วได้โบนัสดาเมจต่อเนื่อง ยิ่งทำคอมโบติดกัน ยิ่งรับ EXP และ Gems เพิ่มเป็นทวีคูณ
                   </p>
 
                   {/* Subject Filter Pills */}
@@ -470,7 +470,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        { id: 'all', label: 'ทุกวิชา (O-NET Mix)' },
+                        { id: 'all', label: 'ทุกวิชา (รวมข้อสอบมาตรฐาน)' },
                         { id: 'คณิตศาสตร์', label: 'คณิตศาสตร์ (Math)' },
                         { id: 'วิทยาศาสตร์', label: 'วิทยาศาสตร์ (Science)' },
                         { id: 'วิทยาการคำนวณ', label: 'วิทยาการคำนวณ (CS)' },
@@ -679,7 +679,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 </h3>
                 <p className="text-xs text-slate-400">
                   {playerHp > opponentHp 
-                    ? 'ทำผลงานได้อย่างยอดเยี่ยม ตอบคำถาม O-NET ได้ถูกต้องแม่นยำ' 
+                    ? 'ทำผลงานได้อย่างยอดเยี่ยม ตอบคำถามประลองความรู้ได้ถูกต้องแม่นยำ' 
                     : 'ทบทวนคำตอบแล้วลองใหม่อีกครั้งเพื่อรับรางวัลที่สูงขึ้น'}
                 </p>
               </div>
@@ -949,7 +949,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               <Coins className="w-6 h-6 text-cyan-400" />
               <div>
                 <h4 className="text-sm font-bold text-white">ยอดเพชรของคุณในกระเป๋า</h4>
-                <p className="text-xs text-slate-400">สะสมได้จากการชนะแบทเทิลและการทำแบบทดสอบ O-NET</p>
+                <p className="text-xs text-slate-400">สะสมได้จากการชนะแบทเทิลและการทำแบบทดสอบความรู้</p>
               </div>
             </div>
             <div className="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-black text-lg flex items-center gap-2">
@@ -1065,7 +1065,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     onChange={(e) => setNewCategory(e.target.value as any)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
                   >
-                    <option value="onet">ข้อสอบ O-NET</option>
+                    <option value="standard_exam">ข้อสอบมาตรฐานระดับชาติ</option>
                     <option value="review">ทบทวนบทเรียน</option>
                     <option value="exam">ข้อสอบกลางภาค/ปลายภาค</option>
                     <option value="general">ความรู้ทั่วไป</option>

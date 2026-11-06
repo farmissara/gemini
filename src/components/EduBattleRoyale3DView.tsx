@@ -354,7 +354,7 @@ const SKINS: CharacterSkin[] = [
   },
   {
     id: 'cyber',
-    nameTh: 'ไซเบอร์สูท O-NET (Cyber Suit)',
+    nameTh: 'ชุดเกราะปัญญาประดิษฐ์ (Cyber Scholar Suit)',
     nameEn: 'Cyberpunk Scholar',
     colorJacket: 0x6366f1,
     colorPants: 0x1e1b4b,
@@ -388,7 +388,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   // Game UI State
   const [currentStage, setCurrentStage] = useState(1);
   const [totalStages] = useState(8);
-  const [subjectTitle, setSubjectTitle] = useState('ศูนย์คณิตศาสตร์ & O-NET');
+  const [subjectTitle, setSubjectTitle] = useState('ศูนย์คณิตศาสตร์และวิทยาการคำนวณ');
   const [isMuted, setIsMuted] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(75);
   const [playerStreak, setPlayerStreak] = useState(0);
@@ -413,9 +413,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const [playMode, setPlayMode] = useState<'solo' | 'friend' | 'teacher_room'>(
     initialGameMode === 'solo' ? 'solo' : 'teacher_room'
   );
-  const [friendRoomInput, setFriendRoomInput] = useState<string>(roomCodeProp || 'ONET-401');
+  const [friendRoomInput, setFriendRoomInput] = useState<string>(roomCodeProp || 'ARENA-401');
   const [teacherActivityName, setTeacherActivityName] = useState<string>(
-    roomNameProp || 'กิจกรรมแข่งขัน O-NET วิทยาศาสตร์ & STEM ประจำสัปดาห์'
+    roomNameProp || 'กิจกรรมแข่งขันวิชาการ & STEM ประจำสัปดาห์'
   );
   const [teacherRoomPin, setTeacherRoomPin] = useState<string>(
     roomCodeProp || String(Math.floor(100000 + Math.random() * 900000))
@@ -423,7 +423,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const [teacherChestCount, setTeacherChestCount] = useState<number>(8);
   const [teacherTimePerQuestion, setTeacherTimePerQuestion] = useState<number>(20);
   const [gameMode, setGameMode] = useState<'solo' | 'classroom'>('classroom');
-  const [roomCode, setRoomCode] = useState(roomCodeProp || 'ONET-401');
+  const [roomCode, setRoomCode] = useState(roomCodeProp || 'ARENA-401');
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showSkinShop, setShowSkinShop] = useState(false);
   const [selectedSkinId, setSelectedSkinId] = useState('default');
@@ -445,7 +445,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const [questionFeedback, setQuestionFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [isAirdropQuestion, setIsAirdropQuestion] = useState(false);
 
-  // Question Bank & Exam Selector State (Not restricted to O-NET)
+  // Question Bank & Exam Selector State (Multi-Subject Question Banks)
   const [selectedBankCategory, setSelectedBankCategory] = useState<ExamCategoryFilter>(initialCategory || 'all');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<ExamGradeFilter>(initialGrade || 'all');
   const [showBankModal, setShowBankModal] = useState(false);
@@ -459,15 +459,15 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
   // Live Classroom Rankings & Competitors
   const [classmates, setClassmates] = useState<RoomClassmate[]>([
-    { id: 'c1', name: 'ธนาธร (STU-0842)', score: 320, chestsOpened: 2, alive: true, x: 20, z: -30, avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', status: 'วิ่งล่าหีบ O-NET' },
+    { id: 'c1', name: 'ธนาธร (STU-0842)', score: 320, chestsOpened: 2, alive: true, x: 20, z: -30, avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', status: 'วิ่งล่าหีบความรู้' },
     { id: 'c2', name: 'พิมพ์ชนก (STU-6904)', score: 380, chestsOpened: 3, alive: true, x: -35, z: 25, avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', status: 'ทำคอมโบ 3x' },
     { id: 'c3', name: 'วรพล (STU-1102)', score: 210, chestsOpened: 1, alive: true, x: 55, z: 45, avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100', status: 'วิ่งเข้า Safe Zone' },
-    { id: 'c4', name: 'ณิชาภัทร (STU-3301)', score: 190, chestsOpened: 1, alive: true, x: -20, z: -55, avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', status: 'เปิดหีบวิทย์ O-NET' }
+    { id: 'c4', name: 'ณิชาภัทร (STU-3301)', score: 190, chestsOpened: 1, alive: true, x: -20, z: -55, avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100', status: 'เปิดหีบวิทยาศาสตร์' }
   ]);
 
   const [liveBattleEvents, setLiveBattleEvents] = useState<Array<{ id: string; text: string; time: string }>>([
-    { id: '1', text: '🎮 ทุกคนกระโดดร่มลงสู่เกาะ O-NET Oasis แล้ว!', time: '10:00' },
-    { id: '2', text: '⚡ ด.ญ.พิมพ์ชนก เปิดหีบสมบัติ O-NET ปริศนา ตอบถูกต้อง! (+120 XP)', time: '10:01' }
+    { id: '1', text: '🎮 ทุกคนเข้าสู่เกาะประลองปัญญา EduArena แล้ว!', time: '10:00' },
+    { id: '2', text: '⚡ ด.ญ.พิมพ์ชนก เปิดหีบสมบัติปริศนา ตอบถูกต้อง! (+120 XP)', time: '10:01' }
   ]);
 
   // Input References
@@ -597,9 +597,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         airdropRef.current.mesh.visible = true;
 
         battleAudio.playAirdropSiren();
-        setHudAlert('📦 แอร์ดรอปข้อสอบ O-NET พิเศษ กำลังถูกทิ้งร่มลงมา! รีบไปชิงสมบัติ');
+        setHudAlert('📦 แอร์ดรอปกล่องสมบัติทองคำพิเศษ กำลังถูกทิ้งร่มลงมา! รีบไปชิงสมบัติ');
         setLiveBattleEvents(prev => [
-          { id: String(Date.now()), text: '📦 สัญญาณเตือน: แอร์ดรอปทองคำ O-NET พิเศษ กำลังลงสู่พื้น!', time: 'สด' },
+          { id: String(Date.now()), text: '📦 สัญญาณเตือน: แอร์ดรอปทองคำพิเศษ กำลังลงสู่พื้น!', time: 'สด' },
           ...prev.slice(0, 5)
         ]);
       }
@@ -625,7 +625,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     } else {
       setRoomCode('SOLO-RANK');
       setGameMode('solo');
-      setSubjectTitle('โหมดประลองเดี่ยว O-NET Challenge');
+      setSubjectTitle('โหมดประลองเดี่ยว EduArena Challenge');
       setHudAlert('🌟 เริ่มต้นโหมดประลองเดี่ยว! ลุยเก็บหีบสมบัติและทำลายสถิติคะแนน');
     }
 
@@ -956,7 +956,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     }
     scene.add(landmarksGroup);
 
-    // 7. Safe Zone Storm Boundary (Free Fire / PUBG Energy Barrier)
+    // 7. Safe Zone Storm Boundary (EduArena Energy Barrier)
     const stormGeo = new THREE.CylinderGeometry(110, 110, 40, 36, 1, true);
     const stormMat = new THREE.MeshBasicMaterial({
       color: 0x06b6d4,
@@ -1075,7 +1075,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       pLight.position.y = 2.3;
       cGroup.add(pLight);
 
-      // Sky God-Ray Light Beam (Iconic PUBG / Fortnite loot pillar)
+      // Sky Beacon Light Beam (EduArena Beacon Light Pillar)
       const beamGeo = new THREE.CylinderGeometry(0.15, 0.8, 45, 12, 1, true);
       const beamMat = new THREE.MeshBasicMaterial({
         color: 0xfde047,
@@ -1895,7 +1895,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                         value={teacherActivityName}
                         onChange={(e) => setTeacherActivityName(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-amber-500/40 text-white font-bold"
-                        placeholder="เช่น ศึก O-NET วิทยาศาสตร์ ม.4 คาบ 2"
+                        placeholder="เช่น ศึกประลองปัญหาวิทยาศาสตร์ ม.4 คาบ 2"
                       />
                     </div>
                     <div>
@@ -1924,7 +1924,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                         className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-amber-500/40 text-white font-semibold"
                       >
                         <option value={5}>5 ข้อ (แบบด่วน 5 นาที)</option>
-                        <option value={8}>8 ข้อ (มาตรฐาน O-NET Oasis)</option>
+                        <option value={8}>8 ข้อ (มาตรฐานสนามประลอง EduArena)</option>
                         <option value={10}>10 ข้อ (การประลองเข้มข้น)</option>
                         <option value={15}>15 ข้อ (ทัวร์นาเมนต์เต็มรูปแบบ)</option>
                       </select>
@@ -2133,7 +2133,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               }`}
             >
               <Sparkles className="w-5 h-5 fill-current" />
-              <span>{nearAirdrop ? '[แตะ] เปิดแอร์ดรอปพิเศษ (2x EXP)' : '[แตะ] เปิดหีบสมบัติ O-NET'}</span>
+              <span>{nearAirdrop ? '[แตะ] เปิดแอร์ดรอปพิเศษ (2x EXP)' : '[แตะ] เปิดหีบสมบัติความรู้'}</span>
             </button>
             <div className="mt-2 text-xs text-amber-200 font-semibold drop-shadow-md">
               (หรือกดปุ่ม [E] บนคีย์บอร์ด)
@@ -2506,7 +2506,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-5 h-5 text-emerald-400" />
                       <div>
-                        <h5 className="font-bold text-white">เกราะป้องกันพายุ O-NET</h5>
+                        <h5 className="font-bold text-white">เกราะป้องกันพายุสนามประลอง</h5>
                         <p className="text-[11px] text-emerald-300">ทำงานอัตโนมัติเมื่ออยู่นอก Safe Zone</p>
                       </div>
                     </div>
@@ -2637,7 +2637,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isAirdropQuestion ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`}>
-                  {isAirdropQuestion ? '📦 โบนัสแอร์ดรอป O-NET (2x EXP)' : activeQuestion.subject}
+                  {isAirdropQuestion ? '📦 โบนัสแอร์ดรอปทองคำ (2x EXP)' : activeQuestion.subject}
                 </span>
                 <span className="text-xs text-slate-400">
                   {activeQuestion.gradeLevel}
@@ -2719,7 +2719,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 5. QUESTION BANK & EXAM SELECTOR MODAL (Not restricted to O-NET) */}
+      {/* 5. QUESTION BANK & EXAM SELECTOR MODAL (Multi-Subject Question Banks) */}
       {/* ======================================================== */}
       {showBankModal && (
         <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
@@ -2731,7 +2731,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base sm:text-lg text-white">เลือกคลังข้อสอบ & การทดสอบ</h3>
-                  <p className="text-xs text-slate-400">เลือกข้อสอบที่ต้องการใช้เปิดหีบสมบัติในเกม (ไม่จำกัดเฉพาะ O-NET)</p>
+                  <p className="text-xs text-slate-400">เลือกข้อสอบที่ต้องการใช้เปิดหีบสมบัติในเกม (เลือกได้ทุกกลุ่มสาระการเรียนรู้)</p>
                 </div>
               </div>
               <button 

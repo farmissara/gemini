@@ -493,7 +493,7 @@ export interface QuizQuestion {
   options: string[];
   correctIndex: number;
   explanationTh: string;
-  category: 'onet' | 'general' | 'review' | 'exam';
+  category: 'standard_exam' | 'onet' | 'general' | 'review' | 'exam';
   points: number;
 }
 

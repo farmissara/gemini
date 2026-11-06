@@ -249,7 +249,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               <span>EduVerse Gamification Credentials</span>
             </div>
             <div className="flex items-center justify-between text-slate-300 text-[11px]">
-              <span>O-NET Top Scorer Badge</span>
+              <span>Academic Top Scorer Badge</span>
               <span className="text-emerald-400 font-bold">ผ่านการรับรอง ✓</span>
             </div>
             <div className="flex items-center justify-between text-slate-300 text-[11px]">
@@ -278,7 +278,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </p>
               <div className="text-xs text-purple-300 font-semibold flex items-center gap-1.5 pt-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>ประเด็นท้าทาย ว.PA: การใช้ Gamification และ AI เพื่อยกระดับผลสัมฤทธิ์ O-NET</span>
+                <span>ประเด็นท้าทาย ว.PA: การใช้ Gamification และ AI เพื่อยกระดับผลสัมฤทธิ์ทางการเรียนรู้</span>
               </div>
             </div>
           </div>
