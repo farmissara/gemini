@@ -206,6 +206,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 guardianPhone: '081-',
                 guardianEmail: '',
                 gpa: 3.50,
+                avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
               });
               setShowAddModal(true);
             }}

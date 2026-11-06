@@ -13,23 +13,28 @@ import {
   Award, 
   Search,
   ExternalLink,
-  Barcode
+  Barcode,
+  Camera
 } from 'lucide-react';
 import { Student, School, AppLanguage, UserRole } from '../types';
+import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 
 interface DigitalIdCardViewProps {
   students: Student[];
   school: School;
   lang: AppLanguage;
   currentRole: UserRole;
+  onUpdateStudent?: (student: Student) => void;
 }
 
 export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   students,
   school,
   lang,
-  currentRole
+  currentRole,
+  onUpdateStudent
 }) => {
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
   const [cardType, setCardType] = useState<'student' | 'staff'>('student');
@@ -214,14 +219,21 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
 
                 {/* Card Middle: Photo + Info */}
                 <div className="flex items-center gap-4 relative z-10 my-1">
-                  <div className="relative shrink-0">
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPhotoModal(true);
+                    }}
+                    className="relative shrink-0 group cursor-pointer"
+                    title="แตะเพื่อถ่ายรูปสด หรืออัปโหลดรูปภาพใหม่ลงบัตร"
+                  >
                     <img
                       src={selectedStudent?.avatarUrl}
                       alt={selectedStudent?.firstNameTh}
-                      className="w-20 h-24 rounded-xl object-cover border-2 border-cyan-400/50 shadow-md"
+                      className="w-20 h-24 rounded-xl object-cover border-2 border-cyan-400/50 shadow-md group-hover:ring-2 group-hover:ring-cyan-300 transition"
                     />
-                    <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-cyan-500 text-slate-950">
-                      <ShieldCheck className="w-3.5 h-3.5" />
+                    <span className="absolute -bottom-1 -right-1 p-1 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-md transition">
+                      <Camera className="w-3 h-3" />
                     </span>
                   </div>
 
@@ -386,6 +398,24 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Capture & Upload Modal */}
+      {selectedStudent && (
+        <ImageCaptureUploadModal
+          isOpen={showPhotoModal}
+          currentImageUrl={selectedStudent.avatarUrl}
+          title={`ถ่ายรูปสดหรือเปลี่ยนรูปบนบัตร: ${selectedStudent.firstNameTh} ${selectedStudent.lastNameTh}`}
+          onSelectImage={(newUrl) => {
+            if (onUpdateStudent && selectedStudent) {
+              onUpdateStudent({
+                ...selectedStudent,
+                avatarUrl: newUrl,
+              });
+            }
+          }}
+          onClose={() => setShowPhotoModal(false)}
+        />
       )}
     </div>
   );

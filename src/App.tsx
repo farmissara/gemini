@@ -939,6 +939,7 @@ export const App: React.FC = () => {
                     school={activeSchool}
                     lang={lang}
                     currentRole={currentRole}
+                    onUpdateStudent={handleUpdateStudent}
                   />
                 )}
 
