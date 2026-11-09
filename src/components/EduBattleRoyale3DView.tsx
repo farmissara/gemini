@@ -1671,7 +1671,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   return (
     <div 
       ref={containerRef}
-      className={`relative w-full ${isFullscreen ? 'h-screen fixed inset-0 z-50 rounded-none' : 'h-[88vh] rounded-3xl'} bg-slate-950 select-none overflow-hidden font-sans text-white border border-slate-800 shadow-2xl flex flex-col`}
+      className={`relative w-full h-full min-h-0 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl sm:rounded-3xl'} bg-slate-950 select-none overflow-hidden font-sans text-white border border-slate-800 shadow-2xl flex flex-col`}
     >
       {/* ======================================================== */}
       {/* 1. TOP HEADER HUD BAR (Desktop & Mobile Adaptive) */}

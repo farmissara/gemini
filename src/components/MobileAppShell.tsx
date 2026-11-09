@@ -496,8 +496,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <span>🎮 ศูนย์รวมเกมส์ & สนามประลอง</span>
                 <span>EXP: {currentScore.exp}</span>
               </div>
-              <h2 className="text-base font-black">เลือกเกมเพื่อเริ่มเล่น (โหมดเต็มจอกระชับ)</h2>
-              <p className="text-[11px] text-white/80">จัดรูปแบบให้เล่นง่ายในหน้าเดียว พร้อมปุ่มซูมเข้า-ออก</p>
+              <h2 className="text-base font-black">เลือกเกมเพื่อเริ่มเล่น (โหมดอาร์เคดเต็มจอ)</h2>
+              <p className="text-[11px] text-white/80">สนามประลองปัญญาและแล็บจำลอง โหมดเกมตอบสด หน้าจออาร์เคดกระชับ ไร้ความรก</p>
             </div>
 
             <div className="space-y-2.5">
@@ -948,6 +948,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 rewardItems={rewardItems}
                 currentUser={currentUser}
                 lang={lang}
+                initialSubTab="arena"
+                isMobileMode={true}
                 onAddQuestion={onAddQuestion}
                 onImportQuestions={onImportQuestions}
                 onEarnRewards={onEarnRewards}

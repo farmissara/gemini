@@ -1372,6 +1372,7 @@ export const App: React.FC = () => {
                     rewardItems={rewardItems}
                     currentUser={currentUser}
                     lang={lang}
+                    isMobileMode={shouldShowMobileView}
                     onAddQuestion={handleAddQuestion}
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
