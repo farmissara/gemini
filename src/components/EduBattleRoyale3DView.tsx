@@ -45,6 +45,7 @@ import {
   ExamCategoryFilter, 
   ExamGradeFilter 
 } from '../data/examQuestionBanks';
+import { PagedList } from './PagedList';
 
 interface EduBattleRoyale3DViewProps {
   questions: QuizQuestion[];
@@ -416,6 +417,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
   // Game Modes & Match Setup Lobby (Requirement 3 & 4)
   const [gamePhase, setGamePhase] = useState<'lobby' | 'playing'>('lobby');
+  const [lobbyStep, setLobbyStep] = useState<0 | 1 | 2>(0);
   const [playMode, setPlayMode] = useState<'solo' | 'friend' | 'teacher_room'>(
     initialGameMode === 'solo' || !canManageRooms ? 'solo' : 'teacher_room'
   );
@@ -1681,7 +1683,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 1. PRE-GAME MATCH SETUP & LOBBY SCREEN (โหมดเลือกล่วงหน้า) */}
       {/* ======================================================== */}
       {gamePhase === 'lobby' && (
-        <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-y-auto p-4 sm:p-6 text-white animate-in fade-in">
+        <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-hidden p-3 sm:p-5 text-white animate-in fade-in">
           {/* Lobby Top Navigation */}
           <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-3">
@@ -1714,8 +1716,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
           </div>
 
           {/* Lobby Configuration Grid */}
-          <div className="flex-1 py-5 space-y-6 max-w-4xl mx-auto w-full">
+          <div className="flex-1 min-h-0 py-3 max-w-4xl mx-auto w-full flex flex-col justify-between">
+            <nav aria-label="Lobby setup steps" className="flex items-center gap-2 pb-3">
+              {(['คลังข้อสอบ', 'โหมดเล่น', 'ตัวละคร'] as const).map((label, index) => (
+                <button key={label} type="button" onClick={() => setLobbyStep(index as 0 | 1 | 2)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${lobbyStep === index ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
+                  {index + 1}. {label}
+                </button>
+              ))}
+            </nav>
             {/* STEP 1: SELECT EXAM CATEGORY & GRADE LEVEL */}
+            {lobbyStep === 0 && (
             <details className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-amber-400">
                 <span>คลังโจทย์และระดับชั้น: {EXAM_CATEGORIES.find(cat => cat.id === selectedBankCategory)?.labelTh} • {EXAM_GRADE_LEVELS.find(grade => grade.id === selectedGradeFilter)?.labelTh}</span>
@@ -1724,8 +1734,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               <div className="mt-3 space-y-3">
 
               {/* Category Pills/Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {EXAM_CATEGORIES.map((cat) => {
+              <div>
+                <PagedList items={EXAM_CATEGORIES} pageSize={2} renderItem={(cat) => {
                   const isSelected = selectedBankCategory === cat.id;
                   return (
                     <button
@@ -1753,7 +1763,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       </div>
                     </button>
                   );
-                })}
+                }} />
               </div>
 
               {/* Grade Level Selector */}
@@ -1784,8 +1794,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               </div>
               </div>
             </details>
+            )}
 
             {/* STEP 2: SELECT GAME MODE (เดี่ยว / ชวนเพื่อน / ครูสร้างห้อง) */}
+            {lobbyStep === 1 && (
             <div className="space-y-3 pt-2 border-t border-slate-800">
               <div className="flex items-center gap-2 text-sm font-bold text-cyan-400">
                 <span className="w-6 h-6 rounded-lg bg-cyan-400/20 text-cyan-300 flex items-center justify-center text-xs font-mono font-black border border-cyan-400/30">2</span>
@@ -1936,8 +1948,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 </details>
               )}
             </div>
+            )}
 
             {/* STEP 3: CHARACTER SKIN SELECTION */}
+            {lobbyStep === 2 && (
             <details className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-emerald-400">
                 <span>ปรับแต่งตัวละคร</span>
@@ -1977,6 +1991,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 })}
               </div>
             </details>
+            )}
 
             {/* LAUNCH BUTTON */}
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800">
@@ -2347,7 +2362,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </div>
 
             {/* Drawer Body */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
+            <div className="flex-1 p-4 overflow-hidden space-y-4 text-xs">
               {/* TAB 1: LEADERBOARD */}
               {drawerTab === 'leaderboard' && (
                 <div className="space-y-3">
@@ -2378,7 +2393,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     </div>
 
                     {/* Classmate Rows */}
-                    {classmates.map((cm, idx) => (
+                    <PagedList items={classmates} pageSize={4} renderItem={(cm, idx) => (
                       <div key={cm.id} className="flex items-center justify-between p-2 rounded-xl bg-slate-800/60 border border-slate-700/60 text-slate-300">
                         <div className="flex items-center gap-2">
                           <span className="w-5 text-center text-slate-500 font-mono">#{idx + 2}</span>
@@ -2390,19 +2405,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                           <span className="text-[10px] text-slate-400 block">{cm.status}</span>
                         </div>
                       </div>
-                    ))}
+                    )} />
                   </div>
 
                   {/* Live Feed */}
                   <div className="pt-2">
                     <h5 className="font-bold text-slate-400 text-[11px] mb-1.5">บันทึกเหตุการณ์สด (Live Events):</h5>
                     <div className="space-y-1 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300">
-                      {liveBattleEvents.map(ev => (
+                      <PagedList items={liveBattleEvents} pageSize={4} renderItem={(ev) => (
                         <div key={ev.id} className="flex items-start gap-1.5">
                           <span className="text-slate-500 font-mono shrink-0">[{ev.time}]</span>
                           <span>{ev.text}</span>
                         </div>
-                      ))}
+                      )} />
                     </div>
                   </div>
                 </div>
@@ -2518,7 +2533,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 <div className="space-y-2.5">
                   <h4 className="font-bold text-slate-300">เปลี่ยนสกินตัวละครแบบเรียลไทม์:</h4>
                   <div className="space-y-2">
-                    {SKINS.map((skin) => {
+                    <PagedList items={SKINS} pageSize={3} renderItem={(skin) => {
                       const isSelected = selectedSkinId === skin.id;
                       return (
                         <button
@@ -2546,7 +2561,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                           {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                         </button>
                       );
-                    })}
+                    }} />
                   </div>
                 </div>
               )}
@@ -2661,7 +2676,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* ======================================================== */}
       {activeQuestion && (
         <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-          <div className={`relative w-full max-w-lg bg-slate-900 border-2 ${isAirdropQuestion ? 'border-red-500 shadow-red-500/40' : 'border-amber-500/60'} rounded-3xl p-4 sm:p-6 shadow-2xl text-white animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col justify-between`}>
+          <div className={`relative w-full max-w-lg bg-slate-900 border-2 ${isAirdropQuestion ? 'border-red-500 shadow-red-500/40' : 'border-amber-500/60'} rounded-3xl p-3 sm:p-4 shadow-2xl text-white animate-in fade-in zoom-in-95 flex flex-col justify-between`}>
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
@@ -2751,8 +2766,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 5. QUESTION BANK & EXAM SELECTOR MODAL (Multi-Subject Question Banks) */}
       {/* ======================================================== */}
       {showBankModal && (
-        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl p-5 sm:p-6 shadow-2xl text-white my-auto max-h-[92vh] overflow-y-auto">
+        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl p-4 sm:p-5 shadow-2xl text-white">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -2802,8 +2817,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             {/* 2. Exam Category Grid */}
             <div className="mt-5">
               <label className="text-xs font-bold text-slate-300 block mb-1.5">เลือกหมวดหมู่ข้อสอบ & รายวิชา:</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
-                {EXAM_CATEGORIES.map((cat) => {
+              <div>
+                <PagedList items={EXAM_CATEGORIES} pageSize={2} renderItem={(cat) => {
                   const isActive = selectedBankCategory === cat.id;
                   return (
                     <div
@@ -2828,7 +2843,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       </div>
                     </div>
                   );
-                })}
+                }} />
               </div>
             </div>
 

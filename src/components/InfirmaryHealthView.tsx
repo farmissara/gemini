@@ -24,6 +24,39 @@ import {
   AppLanguage, 
   UserRole 
 } from '../types';
+import { PagedList } from './PagedList';
+
+const PaginatedTableRows = <T,>({
+  items,
+  colSpan,
+  renderRow,
+  pageSize = 8
+}: {
+  items: readonly T[];
+  colSpan: number;
+  renderRow: (item: T) => React.ReactNode;
+  pageSize?: number;
+}) => {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  return (
+    <>
+      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
+      {pageCount > 1 && (
+        <tr>
+          <td colSpan={colSpan} className="p-2">
+            <div className="flex items-center justify-between">
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-400">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ถัดไป</button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
 
 interface InfirmaryHealthViewProps {
   visits: InfirmaryVisit[];
@@ -43,6 +76,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | InfirmaryStatus>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [visitFormStep, setVisitFormStep] = useState<1 | 2>(1);
 
   // New visit form state
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
@@ -167,7 +201,10 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
           </div>
 
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setVisitFormStep(1);
+              setShowAddModal(true);
+            }}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-md shadow-rose-600/30 transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -213,7 +250,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
@@ -227,7 +264,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {filteredVisits.map((visit) => {
+                <PaginatedTableRows items={filteredVisits} colSpan={7} renderRow={(visit) => {
                   const status = getStatusBadge(visit.status);
                   const hasHighFever = visit.temperature >= 37.5;
 
@@ -285,7 +322,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                       </td>
                     </tr>
                   );
-                })}
+                }} />
               </tbody>
             </table>
           </div>
@@ -294,7 +331,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
 
       {/* TAB 2: BED OCCUPANCY & HEALTH KPIS */}
       {infirmaryTab === 'beds' && (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
@@ -384,7 +421,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
 
       {/* TAB 3: ALLERGIES WATCHLIST */}
       {infirmaryTab === 'allergies' && (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
           <div className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2.5">
             <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0" />
             <span>
@@ -393,7 +430,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {studentsWithAllergies.map((stu) => (
+            <PagedList items={studentsWithAllergies} pageSize={3} renderItem={(stu) => (
               <div
                 key={stu.id}
                 className="p-3.5 rounded-xl bg-slate-900/80 border border-rose-500/30 shadow-md space-y-2"
@@ -432,7 +469,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                   </div>
                 </div>
               </div>
-            ))}
+            )} />
           </div>
         </div>
       )}
@@ -440,7 +477,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
       {/* Add Visit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <HeartPulse className="w-5 h-5 text-rose-400" />
@@ -450,6 +487,13 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             </div>
 
             <form onSubmit={handleCreateVisit} className="space-y-4 text-xs">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
+                <span className={visitFormStep === 1 ? 'font-bold text-rose-300' : ''}>1. Patient & symptoms</span>
+                <span>→</span>
+                <span className={visitFormStep === 2 ? 'font-bold text-rose-300' : ''}>2. Treatment & disposition</span>
+              </div>
+              {visitFormStep === 1 && (
+                <div className="space-y-4">
               <div>
                 <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียนที่มารับการรักษา' : 'Select Student'}</label>
                 <select
@@ -517,7 +561,20 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
                 />
               </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedStudentId && temperature > 0 && symptoms.trim() && treatment.trim()) setVisitFormStep(2);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-rose-600 text-white font-bold"
+                  >
+                    Continue to treatment and disposition
+                  </button>
+                </div>
+              )}
 
+              {visitFormStep === 2 && (
+                <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'ยาที่จ่าย (ถ้ามี)' : 'Medicine Dispensed'}</label>
@@ -576,6 +633,13 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
+                  onClick={() => setVisitFormStep(1)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
@@ -588,6 +652,8 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                   {lang === 'th' ? 'บันทึกการรักษา' : 'Save Record'}
                 </button>
               </div>
+                </div>
+              )}
             </form>
           </div>
         </div>

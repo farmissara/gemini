@@ -37,6 +37,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
+  const [presetPage, setPresetPage] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -101,6 +102,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     if (isOpen) {
       setPreviewUrl(currentImageUrl || '');
       setUrlInput(currentImageUrl || '');
+      setPresetPage(0);
       setCapturedPhotoUrl(null);
       setCameraError(null);
     } else {
@@ -306,7 +308,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
         </div>
 
         {/* Tab Body */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-4">
+        <div className="p-4 sm:p-5 min-h-0 overflow-hidden flex-1 space-y-4">
           {/* TAB 1: UPLOAD */}
           {activeTab === 'upload' && (
             <div className="space-y-4 text-center">
@@ -427,7 +429,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
             <div className="space-y-3">
               <p className="text-xs text-slate-500">เลือกรูป Avatar สำเร็จรูปที่เหมาะสมกับคุณ:</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {PRESET_AVATARS.map((avatar) => {
+                {PRESET_AVATARS.slice(presetPage * 6, (presetPage + 1) * 6).map((avatar) => {
                   const isSelected = previewUrl === avatar.url;
                   return (
                     <div
@@ -456,6 +458,13 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                   );
                 })}
               </div>
+              {PRESET_AVATARS.length > 6 && (
+                <div className="flex items-center justify-between text-xs">
+                  <button type="button" onClick={() => setPresetPage(page => Math.max(0, page - 1))} disabled={presetPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                  <span>หน้า {presetPage + 1} / {Math.ceil(PRESET_AVATARS.length / 6)} · {PRESET_AVATARS.length} รูป</span>
+                  <button type="button" onClick={() => setPresetPage(page => Math.min(Math.ceil(PRESET_AVATARS.length / 6) - 1, page + 1))} disabled={presetPage >= Math.ceil(PRESET_AVATARS.length / 6) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                </div>
+              )}
             </div>
           )}
 

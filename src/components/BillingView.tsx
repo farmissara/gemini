@@ -13,6 +13,7 @@ import {
   Filter,
   DollarSign
 } from 'lucide-react';
+import { PagedList } from './PagedList';
 
 interface BillingViewProps {
   students: Student[];
@@ -95,8 +96,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
       {/* Invoices Split View */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Invoice list */}
-        <div className="lg:col-span-7 h-full min-h-0 overflow-y-auto pr-1 space-y-3">
-          {filteredInvoices.map((inv) => {
+        <div className="lg:col-span-7 h-full min-h-0 overflow-hidden pr-1">
+          <PagedList items={filteredInvoices} pageSize={3} renderItem={(inv) => {
             const student = students.find((s) => s.id === inv.studentId);
             const isSelected = activeInvoice?.id === inv.id;
             return (
@@ -168,11 +169,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 </div>
               </div>
             );
-          })}
+          }} />
         </div>
 
         {/* Right: Invoice Receipt & PromptPay Details */}
-        <div className="lg:col-span-5 h-full min-h-0 overflow-y-auto pr-1 rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl">
+        <div className="lg:col-span-5 h-full min-h-0 overflow-hidden pr-1 rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl">
           {activeInvoice && activeStudent ? (
             <>
               <div className="border-b border-slate-800 pb-4">
@@ -207,14 +208,14 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   Breakdown of School Services
                 </p>
                 <div className="space-y-1.5 rounded-lg bg-slate-950 p-3 border border-slate-800/80 text-xs">
-                  {activeInvoice.items.map((item) => (
+                  <PagedList items={activeInvoice.items} pageSize={4} renderItem={(item) => (
                     <div key={item.id} className="flex justify-between py-1 border-b border-slate-800/50 last:border-0">
                       <span className="text-slate-300">{item.title}</span>
                       <span className="font-mono font-medium text-slate-200">
                         ฿{item.amount.toLocaleString()}
                       </span>
                     </div>
-                  ))}
+                  )} />
                   <div className="flex justify-between pt-2 border-t border-slate-700 font-bold text-sm">
                     <span className="text-white">Total Amount Due</span>
                     <span className="text-emerald-400 font-mono">

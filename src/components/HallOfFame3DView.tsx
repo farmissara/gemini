@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { HallOfFameTrophy, AppLanguage, School } from '../types';
 import { INITIAL_HALL_OF_FAME_TROPHIES } from '../data/innovativeFeaturesData';
+import { PagedList } from './PagedList';
 
 interface HallOfFame3DViewProps {
   lang?: AppLanguage;
@@ -530,8 +531,8 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             </div>
 
             {/* Honoree Cards List */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredTrophies.map((trophy) => {
+            <div className="mt-4">
+              <PagedList items={filteredTrophies} pageSize={2} renderItem={(trophy) => {
                 const isSelected = selectedTrophy.id === trophy.id;
                 return (
                   <div
@@ -587,7 +588,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }} />
             </div>
           </div>
         </div>
@@ -595,8 +596,8 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
 
       {/* Verifiable Digital Certificate Modal */}
       {selectedCertForModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative border-4 border-amber-400/40 my-8">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2">
+          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full p-3 sm:p-4 shadow-2xl relative border-4 border-amber-400/40">
             {/* Close Button */}
             <button
               type="button"
@@ -607,17 +608,17 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             </button>
 
             {/* Official Printable Certificate Layout */}
-            <div className="border-4 border-double border-amber-600/60 p-6 sm:p-8 rounded-xl bg-radial from-amber-50/60 via-white to-amber-50/30 text-center space-y-4">
+            <div className="border-4 border-double border-amber-600/60 p-3 sm:p-4 rounded-xl bg-radial from-amber-50/60 via-white to-amber-50/30 text-center space-y-2">
               {/* Header Crest */}
-              <div className="w-16 h-16 mx-auto rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md">
-                <Award className="w-9 h-9" />
+              <div className="w-12 h-12 mx-auto rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md">
+                <Award className="w-7 h-7" />
               </div>
 
               <div className="space-y-1">
                 <p className="text-xs font-serif tracking-widest text-amber-800 font-bold uppercase">
                   {school?.nameTh || 'โรงเรียนสาธิตนวัตกรรมเอดูเวิร์ส'}
                 </p>
-                <h3 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight">
                   {lang === 'th' ? 'เกียรติบัตรเชิดชูเกียรติ' : 'CERTIFICATE OF EXCELLENCE'}
                 </h3>
                 <p className="text-xs text-slate-600 italic">
@@ -626,8 +627,8 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               </div>
 
               {/* Recipient Name */}
-              <div className="py-2">
-                <h4 className="text-2xl sm:text-3xl font-serif font-black text-amber-900 underline decoration-amber-500/50 underline-offset-8">
+              <div className="py-1">
+                <h4 className="text-xl sm:text-2xl font-serif font-black text-amber-900 underline decoration-amber-500/50 underline-offset-8">
                   {selectedCertForModal.recipientName}
                 </h4>
                 <p className="text-xs text-slate-600 mt-2 font-medium">
@@ -646,7 +647,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               </div>
 
               {/* Seal, QR & Signatures */}
-              <div className="pt-6 border-t border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="pt-3 border-t border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3">
                 {/* QR Code Verification */}
                 <div className="flex items-center gap-3 text-left">
                   <div className="p-1.5 bg-white border border-slate-300 rounded shadow-xs">
@@ -682,7 +683,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             </div>
 
               {/* Action Toolbar */}
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

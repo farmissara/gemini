@@ -47,6 +47,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   const [previewStudents, setPreviewStudents] = useState<Student[]>([]);
   const [previewTeachers, setPreviewTeachers] = useState<Teacher[]>([]);
   const [previewQuestions, setPreviewQuestions] = useState<QuizQuestion[]>([]);
+  const [studentPreviewPage, setStudentPreviewPage] = useState(0);
+  const [teacherPreviewPage, setTeacherPreviewPage] = useState(0);
+  const [questionPreviewPage, setQuestionPreviewPage] = useState(0);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -272,6 +275,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         allergies: []
       }
     ];
+    setStudentPreviewPage(0);
     setPreviewStudents(samples);
     showToast('โหลดข้อมูลตัวอย่างนักเรียน 2 รายการสำหรับทดสอบแล้ว');
   };
@@ -280,6 +284,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     if (previewStudents.length === 0) return;
     onImportStudents(previewStudents);
     showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนเข้าสู่ระบบสำเร็จ!`);
+    setStudentPreviewPage(0);
     setPreviewStudents([]);
   };
 
@@ -395,6 +400,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         lineLinked: true
       }
     ];
+    setTeacherPreviewPage(0);
     setPreviewTeachers(samples);
     showToast('โหลดข้อมูลตัวอย่างคุณครูสำหรับทดสอบแล้ว (สอนหลายห้อง และมีสิทธิ์ Admin)');
   };
@@ -403,6 +409,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     if (previewTeachers.length === 0) return;
     onImportTeachers(previewTeachers);
     showToast(`นำเข้าข้อมูลคุณครู ${previewTeachers.length} ท่านเข้าสู่ระบบสำเร็จ!`);
+    setTeacherPreviewPage(0);
     setPreviewTeachers([]);
   };
 
@@ -518,6 +525,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         points: 100
       }
     ];
+    setQuestionPreviewPage(0);
     setPreviewQuestions(samples);
     showToast('โหลดข้อมูลตัวอย่างข้อสอบ 2 ข้อสำหรับทดสอบแล้ว');
   };
@@ -526,6 +534,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     if (previewQuestions.length === 0) return;
     onImportQuestions(previewQuestions);
     showToast(`นำเข้าข้อสอบใหม่ ${previewQuestions.length} ข้อเข้าสู่คลัง "ล่าสมบัติ 3D" สำเร็จ!`);
+    setQuestionPreviewPage(0);
     setPreviewQuestions([]);
   };
 
@@ -616,7 +625,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-6 text-slate-800 space-y-6">
+        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 text-slate-800 space-y-4">
 
           {/* ======================================= */}
           {/* TAB 1: นักเรียน (STUDENTS)              */}
@@ -688,7 +697,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setPreviewStudents([])}
+                      onClick={() => { setStudentPreviewPage(0); setPreviewStudents([]); }}
                       className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -709,7 +718,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {previewStudents.map((st, i) => (
+                        {previewStudents.slice(studentPreviewPage * 4, (studentPreviewPage + 1) * 4).map((st, i) => (
                           <tr key={i} className="hover:bg-slate-50">
                             <td className="px-3 py-2 font-mono font-bold text-blue-700">{st.studentIdNumber}</td>
                             <td className="px-3 py-2 font-medium text-slate-900">{st.firstNameTh} {st.lastNameTh}</td>
@@ -727,6 +736,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       </tbody>
                     </table>
                   </div>
+                  {previewStudents.length > 4 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.max(0, page - 1))} disabled={studentPreviewPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                      <span>หน้า {studentPreviewPage + 1} / {Math.ceil(previewStudents.length / 4)} · {previewStudents.length} คน</span>
+                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.min(Math.ceil(previewStudents.length / 4) - 1, page + 1))} disabled={studentPreviewPage >= Math.ceil(previewStudents.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    </div>
+                  )}
 
                   <div className="flex justify-end pt-2">
                     <button
@@ -813,7 +829,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setPreviewTeachers([])}
+                      onClick={() => { setTeacherPreviewPage(0); setPreviewTeachers([]); }}
                       className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -833,7 +849,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {previewTeachers.map((tc, i) => (
+                        {previewTeachers.slice(teacherPreviewPage * 4, (teacherPreviewPage + 1) * 4).map((tc, i) => (
                           <tr key={i} className="hover:bg-slate-50">
                             <td className="px-3 py-2 font-mono font-bold text-indigo-700">{tc.teacherIdNumber}</td>
                             <td className="px-3 py-2 font-medium text-slate-900">{tc.fullNameTh}</td>
@@ -855,6 +871,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       </tbody>
                     </table>
                   </div>
+                  {previewTeachers.length > 4 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.max(0, page - 1))} disabled={teacherPreviewPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                      <span>หน้า {teacherPreviewPage + 1} / {Math.ceil(previewTeachers.length / 4)} · {previewTeachers.length} คน</span>
+                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.min(Math.ceil(previewTeachers.length / 4) - 1, page + 1))} disabled={teacherPreviewPage >= Math.ceil(previewTeachers.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    </div>
+                  )}
 
                   <div className="flex justify-end pt-2">
                     <button
@@ -941,7 +964,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setPreviewQuestions([])}
+                      onClick={() => { setQuestionPreviewPage(0); setPreviewQuestions([]); }}
                       className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -950,10 +973,10 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    {previewQuestions.map((q, i) => (
+                    {previewQuestions.slice(questionPreviewPage * 2, (questionPreviewPage + 1) * 2).map((q, i) => (
                       <div key={i} className="p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-purple-700">ข้อที่ {i + 1} • {q.subject} ({q.gradeLevel})</span>
+                          <span className="font-bold text-purple-700">ข้อที่ {questionPreviewPage * 2 + i + 1} • {q.subject} ({q.gradeLevel})</span>
                           <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">
                             เฉลยข้อ: {['ก (A)', 'ข (B)', 'ค (C)', 'ง (D)'][q.correctIndex]}
                           </span>
@@ -981,6 +1004,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       </div>
                     ))}
                   </div>
+                  {previewQuestions.length > 2 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.max(0, page - 1))} disabled={questionPreviewPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                      <span>หน้า {questionPreviewPage + 1} / {Math.ceil(previewQuestions.length / 2)} · {previewQuestions.length} ข้อ</span>
+                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.min(Math.ceil(previewQuestions.length / 2) - 1, page + 1))} disabled={questionPreviewPage >= Math.ceil(previewQuestions.length / 2) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    </div>
+                  )}
 
                   <div className="flex justify-end pt-2">
                     <button

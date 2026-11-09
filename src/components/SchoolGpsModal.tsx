@@ -28,9 +28,9 @@ export const SchoolGpsModal: React.FC<SchoolGpsModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-5xl h-[92vh] max-h-[92vh] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100">
+      <div className="relative w-full max-w-5xl h-[92dvh] max-h-[92dvh] min-h-0 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100">
         {/* Modal Top Bar */}
         <div className="shrink-0 px-4 py-3 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">

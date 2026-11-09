@@ -32,6 +32,7 @@ import {
   INITIAL_BOSS_RAID_CONFIG, 
   INITIAL_RAID_PARTIES 
 } from '../data/innovativeFeaturesData';
+import { PagedList } from './PagedList';
 
 interface CoopBossRaidViewProps {
   lang?: AppLanguage;
@@ -55,6 +56,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const [activeHintToast, setActiveHintToast] = useState<string | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState<boolean>(false);
   const [bossZoom, setBossZoom] = useState<number>(1.0);
+  const [raidPanel, setRaidPanel] = useState<'arena' | 'question' | 'parties'>('question');
 
   // Teacher Topic Switcher state
   const [isTeacherPanelOpen, setIsTeacherPanelOpen] = useState<boolean>(false);
@@ -268,10 +270,32 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
         </div>
       )}
 
+      <div className="shrink-0 flex flex-wrap gap-2" role="group" aria-label={lang === 'th' ? 'ส่วนของเกม' : 'Raid panels'}>
+        {([
+          ['arena', lang === 'th' ? 'สนามบอส' : 'Boss Arena'],
+          ['question', lang === 'th' ? 'ตอบคำถาม' : 'Answer Question'],
+          ['parties', lang === 'th' ? 'ทีมพันธมิตร' : 'Allied Teams']
+        ] as const).map(([panel, label]) => (
+          <button
+            key={panel}
+            type="button"
+            aria-pressed={raidPanel === panel}
+            onClick={() => setRaidPanel(panel)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              raidPanel === panel
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-white/10 text-slate-200 hover:bg-white/20'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Main Raid Stage: Left Boss Visual & Health Bar, Right Co-op Question & Party Matrix */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-y-auto lg:overflow-hidden pb-1">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
         {/* Left Column: Boss Arena Visual */}
-        <div className="lg:col-span-5 min-h-[220px] lg:min-h-0 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3 sm:p-3.5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
+        {raidPanel === 'arena' && <div className="lg:col-span-12 min-h-[220px] lg:min-h-0 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3 sm:p-3.5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
           {/* Boss HP Bar & Zoom Control */}
           <div>
             <div className="flex items-center justify-between text-xs font-bold mb-2">
@@ -357,14 +381,15 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               <span>คอมโบ x2.0</span>
             </span>
           </div>
-        </div>
+        </div>}
 
         {/* Right Column: Active Attack Question & Co-op Party Matrix */}
-        <div className="lg:col-span-7 flex flex-col min-h-0 overflow-visible lg:overflow-y-auto space-y-3 pr-1">
+        {(raidPanel === 'question' || raidPanel === 'parties') && <div className="lg:col-span-12 flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
             โหมดสาธิต: รายชื่อทีมและผลการแข่งขันเป็นข้อมูลตัวอย่าง ยังไม่เชื่อมผู้เล่นออนไลน์จริง
           </div>
           {/* Question Card */}
+          {raidPanel === 'question' && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300">
@@ -424,9 +449,10 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               )}
             </div>
           </div>
+          )}
 
           {/* Co-op Party Matrix (Peer Tutoring & Combos) */}
-          <details className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+          {raidPanel === 'parties' && <details open className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -444,7 +470,10 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               <p className="text-xs text-slate-500">
                 {lang === 'th' ? 'หากเพื่อนในทีมยังตอบไม่ได้ กดปุ่ม "ติวเพื่อน" เพื่อส่งแนวทางคิดให้เพื่อน' : 'Peer assist: Send tutoring tips to help teammates answer'}
               </p>
-              {parties.map((party) => (
+              <PagedList
+                items={parties}
+                pageSize={1}
+                renderItem={(party) => (
                 <div
                   key={party.id}
                   className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 space-y-3"
@@ -511,10 +540,11 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                     ))}
                   </div>
                 </div>
-              ))}
+              )}
+              />
             </div>
-          </details>
-        </div>
+          </details>}
+        </div>}
       </div>
 
       {/* Victory Celebration Modal */}

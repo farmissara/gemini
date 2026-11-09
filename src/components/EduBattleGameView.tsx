@@ -30,6 +30,7 @@ import {
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
+import { PagedList } from './PagedList';
 
 interface EduBattleGameViewProps {
   questions: QuizQuestion[];
@@ -90,6 +91,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   // 1v1 Battle State
   const [battleState, setBattleState] = useState<'idle' | 'playing' | 'round_over' | 'finished'>('idle');
+  const [lobbyStep, setLobbyStep] = useState<0 | 1>(0);
   const [is3DBattlePlaying, setIs3DBattlePlaying] = useState(false);
   const [showUtilitiesMenu, setShowUtilitiesMenu] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -108,6 +110,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   // New Question Modal State
   const [showAddModal, setShowAddModal] = useState(false);
+  const [questionFormStep, setQuestionFormStep] = useState<0 | 1>(0);
   const [newSubject, setNewSubject] = useState('คณิตศาสตร์ (Mathematics)');
   const [newGradeLevel, setNewGradeLevel] = useState('ม.6');
   const [newCategory, setNewCategory] = useState<'standard_exam' | 'onet' | 'general' | 'review' | 'exam'>('standard_exam');
@@ -359,6 +362,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
     onAddQuestion(newQ);
     setShowAddModal(false);
+    setQuestionFormStep(0);
     setNewQuestionTh('');
     setNewQuestionEn('');
     setNewOptions(['', '', '', '']);
@@ -610,14 +614,19 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'space-y-6'}`}>
           {/* LOBBY / PRE-BATTLE MATCHUP SCREEN */}
           {battleState === 'idle' && (
-            <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col justify-between p-3.5 max-w-md mx-auto overflow-y-auto no-scrollbar' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
+            <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col justify-between p-3.5 max-w-md mx-auto overflow-hidden' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
+              {isMobile && <div className="flex items-center justify-between gap-2">
+                <button type="button" onClick={() => setLobbyStep(0)} disabled={lobbyStep === 0} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-bold disabled:opacity-40">1. {lang === 'th' ? 'เลือกวิชา' : 'Choose Subject'}</button>
+                <span className="text-[11px] text-slate-400">{lobbyStep + 1} / 2</span>
+                <button type="button" onClick={() => setLobbyStep(1)} disabled={lobbyStep === 1} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-bold disabled:opacity-40">2. {lang === 'th' ? 'เริ่มประลอง' : 'Start Duel'}</button>
+              </div>}
               {/* Left / Main Match Launcher Card */}
               <div className={`${isMobile ? 'space-y-3' : 'md:col-span-2 rounded-3xl bg-slate-900/60 border border-slate-800 p-8 flex flex-col justify-between relative overflow-hidden'}`}>
                 {!isMobile && (
                   <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
                 )}
                 
-                <div className="space-y-3">
+                {(!isMobile || lobbyStep === 0) && <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-black">
                       <Swords className="w-3.5 h-3.5" />
@@ -712,10 +721,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       ))}
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 {/* Big Glowing Start Duel Button */}
-                <div className="pt-3 space-y-2">
+                {(!isMobile || lobbyStep === 1) && <div className="pt-3 space-y-2">
                   <button
                     type="button"
                     onClick={handleStartBattle}
@@ -728,7 +737,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   <p className="text-[11px] text-center text-slate-400">
                     ⚡ ตอบถูกทำดาเมจ 25+ HP • สตรีคคอมโบแรงขึ้น • รับ EXP & Gems
                   </p>
-                </div>
+                </div>}
               </div>
 
               {/* Desktop Rules Side Card (Only on desktop) */}
@@ -1029,7 +1038,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               {/* Add Question Button */}
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  setQuestionFormStep(0);
+                  setShowAddModal(true);
+                }}
                 className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all"
               >
                 <Plus className="w-4 h-4" />
@@ -1039,8 +1051,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           </div>
 
           {/* Question List Cards */}
-          <div className="space-y-3">
-            {filteredBank.map((q, idx) => (
+          <div>
+            <PagedList items={filteredBank} pageSize={1} renderItem={(q, idx) => (
               <div 
                 key={q.id}
                 className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
@@ -1093,7 +1105,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   <span><strong>เฉลยและเหตุผล:</strong> {q.explanationTh}</span>
                 </div>
               </div>
-            ))}
+            )} />
           </div>
         </div>
       )}
@@ -1152,8 +1164,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             <div className="p-4 border-b border-slate-800 font-bold text-xs text-slate-400 uppercase tracking-wider">
               ทำเนียบผู้เรียนและอาจารย์คะแนนสูงสุด (Hall of Fame)
             </div>
-            <div className="divide-y divide-slate-800">
-              {playerScores.map((p, rank) => (
+            <div>
+              <PagedList items={playerScores} pageSize={5} renderItem={(p, rank) => (
                 <div key={p.userId} className="p-4 flex items-center justify-between hover:bg-slate-800/40 transition-colors">
                   <div className="flex items-center gap-3">
                     <span className="w-6 font-black text-sm text-slate-400">
@@ -1186,7 +1198,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+              )} />
             </div>
           </div>
         </div>
@@ -1209,8 +1221,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {rewardItems.map((item) => {
+          <div>
+            <PagedList items={rewardItems} pageSize={1} renderItem={(item) => {
               const canAfford = currentPlayerStats.gems >= item.costGems;
               return (
                 <div 
@@ -1263,7 +1275,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   </div>
                 </div>
               );
-            })}
+            }} />
           </div>
         </div>
       )}
@@ -1271,14 +1283,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {/* Add New Question Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 max-w-2xl w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-400" />
                 <span>เพิ่มข้อสอบใหม่เข้าคลังข้อสอบโรงเรียน</span>
               </h3>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setQuestionFormStep(0);
+                }}
                 className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
               >
                 ✕
@@ -1286,6 +1301,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveNewQuestion} className="space-y-4">
+              <p className="text-[11px] text-slate-400">{questionFormStep + 1} / 2</p>
+              {questionFormStep === 0 && <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-300 block mb-1">กลุ่มสาระวิชา</label>
@@ -1335,7 +1352,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   required
                 />
               </div>
-
+              </>}
+              {questionFormStep === 1 && <>
               {/* 4 Choices */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 block">
@@ -1380,21 +1398,32 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   required
                 />
               </div>
+              </>}
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    if (questionFormStep === 1) setQuestionFormStep(0);
+                    else {
+                      setShowAddModal(false);
+                      setQuestionFormStep(0);
+                    }
+                  }}
                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
                 >
-                  ยกเลิก
+                  {questionFormStep === 1 ? 'ย้อนกลับ' : 'ยกเลิก'}
                 </button>
-                <button
+                {questionFormStep === 0 ? (
+                  <button type="button" onClick={() => setQuestionFormStep(1)} className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30">
+                    ถัดไป
+                  </button>
+                ) : <button
                   type="submit"
                   className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30"
                 >
                   บันทึกข้อสอบเข้าคลัง
-                </button>
+                </button>}
               </div>
             </form>
           </div>

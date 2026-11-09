@@ -25,6 +25,7 @@ import {
   INITIAL_COMPETENCY_DIMENSIONS, 
   INITIAL_WEAKNESS_DIAGNOSTICS 
 } from '../data/innovativeFeaturesData';
+import { PagedList } from './PagedList';
 
 interface AiDiagnosticLearningViewProps {
   lang?: AppLanguage;
@@ -50,6 +51,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
   // Filter student
   const [selectedStudentFilter, setSelectedStudentFilter] = useState<'all' | string>('all');
+  const [activePanel, setActivePanel] = useState<'competencies' | 'diagnostics'>('competencies');
 
   const studentNames = Array.from(new Set(diagnostics.map(d => d.studentName)));
 
@@ -184,10 +186,19 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
         </div>
       </div>
 
-      {/* Main Grid: Left Radar Chart, Right Diagnostics & Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setActivePanel('competencies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activePanel === 'competencies' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+          {lang === 'th' ? 'สมรรถนะ 8 มิติ' : 'Competency Radar'}
+        </button>
+        <button type="button" onClick={() => setActivePanel('diagnostics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activePanel === 'diagnostics' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+          {lang === 'th' ? `จุดอ่อน (${filteredDiagnostics.length})` : `Diagnostics (${filteredDiagnostics.length})`}
+        </button>
+      </div>
+
+      {/* Main panel: competency radar or paged diagnostic records */}
+      <div className="grid grid-cols-1 gap-6">
         {/* Left Column: 8-Dimension SVG Radar Chart */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        {activePanel === 'competencies' && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -345,10 +356,10 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
               );
             })}
           </div>
-        </div>
+        </div>}
 
         {/* Right Column: AI Weakness Diagnostic & Adaptive Micro-Quests */}
-        <div className="lg:col-span-7 space-y-6">
+        {activePanel === 'diagnostics' && <div className="space-y-6">
           {/* Filter Bar & Header */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -384,7 +395,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
             {/* Diagnostic List */}
             <div className="mt-4 space-y-4">
-              {filteredDiagnostics.map((diag) => (
+              <PagedList items={filteredDiagnostics} pageSize={1} renderItem={(diag) => (
                 <div 
                   key={diag.id}
                   className={`p-4 rounded-xl border transition-all ${
@@ -469,10 +480,10 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                     </button>
                   </div>
                 </div>
-              ))}
+              )} />
             </div>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Adaptive Micro-Quest Modal */}

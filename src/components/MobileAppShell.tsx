@@ -60,8 +60,20 @@ import { CoopBossRaidView } from './CoopBossRaidView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 import { HallOfFame3DView } from './HallOfFame3DView';
 import { DigitalIdCardView } from './DigitalIdCardView';
+import { PagedList } from './PagedList';
 
 export type MobileTab = 'home' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
+
+const splitAnnouncementIntoPages = (content: string, pageLength = 420) => {
+  const characters = Array.from(content);
+  const pages: string[] = [];
+
+  for (let start = 0; start < characters.length; start += pageLength) {
+    pages.push(characters.slice(start, start + pageLength).join(''));
+  }
+
+  return pages.length > 0 ? pages : [''];
+};
 
 interface MobileAppShellProps {
   currentUser: AuthUser | null;
@@ -155,6 +167,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [activeGameView, setActiveGameView] = useState<'hub' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
+  const [homePage, setHomePage] = useState(0);
+  const [gameHubPage, setGameHubPage] = useState(0);
+  const [profilePage, setProfilePage] = useState(0);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const todayStr = getLocalDateString();
@@ -180,7 +196,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-950 text-slate-100'} pb-20 select-none`}>
+    <div className={`h-full min-h-0 flex flex-col overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-950 text-slate-100'} pb-16 select-none`}>
       {/* ======================================================== */}
       {/* 1. TOP MOBILE HEADER */}
       {/* ======================================================== */}
@@ -245,10 +261,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       {/* 2. MAIN ACTIVE VIEW CONTAINER */}
       {/* ======================================================== */}
-      <main className="flex-1 w-full max-w-lg mx-auto p-3.5 sm:p-4">
+      <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-hidden">
         {/* TAB A: HOME / MOBILE BRIEFING */}
         {activeTab === 'home' && (
           <div className="space-y-4 animate-in fade-in duration-200">
+            {homePage === 0 && (
+              <>
             {/* Welcome & Persona Card */}
             <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-900 text-white shadow-xl shadow-blue-950/20">
               <div className="relative z-10 flex items-center justify-between">
@@ -323,6 +341,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 onClick={() => {
                   setActiveTab('games');
                   setActiveGameView('hub');
+                  setGameHubPage(0);
                 }}
                 className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xs cursor-pointer ${
                   isLight ? 'bg-white border-slate-200 hover:border-amber-400' : 'bg-slate-900 border-slate-800 hover:border-amber-500'
@@ -354,7 +373,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
               </button>
             </div>
+              </>
+            )}
 
+            {homePage === 1 && (
+              <>
             {/* Today's Daily Status Strip */}
             <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
@@ -439,6 +462,28 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
               </div>
             )}
+              </>
+            )}
+
+            <nav aria-label="หน้าหลัก" className="flex items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setHomePage(0)}
+                disabled={homePage === 0}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+              >
+                ภาพรวม
+              </button>
+              <span aria-live="polite" className="text-[11px] font-medium text-slate-500">{homePage + 1} / 2</span>
+              <button
+                type="button"
+                onClick={() => setHomePage(1)}
+                disabled={homePage === 1}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+              >
+                สรุปวันนี้
+              </button>
+            </nav>
           </div>
         )}
 
@@ -501,6 +546,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </div>
 
             <div className="space-y-2.5">
+              {gameHubPage === 0 && (
+                <>
                   {/* Game 1: 3D EduArena Battle Royale */}
                   <button
                     type="button"
@@ -546,7 +593,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                   </button>
+                </>
+              )}
 
+              {gameHubPage === 1 && (
+                <>
                   {/* Game 3: Co-op Boss Raid */}
                   <button
                     type="button"
@@ -592,7 +643,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                   </button>
+                </>
+              )}
 
+              {gameHubPage === 2 && (
+                <>
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                     <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                       รางวัลและผลงาน • ไม่ใช่โหมดเกม
@@ -621,24 +676,47 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                   </button>
-                </div>
+                    </>
+                  )}
+                    </div>
+
+                <nav aria-label="เลือกหมวดเกม" className="flex items-center justify-between gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setGameHubPage((page) => Math.max(0, page - 1))}
+                    disabled={gameHubPage === 0}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    ก่อนหน้า
+                  </button>
+                  <span aria-live="polite" className="text-[11px] font-medium text-slate-500">{gameHubPage + 1} / 3</span>
+                  <button
+                    type="button"
+                    onClick={() => setGameHubPage((page) => Math.min(2, page + 1))}
+                    disabled={gameHubPage === 2}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    ถัดไป
+                  </button>
+                </nav>
               </div>
         )}
 
         {/* TAB E: PROFILE & DIGITAL VIRTUAL ID CARD */}
         {activeTab === 'profile' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Digital ID Card Component */}
-            <DigitalIdCardView
-              students={students}
-              school={activeSchool}
-              lang={lang}
-              currentRole={currentRole}
-              onUpdateStudent={onUpdateStudent}
-            />
+            {profilePage === 0 && (
+              <DigitalIdCardView
+                students={students}
+                school={activeSchool}
+                lang={lang}
+                currentRole={currentRole}
+                onUpdateStudent={onUpdateStudent}
+              />
+            )}
 
             {/* Quick Profile Actions & Settings */}
-            <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
+            {profilePage === 1 && <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">การตั้งค่าและบัญชีผู้ใช้</h3>
               
               <div className="space-y-2 text-xs">
@@ -727,7 +805,27 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <span>ออกจากระบบ</span>
                 </button>
               </div>
-            </div>
+            </div>}
+
+            <nav aria-label="โปรไฟล์" className="flex items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setProfilePage(0)}
+                disabled={profilePage === 0}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+              >
+                บัตรดิจิทัล
+              </button>
+              <span aria-live="polite" className="text-[11px] font-medium text-slate-500">{profilePage + 1} / 2</span>
+              <button
+                type="button"
+                onClick={() => setProfilePage(1)}
+                disabled={profilePage === 1}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+              >
+                ตั้งค่า
+              </button>
+            </nav>
           </div>
         )}
 
@@ -746,69 +844,107 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">รายการการบ้านและงานค้าง</h2>
             </div>
 
-            <div className="space-y-2.5">
-              {assignments.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 text-xs">
-                  ไม่มีการบ้านในระบบ
-                </div>
-              ) : (
-                assignments.map((asg) => {
-                  const isDone = myCompletedSubmissions.has(asg.id);
-                  return (
-                    <div 
-                      key={asg.id} 
-                      className={`p-3.5 rounded-2xl border ${
-                        isDone 
-                          ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40' 
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                      } shadow-xs space-y-2 text-xs`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                          {courses.find(c => c.id === asg.courseId)?.code || courses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {isDone ? '✓ ส่งแล้ว' : 'รอส่ง'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                          {lang === 'th' ? (asg.titleTh || asg.titleEn) : (asg.titleEn || asg.titleTh)}
-                        </h4>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                        <span>กำหนดส่ง: {asg.dueDate}</span>
-                        <span className="font-bold text-amber-600 dark:text-amber-400">{asg.points} คะแนน</span>
-                      </div>
+            <PagedList
+              items={assignments}
+              pageSize={2}
+              previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
+              nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
+              paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าการบ้าน' : 'Homework pages'}
+              emptyState={<div className="text-center py-12 text-slate-400 text-xs">ไม่มีการบ้านในระบบ</div>}
+              renderItem={(asg) => {
+                const isDone = myCompletedSubmissions.has(asg.id);
+                return (
+                  <div
+                    key={asg.id}
+                    className={`p-3.5 rounded-2xl border ${
+                      isDone
+                        ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                    } shadow-xs space-y-2 text-xs`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                        {courses.find(c => c.id === asg.courseId)?.code || courses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {isDone ? '✓ ส่งแล้ว' : 'รอส่ง'}
+                      </span>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      {lang === 'th' ? (asg.titleTh || asg.titleEn) : (asg.titleEn || asg.titleTh)}
+                    </h4>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                      <span>กำหนดส่ง: {asg.dueDate}</span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">{asg.points} คะแนน</span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
           </div>
         )}
 
         {/* TAB G: ANNOUNCEMENTS (ประกาศโรงเรียน) */}
         {activeTab === 'announcements' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setActiveTab('home')}
-                className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>กลับหน้าหลัก</span>
-              </button>
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">ประกาศและข่าวสารโรงเรียน</h2>
-            </div>
+            {selectedAnnouncement ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>กลับสู่รายการ</span>
+                  </button>
+                  <span className="text-[10px] text-slate-500">{selectedAnnouncement.publishedAt}</span>
+                </div>
+                <article className={`p-3 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">{selectedAnnouncement.title}</h2>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {selectedAnnouncement.author} ({selectedAnnouncement.authorRole})
+                  </p>
+                  <PagedList
+                    items={splitAnnouncementIntoPages(selectedAnnouncement.content)}
+                    pageSize={1}
+                    previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
+                    nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
+                    paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
+                    renderItem={(pageText, pageIndex) => (
+                      <p key={pageIndex} className="mt-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700 dark:text-slate-200">
+                        {pageText}
+                      </p>
+                    )}
+                  />
+                </article>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('home')}
+                    className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>กลับหน้าหลัก</span>
+                  </button>
+                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">ประกาศและข่าวสารโรงเรียน</h2>
+                </div>
 
-            <div className="space-y-3">
-              {announcements.map((a) => (
+                <PagedList
+                  items={announcements}
+                  pageSize={2}
+                  previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
+                  nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
+                  paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
+                  emptyState={<p className="py-8 text-center text-xs text-slate-500">ไม่มีประกาศ</p>}
+                  renderItem={(a) => (
                 <div 
                   key={a.id} 
                   className={`p-4 rounded-2xl border ${
@@ -825,15 +961,25 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   </div>
 
                   <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{a.title}</h4>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs whitespace-pre-line">{a.content}</p>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs whitespace-pre-line line-clamp-2">{a.content}</p>
 
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                    <span>ผู้ประกาศ: {a.author} ({a.authorRole})</span>
-                    {a.pinned && <span className="text-amber-500 font-bold">📌 ปักหมุด</span>}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-400">
+                      ผู้ประกาศ: {a.author} ({a.authorRole})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAnnouncement(a)}
+                      className="shrink-0 text-[11px] font-bold text-blue-600 dark:text-blue-400"
+                    >
+                      อ่านทั้งหมด
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+                  )}
+                />
+              </>
+            )}
           </div>
         )}
       </main>

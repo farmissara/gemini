@@ -20,6 +20,39 @@ import {
   Camera
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { PagedList } from './PagedList';
+
+const PaginatedTableRows = <T,>({
+  items,
+  colSpan,
+  renderRow,
+  pageSize = 8
+}: {
+  items: readonly T[];
+  colSpan: number;
+  renderRow: (item: T) => React.ReactNode;
+  pageSize?: number;
+}) => {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  return (
+    <>
+      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
+      {pageCount > 1 && (
+        <tr>
+          <td colSpan={colSpan} className="p-2">
+            <div className="flex items-center justify-between">
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-400">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ถัดไป</button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
 
 interface StudentsViewProps {
   students: Student[];
@@ -48,6 +81,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [studentFormStep, setStudentFormStep] = useState<1 | 2>(1);
 
   // New student form state
   const [formData, setFormData] = useState({
@@ -83,6 +117,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   });
 
   const handleOpenEdit = (student: Student) => {
+    setStudentFormStep(1);
     setEditingStudent(student);
     setFormData({
       firstNameEn: student.firstNameEn,
@@ -191,6 +226,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
           <button
             onClick={() => {
+              setStudentFormStep(1);
               setEditingStudent(null);
               setFormData({
                 firstNameEn: '',
@@ -285,7 +321,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
 
           {/* Students Table with Sticky Header */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto rounded-xl border border-slate-800 bg-slate-800/40">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden rounded-xl border border-slate-800 bg-slate-800/40">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xs text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                 <tr>
@@ -298,7 +334,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {filteredStudents.map((student) => (
+            <PaginatedTableRows items={filteredStudents} colSpan={6} renderRow={(student) => (
               <tr key={student.id} className="hover:bg-slate-800/60 transition-colors group">
                 <td className="py-3.5 px-4">
                   <div className="flex items-center gap-3">
@@ -409,7 +445,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            )} />
           </tbody>
         </table>
       </div>
@@ -417,7 +453,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   )}
 
       {activeTab === 'analytics' && (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+        <div className="flex-1 min-h-0 overflow-hidden space-y-4 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
               <span className="text-[11px] text-slate-400 font-bold uppercase">นักเรียนทั้งหมด</span>
@@ -486,7 +522,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       )}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -506,6 +542,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
 
             <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
+                <span className={studentFormStep === 1 ? 'font-bold text-indigo-300' : ''}>1. Student profile</span>
+                <span>→</span>
+                <span className={studentFormStep === 2 ? 'font-bold text-indigo-300' : ''}>2. Guardian</span>
+              </div>
+              {studentFormStep === 1 && (
+                <div className="space-y-4">
               {/* Photo Preview & Capture */}
               <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-700">
                 <img
@@ -608,7 +651,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   />
                 </div>
               </div>
+                </div>
+              )}
 
+              {studentFormStep === 2 && (
+                <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-medium mb-1">Guardian Name</label>
@@ -635,6 +682,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
+                  onClick={() => setStudentFormStep(1)}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
                 >
@@ -647,6 +701,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   {editingStudent ? 'บันทึกการแก้ไข (Save Changes)' : 'Save & Enroll'}
                 </button>
               </div>
+                </div>
+              )}
+              {studentFormStep === 1 && (
+                <div className="flex justify-between gap-2">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300">Cancel</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formData.firstNameEn && formData.lastNameEn && formData.firstNameTh && formData.lastNameTh) setStudentFormStep(2);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold"
+                  >
+                    Continue
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>

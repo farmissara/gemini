@@ -52,6 +52,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'portfolio' | 'preview_book'>('personal');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [personalStep, setPersonalStep] = useState<'identity' | 'contact'>('identity');
+  const [portfolioPage, setPortfolioPage] = useState(0);
+  const [previewPortfolioPage, setPreviewPortfolioPage] = useState(0);
 
   // Editable Form State - Cloned from currentUser
   const [formData, setFormData] = useState<AuthUser>({ ...currentUser });
@@ -162,8 +165,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     item => item.ownerId === currentUser.id || item.ownerName.includes(currentUser.fullNameTh.split(' ')[0])
   );
 
+  useEffect(() => {
+    const lastPage = Math.max(0, Math.ceil(myPortfolioItems.length / 2) - 1);
+    setPortfolioPage(page => Math.min(page, lastPage));
+    setPreviewPortfolioPage(page => Math.min(page, lastPage));
+  }, [myPortfolioItems.length]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-hidden">
       <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Toast Alert */}
@@ -273,11 +282,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-6 text-slate-800">
+        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 text-slate-800">
           
           {/* TAB 1: ข้อมูลส่วนตัว & การติดต่อ */}
           {activeTab === 'personal' && (
             <form onSubmit={handleSubmitProfile} className="space-y-6">
+              <div className="flex gap-2 border-b border-slate-200 pb-2">
+                <button type="button" onClick={() => setPersonalStep('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${personalStep === 'identity' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลประจำตัว</button>
+                <button type="button" onClick={() => setPersonalStep('contact')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${personalStep === 'contact' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>ติดต่อและฉุกเฉิน</button>
+              </div>
+              {personalStep === 'identity' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
                 {/* Full Name Thai */}
@@ -425,6 +439,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </div>
                 </div>
 
+              </div>
+              )}
+              {personalStep === 'contact' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Emergency Contact */}
                 <div>
                   <label className="text-xs font-bold text-slate-600 block mb-1">ผู้ติดต่อฉุกเฉิน (ชื่อ & ความสัมพันธ์)</label>
@@ -473,6 +491,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   />
                 </div>
               </div>
+              )}
 
               {/* Submit Buttons */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
@@ -1013,7 +1032,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
               {/* Works Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {myPortfolioItems.map((item) => (
+                {myPortfolioItems.slice(portfolioPage * 2, (portfolioPage + 1) * 2).map((item) => (
                   <div
                     key={item.id}
                     className="group rounded-2xl border border-slate-200 bg-white hover:border-blue-300 transition-all shadow-xs hover:shadow-md overflow-hidden flex flex-col"
@@ -1080,6 +1099,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </div>
                 )}
               </div>
+              {myPortfolioItems.length > 2 && (
+                <div className="flex items-center justify-between text-xs">
+                  <button type="button" onClick={() => setPortfolioPage(page => Math.max(0, page - 1))} disabled={portfolioPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                  <span>หน้า {portfolioPage + 1} / {Math.ceil(myPortfolioItems.length / 2)} · {myPortfolioItems.length} ผลงาน</span>
+                  <button type="button" onClick={() => setPortfolioPage(page => Math.min(Math.ceil(myPortfolioItems.length / 2) - 1, page + 1))} disabled={portfolioPage >= Math.ceil(myPortfolioItems.length / 2) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1189,7 +1215,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {myPortfolioItems.map((item, idx) => (
+                    {myPortfolioItems.slice(previewPortfolioPage * 2, (previewPortfolioPage + 1) * 2).map((item, idx) => (
                       <div key={idx} className="p-3.5 rounded-2xl bg-white/5 border border-white/15 flex gap-3">
                         <img
                           src={item.imageUrl || 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300'}
@@ -1204,6 +1230,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       </div>
                     ))}
                   </div>
+                  {myPortfolioItems.length > 2 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <button type="button" onClick={() => setPreviewPortfolioPage(page => Math.max(0, page - 1))} disabled={previewPortfolioPage === 0} className="px-3 py-1.5 rounded-lg border border-white/20 disabled:opacity-40">ก่อนหน้า</button>
+                      <span>หน้า {previewPortfolioPage + 1} / {Math.ceil(myPortfolioItems.length / 2)} · {myPortfolioItems.length} ผลงาน</span>
+                      <button type="button" onClick={() => setPreviewPortfolioPage(page => Math.min(Math.ceil(myPortfolioItems.length / 2) - 1, page + 1))} disabled={previewPortfolioPage >= Math.ceil(myPortfolioItems.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-white/20 disabled:opacity-40">ถัดไป</button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Official Certification Seal */}

@@ -16,6 +16,7 @@ import {
   Camera
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { PagedList } from './PagedList';
 
 interface StudentDetailModalProps {
   student: Student;
@@ -39,6 +40,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onUpdateStudent,
 }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [activeSection, setActiveSection] = useState<'overview' | 'grades'>('overview');
   const studentGrades = grades.filter((g) => g.studentId === student.id);
   const studentAttendance = attendance.filter((a) => a.studentId === student.id);
 
@@ -52,7 +54,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden">
       <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-slate-800 flex items-start justify-between gap-4">
@@ -98,7 +100,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 overflow-y-auto text-xs">
+        <div className="p-4 sm:p-6 space-y-4 overflow-hidden text-xs">
           {/* Action Row */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800">
             <div className="flex items-center gap-3">
@@ -132,7 +134,17 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Details Grid */}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setActiveSection('overview')} className={`px-3 py-1.5 rounded-lg font-semibold ${activeSection === 'overview' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+              ข้อมูลทั่วไป
+            </button>
+            <button type="button" onClick={() => setActiveSection('grades')} className={`px-3 py-1.5 rounded-lg font-semibold ${activeSection === 'grades' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+              ผลการเรียน ({studentGrades.length})
+            </button>
+          </div>
+
+          {activeSection === 'overview' ? (
+          /* Details Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Guardian Info */}
             <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800 space-y-2">
@@ -172,17 +184,17 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Enrolled Courses & Grades */}
+          ) : (
+          /* Enrolled Courses & Grades */
           <div className="space-y-3">
             <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
               ผลการเรียนประจำภาคเรียน
             </span>
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2 pr-1">
               {studentGrades.length === 0 ? (
                 <p className="text-slate-500 py-3 text-center">ยังไม่มีข้อมูลเกรดในระบบ</p>
               ) : (
-                studentGrades.map((g) => {
+                <PagedList items={studentGrades} pageSize={4} renderItem={(g) => {
                   const course = courses.find((c) => c.id === g.courseId);
                   return (
                     <div
@@ -201,10 +213,11 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                       </div>
                     </div>
                   );
-                })
+                }} />
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
 

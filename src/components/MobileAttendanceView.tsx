@@ -48,6 +48,7 @@ import {
   LeaveStatus
 } from '../types';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
+import { PagedList } from './PagedList';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -166,6 +167,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveAttachmentUrl, setLeaveAttachmentUrl] = useState('');
   const [leaveSuccessNotice, setLeaveSuccessNotice] = useState<string | null>(null);
+  const [leaveFormStep, setLeaveFormStep] = useState<1 | 2>(1);
 
   // -------------------------------------------------------------
   // 3. TEACHER PROXY & PERIOD CHECKIN STATE
@@ -548,7 +550,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setSubTab('leave_request')}
+          onClick={() => {
+            setLeaveFormStep(1);
+            setSubTab('leave_request');
+          }}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             subTab === 'leave_request'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
@@ -911,7 +916,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700">เลือกประตูหรือจุดเช็กชื่อ:</label>
                 <div className="grid grid-cols-1 gap-2">
-                  {campusGates.map(gate => {
+                  <PagedList items={campusGates} pageSize={3} renderItem={(gate) => {
                     const isSelected = gate.id === selectedGateId;
                     return (
                       <button
@@ -942,7 +947,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         )}
                       </button>
                     );
-                  })}
+                  }} />
                 </div>
               </div>
 
@@ -1051,6 +1056,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             )}
 
             <form onSubmit={handleSubmitLeave} className="space-y-4 text-xs">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
+                <span className={leaveFormStep === 1 ? 'font-bold text-emerald-700' : ''}>1. Leave details</span>
+                <span>→</span>
+                <span className={leaveFormStep === 2 ? 'font-bold text-emerald-700' : ''}>2. Reason & evidence</span>
+              </div>
+              {leaveFormStep === 1 && (
+                <div className="space-y-4">
               {/* Person Switcher */}
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <span className="text-[11px] font-bold text-slate-700">ผู้ขอยื่นใบลา:</span>
@@ -1139,7 +1151,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   />
                 </div>
               </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (leaveStartDate && leaveEndDate) setLeaveFormStep(2);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold"
+                  >
+                    Continue to reason and evidence
+                  </button>
+                </div>
+              )}
 
+              {leaveFormStep === 2 && (
+                <div className="space-y-4">
               {/* Reason */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-700">เหตุผลประกอบการลา:</label>
@@ -1197,6 +1222,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <Send className="w-4 h-4" />
                 <span>ส่งคำขอใบลาให้อาจารย์ประจำชั้น</span>
               </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaveFormStep(1)}
+                    className="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
+                  >
+                    Back to leave details
+                  </button>
+                </div>
+              )}
             </form>
           </div>
 
@@ -1208,7 +1242,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </h4>
 
             <div className="space-y-3">
-              {leaveRequests.map((req) => (
+              <PagedList items={leaveRequests} pageSize={2} renderItem={(req) => (
                 <div key={req.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1267,7 +1301,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   )}
                 </div>
-              ))}
+              )} />
             </div>
           </div>
         </div>
@@ -1315,7 +1349,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
           <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
             <div className="divide-y divide-slate-100">
-              {filteredProxyStudents.map((st) => {
+              <PagedList items={filteredProxyStudents} pageSize={4} renderItem={(st) => {
                 const currentStatus = proxyStatuses[st.id] || 'present';
                 return (
                   <div key={st.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -1353,7 +1387,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }} />
             </div>
           </div>
         </div>
@@ -1427,7 +1461,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
           <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
             <div className="divide-y divide-slate-100">
-              {selectedCourse.enrolledStudentIds.map((stuId) => {
+              <PagedList items={selectedCourse.enrolledStudentIds} pageSize={4} renderItem={(stuId) => {
                 const st = students.find(s => s.id === stuId);
                 if (!st) return null;
                 const status = periodStatuses[st.id] || 'present';
@@ -1468,7 +1502,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }} />
             </div>
           </div>
         </div>

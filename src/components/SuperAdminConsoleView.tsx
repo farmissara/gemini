@@ -80,6 +80,14 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
   const [schoolStatusError, setSchoolStatusError] = useState<string | null>(null);
   const [updatingSchoolId, setUpdatingSchoolId] = useState<string | null>(null);
+  const [approvalPage, setApprovalPage] = useState(0);
+  const [permissionPage, setPermissionPage] = useState(0);
+  const [accountPage, setAccountPage] = useState(0);
+  const [promotionPage, setPromotionPage] = useState(0);
+  const [subscriptionPage, setSubscriptionPage] = useState(0);
+  const [schoolPage, setSchoolPage] = useState(0);
+  const [permissionSection, setPermissionSection] = useState<'policies' | 'accounts'>('policies');
+  const [promotionSection, setPromotionSection] = useState<'campaigns' | 'assignments'>('campaigns');
 
   useEffect(() => {
     if (activeSubTab !== 'approvals' || isDemoMode) return;
@@ -439,7 +447,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {pendingRegistrations.map((registration) => (
+                      {pendingRegistrations.slice(approvalPage * 4, (approvalPage + 1) * 4).map((registration) => (
                         <tr key={registration.user_id} className="hover:bg-slate-50/50">
                           <td className="py-3 px-3">
                             <div className="font-bold text-slate-900">{registration.school_name_th}</div>
@@ -479,6 +487,13 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       ))}
                     </tbody>
                   </table>
+                  {pendingRegistrations.length > 4 && (
+                    <div className="flex items-center justify-between p-3 text-xs">
+                      <button type="button" onClick={() => setApprovalPage(page => Math.max(0, page - 1))} disabled={approvalPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                      <span>หน้า {approvalPage + 1} / {Math.ceil(pendingRegistrations.length / 4)} · {pendingRegistrations.length} รายการ</span>
+                      <button type="button" onClick={() => setApprovalPage(page => Math.min(Math.ceil(pendingRegistrations.length / 4) - 1, page + 1))} disabled={approvalPage >= Math.ceil(pendingRegistrations.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </>
@@ -489,6 +504,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {/* View 1: RBAC Role & Permission Management */}
       {activeSubTab === 'permissions' && (
         <div className="space-y-6">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setPermissionSection('policies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${permissionSection === 'policies' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>กำหนดสิทธิ์</button>
+            <button type="button" onClick={() => setPermissionSection('accounts')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${permissionSection === 'accounts' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>บัญชีผู้ใช้ ({allUsers.length})</button>
+          </div>
+          {permissionSection === 'policies' && (
+          <>
           {/* Role selector tabs */}
           <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -536,7 +557,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
             {/* Permission Switches Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              {(Object.keys(currentRoleConfig.permissions) as Array<keyof RolePermissionConfig['permissions']>).map((permKey) => {
+              {(Object.keys(currentRoleConfig.permissions) as Array<keyof RolePermissionConfig['permissions']>).slice(permissionPage * 4, (permissionPage + 1) * 4).map((permKey) => {
                 const isEnabled = currentRoleConfig.permissions[permKey];
                 const meta = permissionLabels[permKey];
 
@@ -578,10 +599,19 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 );
               })}
             </div>
+            {Object.keys(currentRoleConfig.permissions).length > 4 && (
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <button type="button" onClick={() => setPermissionPage(page => Math.max(0, page - 1))} disabled={permissionPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                <span>หน้า {permissionPage + 1} / {Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4)} · {Object.keys(currentRoleConfig.permissions).length} สิทธิ์</span>
+                <button type="button" onClick={() => setPermissionPage(page => Math.min(Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4) - 1, page + 1))} disabled={permissionPage >= Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              </div>
+            )}
           </div>
+          </>
+          )}
 
           {/* User Accounts Overview */}
-          <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-3">
+          {permissionSection === 'accounts' && <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-700" />
               <span>บัญชีผู้ใช้งานในระบบทั้งหมด (All Registered Accounts)</span>
@@ -599,7 +629,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {allUsers.map((u) => {
+                  {allUsers.slice(accountPage * 5, (accountPage + 1) * 5).map((u) => {
                     const sch = schools.find((s) => s.id === u.schoolId);
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/50">
@@ -634,13 +664,26 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 </tbody>
               </table>
             </div>
-          </div>
+            {allUsers.length > 5 && (
+              <div className="flex items-center justify-between text-xs">
+                <button type="button" onClick={() => setAccountPage(page => Math.max(0, page - 1))} disabled={accountPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                <span>หน้า {accountPage + 1} / {Math.ceil(allUsers.length / 5)} · {allUsers.length} บัญชี</span>
+                <button type="button" onClick={() => setAccountPage(page => Math.min(Math.ceil(allUsers.length / 5) - 1, page + 1))} disabled={accountPage >= Math.ceil(allUsers.length / 5) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              </div>
+            )}
+          </div>}
         </div>
       )}
 
       {/* View 2: Promotions & School Subscription Packages */}
       {activeSubTab === 'promotions' && (
         <div className="space-y-6">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setPromotionSection('campaigns')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${promotionSection === 'campaigns' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>แคมเปญ ({promotions.length})</button>
+            <button type="button" onClick={() => setPromotionSection('assignments')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${promotionSection === 'assignments' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ผูกแพ็กเกจโรงเรียน</button>
+          </div>
+          {promotionSection === 'campaigns' && (
+          <>
           {/* Header + Add Promo Button */}
           <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -677,7 +720,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {promotions.map((p) => (
+                  {promotions.slice(promotionPage * 4, (promotionPage + 1) * 4).map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/50">
                       <td className="py-3 px-3">
                         <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
@@ -729,10 +772,19 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 </tbody>
               </table>
             </div>
+            {promotions.length > 4 && (
+              <div className="flex items-center justify-between text-xs">
+                <button type="button" onClick={() => setPromotionPage(page => Math.max(0, page - 1))} disabled={promotionPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                <span>หน้า {promotionPage + 1} / {Math.ceil(promotions.length / 4)} · {promotions.length} แคมเปญ</span>
+                <button type="button" onClick={() => setPromotionPage(page => Math.min(Math.ceil(promotions.length / 4) - 1, page + 1))} disabled={promotionPage >= Math.ceil(promotions.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              </div>
+            )}
           </div>
+          </>
+          )}
 
           {/* Quick Apply Promo to School Form */}
-          <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+          {promotionSection === 'assignments' && <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-blue-700" />
               <span>ผูกโปรโมชั่นและแพ็กเกจให้สถานศึกษา (Assign Promotion to School)</span>
@@ -783,7 +835,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             <div className="pt-3 border-t border-slate-100">
               <h4 className="text-xs font-bold text-slate-700 mb-2">สถานะแพ็กเกจปัจจุบันของสถานศึกษา</h4>
               <div className="space-y-2">
-                {schools.map((sch) => {
+                {schools.slice(subscriptionPage * 4, (subscriptionPage + 1) * 4).map((sch) => {
                   const plan = subscriptionPlans.find((p) => p.schoolId === sch.id);
                   return (
                     <div
@@ -809,8 +861,15 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   );
                 })}
               </div>
+              {schools.length > 4 && (
+                <div className="flex items-center justify-between text-xs">
+                  <button type="button" onClick={() => setSubscriptionPage(page => Math.max(0, page - 1))} disabled={subscriptionPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                  <span>หน้า {subscriptionPage + 1} / {Math.ceil(schools.length / 4)} · {schools.length} โรงเรียน</span>
+                  <button type="button" onClick={() => setSubscriptionPage(page => Math.min(Math.ceil(schools.length / 4) - 1, page + 1))} disabled={subscriptionPage >= Math.ceil(schools.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                </div>
+              )}
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -846,7 +905,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {schools.map((s) => (
+                {schools.slice(schoolPage * 4, (schoolPage + 1) * 4).map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50/50">
                     <td className="py-3 px-3 font-mono font-bold text-blue-700">{s.code}</td>
                     <td className="py-3 px-3">
@@ -904,6 +963,13 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </tbody>
             </table>
           </div>
+          {schools.length > 4 && (
+            <div className="flex items-center justify-between text-xs">
+              <button type="button" onClick={() => setSchoolPage(page => Math.max(0, page - 1))} disabled={schoolPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+              <span>หน้า {schoolPage + 1} / {Math.ceil(schools.length / 4)} · {schools.length} โรงเรียน</span>
+              <button type="button" onClick={() => setSchoolPage(page => Math.min(Math.ceil(schools.length / 4) - 1, page + 1))} disabled={schoolPage >= Math.ceil(schools.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+            </div>
+          )}
         </div>
       )}
 

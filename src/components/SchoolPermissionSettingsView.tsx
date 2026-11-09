@@ -14,6 +14,7 @@ import {
   Info 
 } from 'lucide-react';
 import { School, UserRole, AppLanguage } from '../types';
+import { PagedList } from './PagedList';
 
 interface SchoolPermissionSettingsViewProps {
   activeSchool: School;
@@ -180,7 +181,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
   const currentRolePolicies = policies.filter(p => p.role === selectedRole);
 
   return (
-    <div className="space-y-6 max-w-full overflow-hidden">
+    <div className="space-y-4 max-w-full overflow-hidden">
       {/* Toast Alert */}
       {feedbackToast && (
         <div className="fixed bottom-6 right-6 z-50 p-3.5 rounded-xl bg-slate-900 text-white border border-slate-700 shadow-xl text-xs flex items-center gap-2">
@@ -257,7 +258,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       </div>
 
       {/* Policy Switches Grid */}
-      <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+      <div className="rounded-xl bg-white border border-slate-200 p-4 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900">
@@ -276,7 +277,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-          {currentRolePolicies.map((pol) => (
+          <PagedList items={currentRolePolicies} pageSize={2} renderItem={(pol) => (
             <div
               key={pol.id}
               className={`p-4 rounded-xl border transition flex items-center justify-between gap-3 ${
@@ -311,7 +312,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
                 />
               </button>
             </div>
-          ))}
+          )} />
         </div>
       </div>
     </div>

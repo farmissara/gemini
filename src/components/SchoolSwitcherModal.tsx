@@ -9,6 +9,7 @@ import {
   ExternalLink,
   ShieldCheck
 } from 'lucide-react';
+import { PagedList } from './PagedList';
 
 interface SchoolSwitcherModalProps {
   schools: School[];
@@ -52,8 +53,8 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
         </div>
 
         {/* List of Schools */}
-        <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-          {schools.map((sch) => {
+        <div className="space-y-2.5 pr-1">
+          <PagedList items={schools} pageSize={3} renderItem={(sch) => {
             const isActive = activeSchool.id === sch.id;
             return (
               <div
@@ -111,7 +112,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                 </div>
               </div>
             );
-          })}
+          }} />
         </div>
 
         <div className="pt-3 border-t border-slate-800">

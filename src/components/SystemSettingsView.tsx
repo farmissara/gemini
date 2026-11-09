@@ -59,6 +59,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
   const [simulatedSendState, setSimulatedSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [eventCategoryPage, setEventCategoryPage] = useState(0);
+  const [subscriberPage, setSubscriberPage] = useState(0);
 
   // Form State
   const defaultLineSettings: LineNotificationSettings = systemConfig.lineNotificationSettings || {
@@ -440,7 +442,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       </div>
 
       {/* Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="flex-1 min-h-0 overflow-hidden pr-1">
       {/* TAB 1: LINE Notification Events & Rules */}
       {activeTab === 'line_events' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -501,7 +503,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
           {/* Event Categories Accordion / Cards */}
           <div className="space-y-4">
-            {eventCategories.map((cat) => {
+            {eventCategories.slice(eventCategoryPage, eventCategoryPage + 1).map((cat) => {
               const Icon = cat.icon;
               return (
                 <div key={cat.id} className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -556,6 +558,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                       );
                     })}
                   </div>
+                  {eventCategories.length > 1 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <button type="button" onClick={() => setEventCategoryPage(page => Math.max(0, page - 1))} disabled={eventCategoryPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">หมวดก่อนหน้า</button>
+                      <span>{eventCategoryPage + 1} / {eventCategories.length}</span>
+                      <button type="button" onClick={() => setEventCategoryPage(page => Math.min(eventCategories.length - 1, page + 1))} disabled={eventCategoryPage === eventCategories.length - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">หมวดถัดไป</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -733,7 +742,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </div>
 
                 {/* Chat Scroll Area */}
-                <div className="flex-1 p-3 overflow-y-auto space-y-3">
+                <div className="flex-1 p-3 overflow-hidden space-y-3">
                   <div className="text-center">
                     <span className="text-[10px] bg-black/20 text-white px-2.5 py-0.5 rounded-full">
                       วันนี้ • Today
@@ -1198,7 +1207,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {students.map((stu) => (
+                  {students.slice(subscriberPage * 6, (subscriberPage + 1) * 6).map((stu) => (
                     <tr key={stu.id} className="hover:bg-slate-50/70 transition">
                       <td className="px-4 py-3 font-mono font-bold text-slate-700">
                         {stu.studentIdNumber}
@@ -1242,6 +1251,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </tbody>
               </table>
             </div>
+            {students.length > 6 && (
+              <div className="flex items-center justify-between p-3 text-xs">
+                <button type="button" onClick={() => setSubscriberPage(page => Math.max(0, page - 1))} disabled={subscriberPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                <span>หน้า {subscriberPage + 1} / {Math.ceil(students.length / 6)} · {students.length} คน</span>
+                <button type="button" onClick={() => setSubscriberPage(page => Math.min(Math.ceil(students.length / 6) - 1, page + 1))} disabled={subscriberPage >= Math.ceil(students.length / 6) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              </div>
+            )}
           </div>
         </div>
       )}

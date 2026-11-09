@@ -34,6 +34,7 @@ import {
   INITIAL_SEASON_PASS_TIERS, 
   INITIAL_DAILY_MICRO_QUESTS 
 } from '../data/innovativeFeaturesData';
+import { PagedList } from './PagedList';
 
 interface StudyStreakQuestPassViewProps {
   lang?: AppLanguage;
@@ -57,6 +58,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
   // Active micro-quest
   const [activeTab, setActiveTab] = useState<'quest_pass' | 'perks_store'>('quest_pass');
+  const [questPassStep, setQuestPassStep] = useState<'quest' | 'pass'>('quest');
   const [activeQuestIndex, setActiveQuestIndex] = useState<number>(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [questResult, setQuestResult] = useState<{ isCorrect: boolean; feedback: string } | null>(null);
@@ -259,11 +261,19 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       </div>
 
       {/* Tab Panels Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="flex-1 min-h-0 overflow-hidden pr-1">
       {activeTab === 'quest_pass' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-2">
+        <div className="lg:col-span-12 flex items-center gap-2">
+          <button type="button" onClick={() => setQuestPassStep('quest')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${questPassStep === 'quest' ? 'bg-orange-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+            {lang === 'th' ? 'ภารกิจรายวัน' : 'Daily Quest'}
+          </button>
+          <button type="button" onClick={() => setQuestPassStep('pass')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${questPassStep === 'pass' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+            {lang === 'th' ? 'ซีซันพาส' : 'Season Pass'}
+          </button>
+        </div>
         {/* Left Column: Daily 3-Minute Micro-Quest */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        {questPassStep === 'quest' && <div className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">
@@ -350,10 +360,10 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
               </button>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Right Column: Season Battle Pass Progression */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        {questPassStep === 'pass' && <div className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">
@@ -374,8 +384,8 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
             </div>
 
             {/* Pass Tiers List */}
-            <div className="mt-4 space-y-3">
-              {tiers.map((tier) => {
+            <div className="mt-4">
+              <PagedList items={tiers} pageSize={2} renderItem={(tier) => {
                 const canClaim = currentXp >= tier.requiredXp && !tier.isClaimed;
                 const isPassed = currentXp >= tier.requiredXp;
 
@@ -433,7 +443,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                     </div>
                   </div>
                 );
-              })}
+              }} />
             </div>
           </div>
 
@@ -441,7 +451,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
             <span>{lang === 'th' ? 'ฤดูกาลปัจจุบัน: Season 1 วิทยาการคำนวณ' : 'Current: Season 1 Tech & Sci'}</span>
             <span className="font-semibold">{lang === 'th' ? 'เหลือเวลาอีก 18 วัน' : '18 days left'}</span>
           </div>
-        </div>
+        </div>}
       </div>
       )}
 
@@ -475,8 +485,8 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
         </div>
 
         {/* Perks Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {perks.map((perk) => {
+        <div>
+          <PagedList items={perks} pageSize={2} renderItem={(perk) => {
             const canAfford = tokens >= perk.costTokens;
             return (
               <div 
@@ -521,7 +531,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 </div>
               </div>
             );
-          })}
+          }} />
         </div>
       </div>
       )}

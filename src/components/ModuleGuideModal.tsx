@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PagedList } from './PagedList';
 import { 
   X, 
   BookOpen, 
@@ -765,6 +766,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 }) => {
   const [selectedModuleId, setSelectedModuleId] = useState<GuideModuleId>(initialModule);
   const [searchQuery, setSearchQuery] = useState('');
+  const [guideSection, setGuideSection] = useState<'features' | 'steps' | 'tips'>('features');
 
   const filteredGuides = MODULE_GUIDES.filter(g => {
     if (!searchQuery.trim()) return true;
@@ -839,8 +841,8 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {filteredGuides.map((guide) => {
+            <div className="flex-1 min-h-0 overflow-hidden p-2 space-y-1">
+              <PagedList items={filteredGuides} pageSize={6} renderItem={(guide) => {
                 const IconComponent = guide.icon;
                 const isSelected = guide.id === selectedModuleId;
                 return (
@@ -866,12 +868,12 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                     {isSelected && <ChevronRight className="w-3.5 h-3.5 text-cyan-400 shrink-0 ml-1" />}
                   </button>
                 );
-              })}
+              }} />
             </div>
           </div>
 
           {/* Right Column: Detailed Guide Info */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 space-y-3">
             
             {/* Module Title Banner */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
@@ -919,6 +921,20 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
               ))}
             </div>
 
+            <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
+              {([
+                ['features', lang === 'th' ? 'ฟังก์ชันเด่น' : 'Capabilities'],
+                ['steps', lang === 'th' ? 'ขั้นตอน' : 'Steps'],
+                ['tips', lang === 'th' ? 'เคล็ดลับ' : 'Tips']
+              ] as const).map(([section, label]) => (
+                <button key={section} type="button" onClick={() => setGuideSection(section)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${guideSection === section ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {guideSection === 'features' && (
+            <>
             {/* Key Capabilities / Features */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
@@ -927,7 +943,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {activeGuide.features.map((feat, idx) => (
+                <PagedList items={activeGuide.features} pageSize={3} renderItem={(feat, idx) => (
                   <div
                     key={idx}
                     className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5"
@@ -940,11 +956,14 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                       {lang === 'th' ? feat.descTh : feat.descEn}
                     </p>
                   </div>
-                ))}
+                )} />
               </div>
             </div>
+            </>
+            )}
 
             {/* Step-by-Step Instructions */}
+            {guideSection === 'steps' && (
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -952,7 +971,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
               </h4>
 
               <div className="space-y-2">
-                {activeGuide.steps.map((step, idx) => (
+                <PagedList items={activeGuide.steps} pageSize={3} renderItem={(step, idx) => (
                   <div
                     key={idx}
                     className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3"
@@ -969,24 +988,27 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                       </p>
                     </div>
                   </div>
-                ))}
+                )} />
               </div>
             </div>
+            )}
 
             {/* Pro Tips & Best Practices */}
+            {guideSection === 'tips' && (
             <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-slate-950 to-slate-900 border border-amber-500/30 space-y-2">
               <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                 <Lightbulb className="w-4 h-4 text-amber-400" />
                 <span>{lang === 'th' ? 'เคล็ดลับ & คำแนะนำพิเศษ (Pro Tips)' : 'Pro Tips & Recommendations'}</span>
               </div>
-              <ul className="space-y-1.5 text-xs text-slate-300 pl-5 list-disc">
-                {(lang === 'th' ? activeGuide.tipsTh : activeGuide.tipsEn).map((tip, idx) => (
-                  <li key={idx} className="leading-relaxed">
+              <div className="space-y-1.5 text-xs text-slate-300">
+                <PagedList items={lang === 'th' ? activeGuide.tipsTh : activeGuide.tipsEn} pageSize={3} renderItem={(tip, idx) => (
+                  <p key={idx} className="leading-relaxed">
                     {tip}
-                  </li>
-                ))}
-              </ul>
+                  </p>
+                )} />
+              </div>
             </div>
+            )}
 
           </div>
         </div>

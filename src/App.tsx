@@ -156,7 +156,7 @@ export const App: React.FC = () => {
   // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
   const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth < 768;
+      return window.innerWidth <= 1024;
     }
     return false;
   });
@@ -164,7 +164,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileScreen(window.innerWidth < 768);
+      setIsMobileScreen(window.innerWidth <= 1024);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -997,7 +997,7 @@ export const App: React.FC = () => {
 
   if (!isDataReady || loadedSchoolId !== activeSchool.id) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-white">
+      <main className="h-dvh overflow-hidden flex items-center justify-center bg-slate-950 p-6 text-white">
         <div className="max-w-lg space-y-4 text-center">
           <h1 className="text-xl font-bold">
             {dataLoadError ? 'โหลดข้อมูลโรงเรียนไม่สำเร็จ' : 'กำลังโหลดข้อมูลโรงเรียน...'}
@@ -1018,7 +1018,7 @@ export const App: React.FC = () => {
   // Responsive: If on mobile screen (or user opted into mobile view), render the clean, uncluttered MobileAppShell
   if (shouldShowMobileView) {
     return (
-      <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} font-sans`}>
+      <div className={`h-dvh overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} font-sans`}>
         <MobileAppShell
           currentUser={currentUser}
           activeSchool={activeSchool}
@@ -1175,7 +1175,7 @@ export const App: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <Sidebar
                 currentTab={currentTab}
                 setCurrentTab={(tab) => {
@@ -1243,8 +1243,8 @@ export const App: React.FC = () => {
               <>
                 {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
                 {currentTab !== 'super_admin_console' && !useImmersiveGameLayout && (
-                  <div className="shrink-0 mb-2.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-0.5">
-                    <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 shrink-0">
+                  <div className="shrink-0 mb-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-0.5">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 min-w-0">
                       {[
                         { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
                         { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
@@ -1262,7 +1262,7 @@ export const App: React.FC = () => {
                                 navigateToAppTab(cat.defaultTab);
                               }
                             }}
-                            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                            className={`min-w-0 px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                               isCatActive
                                 ? 'bg-blue-600 text-white shadow-xs'
                                 : 'text-slate-700 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900'
@@ -1279,7 +1279,7 @@ export const App: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => navigateToAppTab('school_gps')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                        className={`self-start sm:self-auto px-3 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                           currentTab === 'school_gps'
                             ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
                             : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'

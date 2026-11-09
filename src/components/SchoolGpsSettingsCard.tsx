@@ -19,6 +19,7 @@ import {
   Sliders,
   Copy
 } from 'lucide-react';
+import { PagedList } from './PagedList';
 
 interface SchoolGpsSettingsCardProps {
   activeSchool: School;
@@ -392,7 +393,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       <div className="flex-1 min-h-0 overflow-hidden">
         {/* TAB 1: SCHOOL CENTER & GEOFENCE RADIUS */}
         {activeTab === 'center_geofence' && (
-          <div className="h-full flex flex-col min-h-0 overflow-y-auto space-y-3 pr-1">
+          <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               {/* Coordinates Inputs Card */}
               <div className="lg:col-span-7 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
@@ -605,8 +606,8 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
             </div>
 
             {/* Gates Cards Grid - scrollable */}
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-              {gatesList.map((gate, index) => (
+            <div className="flex-1 min-h-0 overflow-hidden pr-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <PagedList items={gatesList} pageSize={2} renderItem={(gate, index) => (
                 <div
                   key={gate.id}
                   className={`p-3 rounded-xl border transition ${
@@ -720,14 +721,14 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     </button>
                   </div>
                 </div>
-              ))}
+              )} />
             </div>
           </div>
         )}
 
         {/* TAB 3: RADAR SIMULATION & LIVE TEST */}
         {activeTab === 'radar_test' && (
-          <div className="h-full flex flex-col min-h-0 overflow-y-auto space-y-3 pr-1">
+          <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               {/* Distance Calibrator */}
               <div className="lg:col-span-7 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">

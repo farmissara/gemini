@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Student, Course, GradeRecord, SystemConfig } from '../types';
 import { 
   Award, 
@@ -27,6 +27,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   onClose,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [gradePage, setGradePage] = useState(0);
 
   // Student grades
   const studentGrades = grades.filter((g) => g.studentId === student.id);
@@ -44,13 +45,16 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   });
 
   const termGPA = totalCredits > 0 ? (totalPointsEarned / totalCredits).toFixed(2) : student.gpa.toFixed(2);
+  const gradesPerPage = 5;
+  const gradePageCount = Math.max(1, Math.ceil(studentGrades.length / gradesPerPage));
+  const visibleGrades = studentGrades.slice(gradePage * gradesPerPage, (gradePage + 1) * gradesPerPage);
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden">
       <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Action Toolbar */}
         <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-4">
@@ -84,7 +88,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
         </div>
 
         {/* Printable Document Body */}
-        <div className="overflow-y-auto p-6 bg-white text-slate-900 font-sans print:p-0 print:m-0" ref={printRef}>
+        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 bg-white text-slate-900 font-sans print:p-0 print:m-0" ref={printRef}>
           {/* Header */}
           <div className="border-b-2 border-slate-900 pb-4 mb-4">
             <div className="flex items-start justify-between gap-4">
@@ -168,7 +172,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  studentGrades.map((grade) => {
+                  visibleGrades.map((grade) => {
                     const course = courses.find((c) => c.id === grade.courseId);
                     if (!course) return null;
                     return (
@@ -206,6 +210,13 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 )}
               </tbody>
             </table>
+            {gradePageCount > 1 && (
+              <div className="flex items-center justify-between gap-3 text-xs print:hidden">
+                <button type="button" onClick={() => setGradePage(page => Math.max(0, page - 1))} disabled={gradePage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                <span>หน้า {gradePage + 1} / {gradePageCount} · {studentGrades.length} รายวิชา</span>
+                <button type="button" onClick={() => setGradePage(page => Math.min(gradePageCount - 1, page + 1))} disabled={gradePage >= gradePageCount - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              </div>
+            )}
 
             {/* Summary Statistics */}
             <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 grid grid-cols-3 gap-4 text-center">

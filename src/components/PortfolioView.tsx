@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { PortfolioItem, Student, AuthUser, AppLanguage } from '../types';
+import { PagedList } from './PagedList';
 
 interface PortfolioViewProps {
   portfolioItems: PortfolioItem[];
@@ -37,8 +38,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   onOpenProfile,
 }) => {
   const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'teacher'>('student');
+  const [portfolioStep, setPortfolioStep] = useState<0 | 1>(0);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addFormStep, setAddFormStep] = useState<0 | 1 | 2>(0);
 
   // New Item Form State
   const [newTitle, setNewTitle] = useState('');
@@ -77,6 +80,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
     onAddPortfolioItem(newItem);
     setShowAddModal(false);
+    setAddFormStep(0);
     setNewTitle('');
     setNewDescription('');
   };
@@ -125,7 +129,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </button>
 
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setAddFormStep(0);
+                setShowAddModal(true);
+              }}
               className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -217,10 +224,14 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         </div>
       </div>
 
-      {/* Scrollable Portfolio Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+      <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => setPortfolioStep(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${portfolioStep === 0 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>{lang === 'th' ? 'โปรไฟล์' : 'Profile'}</button>
+        <button type="button" onClick={() => setPortfolioStep(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${portfolioStep === 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>{lang === 'th' ? `ผลงาน (${filteredItems.length})` : `Portfolio Items (${filteredItems.length})`}</button>
+      </div>
       {/* Role Profile Header Preview Card */}
-      {activeRoleTab === 'student' ? (
+      {portfolioStep === 0 && (
+      activeRoleTab === 'student' ? (
         <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           <div className="flex items-center gap-4 md:col-span-2">
             <img 
@@ -300,11 +311,16 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           </div>
         </div>
+      )
       )}
 
       {/* Portfolio Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredItems.map((item) => (
+      {portfolioStep === 1 && <div>
+        <PagedList
+          items={filteredItems}
+          pageSize={1}
+          emptyState={<p className="text-sm text-slate-400">{lang === 'th' ? 'ยังไม่มีผลงานในหมวดนี้' : 'No portfolio items in this category.'}</p>}
+          renderItem={(item) => (
           <div 
             key={item.id}
             className="rounded-3xl bg-slate-900/60 border border-slate-800 overflow-hidden flex flex-col justify-between hover:border-slate-700 transition-all group"
@@ -377,14 +393,15 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        )}
+        />
+      </div>}
       </div>
 
       {/* Add New Portfolio Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 max-w-xl w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-400" />
@@ -393,7 +410,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </span>
               </h3>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setAddFormStep(0);
+                }}
                 className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
               >
                 ✕
@@ -401,6 +421,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveItem} className="space-y-4">
+              <p className="text-[11px] text-slate-400">{addFormStep + 1} / 3</p>
+              {addFormStep === 0 && <>
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1">ชื่อผลงาน / โครงงาน / รางวัล</label>
                 <input
@@ -448,7 +470,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   />
                 </div>
               </div>
-
+              </>}
+              {addFormStep === 1 && <>
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1">รายละเอียดและบทเรียนที่ได้รับ</label>
                 <textarea
@@ -460,7 +483,6 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   required
                 />
               </div>
-
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1">ทักษะที่เกี่ยวข้อง (คั่นด้วยจุลภาค)</label>
                 <input
@@ -471,7 +493,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
                 />
               </div>
-
+              </>}
+              {addFormStep === 2 && <>
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1">ลิงก์รูปภาพประกอบผลงาน (Image URL)</label>
                 <input
@@ -481,21 +504,31 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
                 />
               </div>
-
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+              </>}
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => addFormStep > 0 ? setAddFormStep((step) => (step - 1) as 0 | 1 | 2) : setShowAddModal(false)}
                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
                 >
-                  ยกเลิก
+                  {addFormStep > 0 ? 'ย้อนกลับ' : 'ยกเลิก'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30"
-                >
-                  บันทึกผลงานลง Portfolio
-                </button>
+                {addFormStep < 2 ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddFormStep((step) => (step + 1) as 0 | 1 | 2)}
+                    className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30"
+                  >
+                    ถัดไป
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30"
+                  >
+                    บันทึกผลงานลง Portfolio
+                  </button>
+                )}
               </div>
             </form>
           </div>

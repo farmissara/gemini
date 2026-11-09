@@ -31,6 +31,39 @@ import {
   Tag
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { PagedList } from './PagedList';
+
+const PaginatedTableRows = <T,>({
+  items,
+  colSpan,
+  renderRow,
+  pageSize = 8
+}: {
+  items: readonly T[];
+  colSpan: number;
+  renderRow: (item: T) => React.ReactNode;
+  pageSize?: number;
+}) => {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  return (
+    <>
+      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
+      {pageCount > 1 && (
+        <tr>
+          <td colSpan={colSpan} className="p-2">
+            <div className="flex items-center justify-between">
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-500">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-40">ถัดไป</button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
 
 interface TeachersViewProps {
   teachers: Teacher[];
@@ -54,6 +87,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [teacherFormStep, setTeacherFormStep] = useState<1 | 2>(1);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<Teacher | null>(null);
   const [detailTab, setDetailTab] = useState<'profile' | 'pa_portfolio' | 'teaching_analytics'>('profile');
@@ -138,6 +172,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   });
 
   const handleOpenAdd = () => {
+    setTeacherFormStep(1);
     setFormData({
       teacherIdNumber: `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       fullNameTh: '',
@@ -165,6 +200,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   };
 
   const handleOpenEdit = (teacher: Teacher) => {
+    setTeacherFormStep(1);
     setEditingTeacher(teacher);
     setFormData({
       ...teacher,
@@ -412,11 +448,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       </div>
 
       {/* Teachers Scrollable Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="flex-1 min-h-0 overflow-hidden pr-1">
         {/* Teachers Cards View */}
         {viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTeachers.map((teacher) => (
+        <div>
+          <PagedList items={filteredTeachers} pageSize={1} renderItem={(teacher) => (
             <div
               key={teacher.id}
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
@@ -530,12 +566,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </button>
               </div>
             </div>
-          ))}
+          )} />
         </div>
       ) : (
         /* Table View */
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-bold uppercase tracking-wider">
                 <tr>
@@ -548,7 +584,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredTeachers.map((teacher) => (
+                <PaginatedTableRows items={filteredTeachers} colSpan={7} renderRow={(teacher) => (
                   <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -615,7 +651,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       </div>
                     </td>
                   </tr>
-                ))}
+                )} />
               </tbody>
             </table>
           </div>
@@ -627,7 +663,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* 1. TEACHER DETAIL & PA PORTFOLIO & TEACHING ANALYTICS MODAL */}
       {/* ======================================================== */}
       {selectedTeacherForDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
           <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
             
             {/* Modal Header */}
@@ -720,7 +756,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="p-6 overflow-hidden flex-1 space-y-6">
               {/* TAB 1: PROFILE & QUALIFICATIONS */}
               {detailTab === 'profile' && (
                 <div className="space-y-6 text-xs">
@@ -780,14 +816,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedTeacherForDetail.otherSkills && selectedTeacherForDetail.otherSkills.length > 0 ? (
-                        selectedTeacherForDetail.otherSkills.map((skill, idx) => (
+                        <PagedList items={selectedTeacherForDetail.otherSkills} pageSize={4} renderItem={(skill, idx) => (
                           <span
                             key={idx}
                             className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-900 font-semibold"
                           >
                             ⭐ {skill}
                           </span>
-                        ))
+                        )} />
                       ) : (
                         <p className="text-slate-400">ยังไม่มีการบันทึกทักษะเพิ่มเติม</p>
                       )}
@@ -801,14 +837,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <span>ภาระงานสอนและห้องที่ปรึกษา (Teaching Load)</span>
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedTeacherForDetail.teachingSubjects.map((sub, idx) => (
+                      <PagedList items={selectedTeacherForDetail.teachingSubjects} pageSize={4} renderItem={(sub, idx) => (
                         <span
                           key={idx}
                           className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-900 font-semibold"
                         >
                           📖 {sub}
                         </span>
-                      ))}
+                      )} />
                     </div>
                   </div>
                 </div>
@@ -844,7 +880,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   {/* PA Works List */}
                   {selectedTeacherForDetail.paPortfolio && selectedTeacherForDetail.paPortfolio.length > 0 ? (
                     <div className="space-y-3">
-                      {selectedTeacherForDetail.paPortfolio.map((item) => (
+                      <PagedList items={selectedTeacherForDetail.paPortfolio} pageSize={2} renderItem={(item) => (
                         <div
                           key={item.id}
                           className="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2 hover:border-emerald-500/50 transition"
@@ -879,7 +915,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             <span className="font-mono">วันที่ส่ง: {item.dateSubmitted}</span>
                           </div>
                         </div>
-                      ))}
+                      )} />
                     </div>
                   ) : (
                     <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
@@ -993,7 +1029,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* 2. ADD / EDIT TEACHER MODAL (With Major, Minor, Skills, Photo) */}
       {/* ======================================================== */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             <div className="px-6 py-4 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between">
               <div>
@@ -1011,7 +1047,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeacher} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form onSubmit={handleSaveTeacher} className="p-6 space-y-4 flex-1 min-h-0 text-xs">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
+                <span className={teacherFormStep === 1 ? 'font-bold text-blue-600' : ''}>1. Profile</span>
+                <span>→</span>
+                <span className={teacherFormStep === 2 ? 'font-bold text-blue-600' : ''}>2. Teaching details</span>
+              </div>
+              {teacherFormStep === 1 && (
+                <div className="space-y-4">
               {/* Photo Upload / Capture preview */}
               <div className="flex items-center gap-4 p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <img
@@ -1098,7 +1141,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   />
                 </div>
               </div>
+                </div>
+              )}
 
+              {teacherFormStep === 2 && (
+                <div className="space-y-4">
               {/* Major & Minor Fields (Requirement 2) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -1200,7 +1247,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
-                  {(formData.otherSkills || []).map((skill, idx) => (
+                  <PagedList items={formData.otherSkills || []} pageSize={4} renderItem={(skill, idx) => (
                     <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-semibold">
                       ⭐ {skill}
                       <button
@@ -1216,7 +1263,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         ×
                       </button>
                     </span>
-                  ))}
+                  )} />
                 </div>
               </div>
 
@@ -1248,7 +1295,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
-                  {(formData.teachingSubjects || []).map((sub, idx) => (
+                  <PagedList items={formData.teachingSubjects || []} pageSize={4} renderItem={(sub, idx) => (
                     <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[11px]">
                       {sub}
                       <button
@@ -1264,11 +1311,18 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         ×
                       </button>
                     </span>
-                  ))}
+                  )} />
                 </div>
               </div>
 
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTeacherFormStep(1)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-semibold"
+                >
+                  Back
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -1283,6 +1337,22 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
                 </button>
               </div>
+                </div>
+              )}
+              {teacherFormStep === 1 && (
+                <div className="flex justify-between gap-2">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600">Cancel</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formData.fullNameTh && formData.email && formData.major) setTeacherFormStep(2);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"
+                  >
+                    Continue
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>

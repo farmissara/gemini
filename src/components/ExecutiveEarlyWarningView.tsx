@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AtRiskStudentForecast, AppLanguage, UserRole } from '../types';
 import { INITIAL_AT_RISK_FORECASTS } from '../data/innovativeFeaturesData';
+import { PagedList } from './PagedList';
 
 interface ExecutiveEarlyWarningViewProps {
   lang?: AppLanguage;
@@ -314,8 +315,8 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         </div>
 
         {/* Student Risk Cards / Rows */}
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 mt-2.5">
-          {filteredForecasts.map((forecast) => {
+        <div className="flex-1 min-h-0 overflow-hidden space-y-2.5 pr-1 mt-2.5">
+          <PagedList items={filteredForecasts} pageSize={1} renderItem={(forecast) => {
             const isHigh = forecast.riskLevel === 'high';
             const isMod = forecast.riskLevel === 'moderate';
 
@@ -411,7 +412,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {forecast.earlyInterventionActions.map((act) => {
+                      <PagedList items={forecast.earlyInterventionActions} pageSize={2} renderItem={(act) => {
                         const isCompleted = act.status === 'completed';
                         return (
                           <div 
@@ -460,7 +461,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                             </button>
                           </div>
                         );
-                      })}
+                      }} />
                     </div>
                   </div>
                 )}
@@ -494,7 +495,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 </div>
               </div>
             );
-          })}
+          }} />
         </div>
       </div>
     </div>

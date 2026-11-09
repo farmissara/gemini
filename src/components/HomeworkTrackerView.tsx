@@ -26,6 +26,39 @@ import {
   Assignment
 } from '../types';
 import { INITIAL_ASSIGNMENTS } from '../data/mockData';
+import { PagedList } from './PagedList';
+
+const PaginatedTableRows = <T,>({
+  items,
+  colSpan,
+  renderRow,
+  pageSize = 8
+}: {
+  items: readonly T[];
+  colSpan: number;
+  renderRow: (item: T) => React.ReactNode;
+  pageSize?: number;
+}) => {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  return (
+    <>
+      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
+      {pageCount > 1 && (
+        <tr>
+          <td colSpan={colSpan} className="p-2">
+            <div className="flex items-center justify-between">
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-400">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ถัดไป</button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -230,7 +263,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
@@ -244,7 +277,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {filteredSubmissions.map((sub) => {
+                <PaginatedTableRows items={filteredSubmissions} colSpan={7} renderRow={(sub) => {
                   const status = getStatusBadge(sub.status);
 
                   return (
@@ -318,7 +351,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                       </td>
                     </tr>
                   );
-                })}
+                }} />
               </tbody>
             </table>
           </div>
@@ -327,9 +360,9 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
       {/* TAB 2: ACTIVE ASSIGNMENTS LIST */}
       {hwTab === 'assignments' && (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {assignments.map((asg) => (
+          <PagedList items={assignments} pageSize={3} renderItem={(asg) => (
               <div
                 key={asg.id}
                 className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-md space-y-2.5 flex flex-col justify-between"
@@ -357,14 +390,14 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                   </span>
                 </div>
               </div>
-            ))}
+            )} />
           </div>
         </div>
       )}
 
       {/* TAB 3: PENDING HOMEWORK & SUMMARY */}
       {hwTab === 'pending' && (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
@@ -399,7 +432,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             </h3>
 
             <div className="space-y-2">
-              {submissions.filter(s => s.status === 'pending').map((sub) => (
+              <PagedList items={submissions.filter(s => s.status === 'pending')} pageSize={3} renderItem={(sub) => (
                 <div
                   key={sub.id}
                   className="p-2.5 rounded-lg bg-slate-800/50 border border-rose-500/20 text-xs flex items-center justify-between"
@@ -415,7 +448,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                     Due: {sub.dueDate}
                   </span>
                 </div>
-              ))}
+              )} />
             </div>
           </div>
         </div>

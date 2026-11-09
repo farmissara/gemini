@@ -71,6 +71,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 }) => {
   // Main Portal View: 'showcase' (Demo & Capability Showcase) vs 'live_login' (Production School Portal)
   const [activePortalTab, setActivePortalTab] = useState<'showcase' | 'live_login'>('showcase');
+  const [showcasePage, setShowcasePage] = useState(0);
+  const [personaPage, setPersonaPage] = useState(0);
+  const [featurePage, setFeaturePage] = useState(0);
+  const [loginMobilePage, setLoginMobilePage] = useState<'form' | 'information'>('form');
 
   // Production Auth Form State
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -190,7 +194,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
 
   return (
-    <main className={`relative min-h-screen overflow-x-hidden ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#090d16] text-slate-100'} transition-colors duration-200`}>
+    <main className={`relative h-screen overflow-hidden flex flex-col ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#090d16] text-slate-100'} transition-colors duration-200`}>
       {/* Subtle Prestige Ambient Glow Background */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className={`absolute -left-32 -top-32 h-[32rem] w-[32rem] rounded-full blur-3xl ${isLight ? 'bg-blue-200/40' : 'bg-blue-900/15'}`} />
@@ -199,7 +203,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       </div>
 
       {/* Top Header Navigation */}
-      <header className={`relative z-20 border-b backdrop-blur-md ${isLight ? 'border-slate-200/90 bg-white/85' : 'border-slate-800 bg-slate-900/85'}`}>
+      <header className={`relative z-20 shrink-0 border-b backdrop-blur-md ${isLight ? 'border-slate-200/90 bg-white/85' : 'border-slate-800 bg-slate-900/85'}`}>
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           
           {/* Brand Lockup */}
@@ -306,24 +310,39 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </div>
 
+      {activePortalTab === 'showcase' && (
+        <nav aria-label="Showcase pages" className="relative z-10 shrink-0 flex items-center justify-center gap-2 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 py-2">
+          {[
+            lang === 'th' ? 'ภาพรวม' : 'Overview',
+            lang === 'th' ? 'นวัตกรรม' : 'Innovations',
+            lang === 'th' ? 'ฟังก์ชัน' : 'Capabilities',
+            lang === 'th' ? 'เริ่มต้นใช้งาน' : 'Get Started',
+          ].map((label, index) => (
+            <button key={label} type="button" onClick={() => setShowcasePage(index)} aria-current={showcasePage === index ? 'page' : undefined} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${showcasePage === index ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
+
       {/* ========================================================================= */}
       {/* TAB 1: CAPABILITY SHOWCASE & INTERACTIVE DEMO (จัดแสดงความสามารถ & DEMO) */}
       {/* ========================================================================= */}
       {activePortalTab === 'showcase' && (
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 space-y-12">
+        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 overflow-hidden">
           
           {/* Hero Section: Value Proposition & High-Fidelity Educational Graphic */}
-          <section className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+          {showcasePage === 0 && <section className="grid h-full min-h-0 items-center gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
             
             {/* Left Content */}
-            <div className="space-y-6">
+            <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800/80 bg-blue-50/90 dark:bg-blue-950/40 px-3.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-300">
                 <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                 <span>{lang === 'th' ? 'นวัตกรรมการศึกษายุคใหม่ • Digital Campus 2026' : 'Next-Gen Education Intelligence 2026'}</span>
               </div>
 
               <div className="space-y-3">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-[1.18] tracking-tight text-slate-900 dark:text-white">
+                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-[1.12] tracking-tight text-slate-900 dark:text-white">
                   {lang === 'th' ? (
                     <>
                       ศูนย์รวมการบริหารสถานศึกษา<br />
@@ -340,7 +359,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     </>
                   )}
                 </h1>
-                <p className="text-sm sm:text-base leading-relaxed text-slate-600 dark:text-slate-300 max-w-xl">
+                <p className="text-xs sm:text-base leading-relaxed text-slate-600 dark:text-slate-300 max-w-xl">
                   {lang === 'th'
                     ? 'แพลตฟอร์มการศึกษาครบวงจรที่ผสานระบบวิชาการ ตารางสอนอัจฉริยะ คัดกรอง SDQ บัตรนักเรียนเสมือน ห้องพยาบาลดิจิทัล และเกมประลองปัญญา 3 มิติ ตอบโจทย์ทุกบทบาทในโรงเรียน'
                     : 'Comprehensive school operations & learning platform combining LMS, smart conflict-free schedules, SDQ mental health screening, virtual student cards, digital infirmary clinic, and 3D EduArena.'}
@@ -348,8 +367,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
 
               {/* Dedicated Showcase Persona Launcher: 1-Click Access for Evaluators */}
-              <div className="rounded-2xl border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-50/90 via-blue-50/70 to-slate-50/80 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-950 p-5 shadow-lg shadow-indigo-500/5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div className="rounded-2xl border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-50/90 via-blue-50/70 to-slate-50/80 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-950 p-3 shadow-lg shadow-indigo-500/5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0">
                       <Sparkles className="w-4 h-4" />
@@ -369,7 +388,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   
                   {/* Admin Persona */}
-                  <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900/90 p-3.5 shadow-xs flex flex-col justify-between space-y-3">
+                  {personaPage === 0 && <><div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900/90 p-3.5 shadow-xs flex flex-col justify-between space-y-3">
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shrink-0">
                         <Building2 className="w-5 h-5" />
@@ -425,7 +444,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </div>
 
                   {/* Student Persona */}
-                  <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900/90 p-3.5 shadow-xs flex flex-col justify-between space-y-3">
+                  </>}
+                  {personaPage === 1 && <><div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900/90 p-3.5 shadow-xs flex flex-col justify-between space-y-3">
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 shrink-0">
                         <GraduationCap className="w-5 h-5" />
@@ -479,6 +499,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                  </>}
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <button type="button" onClick={() => setPersonaPage(page => Math.max(0, page - 1))} disabled={personaPage === 0} className="px-3 py-1 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'บทบาทก่อนหน้า' : 'Previous roles'}</button>
+                  <span>{personaPage + 1} / 2</span>
+                  <button type="button" onClick={() => setPersonaPage(page => Math.min(1, page + 1))} disabled={personaPage === 1} className="px-3 py-1 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'บทบาทถัดไป' : 'Next roles'}</button>
                 </div>
 
                 {/* Switch to Official Portal Hint */}
@@ -499,7 +525,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </div>
 
             {/* Right Educational Hero Visual */}
-            <div className="relative group">
+            <div className="relative group hidden lg:block">
               <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-slate-900 shadow-2xl">
                 <img
                   src={heroImage}
@@ -531,10 +557,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               {/* Decorative Subtle Under-Card Glow */}
               <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 blur-xl -z-10" />
             </div>
-          </section>
+          </section>}
 
           {/* Feature Showcase Gallery: Visual Deep-Dive into 3 Flagship Pillars */}
-          <section className="space-y-6 pt-4">
+          {showcasePage === 1 && <section className="h-full min-h-0 space-y-3 pt-1">
             <div className="text-center max-w-3xl mx-auto space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 {lang === 'th' ? 'จัดแสดงนวัตกรรมการเรียนรู้และระบบปฏิบัติการสถานศึกษา' : 'Explore EduVerse Core Innovation Modules'}
@@ -549,7 +575,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Feature 1: Smart Classroom & LMS */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-blue-400 dark:hover:border-blue-600 transition">
+              <div className={`${featurePage === 0 ? '' : 'hidden'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-blue-400 dark:hover:border-blue-600 transition`}>
                 <div className="relative h-48 overflow-hidden bg-slate-950">
                   <img
                     src={featureLmsImage}
@@ -580,7 +606,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
 
               {/* Feature 2: 3D EduArena Gamification */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-amber-400 dark:hover:border-amber-600 transition">
+              <div className={`${featurePage === 1 ? '' : 'hidden'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-amber-400 dark:hover:border-amber-600 transition`}>
                 <div className="relative h-48 overflow-hidden bg-slate-950">
                   <img
                     src={featureArenaImage}
@@ -611,7 +637,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
 
               {/* Feature 3: Infirmary Health & SDQ */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-emerald-400 dark:hover:border-emerald-600 transition">
+              <div className={`${featurePage === 2 ? '' : 'hidden'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-md flex flex-col group hover:border-emerald-400 dark:hover:border-emerald-600 transition`}>
                 <div className="relative h-48 overflow-hidden bg-slate-950">
                   <img
                     src={featureClinicImage}
@@ -642,10 +668,15 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
 
             </div>
-          </section>
+            <div className="flex items-center justify-between text-xs">
+              <button type="button" onClick={() => setFeaturePage(page => Math.max(0, page - 1))} disabled={featurePage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'ก่อนหน้า' : 'Previous'}</button>
+              <span>{featurePage + 1} / 3</span>
+              <button type="button" onClick={() => setFeaturePage(page => Math.min(2, page + 1))} disabled={featurePage === 2} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'ถัดไป' : 'Next'}</button>
+            </div>
+          </section>}
 
           {/* Quick Technical Pillars Strip */}
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {showcasePage === 2 && <section className="h-full grid content-center grid-cols-2 md:grid-cols-4 gap-3">
             {[
               {
                 icon: UserCheck,
@@ -685,10 +716,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 </div>
               </div>
             ))}
-          </section>
+          </section>}
 
           {/* Bottom Banner: Call to Action to Switch to Real Portal or Launch Demo */}
-          <section className="rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+          {showcasePage === 3 && <section className="h-full rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-center gap-6">
             <div className="space-y-1.5 text-center md:text-left">
               <h3 className="text-xl sm:text-2xl font-black">
                 {lang === 'th' ? 'พร้อมยกระดับสถานศึกษาของคุณแล้วหรือยัง?' : 'Ready to Elevate Your School Operations?'}
@@ -723,7 +754,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 <span>{lang === 'th' ? 'เข้าสู่ระบบทางการ' : 'Official Portal Login'}</span>
               </button>
             </div>
-          </section>
+          </section>}
 
         </div>
       )}
@@ -732,7 +763,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       {/* TAB 2: OFFICIAL PRODUCTION SCHOOL LOGIN (เข้าสู่ระบบใช้งานจริงสำหรับโรงเรียน) */}
       {/* ========================================================================= */}
       {activePortalTab === 'live_login' && (
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 space-y-8">
+        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col gap-3 overflow-hidden">
           
           {/* Header Distinction Banner */}
           <div className="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -762,11 +793,16 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </button>
           </div>
 
+          <div className="lg:hidden flex gap-2 shrink-0">
+            <button type="button" onClick={() => setLoginMobilePage('form')} className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold ${loginMobilePage === 'form' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>{lang === 'th' ? 'เข้าสู่ระบบ / สมัครสมาชิก' : 'Sign in / Register'}</button>
+            <button type="button" onClick={() => setLoginMobilePage('information')} className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold ${loginMobilePage === 'information' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>{lang === 'th' ? 'ความปลอดภัยและโรงเรียน' : 'Security & Schools'}</button>
+          </div>
+
           {/* Form & Security Columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 items-start">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-3 lg:gap-8 items-start overflow-hidden">
             
             {/* Left Column: Security Architecture & School Directory Info */}
-            <div className="space-y-6">
+            <div className={`${loginMobilePage === 'information' ? 'block' : 'hidden'} lg:block min-h-0 space-y-3 overflow-hidden`}>
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2.5 text-blue-600 dark:text-blue-400 font-bold text-sm">
                   <ShieldCheck className="w-5 h-5" />
@@ -832,7 +868,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </div>
 
             {/* Right Column: Sleek Authentication Form */}
-            <div className="w-full max-w-md mx-auto">
+            <div className={`${loginMobilePage === 'form' ? 'block' : 'hidden'} lg:block w-full max-w-md mx-auto min-h-0 overflow-hidden`}>
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
                 
                 {/* Header Switcher: Sign In vs Sign Up */}

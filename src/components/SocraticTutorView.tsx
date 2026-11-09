@@ -29,6 +29,7 @@ import {
   INITIAL_SOCRATIC_MESSAGES, 
   INITIAL_TEACHER_INSIGHTS 
 } from '../data/innovativeFeaturesData';
+import { PagedList } from './PagedList';
 
 interface SocraticTutorViewProps {
   lang?: AppLanguage;
@@ -197,8 +198,11 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
           {/* Main Chat Stream */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs flex flex-col justify-between h-full min-h-0">
             {/* Chat Messages Log */}
-            <div className="overflow-y-auto space-y-3 pr-2 flex-1 min-h-0">
-              {messages.map((msg) => {
+            <div className="space-y-3 pr-2 flex-1 min-h-0 overflow-hidden">
+              <PagedList
+                items={messages}
+                pageSize={2}
+                renderItem={(msg) => {
                 const isStudent = msg.sender === 'student';
                 return (
                   <div
@@ -256,7 +260,8 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }}
+              />
             </div>
 
             {/* Input Bar with Voice Button */}
@@ -351,7 +356,7 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
       {canViewTeacherInsights && activeTab === 'teacher_insights' && (
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
           {/* Top 5 Misconceptions List */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col min-h-0 overflow-y-auto space-y-3">
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col min-h-0 overflow-hidden space-y-3">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-indigo-600" />
@@ -362,8 +367,11 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
               </p>
             </div>
 
-            <div className="space-y-3 mt-4">
-              {insights.map((insight) => {
+            <div className="mt-4">
+              <PagedList
+                items={insights}
+                pageSize={2}
+                renderItem={(insight) => {
                 const isSelected = selectedInsight?.id === insight.id;
                 return (
                   <div
@@ -409,12 +417,13 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
                     </p>
                   </div>
                 );
-              })}
+              }}
+              />
             </div>
           </div>
 
           {/* Right Column: 1-Click Lesson Recap Generator */}
-          <div className="lg:col-span-5 flex flex-col min-h-0 overflow-y-auto space-y-3">
+          <div className="lg:col-span-5 flex flex-col min-h-0 overflow-hidden space-y-3">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-4 h-4 text-teal-600" />

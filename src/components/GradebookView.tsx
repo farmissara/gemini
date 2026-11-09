@@ -37,10 +37,60 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6'>('gradebook');
   const [selectedStudentIdForPp6, setSelectedStudentIdForPp6] = useState<string>(students[0]?.id || '');
+  const [gradePage, setGradePage] = useState(0);
+  const [pp5Page, setPp5Page] = useState(0);
+  const [pp5Section, setPp5Section] = useState<'criteria' | 'grades' | 'signatures'>('grades');
+  const [pp6CoursePage, setPp6CoursePage] = useState(0);
+  const [pp6Section, setPp6Section] = useState<'identity' | 'courses' | 'summary'>('identity');
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const courseGrades = grades.filter((g) => g.courseId === selectedCourseId);
   const selectedStudentForPp6 = students.find((s) => s.id === selectedStudentIdForPp6) || students[0];
+  const gradePageSize = 6;
+  const pp5PageSize = 6;
+  const pp6CoursePageSize = 5;
+  const gradePageCount = Math.max(1, Math.ceil(courseGrades.length / gradePageSize));
+  const pp5PageCount = Math.max(1, Math.ceil(courseGrades.length / pp5PageSize));
+  const pp6CoursePageCount = Math.max(1, Math.ceil(courses.length / pp6CoursePageSize));
+  const currentGradePage = Math.min(gradePage, gradePageCount - 1);
+  const currentPp5Page = Math.min(pp5Page, pp5PageCount - 1);
+  const currentPp6CoursePage = Math.min(pp6CoursePage, pp6CoursePageCount - 1);
+
+  const renderPageControls = (
+    page: number,
+    totalItems: number,
+    pageSize: number,
+    setPage: (page: number) => void,
+    label: string,
+    isLight = false
+  ) => {
+    const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (pageCount <= 1) return null;
+
+    return (
+      <nav aria-label={label} className="flex items-center justify-between gap-3 text-xs print:hidden">
+        <button
+          type="button"
+          onClick={() => setPage(Math.max(0, page - 1))}
+          disabled={page === 0}
+          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 ${isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-200'}`}
+        >
+          ก่อนหน้า
+        </button>
+        <span aria-live="polite" className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          หน้า {page + 1} / {pageCount} · {totalItems} รายการ
+        </span>
+        <button
+          type="button"
+          onClick={() => setPage(Math.min(pageCount - 1, page + 1))}
+          disabled={page >= pageCount - 1}
+          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 ${isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-200'}`}
+        >
+          ถัดไป
+        </button>
+      </nav>
+    );
+  };
 
   // Helper to recompute letter grade and points
   const calculateGrade = (total: number): { letter: GradeRecord['letterGrade']; point: number } => {
@@ -158,6 +208,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
         </div>
+        {renderPageControls(currentGradePage, courseGrades.length, gradePageSize, setGradePage, 'Gradebook pages')}
       </div>
 
       {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 */}
@@ -205,7 +256,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {courses.map((course) => (
             <button
               key={course.id}
-              onClick={() => setSelectedCourseId(course.id)}
+              onClick={() => {
+                setSelectedCourseId(course.id);
+                setGradePage(0);
+                setPp5Page(0);
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                 selectedCourseId === course.id
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
@@ -220,12 +275,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       )}
 
       {/* Tab Panels Scroll Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+      <div className="flex-1 min-h-0 overflow-hidden pr-1 space-y-4 print:overflow-visible">
         {/* ========================================================
             TAB 1: Gradebook Score Entry Table
             ======================================================== */}
         {activeTab === 'gradebook' && selectedCourse && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl space-y-4 p-5">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden print:overflow-visible shadow-xl space-y-4 p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -267,11 +322,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  courseGrades.map((grade) => {
+                  courseGrades.map((grade, index) => {
                     const student = students.find((s) => s.id === grade.studentId);
                     if (!student) return null;
+                    const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
                     return (
-                      <tr key={grade.id} className="hover:bg-slate-800/40 transition-colors">
+                      <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-slate-800/40 transition-colors`}>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2.5">
                             <img
@@ -387,7 +443,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           TAB 2: เอกสาร ปพ.5 (สมุดบันทึกผลการพัฒนาคุณภาพผู้เรียนประจำวิชา)
           ======================================================== */}
       {activeTab === 'pp5' && selectedCourse && (
-        <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-200 space-y-6 print:m-0 print:p-0 print:border-none print:shadow-none">
+        <div className="bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4 print:m-0 print:p-0 print:border-none print:shadow-none print:overflow-visible">
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <button type="button" onClick={() => setPp5Section('criteria')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'criteria' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลและเกณฑ์</button>
+            <button type="button" onClick={() => setPp5Section('grades')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'grades' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ตารางคะแนน</button>
+            <button type="button" onClick={() => setPp5Section('signatures')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'signatures' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ลงนาม</button>
+          </div>
+          <div className={pp5Section === 'criteria' ? 'space-y-4' : 'hidden print:block print:space-y-4'}>
           {/* Official Document Header */}
           <div className="text-center space-y-1 border-b border-slate-300 pb-5">
             <h2 className="text-xl font-bold tracking-tight text-slate-900 font-serif">
@@ -422,7 +484,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <span className="text-slate-600">เกรด ๔ (๘๐-๑๐๐), ๓.๕ (๗๕-๗๙), ๓ (๗๐-๗๔), ๒.๕ (๖๕-๖๙)</span>
             </div>
           </div>
+          </div>
 
+          <div className={pp5Section === 'grades' ? 'space-y-3' : 'hidden print:block print:space-y-3'}>
+          <h3 className="text-sm font-bold text-slate-800 print:hidden">
+            ตารางคะแนน: {selectedCourse.titleTh} ({selectedCourse.code})
+          </h3>
           {/* Official P.P. 5 Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse border border-slate-400 text-center">
@@ -455,9 +522,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   const attendedPeriods = 38; // standard simulation
                   const attendanceRate = ((attendedPeriods / 40) * 100).toFixed(0);
                   const isAttendancePass = Number(attendanceRate) >= 80;
+                  const isVisible = idx >= currentPp5Page * pp5PageSize && idx < (currentPp5Page + 1) * pp5PageSize;
 
                   return (
-                    <tr key={g.id} className="border-b border-slate-300 hover:bg-slate-50">
+                    <tr key={g.id} className={`${isVisible ? '' : 'hidden print:table-row'} border-b border-slate-300 hover:bg-slate-50`}>
                       <td className="border border-slate-300 py-2 font-mono">{idx + 1}</td>
                       <td className="border border-slate-300 py-2 px-2 text-left">
                         <span className="font-bold">{student.firstNameTh} {student.lastNameTh}</span>
@@ -483,9 +551,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </tbody>
             </table>
           </div>
+          {renderPageControls(currentPp5Page, courseGrades.length, pp5PageSize, setPp5Page, 'PP5 pages', true)}
+          </div>
 
           {/* Official Signatures Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-10 text-center text-xs text-slate-700">
+          <div className={pp5Section === 'signatures' ? 'grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 text-center text-xs text-slate-700' : 'hidden print:grid print:grid-cols-4 print:gap-4 print:pt-3 print:text-center print:text-xs print:text-slate-700'}>
             <div className="space-y-10">
               <div className="border-b border-dashed border-slate-400 w-40 mx-auto"></div>
               <div>
@@ -529,7 +599,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             {students.map((student) => (
               <button
                 key={student.id}
-                onClick={() => setSelectedStudentIdForPp6(student.id)}
+                onClick={() => {
+                  setSelectedStudentIdForPp6(student.id);
+                  setPp6CoursePage(0);
+                  setPp6Section('identity');
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
                   selectedStudentIdForPp6 === student.id
                     ? 'bg-blue-600 text-white shadow-sm'
@@ -542,9 +616,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           </div>
 
           {selectedStudentForPp6 && (
-            <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-200 space-y-6 print:m-0 print:p-0 print:border-none print:shadow-none">
+            <div className="bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4 print:m-0 print:p-0 print:border-none print:shadow-none">
+              <div className="flex flex-wrap gap-2 print:hidden">
+                <button type="button" onClick={() => setPp6Section('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'identity' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลนักเรียน</button>
+                <button type="button" onClick={() => setPp6Section('courses')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'courses' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ผลการเรียน</button>
+                <button type="button" onClick={() => setPp6Section('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'summary' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>สรุปพฤติกรรม</button>
+              </div>
               {/* P.P. 6 Header */}
-              <div className="text-center space-y-1 border-b border-slate-300 pb-5">
+              <div className={pp6Section === 'identity' ? 'text-center space-y-1 border-b border-slate-300 pb-4' : 'hidden print:block print:text-center print:space-y-1 print:border-b print:border-slate-300 print:pb-4'}>
                 <div className="w-12 h-12 mx-auto rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-lg mb-2">
                   <Award className="w-6 h-6" />
                 </div>
@@ -565,7 +644,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </div>
 
               {/* Student All Courses Table */}
-              <div className="overflow-x-auto">
+              <div className={`space-y-2 ${pp6Section === 'courses' ? '' : 'hidden print:block'}`}>
+                <h3 className="text-sm font-bold text-slate-800 print:hidden">
+                  ผลการเรียนของ {selectedStudentForPp6.firstNameTh} {selectedStudentForPp6.lastNameTh}
+                </h3>
+                <div className="overflow-x-auto">
                 <table className="w-full text-xs border-collapse border border-slate-400 text-center">
                   <thead>
                     <tr className="bg-slate-100 font-bold text-slate-800 border-b border-slate-400">
@@ -578,12 +661,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {courses.map((course) => {
+                    {courses.map((course, index) => {
                       const grade = grades.find((g) => g.courseId === course.id && g.studentId === selectedStudentForPp6.id);
                       const totalScore = grade?.totalScore || 78;
                       const letterGrade = grade?.letterGrade || 'B+';
+                      const isVisible = index >= currentPp6CoursePage * pp6CoursePageSize && index < (currentPp6CoursePage + 1) * pp6CoursePageSize;
                       return (
-                        <tr key={course.id} className="border-b border-slate-300">
+                        <tr key={course.id} className={`${isVisible ? '' : 'hidden print:table-row'} border-b border-slate-300`}>
                           <td className="border border-slate-300 py-2 px-3 text-left">
                             <span className="font-mono font-bold text-slate-900">{course.code}</span>
                             <span className="ml-2 font-medium">{course.titleTh}</span>
@@ -607,10 +691,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     </tr>
                   </tfoot>
                 </table>
+                </div>
+                {renderPageControls(currentPp6CoursePage, courses.length, pp6CoursePageSize, setPp6CoursePage, 'PP6 course pages', true)}
               </div>
 
               {/* Behavior & Attribute Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs ${pp6Section === 'summary' ? '' : 'hidden print:grid'}`}>
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                   <h4 className="font-bold text-slate-900">การประเมินคุณลักษณะอันพึงประสงค์ ๘ ประการ:</h4>
                   <ul className="list-disc list-inside text-slate-700 space-y-1">

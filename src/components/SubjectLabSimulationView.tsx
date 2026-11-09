@@ -72,6 +72,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
 
   // Teacher Custom Lab Creator Modal State
   const [showTeacherBuilder, setShowTeacherBuilder] = useState(false);
+  const [builderStep, setBuilderStep] = useState<0 | 1>(0);
   const [newTitle, setNewTitle] = useState('');
   const [newSubject, setNewSubject] = useState<LabSubjectCategory>('chemistry');
   const [newConcept, setNewConcept] = useState('');
@@ -314,7 +315,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           {(currentUserRole === 'teacher' || currentUserRole === 'admin') && (
             <button
               type="button"
-              onClick={() => setShowTeacherBuilder(true)}
+              onClick={() => {
+                setBuilderStep(0);
+                setShowTeacherBuilder(true);
+              }}
               className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer"
             >
               <Plus className="w-3 h-3" />
@@ -682,7 +686,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       {/* ========================================================= */}
       {showTeacherBuilder && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white space-y-3 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="font-bold text-sm text-cyan-300">สร้างโจทย์แล็บการทดลองใหม่ (ครูผู้สอน)</h3>
               <button
@@ -695,6 +699,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             </div>
 
             <div className="space-y-2 text-xs">
+              {builderStep === 0 && <>
               <div>
                 <label className="font-bold text-slate-300">ชื่อโจทย์การทดลอง:</label>
                 <input
@@ -720,7 +725,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   <option value="thai">ภาษาไทย</option>
                 </select>
               </div>
-
+              </>}
+              {builderStep === 1 && <>
               <div>
                 <label className="font-bold text-slate-300">เป้าหมาย/คำถามสำหรับนักเรียน:</label>
                 <input
@@ -742,16 +748,23 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   className="w-full mt-1 p-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs"
                 />
               </div>
+              </>}
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-400">{builderStep + 1} / 2</span>
+                <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowTeacherBuilder(false)}
+                  onClick={() => builderStep === 1 ? setBuilderStep(0) : setShowTeacherBuilder(false)}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs"
                 >
-                  ยกเลิก
+                  {builderStep === 1 ? 'ย้อนกลับ' : 'ยกเลิก'}
                 </button>
-                <button
+                {builderStep === 0 ? (
+                  <button type="button" onClick={() => setBuilderStep(1)} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">
+                    ถัดไป
+                  </button>
+                ) : <button
                   type="button"
                   onClick={() => {
                     if (!newTitle.trim()) return;
@@ -791,11 +804,13 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     setQuests(prev => [customQuest, ...prev]);
                     setSelectedQuestId(customQuest.id);
                     setShowTeacherBuilder(false);
+                    setBuilderStep(0);
                   }}
                   className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
                 >
                   บันทึกโจทย์
-                </button>
+                </button>}
+                </div>
               </div>
             </div>
           </div>

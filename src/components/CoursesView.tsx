@@ -14,6 +14,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { Course, Student } from '../types';
+import { PagedList } from './PagedList';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -183,7 +184,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+        <div className="flex items-center gap-2 overflow-x-auto overflow-y-hidden w-full md:w-auto">
           {['all', 'stem', 'core', 'language', 'arts'].map((cat) => (
             <button
               key={cat}
@@ -203,8 +204,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {/* Main Grid: Course List & Active Course Roster Detail */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Course Cards */}
-        <div className="lg:col-span-7 h-full min-h-0 overflow-y-auto pr-1 space-y-3">
-          {filteredCourses.map((course) => {
+        <div className="lg:col-span-7 h-full min-h-0 overflow-hidden pr-1">
+          <PagedList items={filteredCourses} pageSize={3} renderItem={(course) => {
             const isSelected = activeCourse?.id === course.id;
             return (
               <div
@@ -256,11 +257,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               </div>
             );
-          })}
+          }} />
         </div>
 
         {/* Right: Enrolled Students & Syllabus Detail */}
-        <div className="lg:col-span-5 h-full min-h-0 overflow-y-auto pr-1 rounded-xl bg-slate-800/50 border border-slate-700/60 p-5 space-y-4">
+        <div className="lg:col-span-5 h-full min-h-0 overflow-hidden pr-1 rounded-xl bg-slate-800/50 border border-slate-700/60 p-5 space-y-4">
           {activeCourse ? (
             <>
               <div className="border-b border-slate-700/60 pb-3">
@@ -314,13 +315,13 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   </h3>
                 </div>
 
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                <div className="space-y-2 pr-1">
                   {activeCourse.enrolledStudentIds.length === 0 ? (
                     <p className="text-xs text-slate-400 py-4 text-center">
                       No students enrolled yet.
                     </p>
                   ) : (
-                    activeCourse.enrolledStudentIds.map((studentId: string) => {
+                    <PagedList items={activeCourse.enrolledStudentIds} pageSize={5} renderItem={(studentId: string) => {
                       const student = students.find((s) => s.id === studentId);
                       if (!student) return null;
                       return (
@@ -348,7 +349,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                           </span>
                         </div>
                       );
-                    })
+                    }} />
                   )}
                 </div>
 

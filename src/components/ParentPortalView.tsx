@@ -38,6 +38,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
+import { PagedList } from './PagedList';
 
 interface ParentPortalViewProps {
   students: Student[];
@@ -236,7 +237,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Scrollable Tab Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+      <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
       {/* ========================================================================= */}
       {/* TAB 1: OVERVIEW & TODAY'S GATE STATUS */}
       {/* ========================================================================= */}
@@ -462,7 +463,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {dateRecords.map((rec) => {
+              <PagedList items={dateRecords} pageSize={2} renderItem={(rec) => {
                 const isCheckOut = rec.recordType === 'check_out';
                 const photoSrc = rec.photoUrl || rec.userAvatar || student?.avatarUrl;
 
@@ -506,7 +507,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }} />
             </div>
           )}
         </div>

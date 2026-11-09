@@ -37,6 +37,39 @@ import {
 import { getLocalDateString } from '../lib/date';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
+import { PagedList } from './PagedList';
+
+const PaginatedTableRows = <T,>({
+  items,
+  colSpan,
+  renderRow,
+  pageSize = 8
+}: {
+  items: readonly T[];
+  colSpan: number;
+  renderRow: (item: T) => React.ReactNode;
+  pageSize?: number;
+}) => {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  return (
+    <>
+      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
+      {pageCount > 1 && (
+        <tr>
+          <td colSpan={colSpan} className="p-2">
+            <div className="flex items-center justify-between">
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-500">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-40">ถัดไป</button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
 
 interface AttendanceViewProps {
   students: Student[];
@@ -292,7 +325,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}
       {/* ========================================================================= */}
       {activeTab === 'gate_scanner' && (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Scanner Simulator Card */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
@@ -398,11 +431,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
             </div>
 
-            <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
+            <div className="divide-y divide-slate-100">
               {filteredLogs.length === 0 ? (
                 <p className="text-xs text-slate-400 py-8 text-center">ไม่พบบันทึกการเข้าเรียนในวันที่เลือก</p>
               ) : (
-                filteredLogs.map((log) => {
+                <PagedList items={filteredLogs} pageSize={6} renderItem={(log) => {
                   const student = students.find(s => s.id === log.studentId);
                   const name = log.userName || (student ? `${student.firstNameTh} ${student.lastNameTh}` : log.studentId);
                   const photoSrc = log.photoUrl || log.userAvatar || student?.avatarUrl;
@@ -451,7 +484,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       </div>
                     </div>
                   );
-                })
+                }} />
               )}
             </div>
           </div>
@@ -463,7 +496,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 2: LEAVE REQUESTS APPROVAL WORKFLOW */}
       {/* ========================================================================= */}
       {activeTab === 'leave_approval' && (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
@@ -505,7 +538,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               {filteredLeaveRequests.length === 0 ? (
                 <p className="text-xs text-slate-400 py-8 text-center">ไม่มีรายการใบลาในหมวดนี้</p>
               ) : (
-                filteredLeaveRequests.map((req) => (
+                <PagedList items={filteredLeaveRequests} pageSize={2} renderItem={(req) => (
                   <div key={req.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3 text-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -570,7 +603,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       </div>
                     )}
                   </div>
-                ))
+                )} />
               )}
             </div>
           </div>
@@ -581,7 +614,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 3: EXPORT REPORTS (EXCEL & PDF ATTENDANCE ENGINE) */}
       {/* ========================================================================= */}
       {activeTab === 'export_reports' && (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
@@ -636,7 +669,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {monthlySummary.map((m) => (
+                    <PaginatedTableRows items={monthlySummary} colSpan={9} renderRow={(m) => (
                       <tr key={m.student.id} className="hover:bg-slate-50 transition">
                         <td className="p-3 font-mono text-slate-600">{m.student.studentIdNumber}</td>
                         <td className="p-3 font-bold text-slate-900">{m.student.firstNameTh} {m.student.lastNameTh}</td>
@@ -658,7 +691,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           )}
                         </td>
                       </tr>
-                    ))}
+                    )} />
                   </tbody>
                 </table>
               </div>

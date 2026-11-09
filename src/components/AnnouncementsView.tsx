@@ -14,6 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
+import { PagedList } from './PagedList';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -131,8 +132,12 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       </div>
 
       {/* Announcements List */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
-        {filteredAnnouncements.map((ann) => (
+      <div className="flex-1 min-h-0 overflow-hidden pr-1">
+        <PagedList
+          items={filteredAnnouncements}
+          pageSize={2}
+          emptyState={<p className="text-sm text-slate-400">No announcements match this audience.</p>}
+          renderItem={(ann) => (
           <div
             key={ann.id}
             className={`p-5 rounded-2xl border transition-all ${
@@ -201,7 +206,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               </div>
             </div>
           </div>
-        ))}
+        )}
+        />
       </div>
 
       {/* Compose Announcement Modal */}

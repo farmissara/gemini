@@ -18,6 +18,7 @@ import {
   RotateCw,
   Coins
 } from 'lucide-react';
+import { PagedList } from './PagedList';
 import { RealWorldSnapQuest, AppLanguage, UserRole } from '../types';
 import { INITIAL_REAL_WORLD_QUESTS } from '../data/innovativeFeaturesData';
 
@@ -223,7 +224,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
       {/* Quests Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredQuests.map((quest) => {
+        <PagedList items={filteredQuests} pageSize={2} renderItem={(quest) => {
           const isVerified = quest.status === 'verified';
           const hasDemoResult = Boolean(quest.aiVerificationResult);
           return (
@@ -299,7 +300,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </div>
             </div>
           );
-        })}
+        }} />
       </div>
 
       {/* Simulated Camera & AI Upload Modal */}

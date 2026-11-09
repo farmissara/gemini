@@ -47,6 +47,7 @@ import {
 } from '../types';
 import { NavTab } from './Sidebar';
 import { getLocalDateString } from '../lib/date';
+import { PagedList } from './PagedList';
 
 interface DashboardViewProps {
   students: Student[];
@@ -85,9 +86,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'check_in' | 'check_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dashboardTab, setDashboardTab] = useState<'overview' | 'live_attendance' | 'innovative_hub' | 'announcements'>('overview');
+  const [overviewStep, setOverviewStep] = useState<0 | 1>(0);
+  const [innovationPage, setInnovationPage] = useState(0);
+  const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
   
   // Lightbox Modal for viewing captured selfie photo
   const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<AttendanceRecord | null>(null);
+  const [photoModalStep, setPhotoModalStep] = useState<0 | 1>(0);
+
+  const openPhotoRecord = (record: AttendanceRecord) => {
+    setPhotoModalStep(0);
+    setSelectedPhotoRecord(record);
+  };
 
   // Compute key overall stats
   const totalStudents = students.length;
@@ -342,11 +352,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Main Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+      <div className="flex-1 min-h-0 overflow-hidden pr-1 space-y-4">
         {/* TAB 1: EXECUTIVE OVERVIEW */}
         {dashboardTab === 'overview' && (
           <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setOverviewStep(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${overviewStep === 0 ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>{lang === 'th' ? 'ภาพรวม' : 'Overview'}</button>
+              <button type="button" onClick={() => setOverviewStep(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${overviewStep === 1 ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>{lang === 'th' ? 'ทางลัดและรายการล่าสุด' : 'Shortcuts & Recent Activity'}</button>
+            </div>
             {/* 4 Balanced High-level Overview Cards with High Contrast */}
+            {overviewStep === 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Students */}
               <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
@@ -420,8 +435,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Quick Navigation Cards */}
+            {overviewStep === 1 && <>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {[
                 { name: lang === 'th' ? 'เช็กชื่อประตู' : 'Attendance', tab: 'attendance', icon: QrCode, color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40' },
@@ -494,6 +511,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </div>
             </div>
+            </>}
           </div>
         )}
 
@@ -624,9 +642,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
+        <div className="flex items-center gap-2 p-3">
+          <button type="button" onClick={() => setAttendanceStep('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${attendanceStep === 'summary' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+            {lang === 'th' ? 'สรุปสถิติ' : 'Summary'}
+          </button>
+          <button type="button" onClick={() => setAttendanceStep('analytics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${attendanceStep === 'analytics' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+            {lang === 'th' ? 'กราฟ' : 'Charts'}
+          </button>
+          <button type="button" onClick={() => setAttendanceStep('records')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${attendanceStep === 'records' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+            {lang === 'th' ? `รายการภาพถ่าย (${displayRecords.length})` : `Photo Records (${displayRecords.length})`}
+          </button>
+          <button type="button" onClick={() => setAttendanceStep('live_feed')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${attendanceStep === 'live_feed' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+            {lang === 'th' ? 'รายการสด' : 'Live Feed'}
+          </button>
+        </div>
+
+        {(attendanceStep === 'summary' || attendanceStep === 'analytics') && <>
         {/* Detailed Visual Analytics & Graphs Section */}
         <div className="p-5 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 space-y-5">
           {/* Summary Metric Counters */}
+          {attendanceStep === 'summary' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-center">
               <p className="text-[11px] text-slate-600 dark:text-slate-300 font-bold">{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</p>
@@ -671,8 +706,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="text-[10px] text-slate-500 mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} • ครู ${teacherCheckIns}` : `S: ${studentCheckIns} • T: ${teacherCheckIns}`}</p>
             </div>
           </div>
+          )}
 
           {/* Interactive Graph 1: Hourly Arrival & Departure Curve */}
+          {attendanceStep === 'analytics' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Hourly Distribution Bar Chart */}
             <div className="lg:col-span-2 p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
@@ -773,8 +810,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
           </div>
+          )}
         </div>
+        </>}
 
+        {attendanceStep === 'records' && <>
         {/* Gallery / Cards of Recent Selfie Check-ins with Click-to-View Modal */}
         <div className="p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -822,8 +862,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {displayRecords.map((rec) => {
+            <div>
+              <PagedList
+                items={displayRecords}
+                pageSize={4}
+                renderItem={(rec) => {
                 const isCheckOut = rec.recordType === 'check_out';
                 const isTeacher = rec.userType === 'teacher';
                 const photoSrc = rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300';
@@ -831,7 +874,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 return (
                   <div
                     key={rec.id}
-                    onClick={() => setSelectedPhotoRecord(rec)}
+                    onClick={() => openPhotoRecord(rec)}
                     className="group relative rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 p-3.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between gap-3"
                   >
                     {/* Top Row: Type & Timestamp */}
@@ -926,13 +969,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }}
+              />
             </div>
           )}
         </div>
+        </>}
       </div>
 
             {/* Live Gate Check-in Feed inside Tab 2 */}
+            {attendanceStep === 'live_feed' && (
             <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -954,10 +1000,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {displayRecords.slice(0, 8).map((rec) => (
+                <PagedList items={displayRecords.slice(0, 8)} pageSize={4} renderItem={(rec) => (
                   <div
                     key={rec.id}
-                    onClick={() => setSelectedPhotoRecord(rec)}
+                    onClick={() => openPhotoRecord(rec)}
                     className="py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/60 rounded-lg px-2 transition"
                   >
                     <div className="flex items-center gap-3">
@@ -995,9 +1041,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                   </div>
-                ))}
+                )} />
               </div>
             </div>
+            )}
           </div>
         )}
 
@@ -1023,6 +1070,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
             </div>
 
+            <div className="flex items-center gap-2">
+              {[0, 1, 2].map((page) => (
+                <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${innovationPage === page ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                  {page + 1} / 3
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
               {[
                 {
@@ -1115,7 +1169,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   badgeColor: 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300',
                   actionLabel: lang === 'th' ? 'ตรวจวิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
                 },
-              ].map((item) => (
+              ].filter((_, index) => Math.floor(index / 3) === innovationPage).map((item) => (
                 <div
                   key={item.id}
                   className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition flex flex-col justify-between group"
@@ -1182,7 +1236,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  {announcements.map((item) => (
+                  <PagedList items={announcements} pageSize={2} renderItem={(item) => (
                     <div key={item.id} className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5 flex flex-col justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
@@ -1200,7 +1254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </span>
                       </div>
                     </div>
-                  ))}
+                  )} />
                 </div>
               </div>
 
@@ -1223,7 +1277,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <div className="space-y-2.5">
-                  {topStudents.map((st, idx) => (
+                  <PagedList items={topStudents} pageSize={3} renderItem={(st, idx) => (
                     <div
                       key={st.id}
                       className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs"
@@ -1254,7 +1308,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="text-[10px] text-slate-500 font-medium">GPA</div>
                       </div>
                     </div>
-                  ))}
+                  )} />
                 </div>
               </div>
             </div>
@@ -1265,7 +1319,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Lightbox Modal: Captured Selfie Photo & Metadata */}
       {selectedPhotoRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
               <div className="flex items-center gap-2.5">
@@ -1291,9 +1345,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-5">
+            <div className="p-4 sm:p-5 space-y-4 overflow-hidden">
               {/* Captured Photo Container */}
-              <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-4/3 max-h-80 mx-auto shadow-inner border border-slate-800 flex items-center justify-center">
+              {photoModalStep === 0 && <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-4/3 max-h-56 mx-auto shadow-inner border border-slate-800 flex items-center justify-center">
                 <img
                   src={selectedPhotoRecord.photoUrl || selectedPhotoRecord.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600'}
                   alt={selectedPhotoRecord.userName}
@@ -1317,10 +1371,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} • {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม.` : `${selectedPhotoRecord.location?.distanceMeters || 18}m away`}
                   </div>
                 </div>
+              </div>}
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-500">{photoModalStep + 1} / 2</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setPhotoModalStep(0)} disabled={photoModalStep === 0} className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-xs font-bold disabled:opacity-40">
+                    {lang === 'th' ? 'ภาพถ่าย' : 'Photo'}
+                  </button>
+                  <button type="button" onClick={() => setPhotoModalStep(1)} disabled={photoModalStep === 1} className="px-3 py-1.5 rounded-lg bg-blue-700 text-white text-xs font-bold disabled:opacity-40">
+                    {lang === 'th' ? 'รายละเอียด' : 'Details'}
+                  </button>
+                </div>
               </div>
 
               {/* Information Grid */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              {photoModalStep === 1 && <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1">
                   <span className="text-[10px] text-slate-500 font-bold uppercase">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
                   <p className="font-bold text-slate-900 dark:text-white">{selectedPhotoRecord.userName}</p>
@@ -1372,7 +1438,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : `Remarks: ${selectedPhotoRecord.remarks || 'Facial selfie verified with geofenced location'}`}
                   </p>
                 </div>
-              </div>
+              </div>}
             </div>
 
             {/* Modal Footer */}

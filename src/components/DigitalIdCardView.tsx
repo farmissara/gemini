@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Student, School, AppLanguage, UserRole } from '../types';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { PagedList } from './PagedList';
 
 interface DigitalIdCardViewProps {
   students: Student[];
@@ -133,8 +134,12 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
             />
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
-            {filteredStudents.map((stu) => {
+          <div className="flex-1 min-h-0 overflow-hidden pr-1">
+            <PagedList
+              items={filteredStudents}
+              pageSize={5}
+              emptyState={<p className="py-2 text-xs text-slate-400">{lang === 'th' ? 'ไม่พบนักเรียน' : 'No students found.'}</p>}
+              renderItem={(stu) => {
               const isSelected = stu.id === selectedStudent?.id;
               return (
                 <button
@@ -164,12 +169,13 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   </div>
                 </button>
               );
-            })}
+            }}
+            />
           </div>
         </div>
 
         {/* Center & Right: 3D Flip Card View */}
-        <div className="lg:col-span-2 flex flex-col items-center justify-center p-4 bg-slate-900/60 rounded-2xl border border-slate-800 shadow-md space-y-4 overflow-y-auto">
+        <div className="lg:col-span-2 flex flex-col items-center justify-center p-2 sm:p-4 bg-slate-900/60 rounded-2xl border border-slate-800 shadow-md space-y-3 overflow-hidden">
           <div className="flex items-center justify-between w-full max-w-md">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

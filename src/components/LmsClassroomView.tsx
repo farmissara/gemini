@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Student, Lesson, Assignment, AppLanguage } from '../types';
+import { PagedList } from './PagedList';
 import { 
   Play, 
   CheckCircle2, 
@@ -152,7 +153,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       </div>
 
       {/* Main Tab Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="flex-1 min-h-0 overflow-hidden pr-1">
       {/* Main LMS Split View */}
       {activeTab === 'lessons' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-3">
@@ -208,7 +209,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                       {lang === 'th' ? 'เอกสารประกอบการเรียนดาวน์โหลด' : 'Downloadable Lesson Files'}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {activeLesson.materials.map((mat, i) => (
+                      <PagedList items={activeLesson.materials} pageSize={4} renderItem={(mat, i) => (
                         <div
                           key={i}
                           className="p-3 rounded-lg bg-slate-800/60 border border-slate-700/60 flex items-center justify-between text-xs hover:border-indigo-500 transition-colors"
@@ -221,7 +222,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                             <Download className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      ))}
+                      )} />
                     </div>
                   </div>
                 </div>
@@ -241,7 +242,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
             </h3>
 
             <div className="space-y-2.5">
-              {courseLessons.map((les) => {
+              <PagedList items={courseLessons} pageSize={3} renderItem={(les) => {
                 const isSelected = activeLesson?.id === les.id;
                 const isDone = les.completedByStudentIds.includes('stu-1');
                 return (
@@ -279,7 +280,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                     </div>
                   </div>
                 );
-              })}
+              }} />
             </div>
           </div>
         </div>
@@ -289,7 +290,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       {activeTab === 'assignments' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {courseAssignments.map((asg) => {
+            <PagedList items={courseAssignments} pageSize={2} renderItem={(asg) => {
               const isSubmitted = asg.submittedStudentIds.includes('stu-1');
               return (
                 <div
@@ -348,7 +349,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                   </div>
                 </div>
               );
-            })}
+            }} />
           </div>
         </div>
       )}
