@@ -150,16 +150,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-              <Calendar className="w-5 h-5" />
+            <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+              <Calendar className="w-4 h-4" />
             </span>
             <div>
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 {lang === 'th' ? 'ตารางเรียนและตารางสอนรายสัปดาห์' : 'Weekly Timetable & Schedule'}
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   {lang === 'th' ? 'ตรวจคาบชนอัตโนมัติ' : 'Conflict Detection'}
@@ -230,8 +230,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       )}
 
       {/* Timetable Grid View */}
-      <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+      <div className="flex-1 min-h-0 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
+        <div className="shrink-0 p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-indigo-400" />
             <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -243,7 +243,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">

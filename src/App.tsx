@@ -187,9 +187,34 @@ export const App: React.FC = () => {
   const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>(INITIAL_BEHAVIOR_RECORDS);
   const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>(INITIAL_SDQ_ASSESSMENTS);
   const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>(INITIAL_INFIRMARY_VISITS);
-  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(INITIAL_HOMEWORK_SUBMISSIONS);
   const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>(DEFAULT_CAMPUS_GATES);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
+
+  // Load and synchronize school GPS campus gates per active school
+  useEffect(() => {
+    try {
+      const savedGates = localStorage.getItem(`eduverse_campus_gates_${activeSchool.id}`);
+      if (savedGates) {
+        setCampusGates(JSON.parse(savedGates));
+      } else if (activeSchool.latitude && activeSchool.longitude) {
+        setCampusGates([
+          {
+            id: `gate_${activeSchool.id}_1`,
+            nameTh: `ประตูหน้า ${activeSchool.nameTh}`,
+            nameEn: `Main Gate ${activeSchool.nameEn}`,
+            latitude: activeSchool.latitude,
+            longitude: activeSchool.longitude,
+            radiusMeters: activeSchool.geofenceRadiusMeters || 120,
+            isActive: true,
+          }
+        ]);
+      } else {
+        setCampusGates(DEFAULT_CAMPUS_GATES);
+      }
+    } catch {
+      setCampusGates(DEFAULT_CAMPUS_GATES);
+    }
+  }, [activeSchool.id, activeSchool.nameTh, activeSchool.nameEn, activeSchool.latitude, activeSchool.longitude, activeSchool.geofenceRadiusMeters]);
 
   // Modals
   const [selectedStudentForReport, setSelectedStudentForReport] = useState<Student | null>(null);
@@ -642,6 +667,38 @@ export const App: React.FC = () => {
 
   const handleUpdateCampusGates = (gates: CampusGateGeofence[]) => {
     setCampusGates(gates);
+    try {
+      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gates));
+    } catch (e) {
+      console.warn('Failed to save campus gates to localStorage', e);
+    }
+    const primaryGate = gates.find((g) => g.isActive) || gates[0];
+    if (primaryGate) {
+      setActiveSchool((prev) => ({
+        ...prev,
+        latitude: primaryGate.latitude,
+        longitude: primaryGate.longitude,
+        geofenceRadiusMeters: primaryGate.radiusMeters,
+      }));
+      setSchools((prev) =>
+        prev.map((s) =>
+          s.id === activeSchool.id
+            ? {
+                ...s,
+                latitude: primaryGate.latitude,
+                longitude: primaryGate.longitude,
+                geofenceRadiusMeters: primaryGate.radiusMeters,
+              }
+            : s
+        )
+      );
+      setSystemConfig((prev) => ({
+        ...prev,
+        latitude: primaryGate.latitude,
+        longitude: primaryGate.longitude,
+        geofenceRadiusMeters: primaryGate.radiusMeters,
+      }));
+    }
   };
 
   const handleQuickCheckIn = (studentId: string) => {
@@ -934,7 +991,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
+    <div className={`h-dvh max-h-dvh overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
@@ -1022,7 +1079,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden min-w-0">
+      <div className="flex-1 flex overflow-hidden min-w-0 min-h-0">
         {/* Desktop Left Sidebar only shown in School ERP mode */}
         {programMode === 'school_erp' && (
           <div className="hidden md:flex shrink-0">
@@ -1041,8 +1098,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full max-w-full min-w-0 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8">
-          <div className="max-w-7xl mx-auto w-full min-w-0">
+        <main className="flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-hidden p-2 sm:p-3 lg:p-4">
+          <div className="max-w-7xl mx-auto w-full min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden">
             {currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1097,6 +1154,8 @@ export const App: React.FC = () => {
                     activeSchool={activeSchool}
                     students={schoolStudents}
                     lang={lang}
+                    campusGates={campusGates}
+                    onUpdateCampusGates={handleUpdateCampusGates}
                     onUpdateConfig={setSystemConfig}
                   />
                 )}
@@ -1267,8 +1326,11 @@ export const App: React.FC = () => {
                     attendance={schoolAttendance}
                     leaveRequests={leaveRequests}
                     campusGates={campusGates}
+                    activeSchool={activeSchool}
+                    lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
+                    onUpdateCampusGates={handleUpdateCampusGates}
                   />
                 )}
 

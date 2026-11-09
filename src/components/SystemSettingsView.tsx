@@ -27,15 +27,19 @@ import {
   ToggleRight,
   Database,
   Radio,
-  Sliders
+  Sliders,
+  MapPin
 } from 'lucide-react';
-import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School } from '../types';
+import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence } from '../types';
+import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
   activeSchool: School;
   students: Student[];
   lang: AppLanguage;
+  campusGates?: CampusGateGeofence[];
+  onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onUpdateConfig: (updated: SystemConfig) => void;
 }
 
@@ -44,9 +48,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   activeSchool,
   students,
   lang,
+  campusGates = [],
+  onUpdateCampusGates,
   onUpdateConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general'>('line_events');
+  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps'>('line_events');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
@@ -269,16 +275,16 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3.5">
       {/* Top Header Card */}
-      <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-xl border border-emerald-600/30">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold text-emerald-100">
-              <MessageSquare className="w-4 h-4 text-emerald-300" />
+      <div className="shrink-0 relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-md border border-emerald-600/30">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-emerald-100">
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
               <span>LINE Official Account & System Automation Settings</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
               {lang === 'th' ? 'ตั้งค่าระบบ & การแจ้งเตือน LINE' : 'System & LINE Notification Settings'}
             </h1>
             <p className="text-emerald-100/90 text-xs sm:text-sm max-w-2xl leading-relaxed">
@@ -416,8 +422,23 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           <Settings className="w-4 h-4" />
           <span>{lang === 'th' ? 'ข้อมูลสถานศึกษา & สำรองข้อมูล' : 'General & Backup'}</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('school_gps')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+            activeTab === 'school_gps'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <MapPin className="w-4 h-4" />
+          <span>{lang === 'th' ? 'พิกัด GPS & Geofence ประตูโรงเรียน' : 'School GPS & Geofence'}</span>
+        </button>
       </div>
 
+      {/* Tab Panels Container */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
       {/* TAB 1: LINE Notification Events & Rules */}
       {activeTab === 'line_events' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -1304,6 +1325,19 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* TAB 6: SCHOOL GPS & GEOFENCE */}
+      {activeTab === 'school_gps' && (
+        <div className="h-full">
+          <SchoolGpsSettingsCard
+            activeSchool={activeSchool}
+            campusGates={campusGates}
+            lang={lang}
+            onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+          />
+        </div>
+      )}
+      </div>
     </div>
   );
 };

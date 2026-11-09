@@ -44,6 +44,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState<'roster' | 'analytics'>('roster');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -163,11 +164,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-400" />
             Student Information System (SIS)
           </h1>
@@ -176,12 +177,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap shrink-0">
           {onOpenImportExport && (
             <button
               type="button"
               onClick={onOpenImportExport}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold shadow-xs transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
               <span>นำเข้า/ส่งออก (Excel)</span>
@@ -210,7 +211,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               });
               setShowAddModal(true);
             }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Student</span>
@@ -218,50 +219,80 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by ID, English name, or ชื่อภาษาไทย..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Grade Level:</span>
-          </div>
-          <select
-            value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500"
-          >
-            <option value="all">All Grades</option>
-            <option value="10">Grade 10 (M.4)</option>
-            <option value="11">Grade 11 (M.5)</option>
-            <option value="12">Grade 12 (M.6)</option>
-          </select>
-
-          <span className="text-xs text-slate-400 ml-auto">
-            Showing <strong className="text-white">{filteredStudents.length}</strong> students
-          </span>
-        </div>
+      {/* View Tabs */}
+      <div className="shrink-0 flex items-center gap-2 border-b border-slate-800 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('roster')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'roster'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>ทะเบียนรายชื่อ ({filteredStudents.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('analytics')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'analytics'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Award className="w-3.5 h-3.5" />
+          <span>สรุปสถิติห้องเรียน & LINE OA</span>
+        </button>
       </div>
 
-      {/* Students Table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-800/40">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
-            <tr>
-              <th className="py-3.5 px-4">Student</th>
-              <th className="py-3.5 px-4">Thai Name</th>
-              <th className="py-3.5 px-4">Class &amp; Room</th>
-              <th className="py-3.5 px-4">GPA</th>
+      {activeTab === 'roster' && (
+        <>
+          {/* Filter and Search Bar */}
+          <div className="shrink-0 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by ID, English name, or ชื่อภาษาไทย..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <Filter className="w-3.5 h-3.5" />
+                <span>Grade Level:</span>
+              </div>
+              <select
+                value={gradeFilter}
+                onChange={(e) => setGradeFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="all">All Grades</option>
+                <option value="10">Grade 10 (M.4)</option>
+                <option value="11">Grade 11 (M.5)</option>
+                <option value="12">Grade 12 (M.6)</option>
+              </select>
+
+              <span className="text-xs text-slate-400 ml-auto">
+                Showing <strong className="text-white">{filteredStudents.length}</strong> students
+              </span>
+            </div>
+          </div>
+
+          {/* Students Table with Sticky Header */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto rounded-xl border border-slate-800 bg-slate-800/40">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xs text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                <tr>
+                  <th className="py-3 px-4">Student</th>
+                  <th className="py-3 px-4">Thai Name</th>
+                  <th className="py-3 px-4">Class &amp; Room</th>
+                  <th className="py-3 px-4">GPA</th>
               <th className="py-3.5 px-4">Guardian / LINE OA</th>
               <th className="py-3.5 px-4 text-right">Actions</th>
             </tr>
@@ -382,8 +413,77 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </tbody>
         </table>
       </div>
+    </>
+  )}
 
-      {/* Add Student Modal */}
+      {activeTab === 'analytics' && (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
+              <span className="text-[11px] text-slate-400 font-bold uppercase">นักเรียนทั้งหมด</span>
+              <div className="text-2xl font-black text-white mt-1">{students.length} คน</div>
+              <p className="text-[11px] text-slate-400 mt-0.5">ในโรงเรียนปัจจุบัน</p>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
+              <span className="text-[11px] text-slate-400 font-bold uppercase">เชื่อมต่อ LINE OA แล้ว</span>
+              <div className="text-2xl font-black text-emerald-400 mt-1">
+                {students.filter(s => s.lineLinked).length} คน
+              </div>
+              <p className="text-[11px] text-emerald-400/80 mt-0.5">
+                {students.length > 0 ? Math.round((students.filter(s => s.lineLinked).length / students.length) * 100) : 0}% อัตราเชื่อมต่อ
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
+              <span className="text-[11px] text-slate-400 font-bold uppercase">เปิดรับแจ้งเตือนอัตโนมัติ</span>
+              <div className="text-2xl font-black text-blue-400 mt-1">
+                {students.filter(s => s.lineNotifyEnabled).length} คน
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">รับข้อความเช็กชื่อ & ผลการเรียน</p>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
+              <span className="text-[11px] text-slate-400 font-bold uppercase">เกรดเฉลี่ยรวม (GPAX)</span>
+              <div className="text-2xl font-black text-amber-400 mt-1">
+                {students.length > 0 
+                  ? (students.reduce((acc, s) => acc + (s.gpa || 0), 0) / students.length).toFixed(2)
+                  : '0.00'}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">ระดับผลการเรียนเฉลี่ย</p>
+            </div>
+          </div>
+
+          {/* Breakdown by Grade and Room */}
+          <div className="rounded-xl bg-slate-800/60 border border-slate-700/80 p-4 space-y-3">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-400" />
+              <span>การกระจายตัวของนักเรียนตามระดับชั้นและห้องเรียน</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              {['Grade 10 (M.4)', 'Grade 11 (M.5)', 'Grade 12 (M.6)'].map((grade) => {
+                const count = students.filter(s => s.gradeLevel.includes(grade) || s.gradeLevel.includes(grade.split(' ')[1])).length;
+                const lineCount = students.filter(s => (s.gradeLevel.includes(grade) || s.gradeLevel.includes(grade.split(' ')[1])) && s.lineLinked).length;
+                return (
+                  <div key={grade} className="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between font-bold text-white">
+                      <span>{grade}</span>
+                      <span className="text-indigo-400">{count} คน</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-indigo-500 h-full rounded-full transition-all"
+                        style={{ width: `${students.length > 0 ? (count / students.length) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>LINE เชื่อมต่อ:</span>
+                      <span className="text-emerald-400 font-semibold">{lineCount} คน</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">

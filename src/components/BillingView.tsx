@@ -49,10 +49,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
   const activeStudent = activeInvoice ? students.find((s) => s.id === activeInvoice.studentId) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Receipt className="w-5 h-5 text-indigo-400" />
             Tuition Fees &amp; Payment Invoicing
           </h1>
@@ -62,7 +62,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
         </div>
 
         {reminderToast && (
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-600/50 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-600/50 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
             <MessageSquare className="w-4 h-4 text-[#06C755] fill-current" />
             <span>{reminderToast}</span>
           </div>
@@ -70,15 +70,15 @@ export const BillingView: React.FC<BillingViewProps> = ({
       </div>
 
       {/* Filter Tabs */}
-      <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-4">
+      <div className="shrink-0 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {['all', 'paid', 'pending', 'overdue'].map((st) => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                 filterStatus === st
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-700/60'
               }`}
             >
@@ -93,9 +93,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
       </div>
 
       {/* Invoices Split View */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Invoice list */}
-        <div className="lg:col-span-7 space-y-3">
+        <div className="lg:col-span-7 h-full min-h-0 overflow-y-auto pr-1 space-y-3">
           {filteredInvoices.map((inv) => {
             const student = students.find((s) => s.id === inv.studentId);
             const isSelected = activeInvoice?.id === inv.id;
@@ -172,7 +172,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
         </div>
 
         {/* Right: Invoice Receipt & PromptPay Details */}
-        <div className="lg:col-span-5 rounded-xl bg-slate-900 border border-slate-800 p-6 space-y-4 shadow-xl">
+        <div className="lg:col-span-5 h-full min-h-0 overflow-y-auto pr-1 rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl">
           {activeInvoice && activeStudent ? (
             <>
               <div className="border-b border-slate-800 pb-4">

@@ -181,3 +181,7 @@ export function playSparkSound() {
     osc.stop(delay + 0.05);
   }
 }
+
+// Aliases for compatibility
+export const playExplosionSound = playBoomExplosionSound;
+export const playSuccessSound = playSuccessChimeSound;

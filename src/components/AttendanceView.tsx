@@ -6,7 +6,9 @@ import {
   AttendanceStatus, 
   LeaveRequest, 
   LeaveStatus, 
-  CampusGateGeofence 
+  CampusGateGeofence,
+  School,
+  AppLanguage
 } from '../types';
 import { 
   QrCode, 
@@ -29,10 +31,12 @@ import {
   Eye,
   Calendar,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Compass
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
+import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -40,6 +44,8 @@ interface AttendanceViewProps {
   attendance: AttendanceRecord[];
   leaveRequests?: LeaveRequest[];
   campusGates?: CampusGateGeofence[];
+  activeSchool?: School;
+  lang?: AppLanguage;
   onRecordAttendance: (
     studentId: string, 
     status: AttendanceStatus, 
@@ -48,6 +54,7 @@ interface AttendanceViewProps {
     extra?: any
   ) => void;
   onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
+  onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -56,10 +63,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   attendance,
   leaveRequests = [],
   campusGates = DEFAULT_CAMPUS_GATES,
+  activeSchool,
+  lang = 'th',
   onRecordAttendance,
-  onUpdateLeaveStatus
+  onUpdateLeaveStatus,
+  onUpdateCampusGates,
 }) => {
-  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports'>('gate_scanner');
+  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'school_gps'>('gate_scanner');
 
   // Scanner state
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
@@ -210,29 +220,29 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3.5">
       {/* Top Header */}
-      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
+      <div className="shrink-0 p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-white shadow-md">
         <div>
-          <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-0.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Attendance Center • Turnstile Gate, Online Leave &amp; Export</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <QrCode className="w-6 h-6 text-indigo-400" />
+          <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
+            <QrCode className="w-5 h-5 text-indigo-400" />
             <span>ศูนย์ข้อมูลการเข้าเรียน &amp; สแกนประตูโรงเรียน</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            บันทึกการผ่านประตูอัตโนมัติ, ระบบอนุมัติใบลาออนไลน์ และส่งออกรายงานสถิติสำหรับฝ่ายวิชาการ
+          <p className="text-xs text-slate-400 mt-0.5">
+            บันทึกการผ่านประตูอัตโนมัติ, ระบบอนุมัติใบลาออนไลน์, ส่งออกรายงานสถิติ และตั้งค่าพิกัด GPS ประตูโรงเรียน
           </p>
         </div>
 
         {/* Subtabs Navigation */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('gate_scanner')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
               activeTab === 'gate_scanner' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:text-white'
             }`}
           >
@@ -241,7 +251,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('leave_approval')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'leave_approval' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:text-white'
             }`}
           >
@@ -256,12 +266,22 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('export_reports')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'export_reports' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:text-white'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>3. ส่งออก Excel / PDF</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('school_gps')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'school_gps' ? 'bg-amber-500 text-slate-950 shadow-md' : 'bg-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>4. พิกัด GPS &amp; Geofence</span>
           </button>
         </div>
       </div>
@@ -270,7 +290,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}
       {/* ========================================================================= */}
       {activeTab === 'gate_scanner' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Scanner Simulator Card */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -433,120 +454,123 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* ========================================================================= */}
       {/* TAB 2: LEAVE REQUESTS APPROVAL WORKFLOW */}
       {/* ========================================================================= */}
       {activeTab === 'leave_approval' && (
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-600" />
-                <span>ระบบพิจารณาและอนุมัติใบลาออนไลน์</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                เมื่ออนุมัติใบลา ระบบจะปรับสถานะในระบบเช็กชื่อประจำวันให้เป็น 'ลาป่วย' หรือ 'ลากิจ' โดยอัตโนมัติ
-              </p>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  <span>ระบบพิจารณาและอนุมัติใบลาออนไลน์</span>
+                </h2>
+                <p className="text-xs text-slate-500">
+                  เมื่ออนุมัติใบลา ระบบจะปรับสถานะในระบบเช็กชื่อประจำวันให้เป็น 'ลาป่วย' หรือ 'ลากิจ' โดยอัตโนมัติ
+                </p>
+              </div>
+
+              <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setLeaveFilter('all')}
+                  className={`px-3 py-1 rounded-md transition cursor-pointer ${leaveFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'}`}
+                >
+                  ทั้งหมด ({leaveRequests.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaveFilter('pending')}
+                  className={`px-3 py-1 rounded-md transition cursor-pointer ${leaveFilter === 'pending' ? 'bg-white text-amber-700 shadow-2xs' : 'text-slate-600'}`}
+                >
+                  รออนุมัติ ({leaveRequests.filter(r => r.status === 'pending').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaveFilter('approved')}
+                  className={`px-3 py-1 rounded-md transition cursor-pointer ${leaveFilter === 'approved' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600'}`}
+                >
+                  อนุมัติแล้ว ({leaveRequests.filter(r => r.status === 'approved').length})
+                </button>
+              </div>
             </div>
 
-            <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setLeaveFilter('all')}
-                className={`px-3 py-1 rounded-md transition ${leaveFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'}`}
-              >
-                ทั้งหมด ({leaveRequests.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeaveFilter('pending')}
-                className={`px-3 py-1 rounded-md transition ${leaveFilter === 'pending' ? 'bg-white text-amber-700 shadow-2xs' : 'text-slate-600'}`}
-              >
-                รออนุมัติ ({leaveRequests.filter(r => r.status === 'pending').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeaveFilter('approved')}
-                className={`px-3 py-1 rounded-md transition ${leaveFilter === 'approved' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-slate-600'}`}
-              >
-                อนุมัติแล้ว ({leaveRequests.filter(r => r.status === 'approved').length})
-              </button>
-            </div>
-          </div>
+            <div className="space-y-3">
+              {filteredLeaveRequests.length === 0 ? (
+                <p className="text-xs text-slate-400 py-8 text-center">ไม่มีรายการใบลาในหมวดนี้</p>
+              ) : (
+                filteredLeaveRequests.map((req) => (
+                  <div key={req.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                          req.leaveType === 'sick' ? 'bg-rose-100 text-rose-700' :
+                          req.leaveType === 'personal' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                        </span>
+                        <h4 className="font-bold text-slate-900 text-sm">{req.userName}</h4>
+                        <span className="text-slate-500">({req.gradeLevelOrDepartment})</span>
+                      </div>
 
-          <div className="space-y-3">
-            {filteredLeaveRequests.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center">ไม่มีรายการใบลาในหมวดนี้</p>
-            ) : (
-              filteredLeaveRequests.map((req) => (
-                <div key={req.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                        req.leaveType === 'sick' ? 'bg-rose-100 text-rose-700' :
-                        req.leaveType === 'personal' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold self-start sm:self-auto ${
+                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
+                        req.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
                       }`}>
-                        {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                        {req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รอการพิจารณา' : 'ไม่อนุมัติ'}
                       </span>
-                      <h4 className="font-bold text-slate-900 text-sm">{req.userName}</h4>
-                      <span className="text-slate-500">({req.gradeLevelOrDepartment})</span>
                     </div>
 
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold self-start sm:self-auto ${
-                      req.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
-                      req.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
-                    }`}>
-                      {req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รอการพิจารณา' : 'ไม่อนุมัติ'}
-                    </span>
-                  </div>
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                      <p className="text-slate-500 text-[11px]">
+                        ระยะเวลาลา: <strong>{req.startDate} ถึง {req.endDate}</strong> • วันที่ยื่น: {req.createdAt}
+                      </p>
+                      <p className="text-slate-800 font-medium">"{req.reason}"</p>
+                      {req.attachmentUrl && (
+                        <div className="pt-2">
+                          <span className="text-[10px] text-slate-400 block mb-1">เอกสาร/ใบรับรองแพทย์แนบ:</span>
+                          <img src={req.attachmentUrl} alt="Certificate" className="w-32 h-20 rounded-lg object-cover border" />
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
-                    <p className="text-slate-500 text-[11px]">
-                      ระยะเวลาลา: <strong>{req.startDate} ถึง {req.endDate}</strong> • วันที่ยื่น: {req.createdAt}
-                    </p>
-                    <p className="text-slate-800 font-medium">"{req.reason}"</p>
-                    {req.attachmentUrl && (
-                      <div className="pt-2">
-                        <span className="text-[10px] text-slate-400 block mb-1">เอกสาร/ใบรับรองแพทย์แนบ:</span>
-                        <img src={req.attachmentUrl} alt="Certificate" className="w-32 h-20 rounded-lg object-cover border" />
+                    {req.status === 'pending' && onUpdateLeaveStatus && (
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                        <input
+                          type="text"
+                          placeholder="ข้อความหมายเหตุการอนุมัติ..."
+                          value={approvalNote[req.id] || ''}
+                          onChange={(e) => setApprovalNote({ ...approvalNote, [req.id]: e.target.value })}
+                          className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs text-slate-800 flex-1 bg-white"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id])}
+                            className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>อนุมัติใบลา</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateLeaveStatus(req.id, 'rejected', approvalNote[req.id])}
+                            className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>ปฏิเสธ</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
-
-                  {req.status === 'pending' && onUpdateLeaveStatus && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
-                      <input
-                        type="text"
-                        placeholder="ข้อความหมายเหตุการอนุมัติ..."
-                        value={approvalNote[req.id] || ''}
-                        onChange={(e) => setApprovalNote({ ...approvalNote, [req.id]: e.target.value })}
-                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs text-slate-800 flex-1 bg-white"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id])}
-                          className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>อนุมัติใบลา</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onUpdateLeaveStatus(req.id, 'rejected', approvalNote[req.id])}
-                          className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>ปฏิเสธ</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -555,87 +579,122 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 3: EXPORT REPORTS (EXCEL & PDF ATTENDANCE ENGINE) */}
       {/* ========================================================================= */}
       {activeTab === 'export_reports' && (
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                <span>ศูนย์ส่งออกรายงานสถิติการเข้าเรียน (Attendance Export Engine)</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                ดาวน์โหลดไฟล์ Excel (.csv รองรับภาษาไทย UTF-8) หรือสั่งพิมพ์รายงานสรุปสิทธิ์สอบ (มส.)
-              </p>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+                  <span>ศูนย์ส่งออกรายงานสถิติการเข้าเรียน (Attendance Export Engine)</span>
+                </h2>
+                <p className="text-xs text-slate-500">
+                  ดาวน์โหลดไฟล์ Excel (.csv รองรับภาษาไทย UTF-8) หรือสั่งพิมพ์รายงานสรุปสิทธิ์สอบ (มส.)
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportDailyCsv}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>ส่งออกข้อมูลประจำวัน</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportMonthlySummaryCsv}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>ส่งออกรายงานสรุปรายเดือน (Excel)</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleExportDailyCsv}
-                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>ส่งออกข้อมูลประจำวัน</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportMonthlySummaryCsv}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>ส่งออกรายงานสรุปรายเดือน (Excel)</span>
-              </button>
-            </div>
-          </div>
+            {/* Monthly Summary Table Preview */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                ตัวอย่างตารางสรุปการเข้าเรียนประจำเดือน (Student Attendance &amp; Qualification Matrix)
+              </h3>
 
-          {/* Monthly Summary Table Preview */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              ตัวอย่างตารางสรุปการเข้าเรียนประจำเดือน (Student Attendance &amp; Qualification Matrix)
-            </h3>
-
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
-                  <tr>
-                    <th className="p-3">รหัสนักเรียน</th>
-                    <th className="p-3">ชื่อ-นามสกุล</th>
-                    <th className="p-3">ชั้น / ห้อง</th>
-                    <th className="p-3 text-center">มาเรียน</th>
-                    <th className="p-3 text-center">มาสาย</th>
-                    <th className="p-3 text-center">ลาป่วย/กิจ</th>
-                    <th className="p-3 text-center">ขาดเรียน</th>
-                    <th className="p-3 text-center">เปอร์เซ็นต์</th>
-                    <th className="p-3 text-center">สถานะสิทธิ์สอบ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {monthlySummary.map((m) => (
-                    <tr key={m.student.id} className="hover:bg-slate-50 transition">
-                      <td className="p-3 font-mono text-slate-600">{m.student.studentIdNumber}</td>
-                      <td className="p-3 font-bold text-slate-900">{m.student.firstNameTh} {m.student.lastNameTh}</td>
-                      <td className="p-3 text-slate-600">{m.student.gradeLevel} {m.student.room}</td>
-                      <td className="p-3 text-center text-emerald-700 font-bold">{m.presentDays}</td>
-                      <td className="p-3 text-center text-amber-700 font-bold">{m.lateDays}</td>
-                      <td className="p-3 text-center text-blue-700 font-bold">{m.sickDays}</td>
-                      <td className="p-3 text-center text-rose-700 font-bold">{m.absentDays}</td>
-                      <td className="p-3 text-center font-mono font-black text-slate-900">{m.rate}%</td>
-                      <td className="p-3 text-center">
-                        {m.isQualified ? (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                            ผ่านเกณฑ์
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
-                            เสี่ยง มส.
-                          </span>
-                        )}
-                      </td>
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">รหัสนักเรียน</th>
+                      <th className="p-3">ชื่อ-นามสกุล</th>
+                      <th className="p-3">ชั้น / ห้อง</th>
+                      <th className="p-3 text-center">มาเรียน</th>
+                      <th className="p-3 text-center">มาสาย</th>
+                      <th className="p-3 text-center">ลาป่วย/กิจ</th>
+                      <th className="p-3 text-center">ขาดเรียน</th>
+                      <th className="p-3 text-center">เปอร์เซ็นต์</th>
+                      <th className="p-3 text-center">สถานะสิทธิ์สอบ</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {monthlySummary.map((m) => (
+                      <tr key={m.student.id} className="hover:bg-slate-50 transition">
+                        <td className="p-3 font-mono text-slate-600">{m.student.studentIdNumber}</td>
+                        <td className="p-3 font-bold text-slate-900">{m.student.firstNameTh} {m.student.lastNameTh}</td>
+                        <td className="p-3 text-slate-600">{m.student.gradeLevel} {m.student.room}</td>
+                        <td className="p-3 text-center text-emerald-700 font-bold">{m.presentDays}</td>
+                        <td className="p-3 text-center text-amber-700 font-bold">{m.lateDays}</td>
+                        <td className="p-3 text-center text-blue-700 font-bold">{m.sickDays}</td>
+                        <td className="p-3 text-center text-rose-700 font-bold">{m.absentDays}</td>
+                        <td className="p-3 text-center font-mono font-black text-slate-900">{m.rate}%</td>
+                        <td className="p-3 text-center">
+                          {m.isQualified ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              ผ่านเกณฑ์
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                              เสี่ยง มส.
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: SCHOOL GPS & GEOFENCE SETTINGS */}
+      {/* ========================================================================= */}
+      {activeTab === 'school_gps' && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <SchoolGpsSettingsCard
+            activeSchool={activeSchool || {
+              id: 'sch-1',
+              code: 'SCH-BKK01',
+              nameTh: 'โรงเรียนเตรียมอุดมศึกษานวัตกรรม',
+              nameEn: 'Triam Udom Suksa Innovation Academy',
+              slug: 'triam-udom-innovation',
+              type: 'public',
+              province: 'กรุงเทพมหานคร',
+              address: 'ถนนพญาไท เขตปทุมวัน กรุงเทพฯ 10330',
+              phone: '02-218-1234',
+              email: 'info@triamudom.ac.th',
+              primaryColor: '#1e40af',
+              studentsCount: 2450,
+              teachersCount: 142,
+              academicYear: '2569',
+              currentSemester: '1',
+              lineOaId: '@triamudom_sis',
+              createdAt: '2025-01-01',
+              status: 'active'
+            }}
+            campusGates={campusGates}
+            lang={lang}
+            onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+          />
         </div>
       )}
 

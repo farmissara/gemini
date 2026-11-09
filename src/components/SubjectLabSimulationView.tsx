@@ -152,16 +152,19 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       const itemsMatch = selectedIds.length === targetIds.length &&
         selectedIds.every((val, index) => val === targetIds[index]);
 
-      const requiresHeat = activeQuest.requiredTool === 'burner';
+      const requiresHeat = activeQuest.requiredTool === 'burner' || Boolean(activeQuest.requiresHeating);
       const heatMatch = !requiresHeat || isBurnerActive;
 
-      const requiresStir = activeQuest.requiredTool === 'stirrer';
+      const requiresStir = activeQuest.requiredTool === 'stirrer' || Boolean(activeQuest.requiresStirring);
       const stirMatch = !requiresStir || isStirred;
 
       if (itemsMatch && heatMatch && stirMatch) {
         // Success
         setReactionState('success');
-        setReactionMessage(lang === 'th' ? `🎉 ยอดเยี่ยมมาก! ${activeQuest.successMessageTh}` : `🎉 Success! ${activeQuest.successMessageEn}`);
+        const successMsg = lang === 'th'
+          ? (activeQuest.successMessageTh || activeQuest.successDescTh || 'การทดลองสำเร็จสมบูรณ์!')
+          : (activeQuest.successMessageEn || activeQuest.successDescEn || 'Experiment succeeded!');
+        setReactionMessage(`🎉 ${successMsg}`);
         triggerSound(playSuccessSound);
 
         if (!completedQuestIds.includes(activeQuest.id)) {
@@ -192,7 +195,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
   // Calculate liquid color
   const getFluidColor = () => {
     if (reactionState === 'exploded') return '#1e293b'; // burnt charcoal
-    if (reactionState === 'success') return activeQuest.resultingColor || '#10b981';
+    if (reactionState === 'success') return activeQuest.resultingColor || activeQuest.successProductColor || '#10b981';
     if (beakerItems.length === 0) return 'rgba(255,255,255,0.08)';
     const lastItem = beakerItems[beakerItems.length - 1];
     return lastItem.color || '#38bdf8';
@@ -590,10 +593,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             </div>
 
             <p className="text-xs font-semibold text-white leading-snug">
-              🎯 <strong>โจทย์:</strong> {lang === 'th' ? activeQuest.goalTh : activeQuest.goalEn}
+              🎯 <strong>โจทย์:</strong> {lang === 'th' ? (activeQuest.goalTh || activeQuest.targetGoalTh) : (activeQuest.goalEn || activeQuest.targetGoalTh)}
             </p>
             <p className="text-[11px] text-slate-400 leading-tight">
-              {lang === 'th' ? activeQuest.scenarioTh : activeQuest.scenarioEn}
+              {lang === 'th' ? activeQuest.scenarioTh : (activeQuest.scenarioEn || activeQuest.scenarioTh)}
             </p>
           </div>
 
@@ -760,22 +763,28 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       conceptTh: newConcept || 'การทดลองสร้างสรรค์โดยอาจารย์',
                       conceptEn: 'Teacher Custom Lab',
                       gradeLevel: 'ม.ปลาย',
+                      difficulty: 'medium',
                       scenarioTh: newScenario || newTitle,
                       scenarioEn: newScenario || newTitle,
+                      targetGoalTh: newGoal || 'หาอัตราส่วนสารเคมีที่ถูกต้อง',
                       goalTh: newGoal || 'หาอัตราส่วนสารเคมีที่ถูกต้อง',
                       goalEn: newGoal || 'Find correct reaction',
                       availableItems: activeQuest.availableItems,
                       correctItemIds: [activeQuest.availableItems[0]?.id || 'chem-hcl'],
                       requiredTool: 'none',
                       resultingColor: '#06b6d4',
+                      successProductColor: '#06b6d4',
+                      successTitleTh: 'ปฏิกิริยาเกิดขึ้นอย่างสมบูรณ์แบบ!',
                       successMessageTh: 'ปฏิกิริยาเกิดขึ้นอย่างสมบูรณ์แบบ!',
                       successMessageEn: 'Reaction completed successfully!',
                       successDescTh: 'ได้รับผลผลิตตามทฤษฎี',
                       successDescEn: 'Yielded expected products',
+                      successAnimation: 'bubbling_glow',
+                      failTitleTh: 'สารผสมไม่ถูกต้อง เกิดก๊าซควันดำ!',
                       failDescTh: 'สารผสมไม่ถูกต้อง เกิดก๊าซควันดำ!',
                       failDescEn: 'Reaction blew up!',
+                      failAnimation: 'lab_explosion',
                       scientificExplanationTh: newExplanation || 'เมื่อสารทำปฏิกิริยาจะเกิดการจัดเรียงอะตอมใหม่',
-                      scientificExplanationEn: 'Reagents rearranged chemical bonds',
                       expReward: 100,
                       gemReward: 20
                     };

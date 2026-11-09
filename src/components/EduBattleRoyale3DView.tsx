@@ -34,7 +34,8 @@ import {
   ChevronRight,
   Gamepad2,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  ArrowLeft
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
 import { 
