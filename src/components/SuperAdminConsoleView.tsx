@@ -52,6 +52,7 @@ interface SuperAdminConsoleViewProps {
   lang: AppLanguage;
   isDemoMode: boolean;
   onViewSchool: (school: School) => void;
+  onToggleSchoolStatus: (schoolId: string, status: School['status']) => Promise<void>;
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -67,6 +68,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   lang,
   isDemoMode,
   onViewSchool,
+  onToggleSchoolStatus,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools'>('approvals');
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
@@ -76,6 +78,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
   const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
+  const [schoolStatusError, setSchoolStatusError] = useState<string | null>(null);
+  const [updatingSchoolId, setUpdatingSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeSubTab !== 'approvals' || isDemoMode) return;
@@ -136,6 +140,9 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
     setRegistrationError(null);
     try {
       await approvePendingSchoolRegistration(registration.user_id);
+      onUpdateSchools((current) => current.map((school) => (
+        school.id === registration.school_id ? { ...school, status: 'active' } : school
+      )));
       showToast(`อนุมัติ ${registration.school_name_th} เรียบร้อยแล้ว`);
       setRegistrationRefreshKey((current) => current + 1);
     } catch (error) {
@@ -280,17 +287,21 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   };
 
   // Toggle school active/suspended status
-  const handleToggleSchoolStatus = (schoolId: string) => {
-    onUpdateSchools((prev) =>
-      prev.map((s) => {
-        if (s.id === schoolId) {
-          const nextStatus = s.status === 'active' ? 'suspended' : 'active';
-          return { ...s, status: nextStatus };
-        }
-        return s;
-      })
-    );
-    showToast('อัปเดตสถานะการใช้งานของสถาบันการศึกษาเรียบร้อยแล้ว');
+  const handleToggleSchoolStatus = async (schoolId: string) => {
+    const school = schools.find((item) => item.id === schoolId);
+    if (!school) return;
+
+    const nextStatus: School['status'] = school.status === 'active' ? 'suspended' : 'active';
+    setUpdatingSchoolId(schoolId);
+    setSchoolStatusError(null);
+    try {
+      await onToggleSchoolStatus(schoolId, nextStatus);
+      showToast('อัปเดตสถานะการใช้งานของสถาบันการศึกษาเรียบร้อยแล้ว');
+    } catch (error) {
+      setSchoolStatusError(error instanceof Error ? error.message : 'อัปเดตสถานะโรงเรียนไม่สำเร็จ');
+    } finally {
+      setUpdatingSchoolId(null);
+    }
   };
 
   const permissionLabels: Record<keyof RolePermissionConfig['permissions'], { title: string; desc: string }> = {
@@ -806,6 +817,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {/* View 3: All Schools Directory & Tenant Governance */}
       {activeSubTab === 'schools' && (
         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+          {schoolStatusError && (
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
+              {schoolStatusError}
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-slate-900">ทะเบียนสถาบันการศึกษาทั้งหมด (Registered Institutions)</h3>
@@ -853,7 +869,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-rose-100 text-rose-800'
                       }`}>
-                        {s.status === 'active' ? 'เปิดใช้งาน' : 'ระงับชั่วคราว'}
+                        {s.status === 'active'
+                          ? 'เปิดใช้งาน'
+                          : s.status === 'pending'
+                            ? 'รออนุมัติ'
+                            : 'ระงับชั่วคราว'}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right whitespace-nowrap">
@@ -864,15 +884,20 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       >
                         ดูข้อมูลโรงเรียน
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSchoolStatus(s.id)}
-                        className={`text-xs font-medium hover:underline ${
-                          s.status === 'active' ? 'text-rose-600' : 'text-emerald-600'
-                        }`}
-                      >
-                        {s.status === 'active' ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
-                      </button>
+                      {s.status === 'pending' ? (
+                        <span className="text-xs text-slate-400">รออนุมัติจากคิวสมัคร</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void handleToggleSchoolStatus(s.id)}
+                          disabled={updatingSchoolId !== null}
+                          className={`text-xs font-medium hover:underline ${
+                            s.status === 'active' ? 'text-rose-600' : 'text-emerald-600'
+                          } disabled:opacity-50`}
+                        >
+                          {updatingSchoolId === s.id ? 'กำลังบันทึก...' : s.status === 'active' ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

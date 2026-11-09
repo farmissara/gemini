@@ -69,6 +69,7 @@ import {
 import {
   restoreSupabaseSession,
   signOutFromSupabase,
+  updateSchoolStatusInSupabase,
   updateUserProfileInSupabase,
 } from './lib/authDb';
 import type { AuthContext } from './lib/authDb';
@@ -125,6 +126,7 @@ export const App: React.FC = () => {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isSuperAdminSchoolView, setIsSuperAdminSchoolView] = useState(false);
   const demoModeRef = useRef(false);
+  const skipNextSuperAdminSyncRef = useRef(false);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
   const [loadedSchoolId, setLoadedSchoolId] = useState<string | null>(null);
@@ -199,20 +201,23 @@ export const App: React.FC = () => {
 
   // Keep the live Supabase account flow separate from the local demo session.
   const handleLogin = (context: AuthContext) => {
+    const school = context.school;
     demoModeRef.current = false;
     setIsDemoMode(false);
     setIsSuperAdminSchoolView(false);
     setSchools(context.schools);
     setCurrentUser(context.user);
-    setActiveSchool(context.school);
     setCurrentRole(context.user.role);
     setDataLoadError(null);
-    setLoadedSchoolId(null);
-    setSystemConfig((prev) => ({
-      ...prev,
-      schoolNameEn: context.school.nameEn,
-      schoolNameTh: context.school.nameTh,
-    }));
+    if (school) {
+      setActiveSchool(school);
+      setLoadedSchoolId(null);
+      setSystemConfig((prev) => ({
+        ...prev,
+        schoolNameEn: school.nameEn,
+        schoolNameTh: school.nameTh,
+      }));
+    }
     if (context.user.role === 'super_admin') {
       setProgramMode('school_erp');
       setCurrentTab('super_admin_console');
@@ -313,6 +318,21 @@ export const App: React.FC = () => {
     setCurrentTab('dashboard');
   };
 
+  const handleToggleSchoolStatus = async (schoolId: string, nextStatus: School['status']) => {
+    const school = schools.find((item) => item.id === schoolId);
+    if (!school) throw new Error('School not found.');
+    if (school.status === 'pending') {
+      throw new Error('Pending registrations must be approved from the registration queue.');
+    }
+    if (!isDemoMode) await updateSchoolStatusInSupabase(schoolId, nextStatus);
+    setSchools((current) => current.map((school) => (
+      school.id === schoolId ? { ...school, status: nextStatus } : school
+    )));
+    setActiveSchool((current) => (
+      current.id === schoolId ? { ...current, status: nextStatus } : current
+    ));
+  };
+
   useEffect(() => {
     let active = true;
     restoreSupabaseSession()
@@ -329,6 +349,13 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (!currentUser || isDemoMode) return;
+    if (currentUser.role === 'super_admin' && !isSuperAdminSchoolView) {
+      setDataLoadError(null);
+      setIsDataReady(true);
+      setLoadedSchoolId(activeSchool.id);
+      return;
+    }
+
     let active = true;
     setIsDataReady(false);
     setLoadedSchoolId(null);
@@ -336,6 +363,9 @@ export const App: React.FC = () => {
     loadSchoolData(activeSchool.id)
       .then((data) => {
         if (!active) return;
+        if (currentUser.role === 'super_admin') {
+          skipNextSuperAdminSyncRef.current = true;
+        }
         setStudents(data.students);
         setCourses(data.courses);
         setGrades(data.grades);
@@ -365,16 +395,21 @@ export const App: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [currentUser?.id, activeSchool.id, isDemoMode]);
+  }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView]);
 
   useEffect(() => {
     if (
       !currentUser ||
       isDemoMode ||
+      (currentUser.role === 'super_admin' && !isSuperAdminSchoolView) ||
       !['super_admin', 'admin', 'teacher'].includes(currentUser.role) ||
       !isDataReady ||
       loadedSchoolId !== activeSchool.id
     ) return;
+    if (currentUser.role === 'super_admin' && skipNextSuperAdminSyncRef.current) {
+      skipNextSuperAdminSyncRef.current = false;
+      return;
+    }
     const timeoutId = window.setTimeout(() => {
       syncQueueRef.current = syncQueueRef.current.then(async () => {
         const result = await syncDataToSupabase({
@@ -397,6 +432,7 @@ export const App: React.FC = () => {
     currentUser?.id,
     currentUser?.role,
     isDemoMode,
+    isSuperAdminSchoolView,
     isDataReady,
     loadedSchoolId,
     activeSchool,
@@ -958,6 +994,7 @@ export const App: React.FC = () => {
                     lang={lang}
                     isDemoMode={isDemoMode}
                     onViewSchool={handleViewSchool}
+                    onToggleSchoolStatus={handleToggleSchoolStatus}
                   />
                 )}
 

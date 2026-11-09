@@ -3,7 +3,7 @@ import { getSupabaseClient } from './supabase';
 
 export interface AuthContext {
   user: AuthUser;
-  school: School;
+  school: School | null;
   schools: School[];
 }
 
@@ -106,23 +106,29 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
       : 'Your account is suspended. Contact your school administrator.');
   }
 
-  const { data: schoolRows, error: schoolsError } = await client
-    .from('schools')
-    .select('*')
-    .eq('status', 'active')
-    .order('name_th');
+  const schoolQuery = client.from('schools').select('*').order('name_th');
+  const { data: schoolRows, error: schoolsError } = profile.role === 'super_admin'
+    ? await schoolQuery
+    : await schoolQuery.eq('status', 'active');
 
   if (schoolsError) {
     throw new Error(`Could not load school information: ${schoolsError.message}`);
   }
 
   const schools = (schoolRows as SchoolRow[]).map(mapSchool);
-  const school = schools.find((item) => item.id === profile.school_id) || (
-    profile.role === 'super_admin' ? schools[0] : undefined
-  );
-  if (!school) {
+  const school = schools.find((item) => item.id === profile.school_id)
+    || (profile.role === 'super_admin'
+      ? schools.find((item) => item.status === 'active') || schools[0] || null
+      : undefined);
+  if (!school && profile.role !== 'super_admin') {
     throw new Error('Your account is not assigned to an active school. Contact your school administrator.');
   }
+  const resolvedSchool = school || null;
+  const visibleSchools = profile.role === 'super_admin'
+    ? schools
+    : school
+      ? [school]
+      : [];
 
   const profileRow = profile as UserProfileRow;
   const user: AuthUser = {
@@ -131,7 +137,7 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
     fullNameTh: profileRow.full_name_th,
     fullNameEn: profileRow.full_name_en,
     role: profileRow.role,
-    schoolId: school.id,
+    schoolId: resolvedSchool?.id || '',
     avatarUrl: profileRow.avatar_url,
     lineConnected: false,
     phone: profileRow.phone || undefined,
@@ -139,8 +145,8 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
 
   return {
     user,
-    school,
-    schools: profile.role === 'super_admin' ? schools : [school],
+    school: resolvedSchool,
+    schools: visibleSchools,
   };
 }
 
@@ -155,6 +161,23 @@ export async function listActiveSchools(): Promise<School[]> {
     .order('name_th');
   if (error) throw new Error(`Could not load active schools: ${error.message}`);
   return (data as SchoolRow[]).map(mapSchool);
+}
+
+export async function updateSchoolStatusInSupabase(
+  schoolId: string,
+  status: School['status']
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client
+    .from('schools')
+    .update({ status })
+    .eq('id', schoolId)
+    .select('id')
+    .single();
+  if (error) throw new Error(`Could not update school status: ${error.message}`);
+  if (!data) throw new Error('The school status was not updated.');
 }
 
 export async function authenticateWithSupabase(
