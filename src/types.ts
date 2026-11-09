@@ -324,6 +324,9 @@ export interface CampusGateGeofence {
   radiusMeters: number;
   isPrimary: boolean;
   type: 'main_gate' | 'north_gate' | 'canteen' | 'bus_dropoff' | 'staff_parking';
+  isActive?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface LessonMaterial {

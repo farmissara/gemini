@@ -187,6 +187,7 @@ export const App: React.FC = () => {
   const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>(INITIAL_BEHAVIOR_RECORDS);
   const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>(INITIAL_SDQ_ASSESSMENTS);
   const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>(INITIAL_INFIRMARY_VISITS);
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(INITIAL_HOMEWORK_SUBMISSIONS);
   const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>(DEFAULT_CAMPUS_GATES);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
 
@@ -200,12 +201,17 @@ export const App: React.FC = () => {
         setCampusGates([
           {
             id: `gate_${activeSchool.id}_1`,
+            schoolId: activeSchool.id,
             nameTh: `ประตูหน้า ${activeSchool.nameTh}`,
             nameEn: `Main Gate ${activeSchool.nameEn}`,
+            lat: activeSchool.latitude,
+            lng: activeSchool.longitude,
             latitude: activeSchool.latitude,
             longitude: activeSchool.longitude,
             radiusMeters: activeSchool.geofenceRadiusMeters || 120,
+            isPrimary: true,
             isActive: true,
+            type: 'main_gate',
           }
         ]);
       } else {
@@ -672,12 +678,14 @@ export const App: React.FC = () => {
     } catch (e) {
       console.warn('Failed to save campus gates to localStorage', e);
     }
-    const primaryGate = gates.find((g) => g.isActive) || gates[0];
+    const primaryGate = gates.find((g) => g.isPrimary || g.isActive) || gates[0];
     if (primaryGate) {
+      const gateLat = primaryGate.lat ?? primaryGate.latitude ?? 13.736717;
+      const gateLng = primaryGate.lng ?? primaryGate.longitude ?? 100.523186;
       setActiveSchool((prev) => ({
         ...prev,
-        latitude: primaryGate.latitude,
-        longitude: primaryGate.longitude,
+        latitude: gateLat,
+        longitude: gateLng,
         geofenceRadiusMeters: primaryGate.radiusMeters,
       }));
       setSchools((prev) =>
@@ -685,8 +693,8 @@ export const App: React.FC = () => {
           s.id === activeSchool.id
             ? {
                 ...s,
-                latitude: primaryGate.latitude,
-                longitude: primaryGate.longitude,
+                latitude: gateLat,
+                longitude: gateLng,
                 geofenceRadiusMeters: primaryGate.radiusMeters,
               }
             : s
@@ -694,8 +702,8 @@ export const App: React.FC = () => {
       );
       setSystemConfig((prev) => ({
         ...prev,
-        latitude: primaryGate.latitude,
-        longitude: primaryGate.longitude,
+        latitude: gateLat,
+        longitude: gateLng,
         geofenceRadiusMeters: primaryGate.radiusMeters,
       }));
     }
