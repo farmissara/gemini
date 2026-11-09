@@ -103,6 +103,7 @@ import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './components/SubjectLabSimulationView';
 import { UserProfileModal } from './components/UserProfileModal';
 import { SystemSettingsView } from './components/SystemSettingsView';
+import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
 import { SchoolGpsModal } from './components/SchoolGpsModal';
 import { DataImportExportModal } from './components/DataImportExportModal';
 import { ModuleGuideModal } from './components/ModuleGuideModal';
@@ -1095,7 +1096,7 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
-        onOpenGpsSettings={() => setShowGpsModal(true)}
+        onOpenGpsSettings={() => navigateToAppTab('school_gps')}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
@@ -1197,6 +1198,60 @@ export const App: React.FC = () => {
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
+                {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
+                {currentTab !== 'super_admin_console' && (
+                  <div className="shrink-0 mb-2.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-0.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 shrink-0">
+                      {[
+                        { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
+                        { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
+                        { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'hall_of_fame'] },
+                        { id: 'administration', labelTh: '⚙️ บริหาร & GPS', labelEn: 'Admin & GPS', defaultTab: 'school_gps' as NavTab, tabs: ['school_gps', 'executive_warning', 'school_permissions', 'system_settings'] },
+                        { id: 'finance', labelTh: '💰 การเงิน & ข่าว', labelEn: 'Finance', defaultTab: 'billing' as NavTab, tabs: ['billing', 'announcements'] },
+                      ].map((cat) => {
+                        const isCatActive = cat.tabs.includes(currentTab);
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              if (!isCatActive) {
+                                navigateToAppTab(cat.defaultTab);
+                              }
+                            }}
+                            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                              isCatActive
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900'
+                            }`}
+                          >
+                            <span>{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Direct School GPS Coordinates Button for School Admin */}
+                    {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                      <button
+                        type="button"
+                        onClick={() => navigateToAppTab('school_gps')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          currentTab === 'school_gps'
+                            ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
+                        }`}
+                        title="กำหนดพิกัด GPS ละติจูด ลองจิจูด รัศมี และประตูโรงเรียน"
+                      >
+                        <span className="text-amber-600 dark:text-amber-400">📍</span>
+                        <span className="hidden sm:inline font-bold">
+                          {lang === 'th' ? 'ตั้งค่าพิกัด GPS โรงเรียน' : 'School GPS'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {currentTab === 'super_admin_console' && currentRole === 'super_admin' && (
                   <SuperAdminConsoleView
                     schools={schools}
@@ -1212,6 +1267,19 @@ export const App: React.FC = () => {
                     isDemoMode={isDemoMode}
                     onViewSchool={handleViewSchool}
                   />
+                )}
+
+                {/* Dedicated School GPS & Gate Geofence Settings Tab */}
+                {currentTab === 'school_gps' && (
+                  <div className="h-full flex flex-col min-h-0 overflow-hidden">
+                    <SchoolGpsSettingsCard
+                      activeSchool={activeSchool}
+                      campusGates={campusGates}
+                      lang={lang}
+                      onUpdateCampusGates={handleUpdateCampusGates}
+                      onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
+                    />
+                  </div>
                 )}
 
                 {/* School Admin: Role Permissions Console for this specific school */}
