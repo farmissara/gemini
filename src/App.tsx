@@ -1388,6 +1388,7 @@ export const App: React.FC = () => {
                     submissions={schoolHomeworkSubmissions}
                     students={schoolStudents}
                     courses={schoolCourses}
+                    assignments={assignments}
                     onAddSubmission={handleAddHomeworkSubmission}
                     onGradeSubmission={handleGradeHomeworkSubmission}
                     lang={lang}

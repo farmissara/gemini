@@ -359,6 +359,9 @@ export interface Assignment {
   points: number;
   submittedStudentIds: string[];
   status: 'active' | 'closed';
+  courseCode?: string;
+  description?: string;
+  maxScore?: number;
 }
 
 export interface Course {

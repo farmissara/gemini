@@ -22,13 +22,16 @@ import {
   Student, 
   Course, 
   AppLanguage, 
-  UserRole 
+  UserRole,
+  Assignment
 } from '../types';
+import { INITIAL_ASSIGNMENTS } from '../data/mockData';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
   students: Student[];
   courses: Course[];
+  assignments?: Assignment[];
   onAddSubmission: (sub: HomeworkSubmission) => void;
   onGradeSubmission: (id: string, score: number, feedback: string) => void;
   lang: AppLanguage;
@@ -39,6 +42,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   submissions,
   students,
   courses,
+  assignments = INITIAL_ASSIGNMENTS,
   onAddSubmission,
   onGradeSubmission,
   lang,
@@ -346,7 +350,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
                 <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">
-                    คะแนนเต็ม: <strong className="text-white">{asg.maxScore}</strong> แต้ม
+                    คะแนนเต็ม: <strong className="text-white">{asg.maxScore ?? asg.points ?? 20}</strong> แต้ม
                   </span>
                   <span className="text-emerald-400 font-semibold">
                     ส่งแล้ว: {submissions.filter(s => s.assignmentId === asg.id && s.status !== 'pending').length} คน

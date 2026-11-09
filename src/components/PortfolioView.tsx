@@ -215,6 +215,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           )}
         </div>
+      </div>
+
       {/* Scrollable Portfolio Body */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
       {/* Role Profile Header Preview Card */}
