@@ -15,7 +15,8 @@ import {
   User,
   Menu,
   HelpCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  MapPin
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -37,11 +38,13 @@ interface NavbarProps {
   themePalette: ThemePalette;
   setThemePalette: (palette: ThemePalette) => void;
   onOpenSchoolSwitcher: () => void;
+  onOpenGpsSettings?: () => void;
   onLogout: () => void;
   onToggleMobileMenu?: () => void;
   onOpenProfile?: () => void;
   onOpenGuide?: () => void;
   onOpenImportExport?: () => void;
+  onSwitchToMobileMode?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -58,11 +61,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   themePalette,
   setThemePalette,
   onOpenSchoolSwitcher,
+  onOpenGpsSettings,
   onLogout,
   onToggleMobileMenu,
   onOpenProfile,
   onOpenGuide,
   onOpenImportExport,
+  onSwitchToMobileMode,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
@@ -79,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className={`border-b ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} sticky top-0 z-30 px-3 sm:px-4 md:px-6 py-2 shadow-xs transition-colors w-full max-w-full overflow-hidden`}>
       {/* Top Row: Logo, School Name, Mobile Toggle, and User Controls */}
       <div className="flex items-center justify-between gap-2 w-full">
-        {/* Left: Mobile Menu Trigger + Logo + School Switcher */}
+        {/* Left: Mobile Menu Trigger + Logo + School Switcher + GPS Button */}
         <div className="flex items-center gap-2 min-w-0">
           {onToggleMobileMenu && (
             <button
@@ -102,22 +107,39 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
 
             {/* School Switcher Pill */}
-            {canAccessSchoolOperations && <button
-              type="button"
-              onClick={onOpenSchoolSwitcher}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] sm:text-xs font-medium transition min-w-0 max-w-[130px] sm:max-w-[200px] ${
-                isLight 
-                  ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100' 
-                  : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
-              }`}
-              title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
-            >
-              <Building2 className="w-3 h-3 text-blue-600 shrink-0" />
-              <span className="truncate">
-                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-              </span>
-              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
-            </button>}
+            {canAccessSchoolOperations && (
+              <>
+                <button
+                  type="button"
+                  onClick={onOpenSchoolSwitcher}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] sm:text-xs font-medium transition min-w-0 max-w-[130px] sm:max-w-[180px] ${
+                    isLight 
+                      ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100' 
+                      : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
+                  }`}
+                  title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
+                >
+                  <Building2 className="w-3 h-3 text-blue-600 shrink-0" />
+                  <span className="truncate">
+                    {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                </button>
+
+                {/* Dedicated GPS Settings Button for School Admin */}
+                {onOpenGpsSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenGpsSettings}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/60 transition shadow-2xs shrink-0 cursor-pointer"
+                    title={lang === 'th' ? `ตั้งค่าพิกัด GPS ประจำโรงเรียน (${activeSchool.nameTh})` : 'Configure School GPS Coordinates'}
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="hidden sm:inline">{lang === 'th' ? '📍 ตั้งค่าพิกัด GPS' : 'School GPS'}</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -173,6 +195,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Globe className="w-3 h-3 text-blue-600 shrink-0" />
             <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
           </button>
+
+          {/* Switch to Compact Mobile Mode (for mobile users or responsive testing) */}
+          {onSwitchToMobileMode && (
+            <button
+              type="button"
+              onClick={onSwitchToMobileMode}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+                isLight
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                  : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60'
+              }`}
+              title={lang === 'th' ? 'สลับไปยังมุมมองมือถือแบบกระชับ' : 'Switch to Compact Mobile View'}
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
+            </button>
+          )}
 
           {/* PWA Install Button (Prompt to install app on home screen) */}
           <PWAInstallButton lang={lang} variant="nav" />

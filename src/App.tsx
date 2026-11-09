@@ -104,6 +104,8 @@ import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './components/SubjectLabSimulationView';
 import { UserProfileModal } from './components/UserProfileModal';
 import { SystemSettingsView } from './components/SystemSettingsView';
+import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
+import { SchoolGpsModal } from './components/SchoolGpsModal';
 import { DataImportExportModal } from './components/DataImportExportModal';
 import { ModuleGuideModal } from './components/ModuleGuideModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -114,6 +116,7 @@ import { StudyStreakQuestPassView } from './components/StudyStreakQuestPassView'
 import { CoopBossRaidView } from './components/CoopBossRaidView';
 import { SocraticTutorView } from './components/SocraticTutorView';
 import { RealWorldSnapQuestView } from './components/RealWorldSnapQuestView';
+import { MobileAppShell } from './components/MobileAppShell';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
@@ -149,6 +152,25 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
+  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+  const [deviceViewPreference, setDeviceViewPreference] = useState<'auto' | 'mobile' | 'desktop'>('auto');
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const shouldShowMobileView = deviceViewPreference === 'mobile' || (deviceViewPreference === 'auto' && isMobileScreen);
+
   // Primary Domain State
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
@@ -173,12 +195,44 @@ export const App: React.FC = () => {
   const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>(DEFAULT_CAMPUS_GATES);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
 
+  // Load and synchronize school GPS campus gates per active school
+  useEffect(() => {
+    try {
+      const savedGates = localStorage.getItem(`eduverse_campus_gates_${activeSchool.id}`);
+      if (savedGates) {
+        setCampusGates(JSON.parse(savedGates));
+      } else if (activeSchool.latitude && activeSchool.longitude) {
+        setCampusGates([
+          {
+            id: `gate_${activeSchool.id}_1`,
+            schoolId: activeSchool.id,
+            nameTh: `ประตูหน้า ${activeSchool.nameTh}`,
+            nameEn: `Main Gate ${activeSchool.nameEn}`,
+            lat: activeSchool.latitude,
+            lng: activeSchool.longitude,
+            latitude: activeSchool.latitude,
+            longitude: activeSchool.longitude,
+            radiusMeters: activeSchool.geofenceRadiusMeters || 120,
+            isPrimary: true,
+            isActive: true,
+            type: 'main_gate',
+          }
+        ]);
+      } else {
+        setCampusGates(DEFAULT_CAMPUS_GATES);
+      }
+    } catch {
+      setCampusGates(DEFAULT_CAMPUS_GATES);
+    }
+  }, [activeSchool.id, activeSchool.nameTh, activeSchool.nameEn, activeSchool.latitude, activeSchool.longitude, activeSchool.geofenceRadiusMeters]);
+
   // Modals
   const [selectedStudentForReport, setSelectedStudentForReport] = useState<Student | null>(null);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
+  const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -658,6 +712,111 @@ export const App: React.FC = () => {
 
   const handleUpdateCampusGates = (gates: CampusGateGeofence[]) => {
     setCampusGates(gates);
+    try {
+      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gates));
+    } catch (e) {
+      console.warn('Failed to save campus gates to localStorage', e);
+    }
+    const primaryGate = gates.find((g) => g.isPrimary || g.isActive) || gates[0];
+    if (primaryGate) {
+      const gateLat = primaryGate.lat ?? primaryGate.latitude ?? 13.736717;
+      const gateLng = primaryGate.lng ?? primaryGate.longitude ?? 100.523186;
+      setActiveSchool((prev) => ({
+        ...prev,
+        latitude: gateLat,
+        longitude: gateLng,
+        geofenceRadiusMeters: primaryGate.radiusMeters,
+      }));
+      setSchools((prev) =>
+        prev.map((s) =>
+          s.id === activeSchool.id
+            ? {
+                ...s,
+                latitude: gateLat,
+                longitude: gateLng,
+                geofenceRadiusMeters: primaryGate.radiusMeters,
+              }
+            : s
+        )
+      );
+      setSystemConfig((prev) => ({
+        ...prev,
+        latitude: gateLat,
+        longitude: gateLng,
+        geofenceRadiusMeters: primaryGate.radiusMeters,
+      }));
+    }
+  };
+
+  const handleUpdateSchoolCoordinates = (lat: number, lng: number, radiusMeters: number) => {
+    setActiveSchool((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      geofenceRadiusMeters: radiusMeters,
+    }));
+    setSchools((prev) =>
+      prev.map((s) =>
+        s.id === activeSchool.id
+          ? {
+              ...s,
+              latitude: lat,
+              longitude: lng,
+              geofenceRadiusMeters: radiusMeters,
+            }
+          : s
+      )
+    );
+    setSystemConfig((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      geofenceRadiusMeters: radiusMeters,
+    }));
+    try {
+      localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({ lat, lng, radiusMeters }));
+    } catch (e) {
+      console.warn('Failed to save school gps to localStorage', e);
+    }
+    setCampusGates((prevGates) => {
+      if (prevGates.length === 0) {
+        const newGate: CampusGateGeofence = {
+          id: `gate_${activeSchool.id}_1`,
+          schoolId: activeSchool.id,
+          nameTh: `จุดศูนย์กลาง / ประตูหลัก ${activeSchool.nameTh}`,
+          nameEn: `Main Gate ${activeSchool.nameEn}`,
+          lat,
+          lng,
+          latitude: lat,
+          longitude: lng,
+          radiusMeters,
+          isPrimary: true,
+          isActive: true,
+          type: 'main_gate',
+        };
+        try {
+          localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify([newGate]));
+        } catch { /* ignore */ }
+        return [newGate];
+      }
+      const updated = prevGates.map((g, idx) => {
+        if (g.isPrimary || idx === 0) {
+          return {
+            ...g,
+            lat,
+            lng,
+            latitude: lat,
+            longitude: lng,
+            radiusMeters,
+          };
+        }
+        return g;
+      });
+      try {
+        localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return updated;
+    });
   };
 
   const handleQuickCheckIn = (studentId: string) => {
@@ -849,8 +1008,108 @@ export const App: React.FC = () => {
 
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
 
+  // Responsive: If on mobile screen (or user opted into mobile view), render the clean, uncluttered MobileAppShell
+  if (shouldShowMobileView) {
+    return (
+      <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} font-sans`}>
+        <MobileAppShell
+          currentUser={currentUser}
+          activeSchool={activeSchool}
+          currentRole={currentRole}
+          lang={lang}
+          setLang={setLang}
+          themePalette={themePalette}
+          setThemePalette={setThemePalette}
+          onLogout={handleLogout}
+          onSwitchToDesktopMode={() => setDeviceViewPreference('desktop')}
+          onOpenProfileModal={() => setShowProfileModal(true)}
+          students={schoolStudents}
+          teachers={schoolTeachers}
+          courses={schoolCourses}
+          attendance={schoolAttendance}
+          periodAttendance={schoolPeriodAttendance}
+          leaveRequests={leaveRequests}
+          assignments={schoolAssignments}
+          homeworkSubmissions={homeworkSubmissions}
+          announcements={schoolAnnouncements}
+          questions={schoolQuestions}
+          playerScores={playerScores}
+          rewardItems={rewardItems}
+          campusGates={campusGates}
+          onRecordAttendance={handleRecordAttendance}
+          onRecordPeriodAttendance={handleRecordPeriodAttendance}
+          onAddLeaveRequest={handleAddLeaveRequest}
+          onUpdateLeaveStatus={handleUpdateLeaveStatus}
+          onEarnRewards={handleEarnRewards}
+          onRedeemReward={handleRedeemReward}
+          onAddQuestion={handleAddQuestion}
+          onImportQuestions={handleImportQuestions}
+          onUpdateStudent={handleUpdateStudent}
+        />
+
+        {/* Modals for Mobile View */}
+        {selectedStudentForReport && (
+          <ReportCardModal
+            student={selectedStudentForReport}
+            courses={schoolCourses}
+            grades={schoolGrades}
+            systemConfig={systemConfig}
+            onClose={() => setSelectedStudentForReport(null)}
+          />
+        )}
+
+        {selectedStudentForProfile && (
+          <StudentDetailModal
+            student={selectedStudentForProfile}
+            courses={schoolCourses}
+            grades={schoolGrades}
+            attendance={schoolAttendance}
+            onClose={() => setSelectedStudentForProfile(null)}
+            onOpenReportCard={(stu) => {
+              setSelectedStudentForProfile(null);
+              setSelectedStudentForReport(stu);
+            }}
+            onToggleLineSync={handleToggleLineSync}
+          />
+        )}
+
+        {showProfileModal && currentUser && (
+          <UserProfileModal
+            currentUser={currentUser}
+            portfolioItems={schoolPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+            lang={lang}
+            onSaveProfile={handleUpdateUserProfile}
+            onAddPortfolioItem={handleAddPortfolioItem}
+            onDeletePortfolioItem={handleDeletePortfolioItem}
+            onClose={() => setShowProfileModal(false)}
+          />
+        )}
+
+        {showSchoolSwitcher && (
+          <SchoolSwitcherModal
+            schools={schools}
+            activeSchool={activeSchool}
+            onSelectSchool={(school) => {
+              setActiveSchool(school);
+              setSystemConfig((prev) => ({
+                ...prev,
+                schoolNameEn: school.nameEn,
+                schoolNameTh: school.nameTh,
+              }));
+            }}
+            onClose={() => setShowSchoolSwitcher(false)}
+            lang={lang}
+          />
+        )}
+
+        {/* Offline Status Connectivity Banner */}
+        <OfflineIndicator lang={lang} />
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
+    <div className={`h-dvh max-h-dvh overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
@@ -873,26 +1132,21 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
+        onOpenGpsSettings={() => navigateToAppTab('school_gps')}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
+        onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
       />
       {isDemoMode && (
-        <div role="status" className="mx-4 mt-3 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm text-violet-900">
-          {lang === 'th'
-            ? 'โหมด Demo — ข้อมูลตัวอย่างสำหรับทดลอง การเปลี่ยนแปลงจะไม่บันทึกลงฐานข้อมูลจริง'
-            : 'Demo mode — sample data for exploration. Changes are not saved to the live database.'}
+        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 bg-violet-50 text-[11px] text-violet-900 flex items-center justify-between">
+          <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>
+          <span className="font-bold uppercase text-[9px] px-1.5 py-0.2 bg-violet-200 rounded">DEMO</span>
         </div>
       )}
       {dataSyncError && (
-        <div role="alert" className="mx-4 mt-3 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}
-        </div>
-      )}
-      {!isDemoMode && (
-        <div role="status" className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-          {lang === 'th'
-            ? 'บันทึกถาวรรองรับเฉพาะข้อมูลหลัก 6 หมวด; โมดูลอื่นและรายละเอียดโปรไฟล์เพิ่มเติมยังไม่บันทึกลง Supabase'
-            : 'Only six core data areas are persisted. Other modules and extended profile fields are not stored in Supabase yet.'}
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-md border border-rose-300 bg-rose-50 text-[11px] text-rose-800 flex items-center justify-between">
+          <span>ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}</span>
+          <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2">✕</button>
         </div>
       )}
 
@@ -937,7 +1191,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden min-w-0">
+      <div className="flex-1 flex overflow-hidden min-w-0 min-h-0">
         {/* Desktop Left Sidebar only shown in School ERP mode */}
         {programMode === 'school_erp' && (
           <div className="hidden md:flex shrink-0">
@@ -956,8 +1210,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full max-w-full min-w-0 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8">
-          <div className="max-w-7xl mx-auto w-full min-w-0">
+        <main className="flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-hidden p-2 sm:p-3 lg:p-4">
+          <div className="max-w-7xl mx-auto w-full min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden">
             {currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -980,6 +1234,60 @@ export const App: React.FC = () => {
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
+                {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
+                {currentTab !== 'super_admin_console' && (
+                  <div className="shrink-0 mb-2.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-0.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 shrink-0">
+                      {[
+                        { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
+                        { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
+                        { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'hall_of_fame'] },
+                        { id: 'administration', labelTh: '⚙️ บริหาร & GPS', labelEn: 'Admin & GPS', defaultTab: 'school_gps' as NavTab, tabs: ['school_gps', 'executive_warning', 'school_permissions', 'system_settings'] },
+                        { id: 'finance', labelTh: '💰 การเงิน & ข่าว', labelEn: 'Finance', defaultTab: 'billing' as NavTab, tabs: ['billing', 'announcements'] },
+                      ].map((cat) => {
+                        const isCatActive = cat.tabs.includes(currentTab);
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              if (!isCatActive) {
+                                navigateToAppTab(cat.defaultTab);
+                              }
+                            }}
+                            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                              isCatActive
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900'
+                            }`}
+                          >
+                            <span>{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Direct School GPS Coordinates Button for School Admin */}
+                    {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                      <button
+                        type="button"
+                        onClick={() => navigateToAppTab('school_gps')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          currentTab === 'school_gps'
+                            ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
+                        }`}
+                        title="กำหนดพิกัด GPS ละติจูด ลองจิจูด รัศมี และประตูโรงเรียน"
+                      >
+                        <span className="text-amber-600 dark:text-amber-400">📍</span>
+                        <span className="hidden sm:inline font-bold">
+                          {lang === 'th' ? 'ตั้งค่าพิกัด GPS โรงเรียน' : 'School GPS'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {currentTab === 'super_admin_console' && currentRole === 'super_admin' && (
                   <SuperAdminConsoleView
                     schools={schools}
@@ -998,6 +1306,19 @@ export const App: React.FC = () => {
                   />
                 )}
 
+                {/* Dedicated School GPS & Gate Geofence Settings Tab */}
+                {currentTab === 'school_gps' && (
+                  <div className="h-full flex flex-col min-h-0 overflow-hidden">
+                    <SchoolGpsSettingsCard
+                      activeSchool={activeSchool}
+                      campusGates={campusGates}
+                      lang={lang}
+                      onUpdateCampusGates={handleUpdateCampusGates}
+                      onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
+                    />
+                  </div>
+                )}
+
                 {/* School Admin: Role Permissions Console for this specific school */}
                 {currentTab === 'school_permissions' && (currentRole === 'admin' || currentRole === 'super_admin') && (
                   <SchoolPermissionSettingsView
@@ -1013,6 +1334,9 @@ export const App: React.FC = () => {
                     activeSchool={activeSchool}
                     students={schoolStudents}
                     lang={lang}
+                    campusGates={campusGates}
+                    onUpdateCampusGates={handleUpdateCampusGates}
+                    onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                     onUpdateConfig={setSystemConfig}
                   />
                 )}
@@ -1085,10 +1409,12 @@ export const App: React.FC = () => {
                     rewardItems={rewardItems}
                     currentUser={currentUser}
                     lang={lang}
+                    isMobileMode={shouldShowMobileView}
                     onAddQuestion={handleAddQuestion}
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
+                    onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1105,6 +1431,7 @@ export const App: React.FC = () => {
                     lang={lang}
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                    onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1139,7 +1466,7 @@ export const App: React.FC = () => {
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
                     lang={lang}
                     onEarnRewards={handleEarnRewards}
-                    onBackToGames={() => setCurrentTab('games')}
+                    onBackToGames={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1147,6 +1474,7 @@ export const App: React.FC = () => {
                   <HallOfFame3DView
                     lang={lang}
                     school={activeSchool}
+                    onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1166,6 +1494,7 @@ export const App: React.FC = () => {
                     submissions={schoolHomeworkSubmissions}
                     students={schoolStudents}
                     courses={schoolCourses}
+                    assignments={assignments}
                     onAddSubmission={handleAddHomeworkSubmission}
                     onGradeSubmission={handleGradeHomeworkSubmission}
                     lang={lang}
@@ -1180,8 +1509,12 @@ export const App: React.FC = () => {
                     attendance={schoolAttendance}
                     leaveRequests={leaveRequests}
                     campusGates={campusGates}
+                    activeSchool={activeSchool}
+                    lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
+                    onUpdateCampusGates={handleUpdateCampusGates}
+                    onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                   />
                 )}
 
@@ -1478,6 +1811,19 @@ export const App: React.FC = () => {
               setCurrentTab(mod as NavTab);
             }
           }}
+        />
+      )}
+
+      {/* Direct School GPS & Gate Geofence Settings Modal */}
+      {showGpsModal && (
+        <SchoolGpsModal
+          isOpen={showGpsModal}
+          onClose={() => setShowGpsModal(false)}
+          activeSchool={activeSchool}
+          campusGates={campusGates}
+          lang={lang}
+          onUpdateCampusGates={handleUpdateCampusGates}
+          onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
         />
       )}
       {/* Offline Status Connectivity Banner */}

@@ -29,7 +29,9 @@ import {
   Trophy,
   ShieldAlert,
   Flame,
-  Swords
+  Swords,
+  BarChart3,
+  BellRing
 } from 'lucide-react';
 import { 
   Student, 
@@ -82,6 +84,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'student' | 'teacher'>('all');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'check_in' | 'check_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dashboardTab, setDashboardTab] = useState<'overview' | 'live_attendance' | 'innovative_hub' | 'announcements'>('overview');
   
   // Lightbox Modal for viewing captured selfie photo
   const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<AttendanceRecord | null>(null);
@@ -238,14 +241,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Top Welcome Header - Modern Executive School Command Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-blue-800 via-indigo-800 to-slate-900 text-white p-6 shadow-xl shadow-blue-950/20 flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative overflow-hidden">
+      <div className="shrink-0 rounded-2xl bg-gradient-to-r from-blue-800 via-indigo-800 to-slate-900 text-white p-4 sm:p-5 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative overflow-hidden">
         {/* Subtle decorative glow */}
         <div className="absolute -right-20 -bottom-20 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
         
-        <div className="space-y-2 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold text-white/95 border border-white/20">
+        <div className="space-y-1 relative z-10">
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-white/95 border border-white/20">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>
               {lang === 'th' 
@@ -254,230 +257,264 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
 
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
+          <h1 className="text-lg sm:text-xl font-black tracking-tight text-white leading-tight">
             {lang === 'th'
               ? `ยินดีต้อนรับสู่ ${systemConfig.schoolNameTh}`
               : `Welcome to ${systemConfig.schoolNameEn}`}
           </h1>
 
-          <p className="text-xs sm:text-sm text-white/85 max-w-2xl leading-relaxed">
+          <p className="text-xs text-white/85 max-w-2xl leading-relaxed">
             {lang === 'th'
               ? 'ศูนย์รวมการบริหารงานวิชาการ ทะเบียนนักเรียน คัดกรอง SDQ ตารางสอน และระบบเช็กชื่อภาพถ่าย GPS'
               : 'Unified executive portal for academics, registration, SDQ screenings, timetables, and GPS attendance.'}
           </p>
         </div>
 
-        {/* Quick Action Shortcuts */}
-        <div className="flex flex-wrap items-center gap-2.5 relative z-10">
+        {/* Quick Action in Header */}
+        <div className="flex flex-wrap items-center gap-2 relative z-10 shrink-0">
           <button
             type="button"
             onClick={() => onNavigate('mobile_checkin')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
           >
             <Camera className="w-4 h-4 text-slate-950" />
             <span>{lang === 'th' ? 'ถ่ายรูปเช็กชื่อมือถือ' : 'Mobile Selfie Check-in'}</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('study_streak')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white text-xs font-black shadow-md shadow-orange-500/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <Flame className="w-4 h-4 text-yellow-300" />
-            <span>🔥 {lang === 'th' ? 'สตรีค & แลกสิทธิ์' : 'Streak & Perks'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('boss_raid')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-md shadow-red-600/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <Swords className="w-4 h-4 text-white" />
-            <span>⚔️ {lang === 'th' ? 'เรดบอสห้องเรียน' : 'Co-op Boss Raid'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('socratic_tutor')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black shadow-md shadow-teal-500/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <BrainCircuit className="w-4 h-4 text-slate-950" />
-            <span>💡 {lang === 'th' ? 'พี่รหัส AI ชวนคิด' : 'Socratic Tutor'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('realworld_quests')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <Camera className="w-4 h-4 text-slate-950" />
-            <span>📸 {lang === 'th' ? 'เควสต์ชีวิตจริง AI' : 'Snap Quests'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('ai_diagnostic')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-black shadow-md shadow-cyan-400/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <BrainCircuit className="w-4 h-4 text-slate-950" />
-            <span>🧠 {lang === 'th' ? 'AI วินิจฉัย & ซ่อมเสริม' : 'AI Diagnostic 8D'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('hall_of_fame')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <Trophy className="w-4 h-4 text-slate-950" />
-            <span>🏆 {lang === 'th' ? 'หอเกียรติยศ 3 มิติ' : '3D Hall of Fame'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('executive_warning')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-black shadow-md shadow-rose-500/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <ShieldAlert className="w-4 h-4 text-white" />
-            <span>🚨 {lang === 'th' ? 'พยากรณ์ความเสี่ยง มส./ร.' : 'Early Warning'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('subject_labs')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
-          >
-            <FlaskConical className="w-4 h-4 text-white" />
-            <span>🧪 {lang === 'th' ? 'แล็บเคมีระเบิด' : 'Labs & Chemistry'}</span>
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => onNavigate('attendance')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>{lang === 'th' ? 'สแกนบัตรประตู' : 'Gate Scanner'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('timetable')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>{lang === 'th' ? 'ตารางสอน' : 'Timetable'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('behavior_sdq')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
-          >
-            <Award className="w-4 h-4" />
-            <span>{lang === 'th' ? 'พฤติกรรม & SDQ' : 'SDQ & Demerit'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('infirmary')}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold backdrop-blur-sm transition border border-white/20 cursor-pointer"
-          >
-            <HeartPulse className="w-4 h-4" />
-            <span>{lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary'}</span>
-          </button>
         </div>
       </div>
 
-      {/* 4 Balanced High-level Overview Cards with High Contrast */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Students */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students Enrolled'}
-            </p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              {totalStudents} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
-            </h3>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-bold">
-              {activeStudents} {lang === 'th' ? 'คน สถานะปกติในระบบ' : 'active accounts'}
-            </p>
-          </div>
-          <div className="h-11 w-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5" />
-          </div>
-        </div>
+      {/* Dashboard Subtabs Navigation Bar */}
+      <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800 no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setDashboardTab('overview')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+            dashboardTab === 'overview'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>{lang === 'th' ? '1. ภาพรวมบริหาร & สถิติ' : 'Executive Overview'}</span>
+        </button>
 
-        {/* Selected Date Attendance Rate */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              {lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา' : 'On-Time Attendance Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
-            </p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              {onTimePercent}%
-            </h3>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
-              {lang === 'th' ? `ตรงเวลา ${presentCount} • สาย ${lateCount}` : `On-time: ${presentCount} • Late: ${lateCount}`}
-            </p>
-          </div>
-          <div className="h-11 w-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setDashboardTab('live_attendance')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+            dashboardTab === 'live_attendance'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <Camera className="w-4 h-4" />
+          <span>{lang === 'th' ? '2. บันทึกสแกน & ภาพถ่าย GPS สด' : 'Live Attendance & GPS'}</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 text-[10px] font-mono">
+            {displayRecords.length}
+          </span>
+        </button>
 
-        {/* Tuition Collection */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              {lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
-            </p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              {collectionRate}%
-            </h3>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
-              ฿{totalCollected.toLocaleString()} {lang === 'th' ? 'จาก' : 'of'} ฿{totalInvoiced.toLocaleString()}
-            </p>
-          </div>
-          <div className="h-11 w-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
-            <Receipt className="w-5 h-5" />
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setDashboardTab('innovative_hub')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+            dashboardTab === 'innovative_hub'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>{lang === 'th' ? '3. นวัตกรรมห้องเรียน & เควสต์' : 'Innovative Hub'}</span>
+        </button>
 
-        {/* LINE Guardian Sync */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
-            </p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              {linePercent}%
-            </h3>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
-              {lineConnectedCount} {lang === 'th' ? 'จาก' : 'of'} {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
-            </p>
-          </div>
-          <div className="h-11 w-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setDashboardTab('announcements')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+            dashboardTab === 'announcements'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <BellRing className="w-4 h-4" />
+          <span>{lang === 'th' ? '4. ข่าวประกาศ & นัดหมาย' : 'Announcements'}</span>
+        </button>
       </div>
 
-      {/* Main Section: Selfie Check-in/Out Records, Detailed Graphs & Historical Viewer */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        {/* Section Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/70 dark:bg-slate-850">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">
-                <Camera className="w-5 h-5" />
+      {/* Main Tab Panels Container */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+        {/* TAB 1: EXECUTIVE OVERVIEW */}
+        {dashboardTab === 'overview' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* 4 Balanced High-level Overview Cards with High Contrast */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Students */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students Enrolled'}
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                    {totalStudents} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
+                  </h3>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-bold">
+                    {activeStudents} {lang === 'th' ? 'คน สถานะปกติในระบบ' : 'active accounts'}
+                  </p>
+                </div>
+                <div className="h-11 w-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  {lang === 'th'
-                    ? 'ระบบบันทึกเวลาเข้า-ออกโรงเรียน & หลักฐานภาพถ่ายใบหน้า GPS'
-                    : 'School Gate Attendance & GPS Photo Audit Records'}
-                </h2>
+
+              {/* Selected Date Attendance Rate */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา' : 'On-Time Attendance Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                    {onTimePercent}%
+                  </h3>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                    {lang === 'th' ? `ตรงเวลา ${presentCount} • สาย ${lateCount}` : `On-time: ${presentCount} • Late: ${lateCount}`}
+                  </p>
+                </div>
+                <div className="h-11 w-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Tuition Collection */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                    {collectionRate}%
+                  </h3>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                    ฿{totalCollected.toLocaleString()} {lang === 'th' ? 'จาก' : 'of'} ฿{totalInvoiced.toLocaleString()}
+                  </p>
+                </div>
+                <div className="h-11 w-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                  <Receipt className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* LINE Guardian Sync */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                    {linePercent}%
+                  </h3>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                    {lineConnectedCount} {lang === 'th' ? 'จาก' : 'of'} {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
+                  </p>
+                </div>
+                <div className="h-11 w-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Navigation Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {[
+                { name: lang === 'th' ? 'เช็กชื่อประตู' : 'Attendance', tab: 'attendance', icon: QrCode, color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40' },
+                { name: lang === 'th' ? 'ทะเบียนนักเรียน' : 'Students', tab: 'students', icon: Users, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40' },
+                { name: lang === 'th' ? 'สมุดเกรด ปพ.' : 'Gradebook', tab: 'gradebook', icon: Award, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40' },
+                { name: lang === 'th' ? 'ตารางสอน' : 'Timetable', tab: 'timetable', icon: Calendar, color: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40' },
+                { name: lang === 'th' ? 'พฤติกรรม & SDQ' : 'Behavior SDQ', tab: 'behavior_sdq', icon: FileCheck2, color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40' },
+                { name: lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary', tab: 'infirmary', icon: HeartPulse, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40' },
+              ].map((item) => (
+                <button
+                  key={item.tab}
+                  type="button"
+                  onClick={() => onNavigate(item.tab as any)}
+                  className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 shadow-xs flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer group hover:scale-[1.02]"
+                >
+                  <div className={`p-2.5 rounded-xl ${item.color} transition group-hover:scale-110`}>
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Realtime Attendance Feed Card */}
+            <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนล่าสุด' : 'Recent Gate & Class Check-in Feed'}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('live_attendance')}
+                  className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  {lang === 'th' ? 'ดูหลักฐานภาพถ่ายทั้งหมด' : 'View All Photos'} <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayRecords.slice(0, 5).map((rec) => (
+                  <div key={rec.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                        alt={rec.userName}
+                        className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                      />
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>{rec.userName}</span>
+                          <span className="text-slate-400 font-mono text-[10px]">({rec.studentId})</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {rec.userDepartmentOrRoom || rec.userRole} • เวลา {rec.time} น. • {rec.location?.geofenceZoneName || 'ประตูโรงเรียน'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      rec.status === 'present'
+                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                    }`}>
+                      {rec.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: LIVE ATTENDANCE & GPS CAMERA AUDIT */}
+        {dashboardTab === 'live_attendance' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Main Section: Selfie Check-in/Out Records, Detailed Graphs & Historical Viewer */}
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+              {/* Section Header */}
+              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/70 dark:bg-slate-850">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                        {lang === 'th'
+                          ? 'ระบบบันทึกเวลาเข้า-ออกโรงเรียน & หลักฐานภาพถ่ายใบหน้า GPS'
+                          : 'School Gate Attendance & GPS Photo Audit Records'}
+                      </h2>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                   {lang === 'th'
                     ? 'บันทึกภาพถ่ายยืนยันตัวตนพร้อมพิกัด GPS ของนักเรียนและครู สามารถเลือกดูย้อนหลังตามวันที่'
@@ -895,163 +932,334 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Main Grid: Gate Attendance & Academic Honor Roll */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Realtime Attendance Log */}
-        <div className="lg:col-span-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนวันนี้' : 'Live Gate & Class Check-in Feed'}
-              </h2>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
-                {lang === 'th' ? 'สด' : 'Live'}
+            {/* Live Gate Check-in Feed inside Tab 2 */}
+            <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนวันนี้' : 'Live Gate & Class Check-in Feed'}
+                  </h2>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                    {lang === 'th' ? 'สด' : 'Live'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('attendance')}
+                  className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  {lang === 'th' ? 'ดูบันทึกทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayRecords.slice(0, 8).map((rec) => (
+                  <div
+                    key={rec.id}
+                    onClick={() => setSelectedPhotoRecord(rec)}
+                    className="py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/60 rounded-lg px-2 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+                        alt={rec.userName}
+                        className="w-9 h-9 rounded-full object-cover border border-slate-300 dark:border-slate-700"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {rec.userName}
+                          </span>
+                          <span className="text-slate-500 font-mono text-[11px]">
+                            ({rec.studentId})
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                          {rec.userDepartmentOrRoom || rec.userRole} • {lang === 'th' ? `เวลา ${rec.time} น.` : rec.time} • {rec.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      {rec.status === 'present' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-200 dark:border-amber-800">
+                          <Clock className="w-3 h-3" />
+                          <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: INNOVATIVE CLASSROOM HUB */}
+        {dashboardTab === 'innovative_hub' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                  <h2 className="text-base font-bold">
+                    {lang === 'th' ? 'ศูนย์รวมนวัตกรรมการเรียนรู้ดิจิทัล & เกมมิฟิเคชัน' : 'Digital Learning & Gamification Innovation Hub'}
+                  </h2>
+                </div>
+                <p className="text-xs text-white/80 max-w-2xl">
+                  {lang === 'th'
+                    ? 'เข้าสู่ห้องเรียนจำลอง 3D, สนามประลองความรู้, ติวเตอร์ AI อัจฉริยะ, และระบบทำนายความเสี่ยงนักเรียน'
+                    : 'Access 3D classrooms, knowledge battles, AI intelligent tutors, and predictive early warning analytics.'}
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-bold border border-white/20 self-start sm:self-auto">
+                {lang === 'th' ? '9 ระบบนวัตกรรม' : '9 Smart Innovations'}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('attendance')}
-              className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
-            >
-              {lang === 'th' ? 'ดูบันทึกทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {displayRecords.slice(0, 5).map((rec) => {
-              return (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+              {[
+                {
+                  id: 'edu_battle_royale_3d',
+                  title: lang === 'th' ? 'EduBattle Royale 3D' : 'EduBattle Royale 3D',
+                  desc: lang === 'th' ? 'สมรภูมิประลองปัญญา 3D แข่งตอบคำถามชิงตำแหน่งแชมป์' : '3D interactive academic quiz battle arena with live avatars',
+                  icon: Swords,
+                  color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/60',
+                  badge: '3D Realtime',
+                  badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300',
+                  actionLabel: lang === 'th' ? 'เข้าสู่สนาม 3D' : 'Enter 3D Arena',
+                },
+                {
+                  id: 'socratic_tutor',
+                  title: lang === 'th' ? 'Socratic AI Tutor' : 'Socratic AI Tutor',
+                  desc: lang === 'th' ? 'ผู้ช่วยติวอัจฉริยะที่ใช้หลักตั้งคำถามกระตุ้นกระบวนการคิด' : 'Inquiry-based AI learning mentor guiding critical thinking',
+                  icon: BrainCircuit,
+                  color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60',
+                  badge: 'AI Powered',
+                  badgeColor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-300',
+                  actionLabel: lang === 'th' ? 'เริ่มติวกับ AI' : 'Start Tutoring',
+                },
+                {
+                  id: 'study_streak_pass',
+                  title: lang === 'th' ? 'Study Streak & Quest Pass' : 'Study Streak & Quest Pass',
+                  desc: lang === 'th' ? 'สะสมแต้มการเข้าเรียนต่อเนื่อง ปลดล็อกสกินการ์ดและเหรียญรางวัล' : 'Daily streak challenges, avatar card borders, and rewards',
+                  icon: Flame,
+                  color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60',
+                  badge: 'Gamified',
+                  badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300',
+                  actionLabel: lang === 'th' ? 'ดูเควสต์ประจำวัน' : 'View Quests',
+                },
+                {
+                  id: 'coop_boss_raid',
+                  title: lang === 'th' ? 'Co-op Boss Raid' : 'Co-op Boss Raid',
+                  desc: lang === 'th' ? 'รวมพลังตอบโจทย์ความยากระดับบอส ประสานงานพิชิตด่านร่วมกัน' : 'Collaborative classroom quiz raid with team boss battles',
+                  icon: ShieldAlert,
+                  color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60',
+                  badge: 'Multiplayer',
+                  badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300',
+                  actionLabel: lang === 'th' ? 'เข้าร่วมเรดบอส' : 'Join Boss Raid',
+                },
+                {
+                  id: 'real_world_snap_quest',
+                  title: lang === 'th' ? 'Real-World Snap Quest' : 'Real-World Snap Quest',
+                  desc: lang === 'th' ? 'ถ่ายภาพปรากฏการณ์รอบตัวส่งตรวจด้วยการวิเคราะห์เชิงวิทยาศาสตร์' : 'Camera quest assignments linking real life to coursework',
+                  icon: Camera,
+                  color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60',
+                  badge: 'Hands-on',
+                  badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+                  actionLabel: lang === 'th' ? 'ส่งเควสต์ภาพถ่าย' : 'Snap Quests',
+                },
+                {
+                  id: 'subject_lab_simulation',
+                  title: lang === 'th' ? 'Subject Lab Simulation' : 'Subject Lab Simulation',
+                  desc: lang === 'th' ? 'ห้องทดลองวิทยาศาสตร์และฟิสิกส์เสมือนจริง ทดลองผสมสารได้อย่างปลอดภัย' : 'Interactive STEM lab simulator with chemistry & optics modules',
+                  icon: FlaskConical,
+                  color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60',
+                  badge: 'Interactive Lab',
+                  badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300',
+                  actionLabel: lang === 'th' ? 'เปิดห้องแล็บ' : 'Launch Lab',
+                },
+                {
+                  id: 'ai_diagnostic_learning',
+                  title: lang === 'th' ? 'AI Diagnostic Learning' : 'AI Diagnostic Learning',
+                  desc: lang === 'th' ? 'ระบบตรวจวินิจฉัยจุดอ่อนรายบุคคล แนะนำเนื้อหาเสริมเฉพาะจุดอย่างแม่นยำ' : 'Personalized diagnostic learning paths detecting knowledge gaps',
+                  icon: BarChart3,
+                  color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
+                  badge: 'Adaptive',
+                  badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
+                  actionLabel: lang === 'th' ? 'ดูผลวินิจฉัย' : 'View Diagnostics',
+                },
+                {
+                  id: 'hall_of_fame_3d',
+                  title: lang === 'th' ? '3D Hall of Fame' : '3D Hall of Fame',
+                  desc: lang === 'th' ? 'หอเกียรติยศ 3 มิติ จัดแสดงผลงานยอดเยี่ยมและถ้วยรางวัลโรงเรียน' : 'Immersive 3D gallery honoring top academic and sports achievers',
+                  icon: Trophy,
+                  color: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/60',
+                  badge: '3D Gallery',
+                  badgeColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300',
+                  actionLabel: lang === 'th' ? 'ชมหอเกียรติยศ' : 'Visit Hall of Fame',
+                },
+                {
+                  id: 'executive_early_warning',
+                  title: lang === 'th' ? 'Executive Early Warning' : 'Executive Early Warning',
+                  desc: lang === 'th' ? 'ระบบเตือนภัยล่วงหน้าตรวจจับนักเรียนเสี่ยงตกหล่นหรือขาดเรียนบ่อย' : 'Early warning intelligence identifying attendance & academic drop risks',
+                  icon: ShieldAlert,
+                  color: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60',
+                  badge: 'Executive',
+                  badgeColor: 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300',
+                  actionLabel: lang === 'th' ? 'ตรวจวิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
+                },
+              ].map((item) => (
                 <div
-                  key={rec.id}
-                  onClick={() => setSelectedPhotoRecord(rec)}
-                  className="py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/60 rounded-lg px-2 transition"
+                  key={item.id}
+                  className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition flex flex-col justify-between group"
                 >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
-                      alt={rec.userName}
-                      className="w-9 h-9 rounded-full object-cover border border-slate-300 dark:border-slate-700"
-                    />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className={`p-2.5 rounded-xl border ${item.color}`}>
+                        <item.icon className="w-5 h-5" />
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor}`}>
+                        {item.badge}
+                      </span>
+                    </div>
+
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {rec.userName}
-                        </span>
-                        <span className="text-slate-500 font-mono text-[11px]">
-                          ({rec.studentId})
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500">
+                      {lang === 'th' ? 'พร้อมใช้งาน' : 'Ready'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(item.id as any)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-600 text-blue-700 dark:text-blue-300 hover:text-white text-xs font-bold transition cursor-pointer"
+                    >
+                      <span>{item.actionLabel}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: OFFICIAL ANNOUNCEMENTS & HONOR ROLL */}
+        {dashboardTab === 'announcements' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Announcements Section (2 cols) */}
+              <div className="lg:col-span-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BellRing className="w-4 h-4 text-blue-600" />
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                      {lang === 'th' ? 'ข่าวสารและประกาศสำคัญของโรงเรียน' : 'Official School Announcements'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('announcements')}
+                    className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    {lang === 'th' ? 'ดูประกาศทั้งหมด' : 'All Announcements'} <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {announcements.map((item) => (
+                    <div key={item.id} className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 dark:text-white">{item.title}</span>
+                          <span className="text-[10px] text-slate-500">{item.publishedAt}</span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-300 line-clamp-3 text-[11px] leading-relaxed">
+                          {item.content}
+                        </p>
+                      </div>
+                      <div className="text-[10px] text-slate-500 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                        <span>{lang === 'th' ? `โดย: ${item.author}` : `By: ${item.author}`}</span>
+                        <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                          {item.authorRole}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                        {rec.userDepartmentOrRoom || rec.userRole} • {lang === 'th' ? `เวลา ${rec.time} น.` : rec.time} • {rec.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Honor Students Card (1 col) */}
+              <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-amber-600" />
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                      {lang === 'th' ? 'นักเรียนผลการเรียนดีเด่น' : 'Honor Students Roll'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('gradebook')}
+                    className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    {lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'} <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {topStudents.map((st, idx) => (
+                    <div
+                      key={st.id}
+                      className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-5 text-center font-bold text-slate-400 text-xs">
+                          #{idx + 1}
+                        </div>
+                        <img
+                          src={st.avatarUrl}
+                          alt={st.firstNameEn}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700"
+                        />
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            {lang === 'th' ? `${st.firstNameTh} ${st.lastNameTh}` : `${st.firstNameEn} ${st.lastNameEn}`}
+                          </div>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                            {lang === 'th' ? `ชั้น ${st.gradeLevel} ห้อง ${st.room}` : `Grade ${st.gradeLevel} / ${st.room}`}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="font-bold text-blue-700 dark:text-blue-400 font-mono text-sm">
+                          {st.gpa.toFixed(2)}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">GPA</div>
                       </div>
                     </div>
-                  </div>
-
-                  <div>
-                    {rec.status === 'present' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] border border-emerald-200 dark:border-emerald-800">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-200 dark:border-amber-800">
-                        <Clock className="w-3 h-3" />
-                        <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
-                      </span>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Honor Students Card */}
-        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-600" />
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                {lang === 'th' ? 'นักเรียนผลการเรียนดีเด่น' : 'Honor Students Roll'}
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('gradebook')}
-              className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
-            >
-              {lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'} <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {topStudents.map((st, idx) => (
-              <div
-                key={st.id}
-                className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 text-center font-bold text-slate-400 text-xs">
-                    #{idx + 1}
-                  </div>
-                  <img
-                    src={st.avatarUrl}
-                    alt={st.firstNameEn}
-                    className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700"
-                  />
-                  <div>
-                    <div className="font-bold text-slate-900 dark:text-white">
-                      {lang === 'th' ? `${st.firstNameTh} ${st.lastNameTh}` : `${st.firstNameEn} ${st.lastNameEn}`}
-                    </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                      {lang === 'th' ? `ชั้น ${st.gradeLevel} ห้อง ${st.room}` : `Grade ${st.gradeLevel} / ${st.room}`}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="font-bold text-blue-700 dark:text-blue-400 font-mono text-sm">
-                    {st.gpa.toFixed(2)}
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-medium">GPA</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Announcements */}
-      <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <span>{lang === 'th' ? 'ข่าวสารและประกาศสำคัญของโรงเรียน' : 'Official Announcements'}</span>
-          </h2>
-          <button
-            type="button"
-            onClick={() => onNavigate('announcements')}
-            className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
-          >
-            {lang === 'th' ? 'ดูประกาศทั้งหมด' : 'All Announcements'} <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          {announcements.slice(0, 2).map((item) => (
-            <div key={item.id} className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 dark:text-white">{item.title}</span>
-                <span className="text-[10px] text-slate-500">{item.publishedAt}</span>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 line-clamp-2 text-[11px] leading-relaxed">
-                {item.content}
-              </p>
-              <div className="text-[10px] text-slate-500 pt-1">
-                {lang === 'th' ? `ประกาศโดย: ${item.author} (${item.authorRole})` : `Published by: ${item.author} (${item.authorRole})`}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Lightbox Modal: Captured Selfie Photo & Metadata */}

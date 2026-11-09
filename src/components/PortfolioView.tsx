@@ -86,57 +86,57 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white shadow-xl border border-white/10">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Digital Portfolio Platform • มาตรฐาน TCAS รอบที่ 1 & ว.PA ครู</span>
+      <div className="shrink-0 relative overflow-hidden rounded-2xl p-3.5 sm:p-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white shadow-md border border-white/10">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Digital Portfolio Platform • มาตรฐาน TCAS รอบที่ 1 &amp; ว.PA ครู</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black">
+            <h1 className="text-lg sm:text-xl font-black">
               {lang === 'th' ? 'แฟ้มสะสมผลงานดิจิทัล (Digital Portfolio)' : 'Digital Portfolio Showcase'}
             </h1>
-            <p className="text-white/80 text-xs sm:text-sm max-w-2xl">
+            <p className="text-white/80 text-xs max-w-2xl leading-relaxed">
               {lang === 'th'
                 ? 'รวบรวมชิ้นงาน เกียรติบัตร โครงงาน และเหรียญรางวัลจากเกม EduVerse เพื่อใช้ยื่นศึกษาต่อระดับมหาวิทยาลัย (TCAS 1 Portfolio) และแฟ้ม ว.PA พัฒนาวิทยฐานะของครูอาจารย์'
                 : 'Centralized repository of academic projects, certificates, and gamification credentials for TCAS University applications and teacher performance evaluation.'}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {onOpenProfile && (
               <button
                 onClick={onOpenProfile}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md hover:shadow-blue-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
-                <User className="w-4 h-4" />
-                <span>{lang === 'th' ? 'โปรไฟล์ & พรีวิวเล่มของฉัน' : 'My Profile & Book'}</span>
+                <User className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'โปรไฟล์ของฉัน' : 'My Profile'}</span>
               </button>
             )}
 
             <button
               onClick={handlePrintPortfolio}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 backdrop-blur-md transition-all cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
-              <span>{lang === 'th' ? 'พิมพ์ / ส่งออก PDF' : 'Print / Export PDF'}</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'พิมพ์ PDF' : 'Print PDF'}</span>
             </button>
 
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white text-xs font-extrabold shadow-lg shadow-rose-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              <span>{lang === 'th' ? 'เพิ่มผลงานใหม่' : 'Add New Work'}</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'เพิ่มผลงานใหม่' : 'Add Work'}</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Target Selector: Student TCAS vs Teacher ว.PA */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -217,6 +217,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         </div>
       </div>
 
+      {/* Scrollable Portfolio Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
       {/* Role Profile Header Preview Card */}
       {activeRoleTab === 'student' ? (
         <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -376,6 +378,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {/* Add New Portfolio Modal */}

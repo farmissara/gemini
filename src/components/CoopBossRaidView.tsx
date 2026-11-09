@@ -17,7 +17,9 @@ import {
   Play,
   Share2,
   Trophy,
-  ArrowRight
+  ArrowRight,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { 
   BossRaidConfig, 
@@ -35,12 +37,14 @@ interface CoopBossRaidViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  onExit?: () => void;
 }
 
 export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   lang = 'th',
   currentRole = 'teacher',
-  currentUserName = 'อาจารย์ประจำวิชา'
+  currentUserName = 'อาจารย์ประจำวิชา',
+  onExit
 }) => {
   const [bossConfig, setBossConfig] = useState<BossRaidConfig>(INITIAL_BOSS_RAID_CONFIG);
   const [parties, setParties] = useState<RaidParty[]>(INITIAL_RAID_PARTIES);
@@ -49,6 +53,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const [lastDamage, setLastDamage] = useState<number | null>(null);
   const [activeHintToast, setActiveHintToast] = useState<string | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState<boolean>(false);
+  const [bossZoom, setBossZoom] = useState<number>(1.0);
 
   // Teacher Topic Switcher state
   const [isTeacherPanelOpen, setIsTeacherPanelOpen] = useState<boolean>(false);
@@ -141,42 +146,50 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const hpPercent = Math.round((bossConfig.bossCurrentHp / bossConfig.bossMaxHp) * 100);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Toast Alert */}
       {activeHintToast && (
-        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-slate-900 text-white shadow-xl border border-indigo-500/50 flex items-center gap-3">
-          <Sparkles className="w-5 h-5 text-yellow-400 shrink-0" />
+        <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-indigo-500/50 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-yellow-400 shrink-0" />
           <p className="text-xs font-semibold">{activeHintToast}</p>
         </div>
       )}
 
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-red-700/30 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-red-500/10 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-400/30 text-red-200 text-xs font-semibold">
-              <Swords className="w-4 h-4 text-red-400" />
+      <div className="shrink-0 bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-3.5 sm:p-4 shadow-md border border-red-700/30 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1 max-w-xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 border border-red-400/30 text-red-200 text-[11px] font-semibold">
+              <Swords className="w-3.5 h-3.5 text-red-400" />
               <span>{lang === 'th' ? 'โหมดห้องเรียนร่วมมือสู้บอส (Co-op Boss Raid & Peer Tutoring)' : 'Cooperative Classroom Boss Raid'}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
               <span>{bossConfig.bossNameTh}</span>
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-300 text-xs leading-relaxed">
               {lang === 'th' 
-                ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน หากเพื่อนในทีมยังตอบไม่ได้ สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที เกิดพลังคอมโบเพิ่มดาเมจทั้งห้อง!'
+                ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที'
                 : 'Defeat lesson bosses together through collaborative problem solving and real-time peer tutoring.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition cursor-pointer active:scale-95"
+              >
+                <span>❌ ออกจากเกม</span>
+              </button>
+            )}
+
             {/* Quick Action Button for Teacher */}
             {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
               <button
                 type="button"
                 onClick={() => setIsTeacherPanelOpen(!isTeacherPanelOpen)}
-                className="px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition cursor-pointer"
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 <span>{lang === 'th' ? 'ควบคุมบอส (ครู)' : 'Teacher Controls'}</span>
@@ -186,10 +199,10 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             <button
               type="button"
               onClick={handleRestartBoss}
-              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
               title="Restart Raid"
             >
-              <RotateCcw className="w-5 h-5" />
+              <RotateCcw className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -255,66 +268,98 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       )}
 
       {/* Main Raid Stage: Left Boss Visual & Health Bar, Right Co-op Question & Party Matrix */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
         {/* Left Column: Boss Arena Visual */}
-        <div className="lg:col-span-5 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-6 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
-          {/* Boss HP Bar */}
+        <div className="lg:col-span-5 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3.5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
+          {/* Boss HP Bar & Zoom Control */}
           <div>
             <div className="flex items-center justify-between text-xs font-bold mb-2">
               <span className="flex items-center gap-1.5 text-red-400">
                 <Heart className="w-4 h-4 fill-current" />
                 <span>BOSS HEALTH</span>
               </span>
-              <span className="text-slate-300">
-                {bossConfig.bossCurrentHp} / {bossConfig.bossMaxHp} HP ({hpPercent}%)
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Boss Zoom Controls */}
+                <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-lg px-1.5 py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setBossZoom(prev => Math.max(0.5, Number((prev - 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
+                    title="ซูมออกบอส (-)"
+                  >
+                    <ZoomOut className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBossZoom(1.0)}
+                    className="text-[10px] font-mono text-amber-300 font-bold px-1 hover:underline cursor-pointer"
+                    title="รีเซ็ตซูม 1.0x"
+                  >
+                    {bossZoom}x
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBossZoom(prev => Math.min(1.8, Number((prev + 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
+                    title="ซูมเข้าบอส (+)"
+                  >
+                    <ZoomIn className="w-3 h-3" />
+                  </button>
+                </div>
+                <span className="text-slate-300 font-mono text-[11px]">
+                  {bossConfig.bossCurrentHp}/{bossConfig.bossMaxHp} ({hpPercent}%)
+                </span>
+              </div>
             </div>
 
-            <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+            <div className="w-full h-3.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
               <div 
-                className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 rounded-full transition-all duration-300"
                 style={{ width: `${hpPercent}%` }}
               />
             </div>
 
-            {/* Boss Character Visual Card */}
-            <div className={`mt-8 py-10 flex flex-col items-center justify-center transition-transform ${attackAnimation ? 'scale-95 animate-shake' : ''}`}>
+            {/* Boss Character Visual Card (Scalable with Zoom) */}
+            <div 
+              style={{ transform: `scale(${bossZoom})`, transformOrigin: 'center' }}
+              className={`my-3 py-3 flex flex-col items-center justify-center transition-transform duration-200 ${attackAnimation ? 'scale-95 animate-shake' : ''}`}
+            >
               <div className="relative">
                 {/* Boss Avatar / Crest */}
-                <div className="w-36 h-36 rounded-3xl bg-gradient-to-br from-red-600 via-purple-700 to-slate-900 border-4 border-red-500/80 shadow-2xl shadow-red-500/30 flex items-center justify-center text-white relative overflow-hidden">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-red-600 via-purple-700 to-slate-900 border-4 border-red-500/80 shadow-2xl shadow-red-500/30 flex items-center justify-center text-white relative overflow-hidden">
                   <div className="absolute inset-0 bg-radial from-red-500/20 to-transparent animate-pulse" />
-                  <Swords className="w-16 h-16 text-yellow-300 drop-shadow-md" />
+                  <Swords className="w-12 h-12 text-yellow-300 drop-shadow-md" />
                 </div>
 
                 {/* Floating Damage Number */}
                 {lastDamage !== null && (
-                  <div className="absolute -top-4 -right-4 px-3 py-1 rounded-full bg-red-600 text-white font-black text-sm shadow-lg animate-bounce">
+                  <div className="absolute -top-3 -right-3 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-black text-xs shadow-lg animate-bounce">
                     -{lastDamage} HP!
                   </div>
                 )}
               </div>
 
-              <h3 className="text-lg font-black text-white mt-4 text-center">
+              <h3 className="text-base font-black text-white mt-2.5 text-center">
                 {bossConfig.bossNameTh}
               </h3>
-              <p className="text-xs text-red-300 mt-0.5 font-medium">
+              <p className="text-[11px] text-red-300 mt-0.5 font-medium">
                 {bossConfig.bossTitleTh}
               </p>
             </div>
           </div>
 
           {/* Bottom Raid Info */}
-          <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>{lang === 'th' ? 'หัวข้อ:' : 'Topic:'} {bossConfig.topicTh}</span>
-            <span className="text-amber-400 font-bold flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5" />
-              {lang === 'th' ? 'คอมโบห้องเรียน x2.0' : 'Room Combo x2.0'}
+          <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span className="truncate max-w-[150px]">{bossConfig.topicTh}</span>
+            <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
+              <Flame className="w-3 h-3" />
+              <span>คอมโบ x2.0</span>
             </span>
           </div>
         </div>
 
         {/* Right Column: Active Attack Question & Co-op Party Matrix */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 flex flex-col min-h-0 overflow-y-auto space-y-3 pr-1">
           {/* Question Card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">

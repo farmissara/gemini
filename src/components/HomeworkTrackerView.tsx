@@ -22,13 +22,16 @@ import {
   Student, 
   Course, 
   AppLanguage, 
-  UserRole 
+  UserRole,
+  Assignment
 } from '../types';
+import { INITIAL_ASSIGNMENTS } from '../data/mockData';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
   students: Student[];
   courses: Course[];
+  assignments?: Assignment[];
   onAddSubmission: (sub: HomeworkSubmission) => void;
   onGradeSubmission: (id: string, score: number, feedback: string) => void;
   lang: AppLanguage;
@@ -39,6 +42,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   submissions,
   students,
   courses,
+  assignments = INITIAL_ASSIGNMENTS,
   onAddSubmission,
   onGradeSubmission,
   lang,
@@ -47,6 +51,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'late' | 'pending' | 'graded'>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
+  const [hwTab, setHwTab] = useState<'submissions' | 'assignments' | 'pending'>('submissions');
   
   // Modals
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -127,17 +132,17 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <span className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <span className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
             <FileCheck2 className="w-5 h-5" />
           </span>
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               {lang === 'th' ? 'ระบบการบ้านและติดตามการส่งงานออนไลน์' : 'Homework & Assignment Submission Tracker'}
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 Online LMS Hub
               </span>
             </h1>
@@ -149,199 +154,272 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setShowSubmitModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-md shadow-amber-600/30 transition self-start md:self-auto"
-        >
-          <UploadCloud className="w-4 h-4" />
-          <span>{lang === 'th' ? 'ส่งการบ้านใหม่' : 'Submit Assignment'}</span>
-        </button>
-      </div>
-
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'การบ้านทั้งหมด' : 'Total Tasks'}</span>
-            <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
-              <BookOpen className="w-4 h-4" />
-            </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Subtabs Navigation */}
+          <div className="flex p-1 bg-slate-800 rounded-xl border border-slate-700">
+            <button
+              onClick={() => setHwTab('submissions')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                hwTab === 'submissions' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1. รายการส่งงาน ({submissions.length})
+            </button>
+            <button
+              onClick={() => setHwTab('assignments')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                hwTab === 'assignments' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2. การบ้านที่สั่ง ({assignments.length})
+            </button>
+            <button
+              onClick={() => setHwTab('pending')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                hwTab === 'pending' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3. งานค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
+            </button>
           </div>
-          <p className="text-2xl font-bold text-white mt-2">
-            {submissions.length} <span className="text-xs font-normal text-slate-400">ชิ้นงาน</span>
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">ครอบคลุมทุกกลุ่มสาระ</p>
-        </div>
 
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'ส่งแล้ว / ตรวจแล้ว' : 'Submitted & Graded'}</span>
-            <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-emerald-400 mt-2">
-            {submissions.filter((s) => s.status === 'submitted' || s.status === 'graded').length} <span className="text-xs font-normal text-slate-400">รายการ</span>
-          </p>
-          <p className="text-[11px] text-emerald-400 mt-1">อัตราส่ง 87.5%</p>
-        </div>
-
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'ส่งล่าช้า (Late)' : 'Late Submissions'}</span>
-            <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-              <Clock className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-amber-400 mt-2">
-            {submissions.filter((s) => s.status === 'late').length} <span className="text-xs font-normal text-slate-400">รายการ</span>
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">ส่งหลังกำหนดเส้นตาย</p>
-        </div>
-
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'ยังค้างส่ง (Pending)' : 'Pending Homework'}</span>
-            <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
-              <AlertCircle className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-rose-400 mt-2">
-            {submissions.filter((s) => s.status === 'pending').length} <span className="text-xs font-normal text-slate-400">รายการ</span>
-          </p>
-          <p className="text-[11px] text-rose-300 mt-1">ต้องติดตามก่อนสอบ</p>
+          <button
+            onClick={() => setShowSubmitModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-md shadow-amber-600/30 transition cursor-pointer"
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span>{lang === 'th' ? 'ส่งการบ้านใหม่' : 'Submit'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Submissions Table & Filter */}
-      <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/60">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-bold text-white">
-              {lang === 'th' ? 'รายการส่งการบ้านรายบุคคล' : 'Homework Submissions List'}
-            </h3>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={lang === 'th' ? 'ค้นหาวิชา / ชื่อนักเรียน...' : 'Search tasks...'}
-                className="bg-slate-800 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 w-48"
-              />
+      {/* TAB 1: SUBMISSIONS LIST */}
+      {hwTab === 'submissions' && (
+        <div className="flex-1 min-h-0 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
+          <div className="shrink-0 p-3 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-slate-900/60">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-amber-400" />
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                {lang === 'th' ? 'รายการส่งการบ้านรายบุคคล' : 'Homework Submissions List'}
+              </h3>
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-xl border border-slate-700"
-            >
-              <option value="all">{lang === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
-              <option value="graded">{lang === 'th' ? 'ตรวจแล้ว' : 'Graded'}</option>
-              <option value="submitted">{lang === 'th' ? 'ส่งแล้ว (รอตรวจ)' : 'Submitted'}</option>
-              <option value="late">{lang === 'th' ? 'ส่งล่าช้า' : 'Late'}</option>
-              <option value="pending">{lang === 'th' ? 'ยังไม่ส่ง' : 'Pending'}</option>
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={lang === 'th' ? 'ค้นหาวิชา / ชื่อนักเรียน...' : 'Search tasks...'}
+                  className="bg-slate-800 text-white text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500 w-44"
+                />
+              </div>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="bg-slate-800 text-white text-xs px-2.5 py-1 rounded-lg border border-slate-700"
+              >
+                <option value="all">{lang === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
+                <option value="graded">{lang === 'th' ? 'ตรวจแล้ว' : 'Graded'}</option>
+                <option value="submitted">{lang === 'th' ? 'ส่งแล้ว (รอตรวจ)' : 'Submitted'}</option>
+                <option value="late">{lang === 'th' ? 'ส่งล่าช้า' : 'Late'}</option>
+                <option value="pending">{lang === 'th' ? 'ยังไม่ส่ง' : 'Pending'}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                  <th className="p-2.5">{lang === 'th' ? 'หัวข้อการบ้าน / วิชา' : 'Assignment & Course'}</th>
+                  <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
+                  <th className="p-2.5 text-center">{lang === 'th' ? 'กำหนดส่ง / ส่งเมื่อ' : 'Due / Submitted'}</th>
+                  <th className="p-2.5">{lang === 'th' ? 'ไฟล์งานที่แนบ' : 'Attached File'}</th>
+                  <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนน' : 'Score'}</th>
+                  <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
+                  <th className="p-2.5 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {filteredSubmissions.map((sub) => {
+                  const status = getStatusBadge(sub.status);
+
+                  return (
+                    <tr key={sub.id} className="hover:bg-slate-800/20 transition">
+                      <td className="p-2.5 max-w-[260px]">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            {sub.courseCode}
+                          </span>
+                          <span className="text-[10px] text-slate-400 truncate">{sub.courseTitleTh}</span>
+                        </div>
+                        <p className="font-bold text-white line-clamp-1">{sub.assignmentTitle}</p>
+                      </td>
+
+                      <td className="p-2.5">
+                        <p className="font-bold text-white">{sub.studentName}</p>
+                        <p className="text-[10px] text-slate-400">{sub.studentRoom}</p>
+                      </td>
+
+                      <td className="p-2.5 text-center font-mono text-slate-300">
+                        <div className="text-amber-400 text-[11px]">Due: {sub.dueDate}</div>
+                        {sub.submittedAt ? (
+                          <div className="text-[10px] text-slate-400 mt-0.5">ส่ง: {sub.submittedAt}</div>
+                        ) : (
+                          <div className="text-[10px] text-rose-400 mt-0.5">ยังไม่ได้ส่ง</div>
+                        )}
+                      </td>
+
+                      <td className="p-2.5">
+                        {sub.fileAttachment ? (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 max-w-[180px]">
+                            <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="truncate text-[10px]">{sub.fileAttachment.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-[11px]">- ไม่มีไฟล์ -</span>
+                        )}
+                      </td>
+
+                      <td className="p-2.5 text-center">
+                        {sub.score !== undefined ? (
+                          <span className="font-mono font-bold text-xs text-emerald-400">
+                            {sub.score} <span className="text-[10px] text-slate-400">/ {sub.maxScore}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-xs">-- / {sub.maxScore}</span>
+                        )}
+                      </td>
+
+                      <td className="p-2.5 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${status.color}`}>
+                          {status.label}
+                        </span>
+                      </td>
+
+                      <td className="p-2.5 text-right">
+                        {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') ? (
+                          <button
+                            onClick={() => {
+                              setSelectedSubForGrading(sub);
+                              setGradingScore(sub.score ?? 18);
+                              setGradingFeedback(sub.teacherFeedback ?? 'ผลงานดีมาก มีความตั้งใจ');
+                            }}
+                            className="px-2 py-1 rounded-md bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white border border-amber-500/30 text-[10px] font-semibold transition cursor-pointer"
+                          >
+                            {sub.status === 'graded' ? 'แก้ไขคะแนน' : 'ตรวจงาน'}
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">ดูรายละเอียด</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">
-                <th className="p-3">{lang === 'th' ? 'หัวข้อการบ้าน / วิชา' : 'Assignment & Course'}</th>
-                <th className="p-3">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
-                <th className="p-3 text-center">{lang === 'th' ? 'กำหนดส่ง / ส่งเมื่อ' : 'Due / Submitted'}</th>
-                <th className="p-3">{lang === 'th' ? 'ไฟล์งานที่แนบ' : 'Attached File'}</th>
-                <th className="p-3 text-center">{lang === 'th' ? 'คะแนน' : 'Score'}</th>
-                <th className="p-3 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                <th className="p-3 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredSubmissions.map((sub) => {
-                const status = getStatusBadge(sub.status);
+      {/* TAB 2: ACTIVE ASSIGNMENTS LIST */}
+      {hwTab === 'assignments' && (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {assignments.map((asg) => (
+              <div
+                key={asg.id}
+                className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-md space-y-2.5 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-bold">
+                      {asg.courseCode || 'GEN-101'}
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-mono">
+                      กำหนดส่ง: {asg.dueDate}
+                    </span>
+                  </div>
 
-                return (
-                  <tr key={sub.id} className="hover:bg-slate-800/20 transition">
-                    <td className="p-3 max-w-[260px]">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                          {sub.courseCode}
-                        </span>
-                        <span className="text-[10px] text-slate-400 truncate">{sub.courseTitleTh}</span>
-                      </div>
-                      <p className="font-bold text-white line-clamp-1">{sub.assignmentTitle}</p>
-                    </td>
+                  <h4 className="font-bold text-white text-xs line-clamp-1">{asg.titleTh}</h4>
+                  <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{asg.description}</p>
+                </div>
 
-                    <td className="p-3">
-                      <p className="font-bold text-white">{sub.studentName}</p>
-                      <p className="text-[10px] text-slate-400">{sub.studentRoom}</p>
-                    </td>
-
-                    <td className="p-3 text-center font-mono text-slate-300">
-                      <div className="text-amber-400 text-[11px]">Due: {sub.dueDate}</div>
-                      {sub.submittedAt ? (
-                        <div className="text-[10px] text-slate-400 mt-0.5">ส่ง: {sub.submittedAt}</div>
-                      ) : (
-                        <div className="text-[10px] text-rose-400 mt-0.5">ยังไม่ได้ส่ง</div>
-                      )}
-                    </td>
-
-                    <td className="p-3">
-                      {sub.fileAttachment ? (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 max-w-[200px]">
-                          <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                          <span className="truncate text-[11px]">{sub.fileAttachment.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-500 text-[11px]">- ไม่มีไฟล์ -</span>
-                      )}
-                    </td>
-
-                    <td className="p-3 text-center">
-                      {sub.score !== undefined ? (
-                        <span className="font-mono font-bold text-sm text-emerald-400">
-                          {sub.score} <span className="text-[10px] text-slate-400">/ {sub.maxScore}</span>
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 text-xs">-- / {sub.maxScore}</span>
-                      )}
-                    </td>
-
-                    <td className="p-3 text-center">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${status.color}`}>
-                        {status.label}
-                      </span>
-                    </td>
-
-                    <td className="p-3 text-right">
-                      {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') ? (
-                        <button
-                          onClick={() => {
-                            setSelectedSubForGrading(sub);
-                            setGradingScore(sub.score ?? 18);
-                            setGradingFeedback(sub.teacherFeedback ?? 'ผลงานดีมาก มีความตั้งใจ');
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white border border-amber-500/30 text-[11px] font-semibold transition"
-                        >
-                          {sub.status === 'graded' ? 'แก้ไขคะแนน' : 'ตรวจงาน'}
-                        </button>
-                      ) : (
-                        <span className="text-slate-500 text-[11px]">ดูรายละเอียด</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400">
+                    คะแนนเต็ม: <strong className="text-white">{asg.maxScore ?? asg.points ?? 20}</strong> แต้ม
+                  </span>
+                  <span className="text-emerald-400 font-semibold">
+                    ส่งแล้ว: {submissions.filter(s => s.assignmentId === asg.id && s.status !== 'pending').length} คน
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* TAB 3: PENDING HOMEWORK & SUMMARY */}
+      {hwTab === 'pending' && (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">การบ้านทั้งหมด</span>
+              <p className="text-lg font-bold text-white mt-1">{submissions.length} ชิ้นงาน</p>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">ส่งแล้ว/ตรวจแล้ว</span>
+              <p className="text-lg font-bold text-emerald-400 mt-1">
+                {submissions.filter(s => s.status === 'submitted' || s.status === 'graded').length} รายการ
+              </p>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">ส่งล่าช้า (Late)</span>
+              <p className="text-lg font-bold text-amber-400 mt-1">
+                {submissions.filter(s => s.status === 'late').length} รายการ
+              </p>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">ยังค้างส่ง (Pending)</span>
+              <p className="text-lg font-bold text-rose-400 mt-1">
+                {submissions.filter(s => s.status === 'pending').length} รายการ
+              </p>
+            </div>
+          </div>
+
+          {/* Pending Submissions Alert List */}
+          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-rose-500/30 shadow-md">
+            <h3 className="text-xs font-bold text-rose-300 uppercase tracking-wider pb-2 border-b border-slate-800 flex items-center gap-1.5 mb-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-400" />
+              <span>รายชื่อนักเรียนที่มีงานค้างส่ง (Pending Assignment Watchlist)</span>
+            </h3>
+
+            <div className="space-y-2">
+              {submissions.filter(s => s.status === 'pending').map((sub) => (
+                <div
+                  key={sub.id}
+                  className="p-2.5 rounded-lg bg-slate-800/50 border border-rose-500/20 text-xs flex items-center justify-between"
+                >
+                  <div>
+                    <span className="font-bold text-white">{sub.studentName}</span>
+                    <span className="text-slate-400 ml-2">({sub.studentRoom})</span>
+                    <p className="text-[11px] text-rose-300 mt-0.5">
+                      ค้างส่ง: {sub.assignmentTitle} ({sub.courseCode})
+                    </p>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">
+                    Due: {sub.dueDate}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Teacher Grading Modal */}
       {selectedSubForGrading && (

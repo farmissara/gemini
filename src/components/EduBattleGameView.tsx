@@ -22,7 +22,10 @@ import {
   RotateCcw,
   BookOpen,
   Gamepad2,
-  FlaskConical
+  FlaskConical,
+  ZoomIn,
+  ZoomOut,
+  ArrowLeft
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
@@ -34,10 +37,13 @@ interface EduBattleGameViewProps {
   rewardItems: RewardItem[];
   currentUser: AuthUser | null;
   lang: AppLanguage;
+  initialSubTab?: 'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop';
+  isMobileMode?: boolean;
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onRedeemReward: (itemId: string, costGems: number) => void;
+  onExit?: () => void;
 }
 
 export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
@@ -46,12 +52,37 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   rewardItems,
   currentUser,
   lang,
+  initialSubTab,
+  isMobileMode = false,
   onAddQuestion,
   onImportQuestions,
   onEarnRewards,
-  onRedeemReward
+  onRedeemReward,
+  onExit
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop'>('battle_royale_3d');
+  const [isMobileScreen, setIsMobileScreen] = useState(() => {
+    if (typeof window !== 'undefined') return window.innerWidth < 768;
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileScreen(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = isMobileMode || isMobileScreen;
+
+  const [activeSubTab, setActiveSubTab] = useState<'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop'>(
+    initialSubTab || (isMobile ? 'arena' : 'battle_royale_3d')
+  );
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [searchBankQuery, setSearchBankQuery] = useState('');
 
@@ -65,6 +96,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   const [streak, setStreak] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
   const [battleFeedback, setBattleFeedback] = useState<string | null>(null);
+  const [arenaZoom, setArenaZoom] = useState<number>(1.0);
 
   // New Question Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -88,12 +120,39 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   const currentQ = battleQuestions[currentQuestionIndex] || questions[0];
 
+  // Synthesized Arcade Sound Effects
+  const playArcadeSound = (freq: number, type: OscillatorType = 'sine', duration = 0.15) => {
+    try {
+      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtxClass) return;
+      const ctx = new AudioCtxClass();
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {
+      // Audio context policy safe ignore
+    }
+  };
+
   // Battle Timer Countdown
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (battleState === 'playing' && timer > 0) {
       interval = setInterval(() => {
-        setTimer(prev => prev - 1);
+        setTimer(prev => {
+          if (prev <= 4 && prev > 1) {
+            playArcadeSound(440, 'triangle', 0.08);
+          }
+          return prev - 1;
+        });
       }, 1000);
     } else if (battleState === 'playing' && timer === 0) {
       handleTimeOut();
@@ -104,6 +163,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   }, [battleState, timer]);
 
   const handleStartBattle = () => {
+    playArcadeSound(523, 'triangle', 0.12);
+    setTimeout(() => playArcadeSound(659, 'triangle', 0.12), 100);
+    setTimeout(() => playArcadeSound(784, 'sine', 0.25), 200);
     setCurrentQuestionIndex(0);
     setPlayerHp(100);
     setOpponentHp(100);
@@ -116,9 +178,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   };
 
   const handleTimeOut = () => {
+    playArcadeSound(180, 'sawtooth', 0.3);
     setPlayerHp(prev => Math.max(0, prev - 25));
     setStreak(0);
-    setBattleFeedback('หมดเวลา! โดนดาเมจ 25 HP');
+    setBattleFeedback('⏰ หมดเวลา! ได้รับดาเมจ 25 HP');
     checkBattleEnd(playerHp - 25, opponentHp);
   };
 
@@ -128,19 +191,28 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
     const isCorrect = index === currentQ.correctIndex;
     if (isCorrect) {
+      playArcadeSound(587.33, 'triangle', 0.12);
+      setTimeout(() => playArcadeSound(880, 'sine', 0.2), 90);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([30, 40, 30]);
+      }
       const timeBonus = timer * 5;
       const damage = 25 + streak * 5;
       const newOpponentHp = Math.max(0, opponentHp - damage);
       setOpponentHp(newOpponentHp);
       setStreak(prev => prev + 1);
       setRoundScore(prev => prev + currentQ.points + timeBonus);
-      setBattleFeedback(`ถูกต้อง! ทำดาเมจ +${damage} HP (โบนัสความเร็ว +${timeBonus})`);
+      setBattleFeedback(`💥 ถูกต้อง! โจมตี +${damage} HP (โบนัสความเร็ว +${timeBonus})`);
       checkBattleEnd(playerHp, newOpponentHp);
     } else {
+      playArcadeSound(200, 'sawtooth', 0.25);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(120);
+      }
       const newPlayerHp = Math.max(0, playerHp - 20);
       setPlayerHp(newPlayerHp);
       setStreak(0);
-      setBattleFeedback(`ตอบผิด! เสีย 20 HP (คำตอบที่ถูกต้องคือ: ${currentQ.options[currentQ.correctIndex]})`);
+      setBattleFeedback(`⚠️ ตอบผิด! เสีย 20 HP (เฉลยข้อ ${String.fromCharCode(65 + currentQ.correctIndex)}: ${currentQ.options[currentQ.correctIndex]})`);
       checkBattleEnd(newPlayerHp, opponentHp);
     }
   };
@@ -150,6 +222,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       if (newPlayerHp <= 0 || newOpponentHp <= 0 || currentQuestionIndex + 1 >= battleQuestions.length) {
         setBattleState('finished');
         const isWin = newOpponentHp <= 0 || (newPlayerHp > newOpponentHp);
+        if (isWin) {
+          playArcadeSound(523, 'triangle', 0.12);
+          setTimeout(() => playArcadeSound(659, 'triangle', 0.12), 120);
+          setTimeout(() => playArcadeSound(784, 'triangle', 0.15), 240);
+          setTimeout(() => playArcadeSound(1046, 'sine', 0.35), 360);
+        }
         const expGained = isWin ? 250 : 80;
         const gemsGained = isWin ? 30 : 10;
         if (currentUser) {
@@ -161,7 +239,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         setTimer(15);
         setBattleFeedback(null);
       }
-    }, 1500);
+    }, 1100);
   };
 
   // Export Question Bank as JSON
@@ -301,217 +379,406 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Header */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-xl shadow-rose-950/20 border border-white/10">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
-              <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-              <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
-            </h1>
-            <p className="text-white/80 text-sm max-w-2xl">
-              {lang === 'th'
-                ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
-                : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
-            </p>
-          </div>
-
-          {/* User Score Summary Card */}
-          <div className="bg-black/30 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center gap-4 shrink-0">
-            <img 
-              src={currentPlayerStats.avatarUrl} 
-              alt={currentPlayerStats.name} 
-              className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm">{currentPlayerStats.name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold">
+    <div className={`w-full ${isMobile ? 'h-full flex flex-col overflow-hidden bg-slate-950 text-white select-none' : 'space-y-6'}`}>
+      {/* Mobile Top Arcade HUD */}
+      {isMobile ? (
+        <header className="shrink-0 px-3 py-2 bg-slate-900/95 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between gap-2 z-20">
+          <div className="flex items-center gap-2 min-w-0">
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 active:scale-95 transition cursor-pointer"
+                title="ออกจากเกม"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div className="flex items-center gap-2 min-w-0">
+              <img
+                src={currentPlayerStats.avatarUrl}
+                alt={currentPlayerStats.name}
+                className="w-8 h-8 rounded-xl object-cover border border-amber-400 shrink-0 shadow-xs"
+              />
+              <div className="truncate text-left leading-tight">
+                <div className="text-xs font-black text-white truncate max-w-[110px] sm:max-w-[180px]">
+                  {currentPlayerStats.name}
+                </div>
+                <div className="text-[10px] text-amber-300 font-semibold truncate">
                   {currentPlayerStats.rankTitle}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1.5 text-amber-300 font-bold">
-                  <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span>{currentPlayerStats.exp.toLocaleString()} EXP</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
-                  <Coins className="w-4 h-4 text-cyan-300" />
-                  <span>{currentPlayerStats.gems} Gems</span>
-                </div>
-              </div>
-              <div className="text-[11px] text-white/70">
-                สถิติชนะ {currentPlayerStats.battleWins} ครั้ง • สตรีค {currentPlayerStats.streak} ติดต่อกัน
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Sub Tabs Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Flagship 3D EduArena Battle Royale Button */}
-          <button
-            onClick={() => setActiveSubTab('battle_royale_3d')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeSubTab === 'battle_royale_3d'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105 border border-yellow-300'
-                : 'bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20'
-            }`}
-          >
-            <Gamepad2 className="w-4 h-4 text-slate-950 fill-current" />
-            <span>🎮 {lang === 'th' ? '3D EduArena สนามประลองปัญญา 3 มิติ' : '3D EduArena Battle Royale'}</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-bold animate-pulse">
-              HOT
-            </span>
-          </button>
-
-          {/* New Subject Labs & Chemistry Simulation Tab Button */}
-          <button
-            onClick={() => setActiveSubTab('subject_labs')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              activeSubTab === 'subject_labs'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 scale-105 border border-cyan-300'
-                : 'bg-blue-500/10 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20'
-            }`}
-          >
-            <FlaskConical className="w-4 h-4 text-cyan-300 fill-current" />
-            <span>🧪 {lang === 'th' ? 'แล็บจำลอง & เคมีระเบิด' : 'Subject Labs & Chemistry'}</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-400 text-slate-950 font-bold animate-pulse">
-              NEW
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('arena')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'arena'
-                ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30'
-                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <Swords className="w-4 h-4" />
-            <span>{lang === 'th' ? '1v1 แบทเทิลสด' : '1v1 Duel Arena'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('bank')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'bank'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>{lang === 'th' ? 'คลังข้อสอบ & นำเข้า/ส่งออก (ครู)' : 'Question Bank & Import/Export'}</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950 text-indigo-300">
-              {questions.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('leaderboard')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'leaderboard'
-                ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
-                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <Trophy className="w-4 h-4" />
-            <span>{lang === 'th' ? 'ตารางอันดับเกียรติยศ' : 'Leaderboard'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('shop')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'shop'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>{lang === 'th' ? 'ร้านค้าแลกรางวัล & ตัวละคร' : 'Reward Store & Skins'}</span>
-          </button>
-        </div>
-
-        {/* Global Import Notification Banner */}
-        {importNotification && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs animate-bounce">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{importNotification}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-black">
+              <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>{currentPlayerStats.exp.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-black">
+              <Coins className="w-3.5 h-3.5 text-cyan-300" />
+              <span>{currentPlayerStats.gems}</span>
+            </div>
           </div>
-        )}
-      </div>
+        </header>
+      ) : (
+        /* Desktop Top Marketing Banner (Only on desktop bank/leaderboard/shop) */
+        (!isMobile && battleState !== 'playing' && (activeSubTab === 'bank' || activeSubTab === 'leaderboard' || activeSubTab === 'shop')) && (
+          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-xl shadow-rose-950/20 border border-white/10">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+                  <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
+                </h1>
+                <p className="text-white/80 text-sm max-w-2xl">
+                  {lang === 'th'
+                    ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
+                    : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
+                </p>
+              </div>
 
-      {/* TAB 0: 3D EduArena Battle Royale & Knowledge Treasure Hunt */}
-      {activeSubTab === 'battle_royale_3d' && (
-        <EduBattleRoyale3DView
-          questions={questions}
-          currentUser={currentUser}
-          lang={lang}
-          rewardItems={rewardItems}
-          onEarnRewards={onEarnRewards}
-          onExit={() => setActiveSubTab('arena')}
-        />
+              {/* User Score Summary Card */}
+              <div className="bg-black/30 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center gap-4 shrink-0">
+                <img 
+                  src={currentPlayerStats.avatarUrl} 
+                  alt={currentPlayerStats.name} 
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
+                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm">{currentPlayerStats.name}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold">
+                      {currentPlayerStats.rankTitle}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                      <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      <span>{currentPlayerStats.exp.toLocaleString()} EXP</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                      <Coins className="w-4 h-4 text-cyan-300" />
+                      <span>{currentPlayerStats.gems} Gems</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-white/70">
+                    สถิติชนะ {currentPlayerStats.battleWins} ครั้ง • สตรีค {currentPlayerStats.streak} ติดต่อกัน
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
       )}
 
-      {/* TAB 0.5: Subject Labs & Crazy Chemistry Simulation */}
+      {/* Mode Navigation Strip (Hidden during active battle on mobile/desktop) */}
+      {battleState !== 'playing' && (
+        isMobile ? (
+          /* Mobile Horizontal Pill Scroll Strip */
+          <div className="shrink-0 px-2 py-1.5 bg-slate-900/90 border-b border-slate-800/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none z-10">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('arena')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                activeSubTab === 'arena'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-600/30'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>1v1 ดวลตอบสด</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('battle_royale_3d')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                activeSubTab === 'battle_royale_3d'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-md shadow-amber-500/30'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <Gamepad2 className="w-3.5 h-3.5" />
+              <span>3D Arena</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('subject_labs')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                activeSubTab === 'subject_labs'
+                  ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/30'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>แล็บเคมี</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('leaderboard')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                activeSubTab === 'leaderboard'
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-500 text-white shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>อันดับ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('shop')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                activeSubTab === 'shop'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>ร้านค้า</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('bank')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                activeSubTab === 'bank'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>คลังโจทย์</span>
+            </button>
+          </div>
+        ) : (
+          /* Desktop Sub Tabs */
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('arena')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'arena'
+                    ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30'
+                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Swords className="w-4 h-4" />
+                <span>{lang === 'th' ? '1v1 แบทเทิลดวลสด' : '1v1 Duel Arena'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('battle_royale_3d')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  activeSubTab === 'battle_royale_3d'
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105 border border-yellow-300'
+                    : 'bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20'
+                }`}
+              >
+                <Gamepad2 className="w-4 h-4 text-slate-950 fill-current" />
+                <span>🎮 {lang === 'th' ? '3D EduArena สนามประลอง 3 มิติ' : '3D EduArena Battle Royale'}</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-bold animate-pulse">
+                  HOT
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('subject_labs')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  activeSubTab === 'subject_labs'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 scale-105 border border-cyan-300'
+                    : 'bg-blue-500/10 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20'
+                }`}
+              >
+                <FlaskConical className="w-4 h-4 text-cyan-300 fill-current" />
+                <span>🧪 {lang === 'th' ? 'แล็บจำลอง & เคมีระเบิด' : 'Subject Labs & Chemistry'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('bank')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'bank'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>{lang === 'th' ? 'คลังข้อสอบ & นำเข้า/ส่งออก (ครู)' : 'Question Bank & Import/Export'}</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950 text-indigo-300">
+                  {questions.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('leaderboard')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'leaderboard'
+                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
+                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Trophy className="w-4 h-4" />
+                <span>{lang === 'th' ? 'ตารางอันดับเกียรติยศ' : 'Leaderboard'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('shop')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'shop'
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>{lang === 'th' ? 'ร้านค้าแลกรางวัล & ตัวละคร' : 'Reward Store & Skins'}</span>
+              </button>
+            </div>
+
+            {importNotification && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs animate-bounce">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{importNotification}</span>
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {/* TAB 0: 3D EduArena Battle Royale */}
+      {activeSubTab === 'battle_royale_3d' && (
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
+          <EduBattleRoyale3DView
+            questions={questions}
+            currentUser={currentUser}
+            lang={lang}
+            rewardItems={rewardItems}
+            onEarnRewards={onEarnRewards}
+            onExit={onExit || (() => setActiveSubTab('arena'))}
+          />
+        </div>
+      )}
+
+      {/* TAB 0.5: Subject Labs Simulation */}
       {activeSubTab === 'subject_labs' && (
-        <SubjectLabSimulationView
-          currentUserRole={currentUser?.role}
-          currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
-          lang={lang}
-          onEarnRewards={onEarnRewards}
-          onBackToGames={() => setActiveSubTab('battle_royale_3d')}
-        />
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
+          <SubjectLabSimulationView
+            currentUserRole={currentUser?.role}
+            currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+            lang={lang}
+            onEarnRewards={onEarnRewards}
+            onBackToGames={onExit || (() => setActiveSubTab('arena'))}
+          />
+        </div>
       )}
 
       {/* TAB 1: 1v1 Battle Arena */}
       {activeSubTab === 'arena' && (
-        <div className="space-y-6">
+        <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'space-y-6'}`}>
+          {/* LOBBY / PRE-BATTLE MATCHUP SCREEN */}
           {battleState === 'idle' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Start Card */}
-              <div className="md:col-span-2 rounded-3xl bg-slate-900/60 border border-slate-800 p-8 flex flex-col justify-between relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col justify-between p-3.5 max-w-md mx-auto overflow-y-auto no-scrollbar' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
+              {/* Left / Main Match Launcher Card */}
+              <div className={`${isMobile ? 'space-y-3' : 'md:col-span-2 rounded-3xl bg-slate-900/60 border border-slate-800 p-8 flex flex-col justify-between relative overflow-hidden'}`}>
+                {!isMobile && (
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+                )}
                 
-                <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-semibold">
-                    <Swords className="w-3.5 h-3.5" />
-                    <span>Real-Time Duel Mode • พร้อมคำอธิบายเฉลยละเอียด</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-black">
+                      <Swords className="w-3.5 h-3.5" />
+                      <span>1v1 Speed Duel Arena</span>
+                    </div>
+                    <span className="text-xs font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
+                      {battleQuestions.length} ข้อในหมวดนี้
+                    </span>
                   </div>
-                  <h2 className="text-2xl font-black text-white">
-                    {lang === 'th' ? 'เลือกวิชาแล้วกด "เริ่มประลอง 1v1"' : 'Select Subject and Start Battle'}
+
+                  <h2 className={`${isMobile ? 'text-lg text-center font-black text-white' : 'text-2xl font-black text-white'}`}>
+                    {lang === 'th' ? 'ประลองตอบสด 1v1 ดวลความเร็ว' : '1v1 Live Knowledge Duel'}
                   </h2>
-                  <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
-                    ระบบจะจับคู่คำถามแบบทดสอบมาตรฐานและข้อสอบทบทวนบทเรียน ตอบถูกเร็วได้โบนัสดาเมจต่อเนื่อง ยิ่งทำคอมโบติดกัน ยิ่งรับ EXP และ Gems เพิ่มเป็นทวีคูณ
-                  </p>
+
+                  {/* VS MATCHUP SHOWCASE (ARCADE GAMING STYLE) */}
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800/90 flex items-center justify-between shadow-2xl">
+                    {/* You (Player) */}
+                    <div className="flex flex-col items-center gap-1 w-5/12 text-center">
+                      <div className="relative">
+                        <img
+                          src={currentPlayerStats.avatarUrl}
+                          alt="You"
+                          className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg shadow-emerald-500/20"
+                        />
+                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-md bg-emerald-500 text-slate-950 text-[9px] font-black">
+                          YOU
+                        </span>
+                      </div>
+                      <div className="text-xs font-black text-white truncate w-full">
+                        {currentPlayerStats.name}
+                      </div>
+                      <div className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                        100 HP
+                      </div>
+                    </div>
+
+                    {/* VS Center Badge */}
+                    <div className="flex flex-col items-center justify-center shrink-0 w-2/12">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-rose-600/40 animate-pulse">
+                        VS
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-mono mt-1">15s / ข้อ</span>
+                    </div>
+
+                    {/* Rival Bot */}
+                    <div className="flex flex-col items-center gap-1 w-5/12 text-center">
+                      <div className="relative">
+                        <img
+                          src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80"
+                          alt="Rival"
+                          className="w-14 h-14 rounded-2xl object-cover border-2 border-rose-400 shadow-lg shadow-rose-500/20"
+                        />
+                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-md bg-rose-500 text-white text-[9px] font-black">
+                          RIVAL
+                        </span>
+                      </div>
+                      <div className="text-xs font-black text-white truncate w-full">
+                        กัญญา วงศ์สวัสดิ์
+                      </div>
+                      <div className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                        100 HP
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Subject Filter Pills */}
-                  <div className="space-y-2 pt-2">
-                    <label className="text-xs font-bold text-slate-300">
-                      {lang === 'th' ? 'หมวดวิชาที่ต้องการประลอง:' : 'Subject Category:'}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-xs font-bold text-slate-300 block">
+                      {lang === 'th' ? 'เลือกหมวดวิชาที่ต้องการประลอง:' : 'Subject Category:'}
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
                       {[
-                        { id: 'all', label: 'ทุกวิชา (รวมโจทย์ตัวอย่าง)' },
-                        { id: 'คณิตศาสตร์', label: 'คณิตศาสตร์ (Math)' },
-                        { id: 'วิทยาศาสตร์', label: 'วิทยาศาสตร์ (Science)' },
-                        { id: 'วิทยาการคำนวณ', label: 'วิทยาการคำนวณ (CS)' },
-                        { id: 'ภาษาอังกฤษ', label: 'ภาษาอังกฤษ (English)' },
-                        { id: 'ภาษาไทย', label: 'ภาษาไทย (Thai)' }
+                        { id: 'all', label: '⭐ ทุกวิชา' },
+                        { id: 'คณิตศาสตร์', label: '📐 คณิต' },
+                        { id: 'วิทยาศาสตร์', label: '🔬 วิทย์' },
+                        { id: 'วิทยาการคำนวณ', label: '💻 คอมพิวเตอร์' },
+                        { id: 'ภาษาอังกฤษ', label: '🇬🇧 อังกฤษ' },
+                        { id: 'ภาษาไทย', label: '🇹🇭 ภาษาไทย' }
                       ].map(subj => (
                         <button
                           key={subj.id}
+                          type="button"
                           onClick={() => setSelectedSubject(subj.id)}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
                             selectedSubject === subj.id
-                              ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30'
+                              ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-105'
                               : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                           }`}
                         >
@@ -522,218 +789,248 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-8 flex flex-col sm:flex-row items-center gap-4">
+                {/* Big Glowing Start Duel Button */}
+                <div className="pt-3 space-y-2">
                   <button
+                    type="button"
                     onClick={handleStartBattle}
-                    className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-rose-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-extrabold text-sm shadow-xl shadow-rose-600/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-black text-base shadow-xl shadow-rose-600/40 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                    <span>{lang === 'th' ? 'เริ่มประลอง 1v1 เดี๋ยวนี้' : 'Launch 1v1 Battle Now'}</span>
+                    <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
+                    <span>{lang === 'th' ? '⚡ เริ่มประลอง 1v1 ทันที' : 'Launch 1v1 Battle Now'}</span>
                   </button>
 
-                  <div className="text-xs text-slate-400">
-                    มีข้อสอบพร้อมแข่งขัน {battleQuestions.length} ข้อในหมวดนี้
-                  </div>
+                  <p className="text-[11px] text-center text-slate-400">
+                    ⚡ ตอบถูกทำดาเมจ 25+ HP • สตรีคคอมโบแรงขึ้น • รับ EXP & Gems
+                  </p>
                 </div>
               </div>
 
-              {/* Opponent Preview / Bot Match */}
-              <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-6 flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>คู่ต่อสู้ในระบบ (Opponent Match)</span>
-                  </h3>
-                  <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 flex items-center gap-3">
-                    <img 
-                      src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80"
-                      alt="Opponent"
-                      className="w-12 h-12 rounded-xl object-cover border border-rose-400/40"
-                    />
-                    <div>
-                      <h4 className="text-sm font-bold text-white">กัญญา วงศ์สวัสดิ์ (AI Rival)</h4>
-                      <p className="text-[11px] text-slate-400">โรงเรียนสาธิต ม.6/1 • อัตราชนะ 85%</p>
-                      <span className="text-[10px] text-amber-300 font-semibold">Diamond Master 💎</span>
+              {/* Desktop Rules Side Card (Only on desktop) */}
+              {!isMobile && (
+                <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-6 flex flex-col justify-between space-y-4">
+                  <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-300 space-y-2">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>กติกาการแข่งขัน</span>
                     </div>
+                    <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                      <li>เวลา 15 วินาทีต่อข้อ ยิ่งตอบไวยิ่งได้แต้มเยอะ</li>
+                      <li>ตอบถูกทำดาเมจ 25+ HP ใส่คู่ต่อสู้</li>
+                      <li>ลด HP ฝั่งตรงข้ามเหลือ 0 หรือทำคะแนนสูงสุดเพื่อรับชัยชนะ</li>
+                    </ul>
                   </div>
                 </div>
-
-                <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-300 space-y-2">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>กติกาการแข่งขัน</span>
-                  </div>
-                  <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                    <li>เวลา 15 วินาทีต่อข้อ ยิ่งตอบไวยิ่งได้แต้มเยอะ</li>
-                    <li>ตอบถูกทำดาเมจ 25+ HP ใส่คู่ต่อสู้</li>
-                    <li>ลด HP ฝั่งตรงข้ามเหลือ 0 หรือทำคะแนนสูงสุดเพื่อรับชัยชนะ</li>
-                  </ul>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Active Battle In Progress */}
+          {/* ACTIVE BATTLE PLAYING SCREEN - TRUE ARCADE ZERO-SCROLL LAYOUT */}
           {battleState === 'playing' && (
-            <div className="max-w-4xl mx-auto rounded-3xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-              {/* Top HP & Duel Header */}
-              <div className="grid grid-cols-2 gap-4 items-center">
-                {/* Player Health Bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                      <span className="text-white">{currentPlayerStats.name}</span>
+            <div className="flex-1 min-h-0 flex flex-col justify-between p-3 sm:p-5 max-w-xl mx-auto w-full overflow-hidden select-none">
+              {/* TOP DUAL HP GAUGES */}
+              <div className="shrink-0 space-y-1.5">
+                <div className="grid grid-cols-2 gap-2 items-center">
+                  {/* Player HP */}
+                  <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                        <span className="font-black text-white truncate text-xs">{currentPlayerStats.name}</span>
+                      </div>
+                      <span className="font-mono text-emerald-400 font-black text-xs shrink-0">{playerHp} HP</span>
                     </div>
-                    <span className="text-emerald-400">{playerHp} / 100 HP</span>
+                    <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.max(0, playerHp)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
-                    <div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.max(0, playerHp)}%` }}
-                    />
+
+                  {/* Opponent HP */}
+                  <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono text-rose-400 font-black text-xs shrink-0">{opponentHp} HP</span>
+                      <div className="flex items-center gap-1.5 min-w-0 justify-end">
+                        <span className="font-black text-white truncate text-xs">กัญญา (Rival)</span>
+                        <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
+                      </div>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
+                      <div
+                        className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.max(0, opponentHp)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Opponent Health Bar */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-rose-400">{opponentHp} / 100 HP</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white">กัญญา (Rival)</span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                    </div>
+                {/* MATCH HUD BAR */}
+                <div className="flex items-center justify-between px-3 py-1 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-indigo-300 text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30">
+                      ข้อ {currentQuestionIndex + 1}/{battleQuestions.length}
+                    </span>
+                    {streak > 1 && (
+                      <span className="flex items-center gap-1 font-black text-amber-400 text-xs animate-bounce">
+                        <Flame className="w-3.5 h-3.5 fill-amber-400" />
+                        {streak}x Combo!
+                      </span>
+                    )}
                   </div>
-                  <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
-                    <div 
-                      className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.max(0, opponentHp)}%` }}
-                    />
+
+                  {/* Center Pulse Countdown Badge */}
+                  <div className={`flex items-center gap-1 font-mono font-black text-xs px-2.5 py-0.5 rounded-full ${
+                    timer <= 5 
+                      ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-ping' 
+                      : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                  }`}>
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>00:{timer < 10 ? `0${timer}` : timer}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-amber-300 text-xs font-mono">{roundScore} pts</span>
+                    <button
+                      type="button"
+                      onClick={() => setBattleState('idle')}
+                      className="text-[11px] text-slate-400 hover:text-rose-400 font-semibold px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer"
+                    >
+                      ยอมแพ้
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Status Ribbon (Timer, Streak, Points) */}
-              <div className="flex items-center justify-between py-2 px-4 rounded-2xl bg-slate-800/60 border border-slate-700">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                  <Flame className="w-4 h-4 fill-amber-400" />
-                  <span>Streak: {streak}x Combo</span>
-                </div>
-
-                <div className={`flex items-center gap-2 text-sm font-black px-4 py-1 rounded-full ${
-                  timer <= 5 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse' : 'bg-slate-700 text-cyan-300'
-                }`}>
-                  <Clock className="w-4 h-4" />
-                  <span>00:{timer < 10 ? `0${timer}` : timer}</span>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
-                  <Trophy className="w-4 h-4" />
-                  <span>{roundScore} คะแนน</span>
-                </div>
-              </div>
-
-              {/* Question Card */}
-              <div className="p-6 rounded-2xl bg-slate-800/40 border border-slate-700 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    ข้อที่ {currentQuestionIndex + 1} จาก {battleQuestions.length} • {currentQ.subject}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    ระดับ: {currentQ.gradeLevel}
-                  </span>
-                </div>
-
-                <h3 className="text-lg sm:text-xl font-bold text-white leading-relaxed">
-                  {currentQ.questionTh}
-                </h3>
-
-                {/* Multiple Choice Options */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {currentQ.options.map((opt, idx) => {
-                    let btnStyle = 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700';
-                    if (selectedAnswer !== null) {
-                      if (idx === currentQ.correctIndex) {
-                        btnStyle = 'bg-emerald-600/40 border-emerald-500 text-emerald-200 font-bold';
-                      } else if (idx === selectedAnswer) {
-                        btnStyle = 'bg-rose-600/40 border-rose-500 text-rose-200';
-                      } else {
-                        btnStyle = 'opacity-40 bg-slate-800/40 border-slate-800';
-                      }
-                    }
-
-                    return (
-                      <button
-                        key={idx}
-                        disabled={selectedAnswer !== null}
-                        onClick={() => handleAnswer(idx)}
-                        className={`p-4 rounded-xl border text-left text-sm font-medium transition-all flex items-start gap-3 ${btnStyle}`}
-                      >
-                        <span className="w-6 h-6 rounded-lg bg-slate-700/60 flex items-center justify-center shrink-0 text-xs font-bold text-white">
-                          {String.fromCharCode(65 + idx)}
-                        </span>
-                        <span className="flex-1">{opt}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Live Feedback & Explanation */}
-                {battleFeedback && (
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-700 text-xs space-y-2 animate-fadeIn">
-                    <p className="font-bold text-sm text-amber-300">{battleFeedback}</p>
-                    <p className="text-slate-300 leading-relaxed">
-                      💡 <strong>คำอธิบายเฉลย:</strong> {currentQ.explanationTh}
+              {/* CENTER: HIGH VISIBILITY QUESTION CARD */}
+              <div className="my-auto py-2 space-y-2">
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/95 border border-slate-800 shadow-xl space-y-1.5 text-center">
+                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-300">
+                    {currentQ.subject} • ระดับ {currentQ.gradeLevel}
+                  </div>
+                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white leading-relaxed">
+                    {currentQ.questionTh}
+                  </h3>
+                  {currentQ.questionEn && currentQ.questionEn !== currentQ.questionTh && (
+                    <p className="text-xs text-slate-400 italic">
+                      {currentQ.questionEn}
                     </p>
+                  )}
+                </div>
+
+                {/* Floating Damage & Explanation Feedback Banner */}
+                {battleFeedback && (
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs space-y-1 animate-in fade-in slide-in-from-top-1 text-center">
+                    <p className="font-black text-xs text-amber-300">{battleFeedback}</p>
+                    {currentQ.explanationTh && (
+                      <p className="text-[11px] text-slate-300 leading-tight">
+                        💡 {currentQ.explanationTh}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* BOTTOM: 4 LARGE ARCADE BUTTONS */}
+              <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2">
+                {currentQ.options.map((opt, idx) => {
+                  const letters = ['A', 'B', 'C', 'D'];
+                  const letterColors = [
+                    'bg-blue-500/20 text-blue-300 border-blue-500/40',
+                    'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                    'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                    'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                  ];
+
+                  let btnStyle = 'bg-slate-900/90 hover:bg-slate-850 active:bg-slate-800 border-slate-800 text-slate-200';
+                  if (selectedAnswer !== null) {
+                    if (idx === currentQ.correctIndex) {
+                      btnStyle = 'bg-emerald-600/50 border-emerald-400 text-emerald-100 font-black shadow-lg shadow-emerald-500/30 scale-[1.01]';
+                    } else if (idx === selectedAnswer) {
+                      btnStyle = 'bg-rose-600/50 border-rose-400 text-rose-100 font-bold';
+                    } else {
+                      btnStyle = 'opacity-30 bg-slate-900/40 border-slate-900';
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={selectedAnswer !== null}
+                      onClick={() => handleAnswer(idx)}
+                      className={`min-h-[52px] sm:min-h-[56px] p-3 rounded-2xl border text-left text-xs sm:text-sm font-semibold transition-all flex items-center gap-3 cursor-pointer active:scale-98 ${btnStyle}`}
+                    >
+                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-xs font-black font-mono border ${letterColors[idx % 4]}`}>
+                        {letters[idx]}
+                      </span>
+                      <span className="flex-1 leading-snug line-clamp-2">{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* Battle Finished Modal */}
+          {/* BATTLE FINISHED SCREEN */}
           {battleState === 'finished' && (
-            <div className="max-w-md mx-auto rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
-              <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center bg-gradient-to-tr from-amber-500 to-rose-500 text-white shadow-xl shadow-amber-500/20">
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-4 max-w-sm mx-auto text-center space-y-4 animate-in zoom-in-95">
+              <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl ${
+                playerHp > opponentHp 
+                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 shadow-amber-500/30 animate-bounce' 
+                  : 'bg-gradient-to-tr from-slate-700 to-slate-600 text-slate-300'
+              }`}>
                 {playerHp > opponentHp ? (
-                  <Trophy className="w-10 h-10 animate-bounce" />
+                  <Trophy className="w-10 h-10" />
                 ) : (
                   <RotateCcw className="w-10 h-10" />
                 )}
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-2xl font-black text-white">
-                  {playerHp > opponentHp ? '🎉 ยินดีด้วย! คุณได้รับชัยชนะ' : 'สู้ต่อไป! ประลองรอบถัดไป'}
+                <h3 className="text-xl font-black text-white">
+                  {playerHp > opponentHp ? '🎉 ได้รับชัยชนะ!' : '⚔️ จบการประลองรอบนี้'}
                 </h3>
                 <p className="text-xs text-slate-400">
                   {playerHp > opponentHp 
-                    ? 'ทำผลงานได้อย่างยอดเยี่ยม ตอบคำถามประลองความรู้ได้ถูกต้องแม่นยำ' 
-                    : 'ทบทวนคำตอบแล้วลองใหม่อีกครั้งเพื่อรับรางวัลที่สูงขึ้น'}
+                    ? 'ตอบคำถามได้อย่างยอดเยี่ยม ทำดาเมจชนะคู่แข่ง!' 
+                    : 'คะแนนดีมากแล้ว ฝึกฝนโจทย์เพิ่มเติมเพื่อคว้าชัยในรอบถัดไป'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-800/60 border border-slate-700">
-                <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">EXP ที่ได้รับ</span>
-                  <div className="text-xl font-black text-amber-400">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 w-full">
+                <div className="space-y-0.5 text-center">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">EXP สะสม</span>
+                  <div className="text-lg font-black text-amber-400">
                     +{playerHp > opponentHp ? 250 : 80} EXP
                   </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5 text-center">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">เพชร Gems</span>
-                  <div className="text-xl font-black text-cyan-400">
+                  <div className="text-lg font-black text-cyan-400">
                     +{playerHp > opponentHp ? 30 : 10} Gems
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => setBattleState('idle')}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition-all"
-              >
-                กลับสู่หน้าหลักเกม
-              </button>
+              <div className="w-full space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleStartBattle}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-sm shadow-lg shadow-rose-600/30 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>ดวลใหม่อีกรอบ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBattleState('idle')}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all cursor-pointer"
+                >
+                  กลับสู่ห้องล็อบบี้
+                </button>
+              </div>
             </div>
           )}
         </div>

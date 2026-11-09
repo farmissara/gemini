@@ -41,6 +41,9 @@ export interface School {
   status: 'active' | 'pending' | 'suspended';
   subscriptionPlan?: 'Starter' | 'Professional' | 'Enterprise';
   appliedPromoCode?: string;
+  latitude?: number;
+  longitude?: number;
+  geofenceRadiusMeters?: number;
 }
 
 export interface RolePermissionConfig {
@@ -321,6 +324,9 @@ export interface CampusGateGeofence {
   radiusMeters: number;
   isPrimary: boolean;
   type: 'main_gate' | 'north_gate' | 'canteen' | 'bus_dropoff' | 'staff_parking';
+  isActive?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface LessonMaterial {
@@ -353,6 +359,9 @@ export interface Assignment {
   points: number;
   submittedStudentIds: string[];
   status: 'active' | 'closed';
+  courseCode?: string;
+  description?: string;
+  maxScore?: number;
 }
 
 export interface Course {
@@ -481,6 +490,9 @@ export interface SystemConfig {
   backupBucket: string;
   lastBackupDate: string;
   lineNotificationSettings?: LineNotificationSettings;
+  latitude?: number;
+  longitude?: number;
+  geofenceRadiusMeters?: number;
 }
 
 export interface QuizQuestion {
@@ -733,19 +745,29 @@ export interface LabSimulationQuest {
   titleEn: string;
   gradeLevel: string;
   conceptTh: string;
+  conceptEn?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   scenarioTh: string;
+  scenarioEn?: string;
   targetGoalTh: string;
+  goalTh?: string;
+  goalEn?: string;
   availableItems: LabChemicalItem[];
   correctItemIds: string[];
+  requiredTool?: 'none' | 'burner' | 'stirrer';
   requiresHeating?: boolean;
   requiresStirring?: boolean;
   successTitleTh: string;
   successDescTh: string;
+  successDescEn?: string;
+  successMessageTh?: string;
+  successMessageEn?: string;
   successProductColor: string;
+  resultingColor?: string;
   successAnimation: 'bubbling_glow' | 'golden_crystal' | 'rocket_orbit' | 'gourmet_dish' | 'robot_dance' | 'lotus_aura';
   failTitleTh: string;
   failDescTh: string;
+  failDescEn?: string;
   failAnimation: 'lab_explosion' | 'rocket_crash' | 'burnt_food' | 'short_circuit' | 'banana_slip';
   scientificExplanationTh: string;
   expReward: number;

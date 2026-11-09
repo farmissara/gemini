@@ -307,11 +307,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const canManage = currentRole === 'admin' || currentRole === 'super_admin';
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header and Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-blue-600" />
             {lang === 'th' ? 'ทำเนียบคณาจารย์และแฟ้มวิทยฐานะ (PA)' : 'Faculty & Staff Directory (PA Hub)'}
           </h1>
@@ -356,7 +356,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2 w-full">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -411,8 +411,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         </div>
       </div>
 
-      {/* Teachers Cards View */}
-      {viewMode === 'cards' ? (
+      {/* Teachers Scrollable Container */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+        {/* Teachers Cards View */}
+        {viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTeachers.map((teacher) => (
             <div
@@ -619,6 +621,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           </div>
         </div>
       )}
+      </div>
 
       {/* ======================================================== */}
       {/* 1. TEACHER DETAIL & PA PORTFOLIO & TEACHING ANALYTICS MODAL */}
