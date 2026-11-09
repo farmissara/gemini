@@ -56,6 +56,7 @@ interface EduBattleRoyale3DViewProps {
   initialGameMode?: 'solo' | 'classroom';
   roomCodeProp?: string;
   roomNameProp?: string;
+  onGamePhaseChange?: (isPlaying: boolean) => void;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onExit: () => void;
 }
@@ -378,6 +379,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   initialGameMode = 'classroom',
   roomCodeProp,
   roomNameProp,
+  onGamePhaseChange,
   onEarnRewards,
   onExit
 }) => {
@@ -414,7 +416,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   // Game Modes & Match Setup Lobby (Requirement 3 & 4)
   const [gamePhase, setGamePhase] = useState<'lobby' | 'playing'>('lobby');
   const [playMode, setPlayMode] = useState<'solo' | 'friend' | 'teacher_room'>(
-    initialGameMode === 'solo' ? 'solo' : 'teacher_room'
+    initialGameMode === 'solo' || (!initialGameMode && currentUser?.role === 'student')
+      ? 'solo'
+      : 'teacher_room'
   );
   const [friendRoomInput, setFriendRoomInput] = useState<string>(roomCodeProp || 'ARENA-401');
   const [teacherActivityName, setTeacherActivityName] = useState<string>(
@@ -463,6 +467,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
   // Victory / Game Over
   const [gameWon, setGameWon] = useState(false);
+
+  useEffect(() => {
+    onGamePhaseChange?.(gamePhase === 'playing');
+  }, [gamePhase, onGamePhaseChange]);
 
   // Live Classroom Rankings & Competitors
   const [classmates, setClassmates] = useState<RoomClassmate[]>([
@@ -1705,23 +1713,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               onClick={onExit}
               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer border border-slate-700 flex items-center gap-1.5"
             >
-              <span>✕ ออกสู่ระบบ</span>
+              <span>✕ กลับหน้าเลือกเกม</span>
             </button>
           </div>
 
           {/* Lobby Configuration Grid */}
           <div className="flex-1 py-5 space-y-6 max-w-4xl mx-auto w-full">
             {/* STEP 1: SELECT EXAM CATEGORY & GRADE LEVEL */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-amber-400">
-                  <span className="w-6 h-6 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center text-xs font-mono font-black border border-amber-400/30">1</span>
-                  <span>เลือกหมวดคลังข้อสอบ (Select Question Bank)</span>
-                </div>
-                <span className="text-xs text-slate-400 font-mono">
-                  พร้อมใช้งาน {arenaQuestions.length} ข้อสอบ
-                </span>
-              </div>
+            <details className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-amber-400">
+                <span>คลังโจทย์และระดับชั้น: {EXAM_CATEGORIES.find(cat => cat.id === selectedBankCategory)?.labelTh} • {EXAM_GRADE_LEVELS.find(grade => grade.id === selectedGradeFilter)?.labelTh}</span>
+                <span className="shrink-0 text-xs font-mono text-slate-400">{arenaQuestions.length} ข้อ ▾</span>
+              </summary>
+              <div className="mt-3 space-y-3">
 
               {/* Category Pills/Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -1782,7 +1786,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   })}
                 </div>
               </div>
-            </div>
+              </div>
+            </details>
 
             {/* STEP 2: SELECT GAME MODE (เดี่ยว / ชวนเพื่อน / ครูสร้างห้อง) */}
             <div className="space-y-3 pt-2 border-t border-slate-800">
@@ -1903,7 +1908,11 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               )}
 
               {playMode === 'teacher_room' && (
-                <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-3">
+                <details className="rounded-2xl bg-amber-950/40 border border-amber-500/40 p-3">
+                  <summary className="cursor-pointer list-none text-xs font-bold text-amber-300">
+                    ตั้งค่าห้องครู • PIN: {teacherRoomPin} ▾
+                  </summary>
+                  <div className="mt-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-amber-300">⚙️ ตั้งค่าห้องกิจกรรมการแข่งขันของครู:</span>
                     <span className="font-mono text-xs text-amber-400 font-bold">PIN: {teacherRoomPin}</span>
@@ -1963,23 +1972,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       </select>
                     </div>
                   </div>
-                </div>
+                  </div>
+                </details>
               )}
             </div>
 
             {/* STEP 3: CHARACTER SKIN SELECTION */}
-            <div className="space-y-3 pt-2 border-t border-slate-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-emerald-400">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-400/20 text-emerald-300 flex items-center justify-center text-xs font-mono font-black border border-emerald-400/30">3</span>
-                  <span>เลือกสกินตัวละคร (Select Character Skin)</span>
-                </div>
-                <span className="text-xs text-slate-400">
-                  สกินที่เลือก: {SKINS.find(s => s.id === selectedSkinId)?.nameTh.split(' ')[0]}
-                </span>
-              </div>
+            <details className="rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-emerald-400">
+                <span>ปรับแต่งตัวละคร</span>
+                <span className="text-xs text-slate-400">สกิน {SKINS.find(s => s.id === selectedSkinId)?.nameTh.split(' ')[0]} ▾</span>
+              </summary>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {SKINS.map((skin) => {
                   const isSelected = selectedSkinId === skin.id;
                   return (
@@ -2011,7 +2016,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   );
                 })}
               </div>
-            </div>
+            </details>
 
             {/* LAUNCH BUTTON */}
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800">
@@ -2083,47 +2088,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </span>
           </div>
 
-          {/* Right: Camera Zoom In/Out Controls, Sound, Fullscreen */}
+          {/* Right: Sound, Fullscreen, and on-demand game menu */}
           <div className="flex items-center gap-1.5 pointer-events-auto">
-            {/* Camera Zoom In/Out Controls */}
-            <div className="flex items-center bg-slate-900/85 border border-slate-700/80 rounded-xl px-1 py-0.5 shadow-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  const newZoom = Math.max(0.5, Number((zoomMultiplierRef.current - 0.2).toFixed(1)));
-                  zoomMultiplierRef.current = newZoom;
-                  setZoomScale(newZoom);
-                }}
-                className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-slate-800 active:scale-95 transition cursor-pointer"
-                title="ซูมออก (Zoom Out -)"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  zoomMultiplierRef.current = 1.0;
-                  setZoomScale(1.0);
-                }}
-                className="px-1 text-[10px] font-mono font-bold text-amber-300 hover:underline cursor-pointer"
-                title="รีเซ็ตระดับซูม 1.0x"
-              >
-                {zoomScale}x
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const newZoom = Math.min(2.2, Number((zoomMultiplierRef.current + 0.2).toFixed(1)));
-                  zoomMultiplierRef.current = newZoom;
-                  setZoomScale(newZoom);
-                }}
-                className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-slate-800 active:scale-95 transition cursor-pointer"
-                title="ซูมเข้า (Zoom In +)"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
             {/* Sound Toggle */}
             <button
               type="button"
@@ -2628,6 +2594,36 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               {drawerTab === 'settings' && (
                 <div className="space-y-3">
                   <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-between">
+                    <span>ซูมกล้อง</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newZoom = Math.max(0.5, Number((zoomMultiplierRef.current - 0.2).toFixed(1)));
+                          zoomMultiplierRef.current = newZoom;
+                          setZoomScale(newZoom);
+                        }}
+                        className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white"
+                        aria-label="ซูมออก"
+                      >
+                        <ZoomOut className="w-4 h-4" />
+                      </button>
+                      <span className="min-w-10 text-center text-xs font-mono text-amber-300">{zoomScale}x</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newZoom = Math.min(2.2, Number((zoomMultiplierRef.current + 0.2).toFixed(1)));
+                          zoomMultiplierRef.current = newZoom;
+                          setZoomScale(newZoom);
+                        }}
+                        className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white"
+                        aria-label="ซูมเข้า"
+                      >
+                        <ZoomIn className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-between">
                     <span>เสียงประกอบ & ดนตรีผจญภัย</span>
                     <button
                       type="button"
@@ -2678,7 +2674,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       className="w-full py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>ออกจากเกมสู่ระบบโรงเรียน</span>
+                      <span>กลับหน้าเลือกเกม</span>
                     </button>
                   </div>
                 </div>
@@ -2969,7 +2965,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 }}
                 className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-sm text-slate-300 border border-slate-700 cursor-pointer"
               >
-                ออกสู่ระบบโรงเรียน
+                กลับหน้าเลือกเกม
               </button>
             </div>
           </div>

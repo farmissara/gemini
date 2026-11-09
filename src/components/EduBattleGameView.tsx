@@ -39,6 +39,7 @@ interface EduBattleGameViewProps {
   lang: AppLanguage;
   initialSubTab?: 'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop';
   isMobileMode?: boolean;
+  onGamePlayingChange?: (isPlaying: boolean) => void;
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
@@ -58,6 +59,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onImportQuestions,
   onEarnRewards,
   onRedeemReward,
+  onGamePlayingChange,
   onExit
 }) => {
   const [isMobileScreen, setIsMobileScreen] = useState(() => {
@@ -88,6 +90,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   // 1v1 Battle State
   const [battleState, setBattleState] = useState<'idle' | 'playing' | 'round_over' | 'finished'>('idle');
+  const [is3DBattlePlaying, setIs3DBattlePlaying] = useState(false);
+  const [showUtilitiesMenu, setShowUtilitiesMenu] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [playerHp, setPlayerHp] = useState(100);
   const [opponentHp, setOpponentHp] = useState(100);
@@ -97,6 +101,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   const [roundScore, setRoundScore] = useState(0);
   const [battleFeedback, setBattleFeedback] = useState<string | null>(null);
   const [arenaZoom, setArenaZoom] = useState<number>(1.0);
+
+  useEffect(() => {
+    onGamePlayingChange?.(battleState === 'playing' || is3DBattlePlaying);
+  }, [battleState, is3DBattlePlaying, onGamePlayingChange]);
 
   // New Question Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -378,8 +386,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     streak: 4
   };
 
+  const isFullHeightGameView = ['arena', 'battle_royale_3d', 'subject_labs'].includes(activeSubTab);
+
   return (
-    <div className={`w-full ${isMobile ? 'h-full flex flex-col overflow-hidden bg-slate-950 text-white select-none' : 'space-y-6'}`}>
+    <div className={`w-full ${isMobile || isFullHeightGameView ? 'h-full min-h-0 flex flex-col overflow-hidden bg-slate-950 text-white select-none' : 'space-y-6'}`}>
       {/* Mobile Top Arcade HUD */}
       {isMobile ? (
         <header className="shrink-0 px-3 py-2 bg-slate-900/95 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between gap-2 z-20">
@@ -476,181 +486,92 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         )
       )}
 
-      {/* Mode Navigation Strip (Hidden during active battle on mobile/desktop) */}
-      {battleState !== 'playing' && (
-        isMobile ? (
-          /* Mobile Horizontal Pill Scroll Strip */
-          <div className="shrink-0 px-2 py-1.5 bg-slate-900/90 border-b border-slate-800/80 flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none z-10">
+      {/* Keep game modes visible; place supporting tools behind one compact menu. */}
+      {battleState !== 'playing' && !is3DBattlePlaying && (
+        <div className="shrink-0 flex items-center gap-2 px-2 py-1.5 bg-slate-900/90 border-b border-slate-800/80 z-10">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {[
+              { id: 'arena' as const, label: isMobile ? '1v1' : (lang === 'th' ? '1v1 ดวลตอบสด' : '1v1 Arena'), icon: Swords },
+              { id: 'battle_royale_3d' as const, label: isMobile ? '3D Arena' : '3D EduArena', icon: Gamepad2 },
+              { id: 'subject_labs' as const, label: isMobile ? 'แล็บ' : (lang === 'th' ? 'แล็บจำลอง' : 'Subject Labs'), icon: FlaskConical },
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setActiveSubTab(id);
+                  setShowUtilitiesMenu(false);
+                }}
+                aria-pressed={activeSubTab === id}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
+                  activeSubTab === id
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-slate-800/80 text-slate-400 border border-slate-700/60 hover:text-white'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {onExit && (
             <button
               type="button"
-              onClick={() => setActiveSubTab('arena')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
-                activeSubTab === 'arena'
-                  ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-600/30'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
-              }`}
+              onClick={onExit}
+              className="shrink-0 rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 transition hover:bg-slate-700 hover:text-white"
             >
-              <Swords className="w-3.5 h-3.5" />
-              <span>1v1 ดวลตอบสด</span>
+              {lang === 'th' ? 'กลับระบบ' : 'Exit'}
             </button>
+          )}
+
+          <div className="relative ml-auto shrink-0">
             <button
               type="button"
-              onClick={() => setActiveSubTab('battle_royale_3d')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
-                activeSubTab === 'battle_royale_3d'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-md shadow-amber-500/30'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
-              }`}
-            >
-              <Gamepad2 className="w-3.5 h-3.5" />
-              <span>3D Arena</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('subject_labs')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
-                activeSubTab === 'subject_labs'
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/30'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
-              }`}
-            >
-              <FlaskConical className="w-3.5 h-3.5" />
-              <span>แล็บเคมี</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('leaderboard')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
-                activeSubTab === 'leaderboard'
-                  ? 'bg-gradient-to-r from-amber-600 to-orange-500 text-white shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
-              }`}
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>อันดับ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('shop')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
-                activeSubTab === 'shop'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>ร้านค้า</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('bank')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
-                activeSubTab === 'bank'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+              onClick={() => setShowUtilitiesMenu(prev => !prev)}
+              aria-expanded={showUtilitiesMenu}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                ['bank', 'leaderboard', 'shop'].includes(activeSubTab)
+                  ? 'bg-slate-700 text-white'
+                  : 'bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>คลังโจทย์</span>
+              <span>{lang === 'th' ? 'เครื่องมือ' : 'Tools'}</span>
             </button>
-          </div>
-        ) : (
-          /* Desktop Sub Tabs */
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('arena')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeSubTab === 'arena'
-                    ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30'
-                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <Swords className="w-4 h-4" />
-                <span>{lang === 'th' ? '1v1 แบทเทิลดวลสด' : '1v1 Duel Arena'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('battle_royale_3d')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  activeSubTab === 'battle_royale_3d'
-                    ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 scale-105 border border-yellow-300'
-                    : 'bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20'
-                }`}
-              >
-                <Gamepad2 className="w-4 h-4 text-slate-950 fill-current" />
-                <span>🎮 {lang === 'th' ? '3D EduArena สนามประลอง 3 มิติ' : '3D EduArena Battle Royale'}</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-bold animate-pulse">
-                  HOT
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('subject_labs')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  activeSubTab === 'subject_labs'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30 scale-105 border border-cyan-300'
-                    : 'bg-blue-500/10 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20'
-                }`}
-              >
-                <FlaskConical className="w-4 h-4 text-cyan-300 fill-current" />
-                <span>🧪 {lang === 'th' ? 'แล็บจำลอง & เคมีระเบิด' : 'Subject Labs & Chemistry'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('bank')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeSubTab === 'bank'
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>{lang === 'th' ? 'คลังข้อสอบ & นำเข้า/ส่งออก (ครู)' : 'Question Bank & Import/Export'}</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950 text-indigo-300">
-                  {questions.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('leaderboard')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeSubTab === 'leaderboard'
-                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
-                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <Trophy className="w-4 h-4" />
-                <span>{lang === 'th' ? 'ตารางอันดับเกียรติยศ' : 'Leaderboard'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('shop')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeSubTab === 'shop'
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                    : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>{lang === 'th' ? 'ร้านค้าแลกรางวัล & ตัวละคร' : 'Reward Store & Skins'}</span>
-              </button>
-            </div>
-
-            {importNotification && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs animate-bounce">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{importNotification}</span>
+            {showUtilitiesMenu && (
+              <div className="absolute right-0 top-full mt-2 z-30 min-w-48 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+                {[
+                  { id: 'bank' as const, label: lang === 'th' ? `คลังโจทย์ (${questions.length})` : `Question Bank (${questions.length})`, icon: BookOpen },
+                  { id: 'leaderboard' as const, label: lang === 'th' ? 'ตารางอันดับ' : 'Leaderboard', icon: Trophy },
+                  { id: 'shop' as const, label: lang === 'th' ? 'ร้านค้ารางวัล' : 'Reward Store', icon: ShoppingBag },
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      setActiveSubTab(id);
+                      setShowUtilitiesMenu(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-left text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                      activeSubTab === id ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{label}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
-        )
+
+          {importNotification && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{importNotification}</span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB 0: 3D EduArena Battle Royale */}
@@ -662,7 +583,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             lang={lang}
             rewardItems={rewardItems}
             onEarnRewards={onEarnRewards}
-            onExit={onExit || (() => setActiveSubTab('arena'))}
+            onGamePhaseChange={setIs3DBattlePlaying}
+            onExit={() => {
+              setIs3DBattlePlaying(false);
+              setActiveSubTab('arena');
+            }}
           />
         </div>
       )}
@@ -675,7 +600,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
             lang={lang}
             onEarnRewards={onEarnRewards}
-            onBackToGames={onExit || (() => setActiveSubTab('arena'))}
+            onBackToGames={() => setActiveSubTab('arena')}
           />
         </div>
       )}

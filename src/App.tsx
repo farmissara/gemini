@@ -144,6 +144,7 @@ export const App: React.FC = () => {
 
   // Navigation, Mode, Theme, Language & Mobile Drawer State
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const [isGamePlaying, setIsGamePlaying] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
   const [lang, setLang] = useState<AppLanguage>('th');
@@ -170,6 +171,11 @@ export const App: React.FC = () => {
   }, []);
 
   const shouldShowMobileView = deviceViewPreference === 'mobile' || (deviceViewPreference === 'auto' && isMobileScreen);
+  const useImmersiveGameLayout = isGamePlaying || ['games', 'boss_raid', 'subject_labs'].includes(currentTab);
+
+  useEffect(() => {
+    setIsGamePlaying(false);
+  }, [currentTab]);
 
   // Primary Domain State
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
@@ -352,6 +358,7 @@ export const App: React.FC = () => {
   };
 
   const navigateToAppTab = (tab: NavTab) => {
+    setIsGamePlaying(false);
     if (currentRole === 'super_admin' && tab === 'super_admin_console') {
       setIsSuperAdminSchoolView(false);
       setProgramMode('school_erp');
@@ -1111,7 +1118,7 @@ export const App: React.FC = () => {
   return (
     <div className={`h-dvh max-h-dvh overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
       {/* Top Navbar */}
-      <Navbar
+      {!useImmersiveGameLayout && <Navbar
         currentUser={currentUser}
         activeSchool={activeSchool}
         currentRole={currentRole}
@@ -1136,14 +1143,14 @@ export const App: React.FC = () => {
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
-      />
-      {isDemoMode && (
+      />}
+      {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 bg-violet-50 text-[11px] text-violet-900 flex items-center justify-between">
           <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>
           <span className="font-bold uppercase text-[9px] px-1.5 py-0.2 bg-violet-200 rounded">DEMO</span>
         </div>
       )}
-      {dataSyncError && (
+      {!useImmersiveGameLayout && dataSyncError && (
         <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-md border border-rose-300 bg-rose-50 text-[11px] text-rose-800 flex items-center justify-between">
           <span>ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}</span>
           <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2">✕</button>
@@ -1151,7 +1158,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Mobile Drawer Overlay and Sidebar */}
-      {isMobileMenuOpen && (
+      {!useImmersiveGameLayout && isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
@@ -1191,9 +1198,9 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden min-w-0 min-h-0">
+      <div className={`flex-1 flex overflow-hidden min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950' : ''}`}>
         {/* Desktop Left Sidebar only shown in School ERP mode */}
-        {programMode === 'school_erp' && (
+        {!useImmersiveGameLayout && programMode === 'school_erp' && (
           <div className="hidden md:flex shrink-0">
             <Sidebar
               currentTab={currentTab}
@@ -1210,9 +1217,9 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-hidden p-2 sm:p-3 lg:p-4">
-          <div className="max-w-7xl mx-auto w-full min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden">
-            {currentRole === 'super_admin' && isSuperAdminSchoolView && (
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-hidden ${useImmersiveGameLayout ? 'p-0' : 'p-2 sm:p-3 lg:p-4'}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none' : 'max-w-7xl mx-auto'} w-full min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden`}>
+            {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm font-bold text-blue-900">
@@ -1235,7 +1242,7 @@ export const App: React.FC = () => {
             {programMode === 'school_erp' && (
               <>
                 {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
-                {currentTab !== 'super_admin_console' && (
+                {currentTab !== 'super_admin_console' && !useImmersiveGameLayout && (
                   <div className="shrink-0 mb-2.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-0.5">
                     <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 shrink-0">
                       {[
@@ -1414,6 +1421,7 @@ export const App: React.FC = () => {
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
+                    onGamePlayingChange={setIsGamePlaying}
                     onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
@@ -1645,7 +1653,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation Bar - Clean, Subtle & Ergonomic */}
-      {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && (
+      {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && !useImmersiveGameLayout && (
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-sm">
         <button
           type="button"

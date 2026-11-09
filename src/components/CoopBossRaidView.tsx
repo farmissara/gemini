@@ -422,25 +422,24 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
           </div>
 
           {/* Co-op Party Matrix (Peer Tutoring & Combos) */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <details className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Users className="w-5 h-5 text-indigo-500" />
                   {lang === 'th' ? 'ทีมพันธมิตรห้องเรียน & ระบบเพื่อนช่วยติว' : 'Classroom Co-op Squads'}
                 </h4>
-                <p className="text-xs text-slate-500">
-                  {lang === 'th' ? 'หากเพื่อนในทีมยังตอบไม่ได้ กดปุ่ม "ติวเพื่อน" เพื่อส่งแนวทางคิดให้เพื่อน' : 'Peer assist: Send tutoring tips to help teammates answer'}
-                </p>
               </div>
-
-              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                {parties.length} {lang === 'th' ? 'ทีมรบ' : 'Parties'}
+              <span className="shrink-0 text-xs font-black text-indigo-600 dark:text-indigo-400">
+                {parties.length} {lang === 'th' ? 'ทีม • รายละเอียด ▾' : 'teams • details ▾'}
               </span>
-            </div>
+            </summary>
 
             {/* Squads List */}
-            <div className="space-y-3">
+            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+              <p className="text-xs text-slate-500">
+                {lang === 'th' ? 'หากเพื่อนในทีมยังตอบไม่ได้ กดปุ่ม "ติวเพื่อน" เพื่อส่งแนวทางคิดให้เพื่อน' : 'Peer assist: Send tutoring tips to help teammates answer'}
+              </p>
               {parties.map((party) => (
                 <div
                   key={party.id}
@@ -510,7 +509,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                 </div>
               ))}
             </div>
-          </div>
+          </details>
         </div>
       </div>
 

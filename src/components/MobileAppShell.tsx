@@ -593,7 +593,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                   </button>
 
-                  {/* Game 5: 3D Hall of Fame */}
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      รางวัลและผลงาน • ไม่ใช่โหมดเกม
+                    </h3>
+                  </div>
+
+                  {/* Achievement gallery is kept separate from playable modes. */}
                   <button
                     type="button"
                     onClick={() => setActiveGameView('hall_of_fame')}
@@ -607,10 +613,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">หอเกียรติยศ 3 มิติ (Hall of Fame)</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-indigo-500 text-white font-bold">3D</span>
+                          <h3 className="font-black text-sm text-slate-900 dark:text-white">ถ้วยรางวัลและเกียรติบัตร</h3>
+                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-indigo-500 text-white font-bold">รางวัล</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">ถ้วยรางวัล 3D หมุนและซูมดูผลงาน พร้อมเกียรติบัตร</p>
+                        <p className="text-xs text-slate-500 mt-0.5">ดูถ้วยรางวัล 3 มิติและเกียรติบัตรที่ได้รับ</p>
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
