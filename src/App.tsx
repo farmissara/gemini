@@ -1173,6 +1173,7 @@ export const App: React.FC = () => {
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
+                    onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1189,6 +1190,7 @@ export const App: React.FC = () => {
                     lang={lang}
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                    onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1223,7 +1225,7 @@ export const App: React.FC = () => {
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
                     lang={lang}
                     onEarnRewards={handleEarnRewards}
-                    onBackToGames={() => setCurrentTab('games')}
+                    onBackToGames={() => setCurrentTab('dashboard')}
                   />
                 )}
 
@@ -1231,6 +1233,7 @@ export const App: React.FC = () => {
                   <HallOfFame3DView
                     lang={lang}
                     school={activeSchool}
+                    onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
 

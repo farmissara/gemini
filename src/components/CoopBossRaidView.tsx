@@ -37,12 +37,14 @@ interface CoopBossRaidViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  onExit?: () => void;
 }
 
 export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   lang = 'th',
   currentRole = 'teacher',
-  currentUserName = 'อาจารย์ประจำวิชา'
+  currentUserName = 'อาจารย์ประจำวิชา',
+  onExit
 }) => {
   const [bossConfig, setBossConfig] = useState<BossRaidConfig>(INITIAL_BOSS_RAID_CONFIG);
   const [parties, setParties] = useState<RaidParty[]>(INITIAL_RAID_PARTIES);
@@ -173,13 +175,23 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition cursor-pointer active:scale-95"
+              >
+                <span>❌ ออกจากเกม</span>
+              </button>
+            )}
+
             {/* Quick Action Button for Teacher */}
             {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
               <button
                 type="button"
                 onClick={() => setIsTeacherPanelOpen(!isTeacherPanelOpen)}
-                className="px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition cursor-pointer"
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 <span>{lang === 'th' ? 'ควบคุมบอส (ครู)' : 'Teacher Controls'}</span>
@@ -189,10 +201,10 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             <button
               type="button"
               onClick={handleRestartBoss}
-              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
               title="Restart Raid"
             >
-              <RotateCcw className="w-5 h-5" />
+              <RotateCcw className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -273,25 +285,25 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                 <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-lg px-1.5 py-0.5">
                   <button
                     type="button"
-                    onClick={() => setBossZoom(prev => Math.max(0.6, Number((prev - 0.15).toFixed(2))))}
-                    className="p-0.5 text-slate-300 hover:text-amber-300 cursor-pointer"
-                    title="ซูมออกบอส"
+                    onClick={() => setBossZoom(prev => Math.max(0.5, Number((prev - 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
+                    title="ซูมออกบอส (-)"
                   >
                     <ZoomOut className="w-3 h-3" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setBossZoom(1.0)}
-                    className="text-[10px] font-mono text-amber-300 font-bold px-0.5 cursor-pointer"
+                    className="text-[10px] font-mono text-amber-300 font-bold px-1 hover:underline cursor-pointer"
                     title="รีเซ็ตซูม 1.0x"
                   >
                     {bossZoom}x
                   </button>
                   <button
                     type="button"
-                    onClick={() => setBossZoom(prev => Math.min(1.3, Number((prev + 0.15).toFixed(2))))}
-                    className="p-0.5 text-slate-300 hover:text-amber-300 cursor-pointer"
-                    title="ซูมเข้าบอส"
+                    onClick={() => setBossZoom(prev => Math.min(1.8, Number((prev + 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
+                    title="ซูมเข้าบอส (+)"
                   >
                     <ZoomIn className="w-3 h-3" />
                   </button>

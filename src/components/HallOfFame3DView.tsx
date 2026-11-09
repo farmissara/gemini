@@ -24,11 +24,13 @@ import { INITIAL_HALL_OF_FAME_TROPHIES } from '../data/innovativeFeaturesData';
 interface HallOfFame3DViewProps {
   lang?: AppLanguage;
   school?: School;
+  onExit?: () => void;
 }
 
 export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   lang = 'th',
-  school
+  school,
+  onExit
 }) => {
   const [trophies, setTrophies] = useState<HallOfFameTrophy[]>(INITIAL_HALL_OF_FAME_TROPHIES);
   const [selectedTrophy, setSelectedTrophy] = useState<HallOfFameTrophy>(INITIAL_HALL_OF_FAME_TROPHIES[0]);
@@ -365,22 +367,34 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl flex items-center gap-4 shrink-0">
-            <div className="text-right">
-              <p className="text-xs text-amber-200 font-medium">
-                {lang === 'th' ? 'ถ้วยเกียรติยศทั้งหมด' : 'Total Trophies'}
-              </p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-amber-300">{trophies.length}</span>
-                <span className="text-xs text-slate-300">{lang === 'th' ? 'รางวัล' : 'awards'}</span>
+          <div className="flex items-center gap-3 shrink-0">
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition cursor-pointer active:scale-95"
+              >
+                <span>❌ ออกจากเกม</span>
+              </button>
+            )}
+
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-amber-200 font-medium">
+                  {lang === 'th' ? 'ถ้วยเกียรติยศทั้งหมด' : 'Total Trophies'}
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-amber-300">{trophies.length}</span>
+                  <span className="text-xs text-slate-300">{lang === 'th' ? 'รางวัล' : 'awards'}</span>
+                </div>
+                <p className="text-[11px] text-emerald-400 font-semibold flex items-center justify-end gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {lang === 'th' ? 'ตรวจสอบได้ทุกใบ' : '100% Verifiable'}
+                </p>
               </div>
-              <p className="text-[11px] text-emerald-400 font-semibold flex items-center justify-end gap-1 mt-0.5">
-                <CheckCircle2 className="w-3 h-3" />
-                {lang === 'th' ? 'ตรวจสอบได้ทุกใบ' : '100% Verifiable'}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
-              <Award className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+                <Award className="w-6 h-6" />
+              </div>
             </div>
           </div>
         </div>
@@ -403,25 +417,25 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-1.5 py-0.5 text-xs">
                   <button
                     type="button"
-                    onClick={() => setTrophyZoom(prev => Math.max(0.6, Number((prev - 0.15).toFixed(2))))}
-                    className="p-0.5 text-slate-600 dark:text-slate-300 hover:text-amber-500 cursor-pointer"
-                    title="ซูมออก"
+                    onClick={() => setTrophyZoom(prev => Math.max(0.5, Number((prev - 0.15).toFixed(2))))}
+                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-500 active:scale-90 transition cursor-pointer"
+                    title="ซูมออก (-)"
                   >
                     <ZoomOut className="w-3 h-3" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(1.0)}
-                    className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold px-0.5 cursor-pointer"
+                    className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold px-1 hover:underline cursor-pointer"
                     title="รีเซ็ต 1.0x"
                   >
                     {trophyZoom}x
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTrophyZoom(prev => Math.min(1.4, Number((prev + 0.15).toFixed(2))))}
-                    className="p-0.5 text-slate-600 dark:text-slate-300 hover:text-amber-500 cursor-pointer"
-                    title="ซูมเข้า"
+                    onClick={() => setTrophyZoom(prev => Math.min(2.0, Number((prev + 0.15).toFixed(2))))}
+                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-500 active:scale-90 transition cursor-pointer"
+                    title="ซูมเข้า (+)"
                   >
                     <ZoomIn className="w-3 h-3" />
                   </button>

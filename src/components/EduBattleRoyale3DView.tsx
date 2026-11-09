@@ -1242,8 +1242,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     // Mouse Wheel Zoom
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.12 : -0.12;
-      const nextZoom = Math.min(2.2, Math.max(0.45, Number((zoomMultiplierRef.current + delta).toFixed(2))));
+      // Scrolling up (deltaY < 0) zooms in (+); scrolling down (deltaY > 0) zooms out (-)
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      const nextZoom = Math.min(2.2, Math.max(0.5, Number((zoomMultiplierRef.current + delta).toFixed(2))));
       zoomMultiplierRef.current = nextZoom;
       setZoomScale(Number(nextZoom.toFixed(1)));
     };
@@ -1367,9 +1368,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       }
 
       // Smooth Follow Camera with Dynamic Zoom Multiplier
-      const zMult = zoomMultiplierRef.current;
-      const camDist = (isCrouch ? 5.5 : 7.2) * zMult;
-      const camHeight = (isCrouch ? 3.0 : 4.0) * THREE.MathUtils.lerp(0.8, 1.25, (zMult - 0.5) / 1.7);
+      // When zMult is larger (e.g. 1.8x zoom in), camDist is smaller; when zMult is smaller (e.g. 0.6x zoom out), camDist is larger
+      const zMult = Math.max(0.5, Math.min(2.5, zoomMultiplierRef.current));
+      const camDist = (isCrouch ? 5.5 : 7.2) / zMult;
+      const camHeight = (isCrouch ? 3.0 : 4.0) / THREE.MathUtils.lerp(0.85, 1.3, (zMult - 0.5) / 1.7);
       const camOffset = new THREE.Vector3(0, camHeight, camDist);
       camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerYaw);
       const targetCamPos = playerPos.clone().add(camOffset);
@@ -2034,25 +2036,37 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* ======================================================== */}
       {gamePhase === 'playing' && (
         <div className="absolute top-3 inset-x-3 z-30 flex items-center justify-between pointer-events-none gap-2">
-          {/* Left: Mini Player Status Badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl pointer-events-auto">
-            <span className="text-rose-400 font-bold flex items-center gap-1 text-xs">
-              ❤️ <span className="font-mono">{Math.round(playerHp)}</span>
-            </span>
-            <div className="w-12 sm:w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-300 ${playerHp > 50 ? 'bg-emerald-500' : playerHp > 20 ? 'bg-amber-500' : 'bg-rose-500 animate-pulse'}`}
-                style={{ width: `${playerHp}%` }}
-              />
-            </div>
-            <span className="text-amber-300 font-extrabold font-mono text-xs pl-1 border-l border-slate-700">
-              🏆 {totalExp}
-            </span>
-            {playerStreak > 0 && (
-              <span className="text-amber-400 font-bold font-mono text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/40 hidden sm:inline">
-                🔥 {playerStreak}x
+          {/* Left: Prominent Exit Button + Mini Player Status Badge */}
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+            <button
+              type="button"
+              onClick={onExit}
+              className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 flex items-center gap-1 cursor-pointer active:scale-95 border border-rose-500/50"
+              title="ออกจากเกม กลับสู่หน้าหลัก"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">❌ ออกจากเกม</span>
+            </button>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl">
+              <span className="text-rose-400 font-bold flex items-center gap-1 text-xs">
+                ❤️ <span className="font-mono">{Math.round(playerHp)}</span>
               </span>
-            )}
+              <div className="w-12 sm:w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-300 ${playerHp > 50 ? 'bg-emerald-500' : playerHp > 20 ? 'bg-amber-500' : 'bg-rose-500 animate-pulse'}`}
+                  style={{ width: `${playerHp}%` }}
+                />
+              </div>
+              <span className="text-amber-300 font-extrabold font-mono text-xs pl-1 border-l border-slate-700">
+                🏆 {totalExp}
+              </span>
+              {playerStreak > 0 && (
+                <span className="text-amber-400 font-bold font-mono text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/40 hidden sm:inline">
+                  🔥 {playerStreak}x
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Center: Minimal Objective Badge */}
@@ -2068,21 +2082,21 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </span>
           </div>
 
-          {/* Right: Sound, Fullscreen, and Prominent MENU Toggle */}
+          {/* Right: Camera Zoom In/Out Controls, Sound, Fullscreen */}
           <div className="flex items-center gap-1.5 pointer-events-auto">
             {/* Camera Zoom In/Out Controls */}
             <div className="flex items-center bg-slate-900/85 border border-slate-700/80 rounded-xl px-1 py-0.5 shadow-xl">
               <button
                 type="button"
                 onClick={() => {
-                  const newZoom = Math.max(0.45, Number((zoomMultiplierRef.current - 0.2).toFixed(1)));
+                  const newZoom = Math.max(0.5, Number((zoomMultiplierRef.current - 0.2).toFixed(1)));
                   zoomMultiplierRef.current = newZoom;
                   setZoomScale(newZoom);
                 }}
                 className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-slate-800 active:scale-95 transition cursor-pointer"
-                title="ซูมเข้า (Zoom In)"
+                title="ซูมออก (Zoom Out -)"
               >
-                <ZoomIn className="w-3.5 h-3.5" />
+                <ZoomOut className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
@@ -2103,9 +2117,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   setZoomScale(newZoom);
                 }}
                 className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-slate-800 active:scale-95 transition cursor-pointer"
-                title="ซูมออก (Zoom Out)"
+                title="ซูมเข้า (Zoom In +)"
               >
-                <ZoomOut className="w-3.5 h-3.5" />
+                <ZoomIn className="w-3.5 h-3.5" />
               </button>
             </div>
 

@@ -488,21 +488,19 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           </div>
         )}
 
-        {/* TAB D: GAMES HUB & COMPACT PLAY VIEWS */}
+        {/* TAB D: GAMES HUB (เมนูรวมเกมส์) */}
         {activeTab === 'games' && (
-          <div className="animate-in fade-in duration-200">
-            {activeGameView === 'hub' ? (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-lg space-y-1">
-                  <div className="flex items-center justify-between text-xs font-bold text-amber-200">
-                    <span>🎮 ศูนย์รวมเกมส์ & สนามประลอง</span>
-                    <span>EXP: {currentScore.exp}</span>
-                  </div>
-                  <h2 className="text-base font-black">เลือกเกมเพื่อเริ่มเล่น (โหมดหน้าเดียวกระชับ)</h2>
-                  <p className="text-[11px] text-white/80">จัดรูปแบบให้เล่นง่ายในหน้าเดียว พร้อมปุ่มซูมเข้า-ออก</p>
-                </div>
+          <div className="animate-in fade-in duration-200 space-y-4">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-lg space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold text-amber-200">
+                <span>🎮 ศูนย์รวมเกมส์ & สนามประลอง</span>
+                <span>EXP: {currentScore.exp}</span>
+              </div>
+              <h2 className="text-base font-black">เลือกเกมเพื่อเริ่มเล่น (โหมดเต็มจอกระชับ)</h2>
+              <p className="text-[11px] text-white/80">จัดรูปแบบให้เล่นง่ายในหน้าเดียว พร้อมปุ่มซูมเข้า-ออก</p>
+            </div>
 
-                <div className="space-y-2.5">
+            <div className="space-y-2.5">
                   {/* Game 1: 3D EduArena Battle Royale */}
                   <button
                     type="button"
@@ -619,81 +617,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Back to Games Hub Top Bar */}
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900 text-white">
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('hub')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-300 cursor-pointer"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>กลับหน้ารวมเกม</span>
-                  </button>
-                  <span className="text-xs font-bold text-slate-300">
-                    {activeGameView === 'battle_royale_3d' ? '3D EduArena' :
-                     activeGameView === '1v1_arena' ? '1v1 Duel Arena' :
-                     activeGameView === 'boss_raid' ? 'Boss Raid RPG' :
-                     activeGameView === 'subject_labs' ? 'Subject Labs' : '3D Hall of Fame'}
-                  </span>
-                </div>
-
-                {/* Render Selected Game */}
-                {activeGameView === 'battle_royale_3d' && (
-                  <div className="h-[calc(100vh-140px)] w-full rounded-2xl overflow-hidden border border-slate-800">
-                    <EduBattleRoyale3DView
-                      questions={questions}
-                      currentUser={currentUser}
-                      lang={lang}
-                      rewardItems={rewardItems}
-                      onEarnRewards={onEarnRewards}
-                      onExit={() => setActiveGameView('hub')}
-                    />
-                  </div>
-                )}
-
-                {activeGameView === '1v1_arena' && (
-                  <EduBattleGameView
-                    questions={questions}
-                    playerScores={playerScores}
-                    rewardItems={rewardItems}
-                    currentUser={currentUser}
-                    lang={lang}
-                    onAddQuestion={onAddQuestion}
-                    onImportQuestions={onImportQuestions}
-                    onEarnRewards={onEarnRewards}
-                    onRedeemReward={onRedeemReward}
-                  />
-                )}
-
-                {activeGameView === 'boss_raid' && (
-                  <CoopBossRaidView
-                    lang={lang}
-                    currentRole={currentRole}
-                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
-                  />
-                )}
-
-                {activeGameView === 'subject_labs' && (
-                  <SubjectLabSimulationView
-                    currentUserRole={currentRole}
-                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
-                    lang={lang}
-                    onEarnRewards={onEarnRewards}
-                    onBackToGames={() => setActiveGameView('hub')}
-                  />
-                )}
-
-                {activeGameView === 'hall_of_fame' && (
-                  <HallOfFame3DView
-                    lang={lang}
-                    school={activeSchool}
-                  />
-                )}
-              </div>
-            )}
-          </div>
         )}
 
         {/* TAB E: PROFILE & DIGITAL VIRTUAL ID CARD */}
@@ -998,6 +921,76 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           </button>
         </div>
       </nav>
+
+      {/* ======================================================== */}
+      {/* IMMERSIVE FULLSCREEN GAME TAKEOVER (แสดงเต็มจอ ไม่มีเมนูรก) */}
+      {/* ======================================================== */}
+      {activeGameView !== 'hub' && (
+        <div className="fixed inset-0 z-50 bg-slate-950 w-screen h-screen flex flex-col overflow-hidden animate-in fade-in duration-200">
+          {activeGameView === 'battle_royale_3d' && (
+            <div className="h-full w-full overflow-hidden">
+              <EduBattleRoyale3DView
+                questions={questions}
+                currentUser={currentUser}
+                lang={lang}
+                rewardItems={rewardItems}
+                onEarnRewards={onEarnRewards}
+                onExit={() => setActiveGameView('hub')}
+              />
+            </div>
+          )}
+
+          {activeGameView === '1v1_arena' && (
+            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950">
+              <EduBattleGameView
+                questions={questions}
+                playerScores={playerScores}
+                rewardItems={rewardItems}
+                currentUser={currentUser}
+                lang={lang}
+                onAddQuestion={onAddQuestion}
+                onImportQuestions={onImportQuestions}
+                onEarnRewards={onEarnRewards}
+                onRedeemReward={onRedeemReward}
+                onExit={() => setActiveGameView('hub')}
+              />
+            </div>
+          )}
+
+          {activeGameView === 'boss_raid' && (
+            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950 p-2 sm:p-4">
+              <CoopBossRaidView
+                lang={lang}
+                currentRole={currentRole}
+                currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                onExit={() => setActiveGameView('hub')}
+              />
+            </div>
+          )}
+
+          {activeGameView === 'subject_labs' && (
+            <div className="h-full w-full overflow-hidden flex flex-col">
+              <SubjectLabSimulationView
+                currentUserRole={currentRole}
+                currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                lang={lang}
+                onEarnRewards={onEarnRewards}
+                onBackToGames={() => setActiveGameView('hub')}
+              />
+            </div>
+          )}
+
+          {activeGameView === 'hall_of_fame' && (
+            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950 p-2 sm:p-4">
+              <HallOfFame3DView
+                lang={lang}
+                school={activeSchool}
+                onExit={() => setActiveGameView('hub')}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

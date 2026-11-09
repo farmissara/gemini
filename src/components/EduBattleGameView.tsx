@@ -40,6 +40,7 @@ interface EduBattleGameViewProps {
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onRedeemReward: (itemId: string, costGems: number) => void;
+  onExit?: () => void;
 }
 
 export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
@@ -51,7 +52,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onAddQuestion,
   onImportQuestions,
   onEarnRewards,
-  onRedeemReward
+  onRedeemReward,
+  onExit
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop'>('battle_royale_3d');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
@@ -463,7 +465,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           lang={lang}
           rewardItems={rewardItems}
           onEarnRewards={onEarnRewards}
-          onExit={() => setActiveSubTab('arena')}
+          onExit={onExit || (() => setActiveSubTab('arena'))}
         />
       )}
 
@@ -474,7 +476,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
           lang={lang}
           onEarnRewards={onEarnRewards}
-          onBackToGames={() => setActiveSubTab('battle_royale_3d')}
+          onBackToGames={onExit || (() => setActiveSubTab('battle_royale_3d'))}
         />
       )}
 
@@ -638,25 +640,25 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700 rounded-lg px-1.5 py-0.5">
                   <button
                     type="button"
-                    onClick={() => setArenaZoom(prev => Math.max(0.7, Number((prev - 0.15).toFixed(2))))}
-                    className="p-1 text-slate-300 hover:text-amber-300 cursor-pointer"
-                    title="ซูมออก"
+                    onClick={() => setArenaZoom(prev => Math.max(0.6, Number((prev - 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
+                    title="ซูมออก (-)"
                   >
                     <ZoomOut className="w-3 h-3" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setArenaZoom(1.0)}
-                    className="text-[10px] font-mono text-amber-300 font-bold px-0.5"
+                    className="text-[10px] font-mono text-amber-300 font-bold px-0.5 hover:underline cursor-pointer"
                     title="รีเซ็ต 1.0x"
                   >
                     {arenaZoom}x
                   </button>
                   <button
                     type="button"
-                    onClick={() => setArenaZoom(prev => Math.min(1.35, Number((prev + 0.15).toFixed(2))))}
-                    className="p-1 text-slate-300 hover:text-amber-300 cursor-pointer"
-                    title="ซูมเข้า"
+                    onClick={() => setArenaZoom(prev => Math.min(1.6, Number((prev + 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
+                    title="ซูมเข้า (+)"
                   >
                     <ZoomIn className="w-3 h-3" />
                   </button>
@@ -664,10 +666,19 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-cyan-300 hidden sm:inline">{roundScore} pts</span>
+                  {onExit && (
+                    <button
+                      type="button"
+                      onClick={onExit}
+                      className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <span>❌ ออกจากเกม</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setBattleState('idle')}
-                    className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] border border-rose-500/40 cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[11px] border border-slate-600 cursor-pointer"
                   >
                     ยอมแพ้
                   </button>
