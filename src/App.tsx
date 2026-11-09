@@ -103,6 +103,7 @@ import { EduBattleRoyale3DView } from './components/EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './components/SubjectLabSimulationView';
 import { UserProfileModal } from './components/UserProfileModal';
 import { SystemSettingsView } from './components/SystemSettingsView';
+import { SchoolGpsModal } from './components/SchoolGpsModal';
 import { DataImportExportModal } from './components/DataImportExportModal';
 import { ModuleGuideModal } from './components/ModuleGuideModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -228,6 +229,7 @@ export const App: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
+  const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -709,6 +711,77 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleUpdateSchoolCoordinates = (lat: number, lng: number, radiusMeters: number) => {
+    setActiveSchool((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      geofenceRadiusMeters: radiusMeters,
+    }));
+    setSchools((prev) =>
+      prev.map((s) =>
+        s.id === activeSchool.id
+          ? {
+              ...s,
+              latitude: lat,
+              longitude: lng,
+              geofenceRadiusMeters: radiusMeters,
+            }
+          : s
+      )
+    );
+    setSystemConfig((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      geofenceRadiusMeters: radiusMeters,
+    }));
+    try {
+      localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({ lat, lng, radiusMeters }));
+    } catch (e) {
+      console.warn('Failed to save school gps to localStorage', e);
+    }
+    setCampusGates((prevGates) => {
+      if (prevGates.length === 0) {
+        const newGate: CampusGateGeofence = {
+          id: `gate_${activeSchool.id}_1`,
+          schoolId: activeSchool.id,
+          nameTh: `จุดศูนย์กลาง / ประตูหลัก ${activeSchool.nameTh}`,
+          nameEn: `Main Gate ${activeSchool.nameEn}`,
+          lat,
+          lng,
+          latitude: lat,
+          longitude: lng,
+          radiusMeters,
+          isPrimary: true,
+          isActive: true,
+          type: 'main_gate',
+        };
+        try {
+          localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify([newGate]));
+        } catch { /* ignore */ }
+        return [newGate];
+      }
+      const updated = prevGates.map((g, idx) => {
+        if (g.isPrimary || idx === 0) {
+          return {
+            ...g,
+            lat,
+            lng,
+            latitude: lat,
+            longitude: lng,
+            radiusMeters,
+          };
+        }
+        return g;
+      });
+      try {
+        localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return updated;
+    });
+  };
+
   const handleQuickCheckIn = (studentId: string) => {
     handleRecordAttendance(studentId, 'present', 'สแกนบัตรผ่านประตูอัตโนมัติ (Gate Turnstile)');
   };
@@ -1022,27 +1095,21 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
+        onOpenGpsSettings={() => setShowGpsModal(true)}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
       />
       {isDemoMode && (
-        <div role="status" className="mx-4 mt-3 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm text-violet-900">
-          {lang === 'th'
-            ? 'โหมด Demo — ข้อมูลตัวอย่างสำหรับทดลอง การเปลี่ยนแปลงจะไม่บันทึกลงฐานข้อมูลจริง'
-            : 'Demo mode — sample data for exploration. Changes are not saved to the live database.'}
+        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 bg-violet-50 text-[11px] text-violet-900 flex items-center justify-between">
+          <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>
+          <span className="font-bold uppercase text-[9px] px-1.5 py-0.2 bg-violet-200 rounded">DEMO</span>
         </div>
       )}
       {dataSyncError && (
-        <div role="alert" className="mx-4 mt-3 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}
-        </div>
-      )}
-      {!isDemoMode && (
-        <div role="status" className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
-          {lang === 'th'
-            ? 'บันทึกถาวรรองรับเฉพาะข้อมูลหลัก 6 หมวด; โมดูลอื่นและรายละเอียดโปรไฟล์เพิ่มเติมยังไม่บันทึกลง Supabase'
-            : 'Only six core data areas are persisted. Other modules and extended profile fields are not stored in Supabase yet.'}
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-md border border-rose-300 bg-rose-50 text-[11px] text-rose-800 flex items-center justify-between">
+          <span>ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}</span>
+          <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2">✕</button>
         </div>
       )}
 
@@ -1164,6 +1231,7 @@ export const App: React.FC = () => {
                     lang={lang}
                     campusGates={campusGates}
                     onUpdateCampusGates={handleUpdateCampusGates}
+                    onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                     onUpdateConfig={setSystemConfig}
                   />
                 )}
@@ -1339,6 +1407,7 @@ export const App: React.FC = () => {
                     onRecordAttendance={handleRecordAttendance}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
                     onUpdateCampusGates={handleUpdateCampusGates}
+                    onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                   />
                 )}
 
@@ -1635,6 +1704,19 @@ export const App: React.FC = () => {
               setCurrentTab(mod as NavTab);
             }
           }}
+        />
+      )}
+
+      {/* Direct School GPS & Gate Geofence Settings Modal */}
+      {showGpsModal && (
+        <SchoolGpsModal
+          isOpen={showGpsModal}
+          onClose={() => setShowGpsModal(false)}
+          activeSchool={activeSchool}
+          campusGates={campusGates}
+          lang={lang}
+          onUpdateCampusGates={handleUpdateCampusGates}
+          onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
         />
       )}
       {/* Offline Status Connectivity Banner */}

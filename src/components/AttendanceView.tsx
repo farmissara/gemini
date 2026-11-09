@@ -55,6 +55,7 @@ interface AttendanceViewProps {
   ) => void;
   onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
+  onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -68,6 +69,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onRecordAttendance,
   onUpdateLeaveStatus,
   onUpdateCampusGates,
+  onUpdateSchoolCoordinates,
 }) => {
   const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'school_gps'>('gate_scanner');
 
@@ -694,6 +696,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             campusGates={campusGates}
             lang={lang}
             onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+            onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
           />
         </div>
       )}

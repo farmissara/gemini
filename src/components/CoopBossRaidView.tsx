@@ -146,31 +146,29 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const hpPercent = Math.round((bossConfig.bossCurrentHp / bossConfig.bossMaxHp) * 100);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Toast Alert */}
       {activeHintToast && (
-        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-slate-900 text-white shadow-xl border border-indigo-500/50 flex items-center gap-3">
-          <Sparkles className="w-5 h-5 text-yellow-400 shrink-0" />
+        <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-indigo-500/50 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-yellow-400 shrink-0" />
           <p className="text-xs font-semibold">{activeHintToast}</p>
         </div>
       )}
 
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-red-700/30 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-red-500/10 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-400/30 text-red-200 text-xs font-semibold">
-              <Swords className="w-4 h-4 text-red-400" />
+      <div className="shrink-0 bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-3.5 sm:p-4 shadow-md border border-red-700/30 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1 max-w-xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 border border-red-400/30 text-red-200 text-[11px] font-semibold">
+              <Swords className="w-3.5 h-3.5 text-red-400" />
               <span>{lang === 'th' ? 'โหมดห้องเรียนร่วมมือสู้บอส (Co-op Boss Raid & Peer Tutoring)' : 'Cooperative Classroom Boss Raid'}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
               <span>{bossConfig.bossNameTh}</span>
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-300 text-xs leading-relaxed">
               {lang === 'th' 
-                ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน หากเพื่อนในทีมยังตอบไม่ได้ สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที เกิดพลังคอมโบเพิ่มดาเมจทั้งห้อง!'
+                ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที'
                 : 'Defeat lesson bosses together through collaborative problem solving and real-time peer tutoring.'}
             </p>
           </div>
@@ -270,9 +268,9 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       )}
 
       {/* Main Raid Stage: Left Boss Visual & Health Bar, Right Co-op Question & Party Matrix */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
         {/* Left Column: Boss Arena Visual */}
-        <div className="lg:col-span-5 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-4 sm:p-5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
+        <div className="lg:col-span-5 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3.5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
           {/* Boss HP Bar & Zoom Control */}
           <div>
             <div className="flex items-center justify-between text-xs font-bold mb-2">
@@ -361,7 +359,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
         </div>
 
         {/* Right Column: Active Attack Question & Co-op Party Matrix */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7 flex flex-col min-h-0 overflow-y-auto space-y-3 pr-1">
           {/* Question Card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">

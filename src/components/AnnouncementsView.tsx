@@ -79,10 +79,10 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <BellRing className="w-5 h-5 text-indigo-400" />
             School Announcements &amp; LINE OA Broadcast
           </h1>
@@ -93,7 +93,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
         <button
           onClick={() => setShowComposeModal(true)}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Publish Broadcast</span>
@@ -101,22 +101,22 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       </div>
 
       {broadcastToast && (
-        <div className="p-3 rounded-xl bg-emerald-950 border border-emerald-600/50 text-emerald-200 text-xs flex items-center gap-2 animate-fadeIn">
+        <div className="shrink-0 p-2.5 rounded-xl bg-emerald-950 border border-emerald-600/50 text-emerald-200 text-xs flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-[#06C755] fill-current" />
           <span>{broadcastToast}</span>
         </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <div className="shrink-0 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto">
           {['all', 'students', 'parents', 'teachers'].map((aud) => (
             <button
               key={aud}
               onClick={() => setFilterAudience(aud)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                 filterAudience === aud
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-700/60'
               }`}
             >
@@ -125,13 +125,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           ))}
         </div>
 
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-400 shrink-0">
           Showing <strong className="text-white">{filteredAnnouncements.length}</strong> items
         </span>
       </div>
 
       {/* Announcements List */}
-      <div className="space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
         {filteredAnnouncements.map((ann) => (
           <div
             key={ann.id}

@@ -140,52 +140,50 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-teal-600/30 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-teal-500/10 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-semibold">
-              <BrainCircuit className="w-4 h-4 text-teal-300" />
+      <div className="shrink-0 bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-3.5 sm:p-4 shadow-md border border-teal-600/30 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1 max-w-xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-200 text-[11px] font-semibold">
+              <BrainCircuit className="w-3.5 h-3.5 text-teal-300" />
               <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ข้อสงสัยครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
               <span>{lang === 'th' ? 'AI Socratic Voice Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-300 text-xs leading-relaxed">
               {lang === 'th' 
-                ? 'ระบบติวเตอร์ AI 24 ชม. ที่ไม่บอกคำตอบตรงๆ แต่ค่อยๆ ชวนคิดทีละสเต็ป พร้อมแดชบอร์ดสรุปจุดเข้าใจผิดของทั้งห้องเรียนให้คุณครูนำไปเปิดประเด็นสอนซ้ำได้ตรงเป้า'
+                ? 'ระบบติวเตอร์ AI 24 ชม. ที่ไม่บอกคำตอบตรงๆ แต่ค่อยๆ ชวนคิดทีละสเต็ป พร้อมแดชบอร์ดสรุปจุดเข้าใจผิดของทั้งห้องเรียน'
                 : 'Scaffolding dialogue tutor that encourages deep thinking, paired with aggregated teacher struggle analytics.'}
             </p>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md border border-white/20 shrink-0">
+          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-2xl backdrop-blur-md border border-white/20 shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('tutor_chat')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'tutor_chat'
                   ? 'bg-teal-500 text-slate-950 shadow-md font-black'
                   : 'text-white hover:bg-white/10'
               }`}
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageSquare className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'ห้องแชทติวเตอร์ AI' : 'Student AI Chat'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('teacher_insights')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'teacher_insights'
                   ? 'bg-indigo-600 text-white shadow-md font-black'
                   : 'text-white hover:bg-white/10'
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
+              <BarChart3 className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'แดชบอร์ดคุณครู' : 'Teacher Insights'}</span>
             </button>
           </div>
@@ -194,11 +192,11 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
 
       {/* Mode 1: Student Socratic Voice & Chat Tutor */}
       {activeTab === 'tutor_chat' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
           {/* Main Chat Stream */}
-          <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between h-[580px]">
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs flex flex-col justify-between h-full min-h-0">
             {/* Chat Messages Log */}
-            <div className="overflow-y-auto space-y-4 pr-2 flex-1">
+            <div className="overflow-y-auto space-y-3 pr-2 flex-1 min-h-0">
               {messages.map((msg) => {
                 const isStudent = msg.sender === 'student';
                 return (
@@ -350,9 +348,9 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
 
       {/* Mode 2: Teacher Struggle Insights Dashboard */}
       {activeTab === 'teacher_insights' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
           {/* Top 5 Misconceptions List */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col min-h-0 overflow-y-auto space-y-3">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-indigo-600" />
@@ -415,8 +413,8 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
           </div>
 
           {/* Right Column: 1-Click Lesson Recap Generator */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="lg:col-span-5 flex flex-col min-h-0 overflow-y-auto space-y-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-4 h-4 text-teal-600" />
                 <span>{lang === 'th' ? 'สร้างบทสรุปสอนซ้ำ 2 นาที (Micro-Recap Generator)' : '2-Min Micro-Recap Generator'}</span>

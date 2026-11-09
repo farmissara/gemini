@@ -55,6 +55,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   const [visitStatus, setVisitStatus] = useState<InfirmaryStatus>('resting');
   const [nurseName, setNurseName] = useState('พว.สุดารัตน์ เจริญสุข (พยาบาลวิชาชีพ)');
   const [notifyParent, setNotifyParent] = useState(true);
+  const [infirmaryTab, setInfirmaryTab] = useState<'visits' | 'beds' | 'allergies'>('visits');
 
   // Filtered visits
   const filteredVisits = visits.filter((v) => {
@@ -114,18 +115,18 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <span className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+          <span className="p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
             <HeartPulse className="w-5 h-5" />
           </span>
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               {lang === 'th' ? 'ห้องพยาบาล & ระบบสถิติสุขภาพนักเรียน' : 'School Infirmary & Health Tracker'}
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                First Aid & Safety
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                First Aid &amp; Safety
               </span>
             </h1>
             <p className="text-xs text-slate-400">
@@ -136,212 +137,305 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-md shadow-rose-600/30 transition self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{lang === 'th' ? 'บันทึกการรักษาใหม่' : 'New Clinic Visit'}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Subtabs switcher */}
+          <div className="flex p-1 bg-slate-800 rounded-xl border border-slate-700">
+            <button
+              onClick={() => setInfirmaryTab('visits')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                infirmaryTab === 'visits' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1. บันทึกการรักษา ({visits.length})
+            </button>
+            <button
+              onClick={() => setInfirmaryTab('beds')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                infirmaryTab === 'beds' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/6)
+            </button>
+            <button
+              onClick={() => setInfirmaryTab('allergies')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                infirmaryTab === 'allergies' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3. เฝ้าระวังแพ้ยา ({studentsWithAllergies.length})
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-md shadow-rose-600/30 transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{lang === 'th' ? 'บันทึกการรักษา' : 'New Visit'}</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'ผู้เข้าห้องพยาบาลวันนี้' : 'Visits Today'}</span>
-            <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
-              <Activity className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-white mt-2">
-            {visits.length} <span className="text-xs font-normal text-slate-400">คน</span>
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">อุณหภูมิเฉลี่ย 37.1°C</p>
-        </div>
+      {/* TAB 1: VISITS LOG TABLE */}
+      {infirmaryTab === 'visits' && (
+        <div className="flex-1 min-h-0 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
+          <div className="shrink-0 p-3 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-900/60">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-rose-400" />
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                {lang === 'th' ? 'บันทึกประวัติการเข้าห้องพยาบาล' : 'Infirmary Visit Logs'}
+              </h3>
+            </div>
 
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'กำลังนอนพักเตียง' : 'Resting on Beds'}</span>
-            <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-              <Bed className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-amber-400 mt-2">
-            {visits.filter((v) => v.status === 'resting').length} <span className="text-xs font-normal text-slate-400">/ 6 เตียง</span>
-          </p>
-          <p className="text-[11px] text-emerald-400 mt-1">พร้อมรองรับอีก 5 เตียง</p>
-        </div>
-
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'นักเรียนที่มีประวัติแพ้' : 'Allergy Watchlist'}</span>
-            <span className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-              <ShieldAlert className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-purple-400 mt-2">
-            {studentsWithAllergies.length} <span className="text-xs font-normal text-slate-400">คน</span>
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">แพ้ยาปฏิชีวนะ / อาหาร</p>
-        </div>
-
-        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{lang === 'th' ? 'แจ้งเตือน LINE ผู้ปกครอง' : 'Parent Alerts'}</span>
-            <span className="p-2 rounded-xl bg-[#06C755]/20 text-[#06C755]">
-              <Send className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-white mt-2">
-            {visits.filter((v) => v.parentNotified).length} <span className="text-xs font-normal text-slate-400">เคส</span>
-          </p>
-          <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> แจ้งทันทีเมื่อมีไข้
-          </p>
-        </div>
-      </div>
-
-      {/* Critical Allergy Safety Alert Bar */}
-      {studentsWithAllergies.length > 0 && (
-        <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400 shrink-0">
-              <ShieldAlert className="w-5 h-5 animate-pulse" />
-            </span>
-            <div>
-              <h4 className="text-xs font-bold text-rose-300">
-                {lang === 'th' ? 'จุดตรวจความปลอดภัย: รายชื่อนักเรียนที่มีประวัติแพ้ยาและแพ้อาหารรุนแรง' : 'Critical Medical Alert: Students with Allergies'}
-              </h4>
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                {studentsWithAllergies.map((stu) => (
-                  <span
-                    key={stu.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-900/50 text-rose-200 border border-rose-500/40"
-                  >
-                    <span>{stu.firstNameTh} ({stu.room})</span>
-                    <span className="text-white/60">•</span>
-                    <span className="text-rose-300 font-normal">{stu.allergies?.join(', ')}</span>
-                  </span>
-                ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={lang === 'th' ? 'ค้นหาชื่อ / อาการ...' : 'Search records...'}
+                  className="bg-slate-800 text-white text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-rose-500 w-44"
+                />
               </div>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="bg-slate-800 text-white text-xs px-2.5 py-1 rounded-lg border border-slate-700"
+              >
+                <option value="all">{lang === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
+                <option value="resting">{lang === 'th' ? 'กำลังนอนพัก' : 'Resting'}</option>
+                <option value="discharged">{lang === 'th' ? 'กลับห้องเรียนแล้ว' : 'Discharged'}</option>
+                <option value="sent_home">{lang === 'th' ? 'ผู้ปกครองรับกลับ' : 'Sent Home'}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                  <th className="p-2.5">{lang === 'th' ? 'เวลา / วันที่' : 'Date & Time'}</th>
+                  <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
+                  <th className="p-2 text-center">{lang === 'th' ? 'อุณหภูมิ' : 'Temp'}</th>
+                  <th className="p-2.5">{lang === 'th' ? 'อาการเจ็บป่วย' : 'Symptoms'}</th>
+                  <th className="p-2.5">{lang === 'th' ? 'การรักษา & ยาที่จ่าย' : 'Treatment & Medication'}</th>
+                  <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
+                  <th className="p-2.5 text-right">{lang === 'th' ? 'ผู้บันทึก' : 'Nurse'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {filteredVisits.map((visit) => {
+                  const status = getStatusBadge(visit.status);
+                  const hasHighFever = visit.temperature >= 37.5;
+
+                  return (
+                    <tr key={visit.id} className="hover:bg-slate-800/20 transition">
+                      <td className="p-2.5 font-mono text-slate-300">
+                        <div>{visit.visitTime} น.</div>
+                        <div className="text-[10px] text-slate-500">{visit.visitDate}</div>
+                      </td>
+                      <td className="p-2.5">
+                        <p className="font-bold text-white text-xs">{visit.studentName}</p>
+                        <p className="text-[10px] text-slate-400">{visit.gradeRoom}</p>
+                      </td>
+                      <td className="p-2 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono font-bold text-xs ${
+                          hasHighFever ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          <Thermometer className="w-3 h-3" />
+                          {visit.temperature}°C
+                        </span>
+                      </td>
+                      <td className="p-2.5">
+                        <p className="font-semibold text-slate-200 text-xs">{visit.symptoms}</p>
+                        {visit.notes && (
+                          <p className="text-[10px] text-rose-300/80 italic mt-0.5">{visit.notes}</p>
+                        )}
+                      </td>
+                      <td className="p-2.5 text-slate-300">
+                        <div>{visit.treatment}</div>
+                        {visit.medicationDispensed && (
+                          <div className="text-[10px] text-indigo-300 flex items-center gap-1 mt-0.5">
+                            <Pill className="w-3 h-3 shrink-0" />
+                            <span>{visit.medicationDispensed}</span>
+                          </div>
+                        )}
+                        {visit.bedNumber && (
+                          <div className="text-[10px] text-amber-300 flex items-center gap-1 mt-0.5">
+                            <Bed className="w-3 h-3 shrink-0" />
+                            <span>นอนพัก {visit.bedNumber}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2.5 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${status.color}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <p className="text-slate-300 text-[11px]">{visit.recordedByNurse}</p>
+                        {visit.parentNotified && (
+                          <span className="text-[10px] text-[#06C755] flex items-center justify-end gap-1 mt-0.5">
+                            <CheckCircle2 className="w-3 h-3" /> LINE แจ้งแล้ว
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: BED OCCUPANCY & HEALTH KPIS */}
+      {infirmaryTab === 'beds' && (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">{lang === 'th' ? 'ผู้เข้าห้องพยาบาลวันนี้' : 'Visits Today'}</span>
+              <p className="text-lg font-bold text-white mt-1">
+                {visits.length} <span className="text-[10px] font-normal text-slate-400">คน</span>
+              </p>
+              <p className="text-[10px] text-slate-400">อุณหภูมิเฉลี่ย 37.1°C</p>
+            </div>
+
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">{lang === 'th' ? 'กำลังนอนพักเตียง' : 'Resting on Beds'}</span>
+              <p className="text-lg font-bold text-amber-400 mt-1">
+                {visits.filter((v) => v.status === 'resting').length} <span className="text-[10px] font-normal text-slate-400">/ 6 เตียง</span>
+              </p>
+              <p className="text-[10px] text-emerald-400">พร้อมรองรับอีก {6 - visits.filter((v) => v.status === 'resting').length} เตียง</p>
+            </div>
+
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">{lang === 'th' ? 'นักเรียนที่แพ้ยา/อาหาร' : 'Allergies'}</span>
+              <p className="text-lg font-bold text-purple-400 mt-1">
+                {studentsWithAllergies.length} <span className="text-[10px] font-normal text-slate-400">คน</span>
+              </p>
+              <p className="text-[10px] text-slate-400">มีบันทึกในแฟ้มประวัติ</p>
+            </div>
+
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-400">{lang === 'th' ? 'แจ้งเตือนผู้ปกครอง' : 'Parent Alerts'}</span>
+              <p className="text-lg font-bold text-white mt-1">
+                {visits.filter((v) => v.parentNotified).length} <span className="text-[10px] font-normal text-slate-400">เคส</span>
+              </p>
+              <p className="text-[10px] text-emerald-400">ส่ง LINE เรียบร้อย</p>
+            </div>
+          </div>
+
+          {/* 6 Infirmary Beds Status Cards */}
+          <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 shadow-md">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider pb-2 border-b border-slate-800 flex items-center gap-1.5 mb-3">
+              <Bed className="w-4 h-4 text-amber-400" />
+              <span>ผังเตียงนอนพักห้องพยาบาล (Infirmary Ward Beds 1-6)</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((num) => {
+                const bedLabel = `เตียง ${num}`;
+                const restingPatient = visits.find((v) => v.status === 'resting' && (v.bedNumber === bedLabel || v.bedNumber === `Bed ${num}`));
+                return (
+                  <div
+                    key={num}
+                    className={`p-3 rounded-xl border transition ${
+                      restingPatient
+                        ? 'bg-amber-950/20 border-amber-500/40'
+                        : 'bg-slate-800/40 border-slate-700/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                      <span className="font-bold text-xs text-white flex items-center gap-1.5">
+                        <Bed className={`w-3.5 h-3.5 ${restingPatient ? 'text-amber-400' : 'text-slate-500'}`} />
+                        <span>เตียงที่ {num}</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        restingPatient ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                      }`}>
+                        {restingPatient ? 'มีผู้ป่วยนอนพัก' : 'ว่าง (พร้อมใช้งาน)'}
+                      </span>
+                    </div>
+
+                    {restingPatient ? (
+                      <div className="mt-2 space-y-1 text-xs">
+                        <p className="font-bold text-white text-xs">{restingPatient.studentName}</p>
+                        <p className="text-[11px] text-slate-300">{restingPatient.gradeRoom} • อุณหภูมิ {restingPatient.temperature}°C</p>
+                        <p className="text-[10px] text-slate-400 italic">อาการ: {restingPatient.symptoms}</p>
+                        <p className="text-[10px] text-amber-300">เข้าพัก: {restingPatient.visitTime} น.</p>
+                      </div>
+                    ) : (
+                      <div className="mt-4 text-center text-xs text-slate-500 py-2">
+                        เตียงว่าง สะอาด ผ่านการฆ่าเชื้อ
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Clinic Log Table & Controls */}
-      <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-rose-400" />
-            <h3 className="text-sm font-bold text-white">
-              {lang === 'th' ? 'บันทึกประวัติการเข้าห้องพยาบาล' : 'Infirmary Visit Logs'}
-            </h3>
+      {/* TAB 3: ALLERGIES WATCHLIST */}
+      {infirmaryTab === 'allergies' && (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+          <div className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2.5">
+            <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0" />
+            <span>
+              <strong>จุดตรวจความปลอดภัยทางการแพทย์:</strong> ตรวจสอบรายชื่อนักเรียนที่มีประวัติแพ้ยาปฏิชีวนะ แพ้อาหาร หรือโรคประจำตัวก่อนจ่ายยาพยาบาลทุกครั้ง
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={lang === 'th' ? 'ค้นหาชื่อ / อาการ...' : 'Search records...'}
-                className="bg-slate-800 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-rose-500 w-44"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {studentsWithAllergies.map((stu) => (
+              <div
+                key={stu.id}
+                className="p-3.5 rounded-xl bg-slate-900/80 border border-rose-500/30 shadow-md space-y-2"
+              >
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={stu.avatarUrl}
+                    alt={stu.firstNameTh}
+                    className="w-10 h-10 rounded-full object-cover border border-rose-500/50"
+                  />
+                  <div>
+                    <h4 className="font-bold text-white text-xs">
+                      {stu.firstNameTh} {stu.lastNameTh}
+                    </h4>
+                    <p className="text-[10px] text-slate-400">{stu.gradeLevel} • {stu.room} (รหัส {stu.studentIdNumber})</p>
+                  </div>
+                </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-xl border border-slate-700"
-            >
-              <option value="all">{lang === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
-              <option value="resting">{lang === 'th' ? 'กำลังนอนพัก' : 'Resting'}</option>
-              <option value="discharged">{lang === 'th' ? 'กลับห้องเรียนแล้ว' : 'Discharged'}</option>
-              <option value="sent_home">{lang === 'th' ? 'ผู้ปกครองรับกลับ' : 'Sent Home'}</option>
-            </select>
+                <div className="space-y-1 text-xs">
+                  {stu.allergies && stu.allergies.length > 0 && (
+                    <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/20 text-rose-300 text-[11px]">
+                      <span className="font-bold block text-rose-200">ประวัติแพ้ยา/อาหาร:</span>
+                      {stu.allergies.join(', ')}
+                    </div>
+                  )}
+
+                  {stu.chronicDiseases && stu.chronicDiseases.length > 0 && (
+                    <div className="p-2 rounded-lg bg-amber-950/30 border border-amber-500/20 text-amber-300 text-[11px]">
+                      <span className="font-bold block text-amber-200">โรคประจำตัว:</span>
+                      {stu.chronicDiseases.join(', ')}
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                    ผู้ปกครอง: {stu.guardianName} ({stu.guardianRelation}) • {stu.guardianPhone}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">
-                <th className="p-3">{lang === 'th' ? 'เวลา / วันที่' : 'Date & Time'}</th>
-                <th className="p-3">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
-                <th className="p-2 text-center">{lang === 'th' ? 'อุณหภูมิ' : 'Temp'}</th>
-                <th className="p-3">{lang === 'th' ? 'อาการเจ็บป่วย' : 'Symptoms'}</th>
-                <th className="p-3">{lang === 'th' ? 'การรักษา & ยาที่จ่าย' : 'Treatment & Medication'}</th>
-                <th className="p-3 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                <th className="p-3 text-right">{lang === 'th' ? 'ผู้บันทึก' : 'Nurse'}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredVisits.map((visit) => {
-                const status = getStatusBadge(visit.status);
-                const hasHighFever = visit.temperature >= 37.5;
-
-                return (
-                  <tr key={visit.id} className="hover:bg-slate-800/20 transition">
-                    <td className="p-3 font-mono text-slate-300">
-                      <div>{visit.visitTime} น.</div>
-                      <div className="text-[10px] text-slate-500">{visit.visitDate}</div>
-                    </td>
-                    <td className="p-3">
-                      <p className="font-bold text-white">{visit.studentName}</p>
-                      <p className="text-[10px] text-slate-400">{visit.gradeRoom}</p>
-                    </td>
-                    <td className="p-2 text-center">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono font-bold text-xs ${
-                        hasHighFever ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800 text-slate-300'
-                      }`}>
-                        <Thermometer className="w-3 h-3" />
-                        {visit.temperature}°C
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <p className="font-semibold text-slate-200">{visit.symptoms}</p>
-                      {visit.notes && (
-                        <p className="text-[10px] text-rose-300/80 italic mt-0.5">{visit.notes}</p>
-                      )}
-                    </td>
-                    <td className="p-3 text-slate-300">
-                      <div>{visit.treatment}</div>
-                      {visit.medicationDispensed && (
-                        <div className="text-[10px] text-indigo-300 flex items-center gap-1 mt-0.5">
-                          <Pill className="w-3 h-3 shrink-0" />
-                          <span>{visit.medicationDispensed}</span>
-                        </div>
-                      )}
-                      {visit.bedNumber && (
-                        <div className="text-[10px] text-amber-300 flex items-center gap-1 mt-0.5">
-                          <Bed className="w-3 h-3 shrink-0" />
-                          <span>นอนพัก {visit.bedNumber}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${status.color}`}>
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <p className="text-slate-300 text-[11px]">{visit.recordedByNurse}</p>
-                      {visit.parentNotified && (
-                        <span className="text-[10px] text-[#06C755] flex items-center justify-end gap-1 mt-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> LINE แจ้งแล้ว
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
 
       {/* Add Visit Modal */}
       {showAddModal && (

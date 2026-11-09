@@ -40,6 +40,7 @@ interface SystemSettingsViewProps {
   lang: AppLanguage;
   campusGates?: CampusGateGeofence[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
+  onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
   onUpdateConfig: (updated: SystemConfig) => void;
 }
 
@@ -50,6 +51,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   lang,
   campusGates = [],
   onUpdateCampusGates,
+  onUpdateSchoolCoordinates,
   onUpdateConfig,
 }) => {
   const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps'>('line_events');
@@ -1334,6 +1336,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             campusGates={campusGates}
             lang={lang}
             onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+            onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
           />
         </div>
       )}

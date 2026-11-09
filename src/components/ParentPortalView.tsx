@@ -137,9 +137,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 max-w-5xl mx-auto w-full">
       {/* Student Switcher & Guardian Profile Card */}
-      <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
+      <div className="shrink-0 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-4">
           <img
             src={student?.avatarUrl}
@@ -235,11 +235,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         </button>
       </div>
 
+      {/* Scrollable Tab Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
       {/* ========================================================================= */}
       {/* TAB 1: OVERVIEW & TODAY'S GATE STATUS */}
       {/* ========================================================================= */}
       {activePortalTab === 'overview' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Today's Gate Status Banner (LINE Connected) */}
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
             <div className="flex items-center gap-3">
@@ -667,6 +669,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           </div>
         </div>
       )}
+      </div>
 
       {/* Lightbox Modal for Zooming Child's Selfie Photo */}
       {selectedZoomPhoto && (

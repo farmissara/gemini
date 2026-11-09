@@ -68,16 +68,16 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const progressPercent = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Classroom Hero */}
-      <div className="rounded-2xl bg-gradient-to-r from-blue-900/80 via-indigo-900/90 to-purple-950 border border-indigo-500/30 p-6 shadow-xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold">
+      <div className="shrink-0 rounded-2xl bg-gradient-to-r from-blue-900/80 via-indigo-900/90 to-purple-950 border border-indigo-500/30 p-3.5 sm:p-4 shadow-lg relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               {lang === 'th' ? 'ห้องเรียนออนไลน์เสมือนจริง • EduVerse LMS' : 'Virtual Classroom • EduVerse LMS'}
             </span>
-            <h1 className="text-2xl font-black text-white">
+            <h1 className="text-lg sm:text-xl font-black text-white">
               {lang === 'th' ? activeCourse?.titleTh : activeCourse?.titleEn}
             </h1>
             <p className="text-xs text-indigo-200">
@@ -86,7 +86,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="px-3.5 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs">
               <span className="text-slate-400 block text-[10px]">
                 {lang === 'th' ? 'ความคืบหน้าบทเรียน' : 'Course Progress'}
               </span>
@@ -98,7 +98,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         </div>
 
         {submittedAlert && (
-          <div className="mt-4 p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <div className="mt-2.5 p-2 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-xs flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>{submittedAlert}</span>
           </div>
@@ -106,7 +106,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       </div>
 
       {/* Course Switcher Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800">
+      <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800">
         {courses.map((c) => (
           <button
             key={c.id}
@@ -115,9 +115,9 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
               const firstL = lessons.find((l) => l.courseId === c.id);
               if (firstL) setSelectedLessonId(firstL.id);
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               selectedCourseId === c.id
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
@@ -128,10 +128,10 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       </div>
 
       {/* Navigation Sub-tabs */}
-      <div className="flex items-center gap-2 text-xs">
+      <div className="shrink-0 flex items-center gap-2 text-xs">
         <button
           onClick={() => setActiveTab('lessons')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+          className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
             activeTab === 'lessons'
               ? 'bg-slate-800 text-white border border-indigo-500/40'
               : 'text-slate-400 hover:text-slate-200'
@@ -141,7 +141,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('assignments')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+          className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
             activeTab === 'assignments'
               ? 'bg-slate-800 text-white border border-indigo-500/40'
               : 'text-slate-400 hover:text-slate-200'
@@ -151,9 +151,11 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         </button>
       </div>
 
+      {/* Main Tab Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
       {/* Main LMS Split View */}
       {activeTab === 'lessons' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-3">
           {/* Main Video & Content Player */}
           <div className="lg:col-span-8 rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-5 shadow-xl">
             {activeLesson ? (
@@ -350,6 +352,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -189,17 +189,17 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <span className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+          <span className="p-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
             <HeartHandshake className="w-5 h-5" />
           </span>
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               {lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & บันทึกพฤติกรรม' : 'Student Care & Behavior (SDQ)'}
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 สพฐ. Standard
               </span>
             </h1>
@@ -222,7 +222,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {lang === 'th' ? 'คะแนนความประพฤติ' : 'Merit & Demerit'}
+              {lang === 'th' ? '1. คะแนนความประพฤติ' : 'Merit & Demerit'}
             </button>
             <button
               onClick={() => setActiveTab('sdq')}
@@ -232,14 +232,14 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {lang === 'th' ? 'แบบประเมิน SDQ' : 'SDQ Screening'}
+              {lang === 'th' ? '2. แบบประเมิน SDQ' : 'SDQ Screening'}
             </button>
           </div>
 
           {activeTab === 'merit' ? (
             <button
               onClick={() => setShowAddRecordModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-purple-600/30 transition"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-purple-600/30 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
@@ -247,7 +247,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
           ) : (
             <button
               onClick={() => setShowSdqModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-600/30 transition"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-600/30 transition cursor-pointer"
             >
               <FileText className="w-4 h-4" />
               <span>{lang === 'th' ? 'ทำแบบคัดกรอง SDQ' : 'New SDQ Assessment'}</span>
@@ -258,94 +258,86 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
       {/* Tab 1: Merit & Demerit Tracker */}
       {activeTab === 'merit' && (
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden space-y-2.5">
           {/* Quick Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
+          <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{lang === 'th' ? 'คะแนนเฉลี่ยทั้งโรงเรียน' : 'Avg Behavior Score'}</span>
-                <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
-                  <ShieldCheck className="w-4 h-4" />
+                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'คะแนนเฉลี่ยทั้งโรงเรียน' : 'Avg Score'}</span>
+                <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+                  <ShieldCheck className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <p className="text-2xl font-bold text-white mt-2">96.4 <span className="text-xs font-normal text-slate-400">/ 100</span></p>
-              <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> +1.2% จากภาคเรียนก่อน
+              <p className="text-lg font-bold text-white mt-1">96.4 <span className="text-[10px] font-normal text-slate-400">/ 100</span></p>
+            </div>
+
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'บันทึกความดี (Merit)' : 'Merits'}</span>
+                <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <Award className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <p className="text-lg font-bold text-emerald-400 mt-1">
+                +{records.filter((r) => r.type === 'merit').reduce((acc, r) => acc + r.points, 0)} <span className="text-[10px] font-normal text-slate-400">แต้ม</span>
               </p>
             </div>
 
-            <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{lang === 'th' ? 'บันทึกความดี (Merit)' : 'Total Merits'}</span>
-                <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                  <Award className="w-4 h-4" />
+                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'ตัดคะแนน (Demerit)' : 'Deductions'}</span>
+                <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                  <TrendingDown className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <p className="text-2xl font-bold text-emerald-400 mt-2">
-                +{records.filter((r) => r.type === 'merit').reduce((acc, r) => acc + r.points, 0)} <span className="text-xs font-normal text-slate-400">แต้ม</span>
+              <p className="text-lg font-bold text-rose-400 mt-1">
+                {records.filter((r) => r.type === 'demerit').reduce((acc, r) => acc + r.points, 0)} <span className="text-[10px] font-normal text-slate-400">แต้ม</span>
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">จิตอาสาและสร้างชื่อเสียง</p>
             </div>
 
-            <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{lang === 'th' ? 'ตัดคะแนน (Demerit)' : 'Total Deductions'}</span>
-                <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
-                  <TrendingDown className="w-4 h-4" />
+                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'แจ้งเตือน LINE' : 'LINE Alerts'}</span>
+                <span className="p-1.5 rounded-lg bg-[#06C755]/20 text-[#06C755]">
+                  <Send className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <p className="text-2xl font-bold text-rose-400 mt-2">
-                {records.filter((r) => r.type === 'demerit').reduce((acc, r) => acc + r.points, 0)} <span className="text-xs font-normal text-slate-400">แต้ม</span>
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">มาสายและผิดระเบียบ</p>
-            </div>
-
-            <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{lang === 'th' ? 'แจ้งเตือน LINE ผู้ปกครอง' : 'LINE Alerts Sent'}</span>
-                <span className="p-2 rounded-xl bg-[#06C755]/20 text-[#06C755]">
-                  <Send className="w-4 h-4" />
-                </span>
-              </div>
-              <p className="text-2xl font-bold text-white mt-2">
-                {records.filter((r) => r.lineNotified).length} <span className="text-xs font-normal text-slate-400">ครั้ง</span>
-              </p>
-              <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> เชื่อมโยง 100%
+              <p className="text-lg font-bold text-white mt-1">
+                {records.filter((r) => r.lineNotified).length} <span className="text-[10px] font-normal text-slate-400">ครั้ง</span>
               </p>
             </div>
           </div>
 
           {/* Student Scores & Recent Records Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-hidden">
             {/* Left 2 Cols: Student List with Scores */}
-            <div className="lg:col-span-2 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <User className="w-4 h-4 text-indigo-400" />
-                  {lang === 'th' ? 'บัญชีคะแนนความประพฤตินักเรียน' : 'Student Behavior Ledger'}
+            <div className="lg:col-span-2 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col min-h-0 overflow-hidden">
+              <div className="shrink-0 p-3 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{lang === 'th' ? 'บัญชีคะแนนความประพฤตินักเรียน' : 'Student Behavior Ledger'}</span>
                 </h3>
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัสนักเรียน...' : 'Search student...'}
-                    className="bg-slate-800 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-indigo-500 w-48"
+                    className="bg-slate-800 text-white text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 w-44"
                   />
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">
-                      <th className="p-3">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
-                      <th className="p-3">{lang === 'th' ? 'ห้องเรียน' : 'Room'}</th>
-                      <th className="p-3 text-center">{lang === 'th' ? 'คะแนนคงเหลือ' : 'Score'}</th>
-                      <th className="p-3 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                      <th className="p-3 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                      <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
+                      <th className="p-2.5">{lang === 'th' ? 'ห้องเรียน' : 'Room'}</th>
+                      <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนนคงเหลือ' : 'Score'}</th>
+                      <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
+                      <th className="p-2.5 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -354,15 +346,15 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                       const badge = getStatusBadge(score);
                       return (
                         <tr key={student.id} className="hover:bg-slate-800/20 transition">
-                          <td className="p-3">
-                            <div className="flex items-center gap-2.5">
+                          <td className="p-2.5">
+                            <div className="flex items-center gap-2">
                               <img
                                 src={student.avatarUrl}
                                 alt={student.firstNameTh}
-                                className="w-8 h-8 rounded-full object-cover border border-slate-700"
+                                className="w-7 h-7 rounded-full object-cover border border-slate-700"
                               />
                               <div>
-                                <p className="font-bold text-white">
+                                <p className="font-bold text-white text-xs">
                                   {lang === 'th'
                                     ? `${student.firstNameTh} ${student.lastNameTh}`
                                     : `${student.firstNameEn} ${student.lastNameEn}`}
@@ -371,25 +363,25 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 text-slate-300">{student.room}</td>
-                          <td className="p-3 text-center">
-                            <span className={`font-mono font-bold text-sm ${score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-sky-400' : score >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+                          <td className="p-2.5 text-slate-300">{student.room}</td>
+                          <td className="p-2.5 text-center">
+                            <span className={`font-mono font-bold text-xs ${score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-sky-400' : score >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
                               {score}
                             </span>
                             <span className="text-[10px] text-slate-500"> / 100</span>
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-2.5 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${badge.bg}`}>
                               {badge.label}
                             </span>
                           </td>
-                          <td className="p-3 text-right">
+                          <td className="p-2.5 text-right">
                             <button
                               onClick={() => {
                                 setSelectedStudentId(student.id);
                                 setShowAddRecordModal(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 text-[11px] font-semibold transition"
+                              className="px-2 py-1 rounded-md bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 text-[10px] font-semibold transition"
                             >
                               {lang === 'th' ? 'บันทึกคะแนน' : 'Add Record'}
                             </button>
@@ -403,31 +395,31 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
             </div>
 
             {/* Right 1 Col: Recent Behavior Activity */}
-            <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl p-5 space-y-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Activity className="w-4 h-4 text-purple-400" />
-                {lang === 'th' ? 'ประวัติการบันทึกพฤติกรรมล่าสุด' : 'Recent Behavior Activity'}
+            <div className="bg-slate-900/80 rounded-xl border border-slate-800 shadow-md p-3.5 flex flex-col min-h-0 overflow-hidden">
+              <h3 className="shrink-0 text-xs font-bold text-white flex items-center gap-1.5 pb-2 border-b border-slate-800">
+                <Activity className="w-3.5 h-3.5 text-purple-400" />
+                <span>{lang === 'th' ? 'ประวัติพฤติกรรมล่าสุด' : 'Recent Activity'}</span>
               </h3>
 
-              <div className="space-y-3">
-                {records.slice(0, 5).map((rec) => (
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pt-2 pr-1">
+                {records.slice(0, 10).map((rec) => (
                   <div
                     key={rec.id}
-                    className="p-3 rounded-xl bg-slate-800/40 border border-slate-800 text-xs space-y-1.5"
+                    className="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 text-xs space-y-1"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-white">{rec.studentName}</span>
-                      <span className={`font-mono font-bold px-2 py-0.5 rounded ${rec.type === 'merit' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                      <span className="font-bold text-white text-[11px] truncate">{rec.studentName}</span>
+                      <span className={`font-mono font-bold text-[10px] px-1.5 py-0.5 rounded ${rec.type === 'merit' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
                         {rec.points > 0 ? `+${rec.points}` : rec.points}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-300">{rec.category}</p>
+                    <p className="text-[10px] text-slate-300">{rec.category}</p>
                     {rec.notes && <p className="text-[10px] text-slate-400 italic">"{rec.notes}"</p>}
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
-                      <span>{rec.date} • {rec.recordedBy}</span>
+                    <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-800/60">
+                      <span>{rec.date}</span>
                       {rec.lineNotified && (
                         <span className="text-[#06C755] flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> LINE เตือนแล้ว
+                          <CheckCircle2 className="w-2.5 h-2.5" /> LINE แล้ว
                         </span>
                       )}
                     </div>
@@ -441,47 +433,46 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
       {/* Tab 2: SDQ Screening */}
       {activeTab === 'sdq' && (
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden space-y-2.5">
           {/* SDQ Guidelines Card */}
-          <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 flex items-start gap-3">
-            <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <h4 className="font-bold text-indigo-300">
+          <div className="shrink-0 p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-0.5">
+              <h4 className="font-bold text-indigo-300 text-[11px]">
                 {lang === 'th' ? 'เกณฑ์การแปลผลแบบประเมินพฤติกรรมเด็ก (SDQ ฉบับ สพฐ.)' : 'SDQ Assessment Benchmark'}
               </h4>
-              <p className="text-slate-300 leading-relaxed">
-                แบบประเมิน SDQ ครอบคลุมพฤติกรรม 5 ด้าน (คะแนนรวมความยากลำบาก 4 ด้านแรก 0-40):
-                <span className="text-emerald-400 font-bold ml-1">กลุ่มปกติ (0-15 คะแนน)</span>,
-                <span className="text-amber-400 font-bold ml-1">กลุ่มเสี่ยง (16-19 คะแนน)</span>,
-                <span className="text-rose-400 font-bold ml-1">กลุ่มมีปัญหา (20-40 คะแนน)</span>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                แบบประเมิน SDQ ครอบคลุมพฤติกรรม 5 ด้าน (คะแนนความยากลำบาก 0-40):
+                <span className="text-emerald-400 font-bold ml-1">กลุ่มปกติ (0-15)</span>,
+                <span className="text-amber-400 font-bold ml-1">กลุ่มเสี่ยง (16-19)</span>,
+                <span className="text-rose-400 font-bold ml-1">กลุ่มมีปัญหา (20-40)</span>
               </p>
             </div>
           </div>
 
           {/* SDQ Assessments List */}
-          <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-400" />
-                {lang === 'th' ? 'ผลการประเมิน SDQ รายบุคคล' : 'Individual SDQ Results'}
+          <div className="flex-1 min-h-0 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
+            <div className="shrink-0 p-3 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{lang === 'th' ? 'ผลการประเมิน SDQ รายบุคคล' : 'Individual SDQ Results'}</span>
               </h3>
               <span className="text-xs text-slate-400">
                 {lang === 'th' ? 'ประเมินแล้ว' : 'Assessed'}: {sdqList.length} {lang === 'th' ? 'คน' : 'students'}
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">
-                    <th className="p-3">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                    <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'ด้านอารมณ์' : 'Emotional'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'ความประพฤติ' : 'Conduct'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'อยู่ไม่นิ่ง' : 'Hyperactivity'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'เพื่อน' : 'Peer'}</th>
-                    <th className="p-2 text-center font-bold text-emerald-400">{lang === 'th' ? 'จุดแข็ง (สังคม)' : 'Prosocial'}</th>
+                    <th className="p-2 text-center font-bold text-emerald-400">{lang === 'th' ? 'จุดแข็ง' : 'Prosocial'}</th>
                     <th className="p-2 text-center font-bold">{lang === 'th' ? 'คะแนนรวม' : 'Total'}</th>
-                    <th className="p-3 text-center">{lang === 'th' ? 'ผลการแปลผล' : 'Status'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
