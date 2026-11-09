@@ -462,7 +462,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
           </div>
 
           {/* Teacher Add Perk Button */}
-          {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
+          {(currentRole === 'teacher' || currentRole === 'admin') && (
             <button
               type="button"
               onClick={() => setShowAddPerkModal(true)}

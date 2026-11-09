@@ -24,15 +24,11 @@ import { INITIAL_REAL_WORLD_QUESTS } from '../data/innovativeFeaturesData';
 interface RealWorldSnapQuestViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
-  currentUserName?: string;
-  onEarnRewards?: (userId: string, exp: number, gems: number, isWin: boolean) => void;
 }
 
 export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
   lang = 'th',
-  currentRole = 'student',
-  currentUserName = 'ด.ช. ภูมิใจ รักเรียน',
-  onEarnRewards
+  currentRole = 'student'
 }) => {
   const [quests, setQuests] = useState<RealWorldSnapQuest[]>(INITIAL_REAL_WORLD_QUESTS);
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
@@ -42,7 +38,6 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
   const [selectedSamplePhoto, setSelectedSamplePhoto] = useState<string>('');
   const [studentNote, setStudentNote] = useState<string>('');
   const [isAiAnalyzing, setIsAiAnalyzing] = useState<boolean>(false);
-  const [verificationModalResult, setVerificationModalResult] = useState<RealWorldSnapQuest | null>(null);
 
   // Teacher custom quest creation modal
   const [showTeacherAddQuest, setShowTeacherAddQuest] = useState<boolean>(false);
@@ -63,28 +58,28 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
       url: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=500&auto=format&fit=crop&q=80',
       detected: 'ใบกล้วย (Banana Leaf) - เส้นใบเรียงขนานกันอย่างชัดเจน',
       confidence: 96.8,
-      feedback: 'ตรวจพบเส้นใบขนานของพืชใบเลี้ยงเดี่ยว (Monocotyledon) ตรงตามตัวชี้วัด ว 1.2 ม.1/3 ได้รับ 150 XP!',
+      feedback: 'ตัวอย่าง: เส้นใบขนานของพืชใบเลี้ยงเดี่ยว (Monocotyledon) สอดคล้องกับบทเรียน',
     },
     {
       label: lang === 'th' ? 'ใบเสร็จสินค้า (คำนวณ VAT 7%)' : 'Store Receipt (VAT 7%)',
       url: 'https://images.unsplash.com/photo-1554415707-9e4966668836?w=500&auto=format&fit=crop&q=80',
       detected: 'ใบเสร็จชำระเงิน - ยอดรวม 214 บาท (ราคาสินค้า 200 + VAT 7% 14 บาท)',
       confidence: 98.2,
-      feedback: 'คำนวณภาษีมูลค่าเพิ่มถูกต้องสมบูรณ์ ได้รับ 180 XP และ 60 เหรียญความรู้!',
+      feedback: 'ตัวอย่าง: สินค้า 200 บาท และ VAT 7% เท่ากับ 14 บาท',
     },
     {
       label: lang === 'th' ? 'กรรไกรตัดเล็บ (คานงัดอันดับ 3)' : 'Nail Clipper (Class 3 Lever)',
       url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
       detected: 'กรรไกรตัดเล็บ - กลไกคานงัดผสม (Compound Lever Mechanism)',
       confidence: 94.5,
-      feedback: 'ระบุจุดหมุนและแรงพยายามถูกต้องตามหลักฟิสิกส์เครื่องกลทุ่นแรง ได้รับ 160 XP!',
+      feedback: 'ตัวอย่าง: กรรไกรตัดเล็บใช้กลไกคานผสม',
     },
     {
       label: lang === 'th' ? 'ฉลากขนมภาษาอังกฤษ' : 'English Food Label',
       url: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=500&auto=format&fit=crop&q=80',
       detected: 'ฉลากโภชนาการ Nutrition Facts & Ingredients',
       confidence: 97.1,
-      feedback: 'แปลคำศัพท์ส่วนประกอบ Sodium, Carbohydrates, Dietary Fiber ถูกต้อง ได้รับ 140 XP!',
+      feedback: 'ตัวอย่าง: ฉลากมีคำศัพท์ Sodium, Carbohydrates และ Dietary Fiber',
     },
   ];
 
@@ -104,7 +99,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
       const updatedQuest: RealWorldSnapQuest = {
         ...activeQuestForUpload,
-        status: 'verified',
+        status: 'submitted',
         submittedPhotoUrl: selectedSamplePhoto,
         aiVerificationResult: {
           identifiedObject: matchedSample.detected,
@@ -116,9 +111,6 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
       setQuests(prev => prev.map(q => q.id === activeQuestForUpload.id ? updatedQuest : q));
       setActiveQuestForUpload(null);
-      setVerificationModalResult(updatedQuest);
-
-      onEarnRewards?.(currentUserName, updatedQuest.rewardXp, updatedQuest.rewardTokens, true);
     }, 1500);
   };
 
@@ -166,21 +158,21 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-semibold">
               <Camera className="w-4 h-4 text-emerald-400" />
-              <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริงถ่ายรูปส่งตรวจ AI Vision (Real-World Snap & Solve)' : 'Real-World Snap & Solve Quests'}</span>
+              <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • โหมดตัวอย่าง' : 'Real-World Quest Demo'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
               <span>{lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}</span>
             </h1>
             <p className="text-slate-300 text-sm leading-relaxed">
               {lang === 'th' 
-                ? 'เปลี่ยนคำถาม "เรียนไปทำไม?" ให้กลายเป็นความสนุก ออกสำรวจใบไม้ คานงัด หรือคำนวณภาษีจากใบเสร็จ 7-Eleven ถ่ายรูปส่งให้ระบบ AI Vision ตรวจสอบและรับคะแนนทันที!'
-                : 'Connect abstract textbook concepts to daily life through camera-captured quests verified by AI Vision.'}
+                ? 'ลองเชื่อมบทเรียนกับสิ่งรอบตัวด้วยภาพตัวอย่าง ผลที่แสดงเป็นข้อมูลจำลอง ยังไม่มี AI ตรวจภาพจริงและไม่มีการยืนยันคะแนน'
+                : 'Try sample images to connect lessons to daily life. Results are simulated; no real AI verification or rewards are issued.'}
             </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             {/* Teacher Add Quest Button */}
-            {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
+            {(currentRole === 'teacher' || currentRole === 'admin') && (
               <button
                 type="button"
                 onClick={() => setShowTeacherAddQuest(true)}
@@ -225,7 +217,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
         </div>
 
         <span className="text-xs text-slate-500 font-medium">
-          {quests.filter(q => q.status === 'verified').length} / {quests.length} {lang === 'th' ? 'ภารกิจสำเร็จแล้ว' : 'completed'}
+          {quests.filter(q => q.status === 'verified').length} {lang === 'th' ? 'ภารกิจยืนยันโดยครู' : 'teacher-verified quests'} • {quests.filter(q => q.status === 'submitted').length} {lang === 'th' ? 'ผลตัวอย่าง' : 'demo results'}
         </span>
       </div>
 
@@ -233,6 +225,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredQuests.map((quest) => {
           const isVerified = quest.status === 'verified';
+          const hasDemoResult = Boolean(quest.aiVerificationResult);
           return (
             <div
               key={quest.id}
@@ -245,9 +238,8 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   {getSubjectBadge(quest.subject)}
-                  <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
-                    <span>+{quest.rewardXp} XP</span>
-                    <span>+{quest.rewardTokens} 🪙</span>
+                  <div className="flex items-center gap-2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                    <span>{lang === 'th' ? `รางวัลเมื่อครูยืนยัน: ${quest.rewardXp} XP` : `After teacher review: ${quest.rewardXp} XP`}</span>
                   </div>
                 </div>
 
@@ -283,22 +275,26 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </div>
 
               {/* Action Toolbar */}
-              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-slate-400">
-                  {isVerified ? (lang === 'th' ? 'ตรวจยืนยันด้วย AI สำเร็จ' : 'AI Verified') : (lang === 'th' ? 'รอส่งรูปถ่าย' : 'Ready for photo upload')}
+                  {isVerified
+                    ? (lang === 'th' ? 'ครูยืนยันแล้ว' : 'Teacher verified')
+                    : hasDemoResult
+                    ? (lang === 'th' ? 'ผลจำลอง • รอยืนยันจากครู' : 'Demo result • awaiting teacher')
+                    : (lang === 'th' ? 'รอส่งรูปถ่าย' : 'Ready for photo upload')}
                 </span>
 
                 <button
                   type="button"
                   onClick={() => handleStartUpload(quest)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    isVerified 
+                    hasDemoResult
                       ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200' 
                       : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs'
                   }`}
                 >
                   <Camera className="w-4 h-4" />
-                  <span>{isVerified ? (lang === 'th' ? 'ถ่ายส่งใหม่' : 'Resubmit') : (lang === 'th' ? 'ถ่ายรูปส่งตรวจ' : 'Take Photo')}</span>
+                  <span>{hasDemoResult ? (lang === 'th' ? 'ลองตัวอย่างอีกครั้ง' : 'Try demo again') : (lang === 'th' ? 'ดูตัวอย่าง' : 'View demo')}</span>
                 </button>
               </div>
             </div>
@@ -314,7 +310,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Camera className="w-5 h-5 text-emerald-500" />
-                  <span>{lang === 'th' ? 'กล้องถ่ายภาพ & ตรวจสอบด้วย AI Vision' : 'Camera Snapshot & AI Vision'}</span>
+                  <span>{lang === 'th' ? 'ทดลองผลตรวจจากภาพตัวอย่าง' : 'Sample image demo'}</span>
                 </h3>
                 <p className="text-xs text-slate-500 truncate max-w-xs">
                   {activeQuestForUpload.titleTh}
@@ -348,10 +344,13 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-2 animate-fade-in">
                   <RotateCw className="w-8 h-8 text-emerald-400 animate-spin" />
                   <p className="text-xs font-bold text-emerald-300">
-                    {lang === 'th' ? 'AI Vision กำลังวิเคราะห์องค์ประกอบภาพ...' : 'AI Vision analyzing photo features...'}
+                    {lang === 'th' ? 'กำลังจำลองผลตรวจจากภาพตัวอย่าง...' : 'Simulating a sample result...'}
                   </p>
                 </div>
               )}
+              <span className="absolute left-2 top-2 rounded-md bg-amber-500 px-2 py-1 text-[10px] font-bold text-slate-950">
+                {lang === 'th' ? 'ภาพตัวอย่าง • ไม่ได้ส่งภาพจริง' : 'SAMPLE • no real upload'}
+              </span>
             </div>
 
             {/* Quick Sample Selector */}
@@ -407,7 +406,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-yellow-300" />
-                <span>{lang === 'th' ? 'ส่งตรวจ AI Vision ทันที' : 'Submit & Analyze'}</span>
+                <span>                {lang === 'th' ? 'แสดงผลตัวอย่าง' : 'Show demo result'}</span>
               </button>
             </div>
           </div>

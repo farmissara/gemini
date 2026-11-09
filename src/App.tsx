@@ -1455,8 +1455,6 @@ export const App: React.FC = () => {
                   <RealWorldSnapQuestView
                     lang={lang}
                     currentRole={currentRole}
-                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
-                    onEarnRewards={handleEarnRewards}
                   />
                 )}
 

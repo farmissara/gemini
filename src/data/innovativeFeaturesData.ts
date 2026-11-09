@@ -641,7 +641,7 @@ export const INITIAL_REAL_WORLD_QUESTS: RealWorldSnapQuest[] = [
     aiVerificationResult: {
       identifiedObject: 'ใบกล้วย (Banana Leaf) - เส้นใบเรียงขนานกันอย่างชัดเจน',
       confidencePercent: 96.4,
-      feedbackTh: 'ถูกต้องสมบูรณ์! ตรวจพบเส้นใบขนานของพืชใบเลี้ยงเดี่ยว (Monocotyledon) ตรงตามตัวชี้วัด ว 1.2 ม.1/3 ได้รับ 150 XP!',
+      feedbackTh: 'ผลตัวอย่าง: ภาพสาธิตแสดงเส้นใบขนานของพืชใบเลี้ยงเดี่ยว ไม่ใช่ผลตรวจ AI หรือการยืนยันคะแนนจริง',
       isPass: true,
     },
   },

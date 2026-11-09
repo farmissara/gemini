@@ -311,7 +311,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           </button>
 
           {/* Teacher Creator */}
-          {(currentUserRole === 'teacher' || currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
+          {(currentUserRole === 'teacher' || currentUserRole === 'admin') && (
             <button
               type="button"
               onClick={() => setShowTeacherBuilder(true)}

@@ -41,8 +41,9 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   currentRole = 'student',
   currentUserName = 'ด.ช. ภูมิใจ รักเรียน'
 }) => {
+  const canViewTeacherInsights = currentRole === 'teacher' || currentRole === 'admin';
   const [activeTab, setActiveTab] = useState<'tutor_chat' | 'teacher_insights'>(
-    currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin' 
+    canViewTeacherInsights
       ? 'teacher_insights' 
       : 'tutor_chat'
   );
@@ -154,8 +155,8 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
             </h1>
             <p className="text-slate-300 text-xs leading-relaxed">
               {lang === 'th' 
-                ? 'ระบบติวเตอร์ AI 24 ชม. ที่ไม่บอกคำตอบตรงๆ แต่ค่อยๆ ชวนคิดทีละสเต็ป พร้อมแดชบอร์ดสรุปจุดเข้าใจผิดของทั้งห้องเรียน'
-                : 'Scaffolding dialogue tutor that encourages deep thinking, paired with aggregated teacher struggle analytics.'}
+                ? 'โหมดตัวอย่าง: บทสนทนาใช้คำตอบจำลอง ยังไม่ได้เชื่อม AI จริง ส่วนแดชบอร์ดครูแสดงข้อมูลตัวอย่าง'
+                : 'Demo mode: responses are simulated, not connected to a live AI. Teacher insights use sample data.'}
             </p>
           </div>
 
@@ -174,7 +175,7 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
               <span>{lang === 'th' ? 'ห้องแชทติวเตอร์ AI' : 'Student AI Chat'}</span>
             </button>
 
-            <button
+            {canViewTeacherInsights && <button
               type="button"
               onClick={() => setActiveTab('teacher_insights')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -185,7 +186,7 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
             >
               <BarChart3 className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'แดชบอร์ดคุณครู' : 'Teacher Insights'}</span>
-            </button>
+            </button>}
           </div>
         </div>
       </div>
@@ -347,7 +348,7 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
       )}
 
       {/* Mode 2: Teacher Struggle Insights Dashboard */}
-      {activeTab === 'teacher_insights' && (
+      {canViewTeacherInsights && activeTab === 'teacher_insights' && (
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
           {/* Top 5 Misconceptions List */}
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col min-h-0 overflow-y-auto space-y-3">

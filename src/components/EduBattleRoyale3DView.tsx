@@ -385,6 +385,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canManageRooms = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
 
   // Layout & Screen
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -416,11 +417,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   // Game Modes & Match Setup Lobby (Requirement 3 & 4)
   const [gamePhase, setGamePhase] = useState<'lobby' | 'playing'>('lobby');
   const [playMode, setPlayMode] = useState<'solo' | 'friend' | 'teacher_room'>(
-    initialGameMode === 'solo' || (!initialGameMode && currentUser?.role === 'student')
-      ? 'solo'
-      : 'teacher_room'
+    initialGameMode === 'solo' || !canManageRooms ? 'solo' : 'teacher_room'
   );
-  const [friendRoomInput, setFriendRoomInput] = useState<string>(roomCodeProp || 'ARENA-401');
   const [teacherActivityName, setTeacherActivityName] = useState<string>(
     roomNameProp || 'กิจกรรมแข่งขันวิชาการ & STEM ประจำสัปดาห์'
   );
@@ -631,12 +629,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       setRoomCode(teacherRoomPin);
       setGameMode('classroom');
       setSubjectTitle(teacherActivityName);
-      setHudAlert(`🏆 กิจกรรมแข่งขันของครู "${teacherActivityName}" (รหัส PIN: ${teacherRoomPin}) เริ่มต้นแล้ว!`);
-    } else if (playMode === 'friend') {
-      setRoomCode(friendRoomInput || 'ROOM-88');
-      setGameMode('classroom');
-      setSubjectTitle(`ห้องประลองกับเพื่อน (${friendRoomInput || 'ROOM-88'})`);
-      setHudAlert(`👥 เชื่อมต่อห้องเพื่อน ${friendRoomInput || 'ROOM-88'} สำเร็จ!`);
+      setHudAlert(`โหมดสาธิตในเครื่อง: "${teacherActivityName}" • ไม่มีผู้เล่นออนไลน์จริง`);
     } else {
       setRoomCode('SOLO-RANK');
       setGameMode('solo');
@@ -1703,7 +1696,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400">
-                  เลือกหมวดข้อสอบ เลือกระดับชั้น และเลือกโหมดเล่นเดี่ยว / ชวนเพื่อน / ครูสร้างห้องแข่งขัน
+                  เลือกโหมดเล่นเดี่ยว หรือให้ครูตั้งค่ากิจกรรมในเครื่องนี้
+                </p>
+                <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  โหมดนี้เป็นตัวอย่างในเครื่อง ยังไม่เชื่อมผู้เล่นออนไลน์หรือห้องแข่งขันจริง
                 </p>
               </div>
             </div>
@@ -1796,7 +1792,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 <span>เลือกโหมดการเล่น (Select Game Mode)</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Mode 1: Solo */}
                 <button
                   type="button"
@@ -1824,35 +1820,24 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   </div>
                 </button>
 
-                {/* Mode 2: Friends */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    battleAudio.playClick();
-                    setPlayMode('friend');
-                  }}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                    playMode === 'friend'
-                      ? 'bg-indigo-500/20 border-indigo-400 text-white shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-400'
-                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-400'
-                  }`}
-                >
+                {/* Multiplayer room joining is unavailable until a realtime service is connected. */}
+                <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60 text-slate-400 flex flex-col justify-between gap-3 opacity-80">
                   <div className="flex items-center justify-between">
-                    <span className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    <span className="p-2.5 rounded-xl bg-slate-800 text-slate-400 border border-slate-700">
                       <Users className="w-5 h-5" />
                     </span>
-                    {playMode === 'friend' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-400 text-white font-black">เลือกแล้ว</span>}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold">เร็ว ๆ นี้</span>
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-sm text-white">2. ชวนเพื่อนเล่น (Friend Lobby)</h4>
-                    <p className="text-xs text-slate-300 mt-1">
-                      เข้าร่วมด้วยรหัสห้อง หรือแชร์รหัสห้องให้เพื่อนในกลุ่มเพื่อร่วมแข่งขัน
+                    <h4 className="font-extrabold text-sm text-slate-300">เล่นกับเพื่อนออนไลน์</h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      ยังไม่เปิดใช้ เพราะระบบห้องและการเชื่อมต่อผู้เล่นจริงยังไม่พร้อม
                     </p>
                   </div>
-                </button>
+                </div>
 
                 {/* Mode 3: Teacher Room */}
-                <button
+                {canManageRooms && <button
                   type="button"
                   onClick={() => {
                     battleAudio.playClick();
@@ -1873,44 +1858,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     </span>
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-sm text-white">3. ครูสร้างห้องพิเศษกิจกรรมแข่งขัน</h4>
+                    <h4 className="font-extrabold text-sm text-white">ตั้งค่ากิจกรรมครู (ตัวอย่างในเครื่อง)</h4>
                     <p className="text-xs text-slate-300 mt-1">
-                      จัดกิจกรรมแข่งขันในคาบเรียน สุ่มรหัส PIN พร้อม Live Leaderboard ฉายขึ้นจอ
+                      ปรับหัวข้อและเวลาในเครื่องนี้ โดยยังไม่มีผู้เล่นอื่นเข้าร่วมจริง
                     </p>
                   </div>
-                </button>
+                </button>}
               </div>
 
               {/* Mode Sub-configuration Panel */}
-              {playMode === 'friend' && (
-                <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-2">
-                  <label className="text-xs font-bold text-indigo-300 block">รหัสห้องแข่งขัน (Room Code / PIN):</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={friendRoomInput}
-                      onChange={(e) => setFriendRoomInput(e.target.value.toUpperCase())}
-                      placeholder="เช่น EDU-8821"
-                      className="flex-1 px-3 py-2 text-xs font-mono font-bold rounded-xl bg-slate-900 border border-indigo-500/40 text-white uppercase focus:ring-2 focus:ring-indigo-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setFriendRoomInput(`ROOM-${Math.floor(1000 + Math.random() * 9000)}`)}
-                      className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer"
-                    >
-                      สุ่มรหัส
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    💡 แชร์รหัสห้องนี้ให้นักเรียนหรือเพื่อนในห้องเพื่อเข้าแข่งขันในแมตช์เดียวกัน
-                  </p>
-                </div>
-              )}
-
               {playMode === 'teacher_room' && (
                 <details className="rounded-2xl bg-amber-950/40 border border-amber-500/40 p-3">
                   <summary className="cursor-pointer list-none text-xs font-bold text-amber-300">
-                    ตั้งค่าห้องครู • PIN: {teacherRoomPin} ▾
+                    ตั้งค่ากิจกรรมในเครื่อง • PIN ตัวอย่าง: {teacherRoomPin} ▾
                   </summary>
                   <div className="mt-3 space-y-3">
                   <div className="flex items-center justify-between">
@@ -2021,7 +1981,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             {/* LAUNCH BUTTON */}
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800">
               <div className="text-xs text-slate-400">
-                🎮 โหมดที่พร้อมเล่น: <strong className="text-white">{playMode === 'solo' ? 'เล่นเดี่ยว' : playMode === 'friend' ? `ห้องเพื่อน (${friendRoomInput})` : `ห้องครู (${teacherActivityName})`}</strong> • ข้อสอบ <strong className="text-amber-400">{EXAM_CATEGORIES.find(c => c.id === selectedBankCategory)?.labelTh}</strong>
+                🎮 โหมดที่พร้อมเล่น: <strong className="text-white">{playMode === 'solo' ? 'เล่นเดี่ยว' : `ห้องครู (${teacherActivityName})`}</strong> • ข้อสอบ <strong className="text-amber-400">{EXAM_CATEGORIES.find(c => c.id === selectedBankCategory)?.labelTh}</strong>
               </div>
 
               <button
@@ -2086,6 +2046,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               <Clock className="w-3.5 h-3.5 text-amber-400" />
               <span>{timerSeconds}s</span>
             </span>
+            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">จำลอง</span>
           </div>
 
           {/* Right: Sound, Fullscreen, and on-demand game menu */}
@@ -2128,7 +2089,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer border border-yellow-200"
             >
               <Menu className="w-4 h-4" />
-              <span>เมนูเกม</span>
+              <span className="hidden sm:inline">เมนูเกม</span>
             </button>
           </div>
         </div>
