@@ -83,6 +83,7 @@ interface MobileAttendanceViewProps {
   onAddLeaveRequest?: (req: LeaveRequest) => void;
   onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
   initialSubTab?: 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
+  embeddedMobile?: boolean;
 }
 
 export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
@@ -101,10 +102,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   onAddLeaveRequest,
   onUpdateLeaveStatus,
   initialSubTab = 'selfie_mobile',
+  embeddedMobile = false,
 }) => {
   const [subTab, setSubTab] = useState<'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>(
     initialSubTab
   );
+  const [compactPane, setCompactPane] = useState<'camera' | 'identity' | 'geofence'>('camera');
 
   useEffect(() => {
     if (initialSubTab) {
@@ -490,18 +493,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     : students.filter(s => s.gradeLevel === proxyGradeFilter);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className={embeddedMobile ? 'h-full min-h-0 flex flex-col gap-2' : 'space-y-6 max-w-5xl mx-auto'}>
       {/* Top Header */}
-      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+      <div className={`${embeddedMobile ? 'shrink-0 p-2.5 rounded-xl' : 'p-6 rounded-3xl'} bg-slate-900 border border-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-xl`}>
+        <div className={embeddedMobile ? 'flex items-center justify-between gap-2 min-w-0' : 'space-y-1'}>
+          <div className={`${embeddedMobile ? 'hidden' : 'inline-flex'} items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold`}>
             <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
             <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-black">
-            {lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
+          <h1 className={`${embeddedMobile ? 'text-sm' : 'text-xl md:text-2xl'} font-black`}>
+            {embeddedMobile
+              ? lang === 'th' ? 'เช็กชื่อเข้า-ออก' : 'Check in / out'
+              : lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
           </h1>
-          <p className="text-slate-400 text-xs">
+          <p className={`text-slate-400 text-xs ${embeddedMobile ? 'hidden' : ''}`}>
             {lang === 'th' 
               ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
               : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
@@ -509,7 +514,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
 
         {/* Live Clock & Sound Toggle */}
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center ${embeddedMobile ? 'gap-1.5' : 'gap-3'}`}>
           <button
             type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
@@ -519,13 +524,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
           </button>
 
-          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 shrink-0">
-            <Clock className="w-5 h-5 text-indigo-400" />
+          <div className={`flex items-center ${embeddedMobile ? 'gap-1.5 px-2 py-1' : 'gap-3 px-4 py-2'} rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 shrink-0`}>
+            <Clock className={`${embeddedMobile ? 'w-3.5 h-3.5' : 'w-5 h-5'} text-indigo-400`} />
             <div>
-              <div className="text-xs font-bold text-white">
+              <div className={`${embeddedMobile ? 'text-[10px]' : 'text-xs'} font-bold text-white`}>
                 {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
               </div>
-              <div className="text-[11px] text-emerald-400 font-mono font-semibold">
+              <div className={`text-[11px] text-emerald-400 font-mono font-semibold ${embeddedMobile ? 'hidden' : ''}`}>
                 เวลาทำการ 06:30 - 18:00 น.
               </div>
             </div>
@@ -534,18 +539,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       </div>
 
       {/* Navigation Sub Tabs (Now includes Online Leave Tab) */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+      <div className={`${embeddedMobile ? 'grid grid-cols-2 gap-1.5 pb-2' : 'flex flex-wrap items-center gap-2 pb-3'} border-b border-slate-200 shrink-0`}>
         <button
           type="button"
           onClick={() => setSubTab('selfie_mobile')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
             subTab === 'selfie_mobile'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <Camera className="w-4 h-4" />
-          <span>{lang === 'th' ? '1. ถ่ายรูปเช็กชื่อเข้า-ออก (มือถือ)' : '1. Selfie Check-in/out'}</span>
+          <span>{embeddedMobile ? (lang === 'th' ? 'ถ่ายภาพเช็กชื่อ' : 'Selfie check-in') : lang === 'th' ? '1. ถ่ายรูปเช็กชื่อเข้า-ออก (มือถือ)' : '1. Selfie Check-in/out'}</span>
         </button>
 
         <button
@@ -554,14 +559,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             setLeaveFormStep(1);
             setSubTab('leave_request');
           }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
             subTab === 'leave_request'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>{lang === 'th' ? '2. ยื่นใบลาออนไลน์ (Online Leave)' : '2. Online Leave Request'}</span>
+          <span>{embeddedMobile ? (lang === 'th' ? 'ใบลาออนไลน์' : 'Online leave') : lang === 'th' ? '2. ยื่นใบลาออนไลน์ (Online Leave)' : '2. Online Leave Request'}</span>
           {leaveRequests.filter(r => r.status === 'pending').length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px]">
               {leaveRequests.filter(r => r.status === 'pending').length}
@@ -572,49 +577,72 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         <button
           type="button"
           onClick={() => setSubTab('teacher_proxy')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
             subTab === 'teacher_proxy'
               ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <UserCheck className="w-4 h-4" />
-          <span>{lang === 'th' ? '3. ครูลงชื่อแทนนักเรียน (Proxy)' : '3. Teacher Proxy'}</span>
+          <span>{embeddedMobile ? (lang === 'th' ? 'ครูเช็กชื่อแทน' : 'Teacher proxy') : lang === 'th' ? '3. ครูลงชื่อแทนนักเรียน (Proxy)' : '3. Teacher Proxy'}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setSubTab('period_checkin')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
             subTab === 'period_checkin'
               ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>{lang === 'th' ? '4. เช็คชื่อรายคาบ (Period)' : '4. Period Attendance'}</span>
+          <span>{embeddedMobile ? (lang === 'th' ? 'เช็กชื่อรายคาบ' : 'Period attendance') : lang === 'th' ? '4. เช็คชื่อรายคาบ (Period)' : '4. Period Attendance'}</span>
         </button>
       </div>
+
+      {embeddedMobile && subTab === 'selfie_mobile' && (
+        <div className="grid grid-cols-3 gap-1 shrink-0">
+          {([
+            ['camera', 'กล้อง'],
+            ['identity', 'ผู้ใช้งาน'],
+            ['geofence', 'จุด GPS']
+          ] as const).map(([pane, label]) => (
+            <button
+              key={pane}
+              type="button"
+              onClick={() => setCompactPane(pane)}
+              className={`rounded-lg px-2 py-1.5 text-[11px] font-bold transition ${
+                compactPane === pane
+                  ? 'bg-slate-800 text-white'
+                  : 'border border-slate-200 bg-white text-slate-600'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: SELFIE CHECK-IN/OUT (SELF PHONE) FOR STUDENTS & TEACHERS */}
       {/* ========================================================================= */}
       {subTab === 'selfie_mobile' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className={`${embeddedMobile ? 'flex-1 min-h-0 grid grid-cols-1 gap-2' : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'}`}>
           {/* LEFT COLUMN: Phone Frame with Camera Live Viewfinder */}
-          <div className="lg:col-span-7 flex flex-col items-center">
+          {(!embeddedMobile || compactPane === 'camera') && <div className={`${embeddedMobile ? 'h-full min-h-0' : 'lg:col-span-7 flex flex-col items-center'}`}>
             {/* Realistic Mobile Device Mockup Frame */}
-            <div className="w-full max-w-sm rounded-[40px] bg-slate-900 p-4 shadow-2xl border-4 border-slate-800 relative">
+            <div className={`${embeddedMobile ? 'h-full w-full rounded-2xl p-2 border-2' : 'w-full max-w-sm rounded-[40px] p-4 border-4'} bg-slate-900 shadow-2xl border-slate-800 relative flex flex-col min-h-0`}>
               {/* Dynamic Island */}
-              <div className="w-24 h-4 bg-slate-950 rounded-full mx-auto mb-3 flex items-center justify-center gap-1.5">
+              <div className={`${embeddedMobile ? 'hidden' : 'flex'} w-24 h-4 bg-slate-950 rounded-full mx-auto mb-3 items-center justify-center gap-1.5`}>
                 <div className="w-2 h-2 rounded-full bg-slate-800" />
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-950 border border-blue-900" />
               </div>
 
               {/* Screen Inner */}
-              <div className="rounded-[30px] bg-slate-950 overflow-hidden relative flex flex-col border border-slate-800 aspect-9/16 sm:aspect-auto sm:min-h-[580px]">
+              <div className={`${embeddedMobile ? 'flex-1 min-h-0 rounded-xl' : 'rounded-[30px] aspect-9/16 sm:aspect-auto sm:min-h-[580px]'} bg-slate-950 overflow-hidden relative flex flex-col border border-slate-800`}>
                 {/* Status Bar */}
-                <div className="px-4 py-2.5 flex items-center justify-between text-[11px] text-white/70 font-semibold bg-black/40 backdrop-blur-xs">
+                <div className={`${embeddedMobile ? 'hidden' : 'flex'} px-4 py-2.5 items-center justify-between text-[11px] text-white/70 font-semibold bg-black/40 backdrop-blur-xs`}>
                   <span>{new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-emerald-400 font-bold">5G Campus</span>
@@ -625,7 +653,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 {/* Event Selector: Check-in vs Check-out */}
-                <div className="p-3 bg-black/40 border-b border-white/10">
+                <div className={`${embeddedMobile ? 'p-1.5' : 'p-3'} bg-black/40 border-b border-white/10`}>
                   <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-800/80">
                     <button
                       type="button"
@@ -655,7 +683,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 {/* Gate Location Selector Pill */}
-                <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300">
+                <div className={`${embeddedMobile ? 'px-2 py-1' : 'px-3 py-1.5'} bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300`}>
                   <span className="flex items-center gap-1 text-slate-400">
                     <MapPin className="w-3.5 h-3.5 text-blue-400" />
                     <span>จุดประตู:</span>
@@ -672,7 +700,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 {/* Camera Viewfinder Box with Face Outline Guide */}
-                <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[320px]">
+                <div className={`relative flex-1 bg-black flex items-center justify-center overflow-hidden ${embeddedMobile ? 'min-h-[150px]' : 'min-h-[320px]'}`}>
                   <video
                     ref={videoRef}
                     autoPlay
@@ -697,7 +725,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                   {!capturedPhotoUrl && (
                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
-                      <div className="w-48 h-60 rounded-[50%] border-2 border-dashed border-cyan-400/70 shadow-lg shadow-cyan-500/20 flex flex-col items-center justify-center relative animate-pulse">
+                      <div className={`${embeddedMobile ? 'w-36 h-44' : 'w-48 h-60'} rounded-[50%] border-2 border-dashed border-cyan-400/70 shadow-lg shadow-cyan-500/20 flex flex-col items-center justify-center relative animate-pulse`}>
                         <div className="absolute top-2 w-12 h-1 bg-cyan-400/60 rounded-full" />
                         <div className="text-center px-4 space-y-1">
                           <p className="text-[11px] font-bold text-cyan-200 drop-shadow">
@@ -743,7 +771,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 {/* Bottom Camera Controls & Shutter */}
-                <div className="p-4 bg-slate-900 border-t border-slate-800 space-y-3">
+                <div className={`${embeddedMobile ? 'p-2 space-y-1' : 'p-4 space-y-3'} bg-slate-900 border-t border-slate-800`}>
                   {capturedPhotoUrl ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -809,19 +837,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   )}
 
                   <div className="text-center">
-                    <p className="text-[11px] text-slate-400">
+                    <p className={`text-[11px] text-slate-400 ${embeddedMobile ? 'hidden' : ''}`}>
                       ผู้ใช้งาน: <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
                     </p>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & User Switcher */}
-          <div className="lg:col-span-5 space-y-5">
+          {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'h-full min-h-0 overflow-hidden' : 'lg:col-span-5 space-y-5'}`}>
             {/* User Profile Card & Role Switcher */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+            {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 flex flex-col justify-center' : 'p-5 space-y-4'} rounded-2xl bg-white border border-slate-200 shadow-xs`}>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-4 h-4 text-blue-600" />
@@ -893,10 +921,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <p className="font-mono text-slate-400 text-[10px]">ID: {activePersonId}</p>
                 </div>
               </div>
-            </div>
+            </div>}
 
             {/* Multi-Gate Geofence Radar */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+            {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 overflow-hidden' : 'p-5 space-y-4'} rounded-2xl bg-white border border-slate-200 shadow-xs`}>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-600" />
@@ -1024,8 +1052,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+            </div>}
+          </div>}
         </div>
       )}
 

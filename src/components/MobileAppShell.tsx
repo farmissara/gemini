@@ -261,14 +261,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       {/* 2. MAIN ACTIVE VIEW CONTAINER */}
       {/* ======================================================== */}
-      <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-hidden">
+      <main className="flex flex-1 flex-col min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-hidden">
         {/* TAB A: HOME / MOBILE BRIEFING */}
         {activeTab === 'home' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="h-full min-h-0 flex flex-col justify-center gap-5 animate-in fade-in duration-200">
             {homePage === 0 && (
               <>
             {/* Welcome & Persona Card */}
-            <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-900 text-white shadow-xl shadow-blue-950/20">
+            <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-900 text-white shadow-xl shadow-blue-950/20">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <span className="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
@@ -295,19 +295,19 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </div>
 
             {/* Quick 4 Core Actions (Check-in, Leave, Games, Profile) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-2.5">
               {/* Action 1: Check-in */}
               <button
                 type="button"
                 onClick={() => setActiveTab('checkin')}
-                className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xs cursor-pointer ${
+                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer ${
                   isLight ? 'bg-white border-slate-200 hover:border-blue-400' : 'bg-slate-900 border-slate-800 hover:border-blue-500'
                 }`}
               >
-                <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold mb-3">
+                <div className="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">เช็คชื่อ (Check-in)</h2>
                   <p className="text-[11px] text-slate-500 mt-0.5">GPS Geofence & สแกนใบหน้า</p>
                 </div>
@@ -317,7 +317,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('leave')}
-                className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xs cursor-pointer relative ${
+                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer relative ${
                   isLight ? 'bg-white border-slate-200 hover:border-emerald-400' : 'bg-slate-900 border-slate-800 hover:border-emerald-500'
                 }`}
               >
@@ -326,10 +326,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     {pendingLeavesCount}
                   </span>
                 )}
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold mb-3">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">ใบลาออนไลน์</h2>
                   <p className="text-[11px] text-slate-500 mt-0.5">ลาป่วย / ลากิจ & ติดตามสถานะ</p>
                 </div>
@@ -343,14 +343,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   setActiveGameView('hub');
                   setGameHubPage(0);
                 }}
-                className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xs cursor-pointer ${
+                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer ${
                   isLight ? 'bg-white border-slate-200 hover:border-amber-400' : 'bg-slate-900 border-slate-800 hover:border-amber-500'
                 }`}
               >
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold mb-3">
+                <div className="w-11 h-11 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
                   <Gamepad2 className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">เกมส์ความรู้</h2>
                   <p className="text-[11px] text-slate-500 mt-0.5">3D Battle, บอส, แล็บจำลอง</p>
                 </div>
@@ -360,14 +360,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
-                className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xs cursor-pointer ${
+                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer ${
                   isLight ? 'bg-white border-slate-200 hover:border-purple-400' : 'bg-slate-900 border-slate-800 hover:border-purple-500'
                 }`}
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold mb-3">
+                <div className="w-11 h-11 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">บัตรดิจิทัล & โปรไฟล์</h2>
                   <p className="text-[11px] text-slate-500 mt-0.5">Virtual ID Card & ผลการเรียน</p>
                 </div>
@@ -489,8 +489,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
         {/* TAB B: CHECK-IN (เช็คชื่อ) */}
         {activeTab === 'checkin' && (
-          <div className="animate-in fade-in duration-200">
+          <div className="h-full min-h-0 animate-in fade-in duration-200">
             <MobileAttendanceView
+              embeddedMobile
               initialSubTab="selfie_mobile"
               students={students}
               teachers={teachers}
@@ -512,8 +513,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
         {/* TAB C: LEAVE REQUESTS (ใบลา) */}
         {activeTab === 'leave' && (
-          <div className="animate-in fade-in duration-200">
+          <div className="h-full min-h-0 animate-in fade-in duration-200">
             <MobileAttendanceView
+              embeddedMobile
               initialSubTab="leave_request"
               students={students}
               teachers={teachers}
