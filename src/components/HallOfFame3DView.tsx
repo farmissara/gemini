@@ -14,7 +14,9 @@ import {
   RotateCw,
   Medal,
   Calendar,
-  Search
+  Search,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { HallOfFameTrophy, AppLanguage, School } from '../types';
 import { INITIAL_HALL_OF_FAME_TROPHIES } from '../data/innovativeFeaturesData';
@@ -34,6 +36,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCopiedShare, setIsCopiedShare] = useState(false);
+  const [trophyZoom, setTrophyZoom] = useState<number>(1.0);
 
   // 3D Canvas Ref
   const mountRef = useRef<HTMLDivElement>(null);
@@ -311,6 +314,12 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
     }
   }, [selectedTrophy]);
 
+  useEffect(() => {
+    if (trophyGroupRef.current) {
+      trophyGroupRef.current.scale.set(trophyZoom, trophyZoom, trophyZoom);
+    }
+  }, [trophyZoom]);
+
   const filteredTrophies = trophies.filter(t => {
     if (filterType !== 'all' && t.trophyType !== filterType) return false;
     if (searchQuery.trim()) {
@@ -389,10 +398,40 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   {lang === 'th' ? 'แท่นจัดแสดงถ้วยเกียรติยศ 3 มิติ' : '3D Trophy Showcase'}
                 </h3>
               </div>
-              <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                <RotateCw className="w-3 h-3 text-indigo-500" />
-                {lang === 'th' ? 'ลากหมุนได้ 360°' : 'Drag to rotate 360°'}
-              </span>
+              <div className="flex items-center gap-2">
+                {/* 3D Trophy Zoom Controls */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-1.5 py-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setTrophyZoom(prev => Math.max(0.6, Number((prev - 0.15).toFixed(2))))}
+                    className="p-0.5 text-slate-600 dark:text-slate-300 hover:text-amber-500 cursor-pointer"
+                    title="ซูมออก"
+                  >
+                    <ZoomOut className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTrophyZoom(1.0)}
+                    className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold px-0.5 cursor-pointer"
+                    title="รีเซ็ต 1.0x"
+                  >
+                    {trophyZoom}x
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTrophyZoom(prev => Math.min(1.4, Number((prev + 0.15).toFixed(2))))}
+                    className="p-0.5 text-slate-600 dark:text-slate-300 hover:text-amber-500 cursor-pointer"
+                    title="ซูมเข้า"
+                  >
+                    <ZoomIn className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
+                  <RotateCw className="w-3 h-3 text-indigo-500" />
+                  {lang === 'th' ? 'หมุน 360°' : '360°'}
+                </span>
+              </div>
             </div>
 
             {/* 3D Canvas Mount Point */}

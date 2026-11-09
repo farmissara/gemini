@@ -44,7 +44,8 @@ import {
   AttendanceUserType,
   CampusGateGeofence,
   LeaveRequest,
-  LeaveType
+  LeaveType,
+  LeaveStatus
 } from '../types';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 
@@ -79,6 +80,8 @@ interface MobileAttendanceViewProps {
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
   onAddLeaveRequest?: (req: LeaveRequest) => void;
+  onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
+  initialSubTab?: 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
 }
 
 export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
@@ -94,9 +97,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   lang,
   onRecordAttendance,
   onRecordPeriodAttendance,
-  onAddLeaveRequest
+  onAddLeaveRequest,
+  onUpdateLeaveStatus,
+  initialSubTab = 'selfie_mobile',
 }) => {
-  const [subTab, setSubTab] = useState<'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>('selfie_mobile');
+  const [subTab, setSubTab] = useState<'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>(
+    initialSubTab
+  );
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // -------------------------------------------------------------
   // 1. MOBILE SELFIE CHECK-IN/OUT & MULTI-GATE STATE
@@ -1232,6 +1245,25 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   {req.approvalRemarks && (
                     <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-200">
                       ผู้อนุมัติ: {req.approvedBy} ({req.approvalRemarks})
+                    </div>
+                  )}
+
+                  {req.status === 'pending' && onUpdateLeaveStatus && (currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ')}
+                        className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer"
+                      >
+                        ✓ อนุมัติใบลา
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ')}
+                        className="py-1.5 px-3 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold text-xs transition cursor-pointer"
+                      >
+                        ✕ ปฏิเสธ
+                      </button>
                     </div>
                   )}
                 </div>

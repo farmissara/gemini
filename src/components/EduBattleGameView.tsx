@@ -22,7 +22,9 @@ import {
   RotateCcw,
   BookOpen,
   Gamepad2,
-  FlaskConical
+  FlaskConical,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
@@ -65,6 +67,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   const [streak, setStreak] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
   const [battleFeedback, setBattleFeedback] = useState<string | null>(null);
+  const [arenaZoom, setArenaZoom] = useState<number>(1.0);
 
   // New Question Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -302,57 +305,60 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Header */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-xl shadow-rose-950/20 border border-white/10">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
-              <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-              <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
+      {/* Top Banner & Header (Hidden during active battle for single-page compact view) */}
+      {battleState !== 'playing' && (
+        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-xl shadow-rose-950/20 border border-white/10">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
+                <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+                <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
+              </h1>
+              <p className="text-white/80 text-sm max-w-2xl">
+                {lang === 'th'
+                  ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
+                  : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
-            </h1>
-            <p className="text-white/80 text-sm max-w-2xl">
-              {lang === 'th'
-                ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
-                : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
-            </p>
-          </div>
 
-          {/* User Score Summary Card */}
-          <div className="bg-black/30 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center gap-4 shrink-0">
-            <img 
-              src={currentPlayerStats.avatarUrl} 
-              alt={currentPlayerStats.name} 
-              className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm">{currentPlayerStats.name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold">
-                  {currentPlayerStats.rankTitle}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1.5 text-amber-300 font-bold">
-                  <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span>{currentPlayerStats.exp.toLocaleString()} EXP</span>
+            {/* User Score Summary Card */}
+            <div className="bg-black/30 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center gap-4 shrink-0">
+              <img 
+                src={currentPlayerStats.avatarUrl} 
+                alt={currentPlayerStats.name} 
+                className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
+              />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm">{currentPlayerStats.name}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold">
+                    {currentPlayerStats.rankTitle}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
-                  <Coins className="w-4 h-4 text-cyan-300" />
-                  <span>{currentPlayerStats.gems} Gems</span>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                    <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    <span>{currentPlayerStats.exp.toLocaleString()} EXP</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                    <Coins className="w-4 h-4 text-cyan-300" />
+                    <span>{currentPlayerStats.gems} Gems</span>
+                  </div>
                 </div>
-              </div>
-              <div className="text-[11px] text-white/70">
-                สถิติชนะ {currentPlayerStats.battleWins} ครั้ง • สตรีค {currentPlayerStats.streak} ติดต่อกัน
+                <div className="text-[11px] text-white/70">
+                  สถิติชนะ {currentPlayerStats.battleWins} ครั้ง • สตรีค {currentPlayerStats.streak} ติดต่อกัน
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Sub Tabs Navigation */}
+      {/* Sub Tabs Navigation (Hidden during active battle) */}
+      {battleState !== 'playing' && (
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex flex-wrap items-center gap-2">
           {/* Flagship 3D EduArena Battle Royale Button */}
@@ -447,6 +453,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* TAB 0: 3D EduArena Battle Royale & Knowledge Treasure Hunt */}
       {activeSubTab === 'battle_royale_3d' && (
@@ -573,83 +580,127 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </div>
           )}
 
-          {/* Active Battle In Progress */}
+          {/* Active Battle In Progress - SINGLE SCREEN COMPACT VIEW (ห้ามเลื่อนหน้า) */}
           {battleState === 'playing' && (
-            <div className="max-w-4xl mx-auto rounded-3xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="max-w-4xl mx-auto rounded-3xl bg-slate-900 border border-slate-800 p-4 sm:p-5 space-y-3 shadow-2xl relative overflow-hidden">
               {/* Top HP & Duel Header */}
-              <div className="grid grid-cols-2 gap-4 items-center">
+              <div className="grid grid-cols-2 gap-3 items-center">
                 {/* Player Health Bar */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                      <span className="text-white">{currentPlayerStats.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="text-white truncate max-w-[100px] sm:max-w-none">{currentPlayerStats.name}</span>
                     </div>
-                    <span className="text-emerald-400">{playerHp} / 100 HP</span>
+                    <span className="text-emerald-400 font-mono text-[11px]">{playerHp}/100</span>
                   </div>
-                  <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                  <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
                     <div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300"
                       style={{ width: `${Math.max(0, playerHp)}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Opponent Health Bar */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-rose-400">{opponentHp} / 100 HP</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white">กัญญา (Rival)</span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                    <span className="text-rose-400 font-mono text-[11px]">{opponentHp}/100</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white truncate max-w-[100px] sm:max-w-none">กัญญา (Rival)</span>
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                     </div>
                   </div>
-                  <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                  <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
                     <div 
-                      className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-full transition-all duration-300"
                       style={{ width: `${Math.max(0, opponentHp)}%` }}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Status Ribbon (Timer, Streak, Points) */}
-              <div className="flex items-center justify-between py-2 px-4 rounded-2xl bg-slate-800/60 border border-slate-700">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                  <Flame className="w-4 h-4 fill-amber-400" />
-                  <span>Streak: {streak}x Combo</span>
+              {/* Status Ribbon (Timer, Streak, Points, Zoom Controls & Exit) */}
+              <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                  <Flame className="w-3.5 h-3.5 fill-amber-400" />
+                  <span>{streak}x Combo</span>
                 </div>
 
-                <div className={`flex items-center gap-2 text-sm font-black px-4 py-1 rounded-full ${
+                <div className={`flex items-center gap-1.5 text-xs font-black px-3 py-0.5 rounded-full ${
                   timer <= 5 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse' : 'bg-slate-700 text-cyan-300'
                 }`}>
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-3.5 h-3.5" />
                   <span>00:{timer < 10 ? `0${timer}` : timer}</span>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
-                  <Trophy className="w-4 h-4" />
-                  <span>{roundScore} คะแนน</span>
+                {/* Arena Zoom In / Out Controls */}
+                <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700 rounded-lg px-1.5 py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setArenaZoom(prev => Math.max(0.7, Number((prev - 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 cursor-pointer"
+                    title="ซูมออก"
+                  >
+                    <ZoomOut className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setArenaZoom(1.0)}
+                    className="text-[10px] font-mono text-amber-300 font-bold px-0.5"
+                    title="รีเซ็ต 1.0x"
+                  >
+                    {arenaZoom}x
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setArenaZoom(prev => Math.min(1.35, Number((prev + 0.15).toFixed(2))))}
+                    className="p-1 text-slate-300 hover:text-amber-300 cursor-pointer"
+                    title="ซูมเข้า"
+                  >
+                    <ZoomIn className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-cyan-300 hidden sm:inline">{roundScore} pts</span>
+                  <button
+                    type="button"
+                    onClick={() => setBattleState('idle')}
+                    className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] border border-rose-500/40 cursor-pointer"
+                  >
+                    ยอมแพ้
+                  </button>
                 </div>
               </div>
 
-              {/* Question Card */}
-              <div className="p-6 rounded-2xl bg-slate-800/40 border border-slate-700 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    ข้อที่ {currentQuestionIndex + 1} จาก {battleQuestions.length} • {currentQ.subject}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    ระดับ: {currentQ.gradeLevel}
-                  </span>
+              {/* Scalable Question & Answer Card */}
+              <div 
+                style={{ transform: `scale(${arenaZoom})`, transformOrigin: 'top center' }}
+                className="transition-transform duration-200 space-y-2.5"
+              >
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">
+                      ข้อ {currentQuestionIndex + 1}/{battleQuestions.length} • {currentQ.subject}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      ระดับ: {currentQ.gradeLevel}
+                    </span>
+                  </div>
+
+                  <h3 className="text-xs sm:text-sm md:text-base font-bold text-white leading-snug">
+                    {currentQ.questionTh}
+                  </h3>
+                  {currentQ.questionEn && (
+                    <p className="text-[11px] text-slate-400 italic">
+                      {currentQ.questionEn}
+                    </p>
+                  )}
                 </div>
 
-                <h3 className="text-lg sm:text-xl font-bold text-white leading-relaxed">
-                  {currentQ.questionTh}
-                </h3>
-
-                {/* Multiple Choice Options */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                {/* Multiple Choice Options - Compact 2x2 Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {currentQ.options.map((opt, idx) => {
                     let btnStyle = 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700';
                     if (selectedAnswer !== null) {
@@ -667,23 +718,23 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         key={idx}
                         disabled={selectedAnswer !== null}
                         onClick={() => handleAnswer(idx)}
-                        className={`p-4 rounded-xl border text-left text-sm font-medium transition-all flex items-start gap-3 ${btnStyle}`}
+                        className={`p-2.5 rounded-xl border text-left text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${btnStyle}`}
                       >
-                        <span className="w-6 h-6 rounded-lg bg-slate-700/60 flex items-center justify-center shrink-0 text-xs font-bold text-white">
+                        <span className="w-5 h-5 rounded-md bg-slate-700/60 flex items-center justify-center shrink-0 text-xs font-bold text-white font-mono">
                           {String.fromCharCode(65 + idx)}
                         </span>
-                        <span className="flex-1">{opt}</span>
+                        <span className="flex-1 line-clamp-2">{opt}</span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Live Feedback & Explanation */}
+                {/* Live Feedback Toast Banner */}
                 {battleFeedback && (
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-700 text-xs space-y-2 animate-fadeIn">
-                    <p className="font-bold text-sm text-amber-300">{battleFeedback}</p>
-                    <p className="text-slate-300 leading-relaxed">
-                      💡 <strong>คำอธิบายเฉลย:</strong> {currentQ.explanationTh}
+                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-700 text-xs space-y-0.5 animate-fadeIn">
+                    <p className="font-bold text-xs text-amber-300">{battleFeedback}</p>
+                    <p className="text-[11px] text-slate-300 leading-tight">
+                      💡 <strong>เฉลย:</strong> {currentQ.explanationTh}
                     </p>
                   </div>
                 )}

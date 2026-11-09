@@ -113,6 +113,7 @@ import { StudyStreakQuestPassView } from './components/StudyStreakQuestPassView'
 import { CoopBossRaidView } from './components/CoopBossRaidView';
 import { SocraticTutorView } from './components/SocraticTutorView';
 import { RealWorldSnapQuestView } from './components/RealWorldSnapQuestView';
+import { MobileAppShell } from './components/MobileAppShell';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
 
@@ -146,6 +147,25 @@ export const App: React.FC = () => {
   const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
+  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+  const [deviceViewPreference, setDeviceViewPreference] = useState<'auto' | 'mobile' | 'desktop'>('auto');
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const shouldShowMobileView = deviceViewPreference === 'mobile' || (deviceViewPreference === 'auto' && isMobileScreen);
 
   // Primary Domain State
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
@@ -813,6 +833,106 @@ export const App: React.FC = () => {
 
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
 
+  // Responsive: If on mobile screen (or user opted into mobile view), render the clean, uncluttered MobileAppShell
+  if (shouldShowMobileView) {
+    return (
+      <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} font-sans`}>
+        <MobileAppShell
+          currentUser={currentUser}
+          activeSchool={activeSchool}
+          currentRole={currentRole}
+          lang={lang}
+          setLang={setLang}
+          themePalette={themePalette}
+          setThemePalette={setThemePalette}
+          onLogout={handleLogout}
+          onSwitchToDesktopMode={() => setDeviceViewPreference('desktop')}
+          onOpenProfileModal={() => setShowProfileModal(true)}
+          students={schoolStudents}
+          teachers={schoolTeachers}
+          courses={schoolCourses}
+          attendance={schoolAttendance}
+          periodAttendance={schoolPeriodAttendance}
+          leaveRequests={leaveRequests}
+          assignments={schoolAssignments}
+          homeworkSubmissions={homeworkSubmissions}
+          announcements={schoolAnnouncements}
+          questions={schoolQuestions}
+          playerScores={playerScores}
+          rewardItems={rewardItems}
+          campusGates={campusGates}
+          onRecordAttendance={handleRecordAttendance}
+          onRecordPeriodAttendance={handleRecordPeriodAttendance}
+          onAddLeaveRequest={handleAddLeaveRequest}
+          onUpdateLeaveStatus={handleUpdateLeaveStatus}
+          onEarnRewards={handleEarnRewards}
+          onRedeemReward={handleRedeemReward}
+          onAddQuestion={handleAddQuestion}
+          onImportQuestions={handleImportQuestions}
+          onUpdateStudent={handleUpdateStudent}
+        />
+
+        {/* Modals for Mobile View */}
+        {selectedStudentForReport && (
+          <ReportCardModal
+            student={selectedStudentForReport}
+            courses={schoolCourses}
+            grades={schoolGrades}
+            systemConfig={systemConfig}
+            onClose={() => setSelectedStudentForReport(null)}
+          />
+        )}
+
+        {selectedStudentForProfile && (
+          <StudentDetailModal
+            student={selectedStudentForProfile}
+            courses={schoolCourses}
+            grades={schoolGrades}
+            attendance={schoolAttendance}
+            onClose={() => setSelectedStudentForProfile(null)}
+            onOpenReportCard={(stu) => {
+              setSelectedStudentForProfile(null);
+              setSelectedStudentForReport(stu);
+            }}
+            onToggleLineSync={handleToggleLineSync}
+          />
+        )}
+
+        {showProfileModal && currentUser && (
+          <UserProfileModal
+            currentUser={currentUser}
+            portfolioItems={schoolPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+            lang={lang}
+            onSaveProfile={handleUpdateUserProfile}
+            onAddPortfolioItem={handleAddPortfolioItem}
+            onDeletePortfolioItem={handleDeletePortfolioItem}
+            onClose={() => setShowProfileModal(false)}
+          />
+        )}
+
+        {showSchoolSwitcher && (
+          <SchoolSwitcherModal
+            schools={schools}
+            activeSchool={activeSchool}
+            onSelectSchool={(school) => {
+              setActiveSchool(school);
+              setSystemConfig((prev) => ({
+                ...prev,
+                schoolNameEn: school.nameEn,
+                schoolNameTh: school.nameTh,
+              }));
+            }}
+            onClose={() => setShowSchoolSwitcher(false)}
+            lang={lang}
+          />
+        )}
+
+        {/* Offline Status Connectivity Banner */}
+        <OfflineIndicator lang={lang} />
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
       {/* Top Navbar */}
@@ -839,6 +959,7 @@ export const App: React.FC = () => {
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
+        onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
       />
       {isDemoMode && (
         <div role="status" className="mx-4 mt-3 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm text-violet-900">

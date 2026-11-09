@@ -32,7 +32,9 @@ import {
   Settings,
   LogOut,
   ChevronRight,
-  Gamepad2
+  Gamepad2,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
 import { 
@@ -437,6 +439,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     nitro: false
   });
   const [freezeCooldown, setFreezeCooldown] = useState(0);
+
+  // Camera Zoom in / out controls (Range 0.45x - 2.2x)
+  const zoomMultiplierRef = useRef<number>(1.0);
+  const [zoomScale, setZoomScale] = useState<number>(1.0);
 
   // Quiz Modal State
   const [activeQuestion, setActiveQuestion] = useState<QuizQuestion | null>(null);
@@ -1233,6 +1239,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
 
+    // Mouse Wheel Zoom
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.12 : -0.12;
+      const nextZoom = Math.min(2.2, Math.max(0.45, Number((zoomMultiplierRef.current + delta).toFixed(2))));
+      zoomMultiplierRef.current = nextZoom;
+      setZoomScale(Number(nextZoom.toFixed(1)));
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+
     // Resize Handler
     const onResize = () => {
       if (!container) return;
@@ -1350,9 +1366,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         playerGroup.scale.set(1.0, 1.0, 1.0);
       }
 
-      // Smooth Follow Camera
-      const camDist = isCrouch ? 5.5 : 7.2;
-      const camHeight = isCrouch ? 3.0 : 4.0;
+      // Smooth Follow Camera with Dynamic Zoom Multiplier
+      const zMult = zoomMultiplierRef.current;
+      const camDist = (isCrouch ? 5.5 : 7.2) * zMult;
+      const camHeight = (isCrouch ? 3.0 : 4.0) * THREE.MathUtils.lerp(0.8, 1.25, (zMult - 0.5) / 1.7);
       const camOffset = new THREE.Vector3(0, camHeight, camDist);
       camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerYaw);
       const targetCamPos = playerPos.clone().add(camOffset);
@@ -1467,6 +1484,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMouseDown);
+      container.removeEventListener('wheel', onWheel);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       if (container && renderer.domElement) {
@@ -2052,6 +2070,45 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
           {/* Right: Sound, Fullscreen, and Prominent MENU Toggle */}
           <div className="flex items-center gap-1.5 pointer-events-auto">
+            {/* Camera Zoom In/Out Controls */}
+            <div className="flex items-center bg-slate-900/85 border border-slate-700/80 rounded-xl px-1 py-0.5 shadow-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  const newZoom = Math.max(0.45, Number((zoomMultiplierRef.current - 0.2).toFixed(1)));
+                  zoomMultiplierRef.current = newZoom;
+                  setZoomScale(newZoom);
+                }}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+                title="ซูมเข้า (Zoom In)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  zoomMultiplierRef.current = 1.0;
+                  setZoomScale(1.0);
+                }}
+                className="px-1 text-[10px] font-mono font-bold text-amber-300 hover:underline cursor-pointer"
+                title="รีเซ็ตระดับซูม 1.0x"
+              >
+                {zoomScale}x
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const newZoom = Math.min(2.2, Number((zoomMultiplierRef.current + 0.2).toFixed(1)));
+                  zoomMultiplierRef.current = newZoom;
+                  setZoomScale(newZoom);
+                }}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+                title="ซูมออก (Zoom Out)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Sound Toggle */}
             <button
               type="button"
@@ -2628,16 +2685,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 4. QUESTION POPUP MODAL */}
+      {/* 4. QUESTION POPUP MODAL (COMPACT SINGLE-SCREEN NO SCROLL) */}
       {/* ======================================================== */}
       {activeQuestion && (
-        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className={`relative w-full max-w-xl bg-slate-900 border-2 ${isAirdropQuestion ? 'border-red-500 shadow-red-500/40' : 'border-amber-500/60'} rounded-3xl p-5 sm:p-7 shadow-2xl text-white animate-in fade-in zoom-in-95`}>
+        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className={`relative w-full max-w-lg bg-slate-900 border-2 ${isAirdropQuestion ? 'border-red-500 shadow-red-500/40' : 'border-amber-500/60'} rounded-3xl p-4 sm:p-6 shadow-2xl text-white animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col justify-between`}>
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${isAirdropQuestion ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`}>
-                  {isAirdropQuestion ? '📦 โบนัสแอร์ดรอปทองคำ (2x EXP)' : activeQuestion.subject}
+                <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${isAirdropQuestion ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`}>
+                  {isAirdropQuestion ? '📦 โบนัสแอร์ดรอป (2x EXP)' : activeQuestion.subject}
                 </span>
                 <span className="text-xs text-slate-400">
                   {activeQuestion.gradeLevel}
@@ -2653,19 +2710,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </div>
 
             {/* Question */}
-            <div className="mt-4">
-              <h2 className="text-sm sm:text-base font-bold text-slate-100 leading-relaxed">
+            <div className="my-3 shrink-0">
+              <h2 className="text-xs sm:text-sm md:text-base font-bold text-slate-100 leading-snug">
                 {activeQuestion.questionTh}
               </h2>
               {activeQuestion.questionEn && (
-                <p className="mt-1 text-xs text-slate-400 italic">
+                <p className="mt-1 text-[11px] text-slate-400 italic">
                   {activeQuestion.questionEn}
                 </p>
               )}
             </div>
 
-            {/* Choices */}
-            <div className="mt-5 space-y-2.5">
+            {/* Choices - 2 Column on tablet/desktop, compact buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 shrink-0">
               {activeQuestion.options.map((option, idx) => {
                 let btnStyle = 'bg-slate-800/80 border-slate-700 hover:bg-slate-750 text-slate-200';
                 if (selectedAnswerIndex !== null) {
@@ -2683,19 +2740,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     key={idx}
                     disabled={selectedAnswerIndex !== null}
                     onClick={() => handleAnswer(idx)}
-                    className={`w-full p-3 rounded-xl border text-left text-xs sm:text-sm transition-all flex items-center justify-between cursor-pointer ${btnStyle}`}
+                    className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${btnStyle}`}
                   >
-                    <span className="flex items-center gap-2.5">
-                      <span className="w-6 h-6 rounded-lg bg-slate-700/60 flex items-center justify-center font-mono font-bold text-xs text-slate-300">
+                    <span className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-md bg-slate-700/60 flex items-center justify-center font-mono font-bold text-[11px] text-slate-300 shrink-0">
                         {String.fromCharCode(65 + idx)}
                       </span>
-                      <span>{option}</span>
+                      <span className="line-clamp-2">{option}</span>
                     </span>
                     {selectedAnswerIndex !== null && idx === activeQuestion.correctIndex && (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     )}
                     {selectedAnswerIndex === idx && idx !== activeQuestion.correctIndex && (
-                      <XCircle className="w-5 h-5 text-rose-400" />
+                      <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
                     )}
                   </button>
                 );
