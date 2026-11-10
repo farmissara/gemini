@@ -300,39 +300,41 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('checkin')}
-                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer ${
+                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group ${
                   isLight ? 'bg-white border-slate-200 hover:border-blue-400' : 'bg-slate-900 border-slate-800 hover:border-blue-500'
                 }`}
               >
                 <div className="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">เช็คชื่อ (Check-in)</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">GPS Geofence & สแกนใบหน้า</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">เช็คชื่อเข้า-ออก (Check-in)</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">GPS Geofence & สแกนใบหน้า</p>
                 </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 2: Leave Request */}
               <button
                 type="button"
                 onClick={() => setActiveTab('leave')}
-                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer relative ${
+                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group relative ${
                   isLight ? 'bg-white border-slate-200 hover:border-emerald-400' : 'bg-slate-900 border-slate-800 hover:border-emerald-500'
                 }`}
               >
                 {pendingLeavesCount > 0 && (
-                  <span className="absolute top-3 right-3 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
                     {pendingLeavesCount}
                   </span>
                 )}
                 <div className="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">ใบลาออนไลน์</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">ลาป่วย / ลากิจ & ติดตามสถานะ</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">ใบลาออนไลน์</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">ลาป่วย / ลากิจ & ติดตามสถานะ</p>
                 </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 3: Games Hub */}
@@ -343,34 +345,36 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   setActiveGameView('hub');
                   setGameHubPage(0);
                 }}
-                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer ${
+                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group ${
                   isLight ? 'bg-white border-slate-200 hover:border-amber-400' : 'bg-slate-900 border-slate-800 hover:border-amber-500'
                 }`}
               >
                 <div className="w-11 h-11 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
                   <Gamepad2 className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">เกมส์ความรู้</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">3D Battle, บอส, แล็บจำลอง</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">เกมส์ความรู้ & เวิร์กช็อป 6 มิติ</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
                 </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 4: Virtual ID / Profile */}
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
-                className={`min-h-[clamp(5rem,13dvh,7rem)] p-4 rounded-2xl border text-left flex items-center gap-4 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer ${
+                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group ${
                   isLight ? 'bg-white border-slate-200 hover:border-purple-400' : 'bg-slate-900 border-slate-800 hover:border-purple-500'
                 }`}
               >
                 <div className="w-11 h-11 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white">บัตรดิจิทัล & โปรไฟล์</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Virtual ID Card & ผลการเรียน</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">บัตรดิจิทัล & โปรไฟล์</h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Virtual ID Card & ผลการเรียน</p>
                 </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 dark:group-hover:text-purple-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
               </>
@@ -465,23 +469,32 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               </>
             )}
 
-            <nav aria-label="หน้าหลัก" className="flex items-center justify-between gap-3 pt-1">
+            <nav aria-label="หน้าหลัก" className="flex items-center justify-between gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setHomePage(0)}
-                disabled={homePage === 0}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
+                  homePage === 0
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                }`}
               >
-                ภาพรวม
+                ภาพรวม (หน้า 1)
               </button>
-              <span aria-live="polite" className="text-[11px] font-medium text-slate-500">{homePage + 1} / 2</span>
+              <div aria-live="polite" className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 0 ? 'bg-blue-600 scale-125' : 'bg-slate-350 dark:bg-slate-650'}`} />
+                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 1 ? 'bg-blue-600 scale-125' : 'bg-slate-350 dark:bg-slate-650'}`} />
+              </div>
               <button
                 type="button"
                 onClick={() => setHomePage(1)}
-                disabled={homePage === 1}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
+                  homePage === 1
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                }`}
               >
-                สรุปวันนี้
+                สรุปวันนี้ (หน้า 2)
               </button>
             </nav>
           </div>

@@ -654,10 +654,10 @@ export const MODULE_GUIDES: GuideItem[] = [
     summaryEn: 'Full 3D Battle Royale educational arena with shrinking storm zone, bot AI, procedural audio, and reward shop.',
     features: [
       {
-        titleTh: 'ห้องแล็บจำลองรายวิชา & เคมีระเบิด (Subject Lab Simulations)',
-        titleEn: 'Interactive Subject Labs & Chemistry',
-        descTh: 'จำลองการทดลองผสมสารเคมีจริงตามสูตร ปรุงไวยากรณ์ คำนวณวิถีจรวด และเขียนโค้ดหุ่นยนต์ ถ้าทำผิดห้องแล็บจะระเบิดตูมตามพร้อมเอฟเฟกต์เสียงสมจริงและคำอธิบายเฉลย',
-        descEn: 'Mix chemical reagents, solve rocket trajectories, and code robots. Incorrect formulas trigger hilarious comic lab explosions!'
+        titleTh: 'เวิร์กช็อปจำลองรายวิชา 6 มิติ (Multi-Subject Interactive Workshops)',
+        titleEn: 'Multi-Subject Interactive Simulation Workshops',
+        descTh: 'ระบบจำลองการเรียนรู้เชิงลึก 6 กลุ่มสาระ: แล็บเคมี, ฐานยิงจรวดฟิสิกส์, ครัวไวยากรณ์อังกฤษ, สตูดิโอหุ่นยนต์โค้ดดิ้ง, ศาลากวีไทย และหอนักสำรวจแผนที่โลก มีเครื่องมือเฉพาะวิชาและแอนิเมชันตอบสนองสุดฮา',
+        descEn: 'Bespoke interactive workshops across 6 disciplines: Chemistry Lab, Physics Rocketry, English Gourmet Kitchen, Robotics Coding, Thai Wisdom Chamber, and World Cartography Expedition.'
       },
       {
         titleTh: 'ระบบ 3D Battle Royale (Three.js Engine)',

@@ -60,7 +60,6 @@ interface SubjectThemeConfig {
   stageTitleEn: string;
   avatarTitleTh: string;
   avatarTitleEn: string;
-  avatarSubTh: string;
   trayLabelTh: string;
   trayHintTh: string;
   shelfLabelTh: string;
@@ -77,94 +76,90 @@ const SUBJECT_CONFIGS: Record<LabSubjectCategory, SubjectThemeConfig> = {
   chemistry: {
     id: 'chemistry',
     nameTh: 'เคมี & วิทยาศาสตร์',
-    nameEn: 'Chemistry & Science',
+    nameEn: 'Chemistry',
     icon: FlaskConical,
     accentColor: '#38bdf8',
-    badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-    stageTitleTh: 'ห้องปฏิบัติการเคมี & วิทยาศาสตร์เสมือนจริง',
-    stageTitleEn: 'Virtual Chemistry & Science Lab',
+    badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+    stageTitleTh: 'ห้องแล็บเคมี & วิทยาศาสตร์',
+    stageTitleEn: 'Chemistry Lab',
     avatarTitleTh: 'ดร.นักเคมี',
     avatarTitleEn: 'Chemist',
-    avatarSubTh: 'พร้อมผสมสาร',
     trayLabelTh: 'ในขวดรูปชมพู่:',
-    trayHintTh: 'แตะสารเคมีจากขวามือเพื่อหยดลงขวด',
-    shelfLabelTh: 'ชั้นวางสารเคมี & สารละลาย:',
+    trayHintTh: 'แตะสารเคมีด้านล่างเพื่อหยดลงขวด',
+    shelfLabelTh: 'คลังสารเคมี & สารละลาย',
     shelfBadgeTh: 'สารเคมี',
     tool1LabelTh: 'คนสารละลาย',
     tool1LabelEn: 'Stir Reagents',
     tool2LabelTh: 'ตะเกียงบุนเซน',
     tool2LabelEn: 'Bunsen Burner',
-    actionButtonLabelTh: '⚡ วิเคราะห์ปฏิกิริยาเคมี',
-    actionButtonLabelEn: '⚡ Analyze Chemical Reaction',
+    actionButtonLabelTh: 'วิเคราะห์ปฏิกิริยาเคมี',
+    actionButtonLabelEn: 'Analyze Reaction',
   },
   math: {
     id: 'math',
     nameTh: 'ฟิสิกส์ & อวกาศ',
-    nameEn: 'Physics & Space',
+    nameEn: 'Physics',
     icon: Rocket,
     accentColor: '#f97316',
-    badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-    stageTitleTh: 'ฐานปล่อยจรวด & ฟิสิกส์คำนวณวิถีโคจร',
-    stageTitleEn: 'Orbital Physics & Rocket Launchpad',
+    badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+    stageTitleTh: 'ฐานปล่อยจรวด & ฟิสิกส์วงโคจร',
+    stageTitleEn: 'Orbital Physics',
     avatarTitleTh: 'ผู้การอวกาศ',
     avatarTitleEn: 'Flight Director',
-    avatarSubTh: 'พร้อมปล่อยจรวด',
     trayLabelTh: 'บนแท่นปล่อยจรวด:',
-    trayHintTh: 'เลือกมุมยิง, เชื้อเพลิง และบูสเตอร์ขับดัน',
-    shelfLabelTh: 'คลังเวกเตอร์, องศา & ระบบขับเคลื่อน:',
+    trayHintTh: 'เลือกมุมยิง, เชื้อเพลิง และบูสเตอร์',
+    shelfLabelTh: 'คลังเวกเตอร์ & ระบบขับเคลื่อน',
     shelfBadgeTh: 'ปัจจัยฟิสิกส์',
     tool1LabelTh: 'ล็อกมุม 45°',
     tool1LabelEn: 'Lock 45° Angle',
     tool2LabelTh: 'จุดระเบิดบูสเตอร์',
     tool2LabelEn: 'Ignite Thrusters',
-    actionButtonLabelTh: '🚀 ปล่อยจรวด LAUNCH!',
-    actionButtonLabelEn: '🚀 Launch Orbital Rocket!',
+    actionButtonLabelTh: 'ปล่อยจรวด LAUNCH!',
+    actionButtonLabelEn: 'Launch Rocket!',
   },
   english: {
     id: 'english',
     nameTh: 'ภาษาอังกฤษ & ไวยากรณ์',
-    nameEn: 'English Gourmet',
+    nameEn: 'English',
     icon: Utensils,
     accentColor: '#10b981',
-    badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    stageTitleTh: 'ครัวไวยากรณ์ & สตูดิโอภาษาอังกฤษ',
-    stageTitleEn: 'Grammar Gourmet Kitchen & Bistro',
+    badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    stageTitleTh: 'ครัวไวยากรณ์ภาษาอังกฤษ',
+    stageTitleEn: 'Grammar Kitchen',
     avatarTitleTh: 'เชฟมิชลินไวยากรณ์',
     avatarTitleEn: 'Master Chef',
-    avatarSubTh: 'พร้อมปรุงเมนูเด็ด',
     trayLabelTh: 'ในหม้อปรุงอาหาร:',
-    trayHintTh: 'เลือกประธาน กริยา และเครื่องปรุงไวยากรณ์ลงหม้อ',
-    shelfLabelTh: 'ตู้เครื่องปรุงไวยากรณ์ & คำศัพท์:',
+    trayHintTh: 'เลือกประธาน กริยา และ Tense ลงหม้อ',
+    shelfLabelTh: 'ตู้เครื่องปรุงไวยากรณ์ & คำศัพท์',
     shelfBadgeTh: 'เครื่องปรุงภาษา',
     tool1LabelTh: 'คลุกเคล้าส่วนผสม',
-    tool1LabelEn: 'Blend Ingredients',
+    tool1LabelEn: 'Blend Recipe',
     tool2LabelTh: 'เคี่ยวไฟไวยากรณ์',
     tool2LabelEn: 'Simmer Pot',
-    actionButtonLabelTh: '🍲 เสิร์ฟจานเด็ด GOURMET',
-    actionButtonLabelEn: '🍲 Serve Gourmet Dish',
+    actionButtonLabelTh: 'เสิร์ฟจานเด็ด GOURMET',
+    actionButtonLabelEn: 'Serve Gourmet',
   },
   computer: {
     id: 'computer',
     nameTh: 'โค้ดดิ้ง & หุ่นยนต์',
-    nameEn: 'Coding & Robotics',
+    nameEn: 'Robotics',
     icon: Bot,
     accentColor: '#6366f1',
-    badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-    stageTitleTh: 'สตูดิโอหุ่นยนต์ & วิทยาการคำนวณ',
-    stageTitleEn: 'Robo-Logic & Algorithm Workbench',
+    badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+    stageTitleTh: 'สตูดิโอหุ่นยนต์ & โค้ดดิ้ง',
+    stageTitleEn: 'Robo-Logic Studio',
     avatarTitleTh: 'วิศวกรไซเบอร์',
     avatarTitleEn: 'Cyber Engineer',
-    avatarSubTh: 'พร้อมคอมไพล์โค้ด',
     trayLabelTh: 'ในคิวคำสั่งหุ่นยนต์:',
-    trayHintTh: 'จัดเรียงบล็อกคำสั่งอัลกอริทึมและฟังก์ชัน',
-    shelfLabelTh: 'กล่องบล็อกคำสั่ง & อัลกอริทึม:',
+    trayHintTh: 'จัดเรียงบล็อกคำสั่งอัลกอริทึม',
+    shelfLabelTh: 'กล่องบล็อกคำสั่ง & อัลกอริทึม',
     shelfBadgeTh: 'บล็อกคำสั่ง',
     tool1LabelTh: 'ตรวจลูปอัลกอริทึม',
     tool1LabelEn: 'Check Loop',
     tool2LabelTh: 'สวิตช์โอเวอร์คล็อก',
     tool2LabelEn: 'Overclock Core',
-    actionButtonLabelTh: '🤖 รันโปรแกรม RUN CODE!',
-    actionButtonLabelEn: '🤖 Compile & Run Robot!',
+    actionButtonLabelTh: 'รันโปรแกรม RUN CODE!',
+    actionButtonLabelEn: 'Run Algorithm!',
   },
   thai: {
     id: 'thai',
@@ -172,45 +167,43 @@ const SUBJECT_CONFIGS: Record<LabSubjectCategory, SubjectThemeConfig> = {
     nameEn: 'Thai Wisdom',
     icon: Scroll,
     accentColor: '#eab308',
-    badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    stageTitleTh: 'ศาลากวีไทย & หอสมบัติภูมิปัญญาโบราณ',
-    stageTitleEn: 'Thai Wisdom Chamber & Ancient Vault',
+    badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    stageTitleTh: 'ศาลากวีไทย & ปริศนาโบราณ',
+    stageTitleEn: 'Thai Wisdom Vault',
     avatarTitleTh: 'กวีเอกแห่งสยาม',
     avatarTitleEn: 'Poet Laureate',
-    avatarSubTh: 'พร้อมถอดรหัสจารึก',
     trayLabelTh: 'บนแท่นศิลาจารึก:',
-    trayHintTh: 'เลือกศิลาสำนวนไทยและถ้อยคำโบราณ',
-    shelfLabelTh: 'คลังศิลาสำนวน & ถ้อยคำภูมิปัญญา:',
+    trayHintTh: 'เลือกศิลาสำนวนและคำคล้องจอง',
+    shelfLabelTh: 'คลังศิลาสำนวน & ถ้อยคำภูมิปัญญา',
     shelfBadgeTh: 'สำนวนไทย',
     tool1LabelTh: 'สลักถอดรหัสจารึก',
     tool1LabelEn: 'Decode Inscription',
     tool2LabelTh: 'จุดประทีปนำทาง',
     tool2LabelEn: 'Light Wisdom Lamp',
-    actionButtonLabelTh: '🗝️ ปลดล็อกประตูกลสมบัติ',
-    actionButtonLabelEn: '🗝️ Unlock Ancient Vault',
+    actionButtonLabelTh: 'ปลดล็อกประตูกลสมบัติ',
+    actionButtonLabelEn: 'Unlock Vault',
   },
   social: {
     id: 'social',
     nameTh: 'สังคม & แผนที่โลก',
-    nameEn: 'Social & Cartography',
+    nameEn: 'Social Studies',
     icon: Globe,
     accentColor: '#3b82f6',
-    badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    stageTitleTh: 'หอนักสำรวจ & แผนที่อารยธรรมโลก',
-    stageTitleEn: 'World Explorer & Civilization Map',
+    badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    stageTitleTh: 'หอนักสำรวจ & แผนที่อารยธรรม',
+    stageTitleEn: 'Cartography Hall',
     avatarTitleTh: 'นักสำรวจอารยธรรม',
     avatarTitleEn: 'World Explorer',
-    avatarSubTh: 'พร้อมออกสำรวจ',
     trayLabelTh: 'บนโต๊ะสำรวจหลักฐาน:',
-    trayHintTh: 'เลือกหลักฐานทางประวัติศาสตร์และพิกัดแผนที่',
-    shelfLabelTh: 'คลังหลักฐานประวัติศาสตร์ & พิกัดภูมิศาสตร์:',
+    trayHintTh: 'เลือกหลักฐานประวัติศาสตร์และพิกัด',
+    shelfLabelTh: 'คลังหลักฐานประวัติศาสตร์ & พิกัดแผนที่',
     shelfBadgeTh: 'หลักฐานสำรวจ',
     tool1LabelTh: 'ตรวจสอบหลักฐาน',
     tool1LabelEn: 'Inspect Artifact',
     tool2LabelTh: 'ปรับพิกัดเข็มทิศ',
     tool2LabelEn: 'Calibrate Compass',
-    actionButtonLabelTh: '🗺️ บันทึกการค้นพบ EXPEDITION',
-    actionButtonLabelEn: '🗺️ Log Historic Discovery',
+    actionButtonLabelTh: 'บันทึกการค้นพบ EXPEDITION',
+    actionButtonLabelEn: 'Log Discovery',
   },
 };
 
@@ -236,9 +229,16 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
   const [reactionState, setReactionState] = useState<'idle' | 'pouring' | 'reacting' | 'success' | 'exploded'>('idle');
   const [reactionMessage, setReactionMessage] = useState<string | null>(null);
   const [bubbles, setBubbles] = useState<{ id: number; left: number; delay: number }[]>([]);
-  const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
+  const [completedQuestIds, setCompletedQuestIds] = useState<string[]>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('eduverse_completed_lab_quests') : null;
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   
-  // Smooth Zoom state: min 0.6x to max 1.6x
+  // Smooth Zoom state: min 0.7x to max 1.4x
   const [labZoom, setLabZoom] = useState<number>(1.0);
 
   // Teacher Custom Lab Creator Modal State
@@ -290,7 +290,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       setBeakerItems(prev => [...prev, item]);
       setReactionState('idle');
       triggerSound(playBubbleSound);
-    }, 300);
+    }, 250);
   };
 
   // Remove item from tray
@@ -345,7 +345,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
         triggerSound(playSuccessSound);
 
         if (!completedQuestIds.includes(activeQuest.id)) {
-          setCompletedQuestIds(prev => [...prev, activeQuest.id]);
+          const nextCompleted = [...completedQuestIds, activeQuest.id];
+          setCompletedQuestIds(nextCompleted);
+          try {
+            localStorage.setItem('eduverse_completed_lab_quests', JSON.stringify(nextCompleted));
+          } catch {}
           if (onEarnRewards) {
             onEarnRewards('student', activeQuest.expReward, activeQuest.gemReward, true);
           }
@@ -377,7 +381,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
         }
 
         const defaultFailTitle = lang === 'th'
-          ? `${activeQuest.failTitleTh || '💥 การทดสอบล้มเหลว!'} ${failDetail}`
+          ? `${activeQuest.failTitleTh || '💥 การทดสอบคลาดเคลื่อน!'} ${failDetail}`
           : `💥 Trial failed! ${failDetail}`;
 
         setReactionMessage(defaultFailTitle);
@@ -398,33 +402,33 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
 
   // Zoom helpers
   const handleZoomIn = () => {
-    setLabZoom(prev => Math.min(1.6, Number((prev + 0.15).toFixed(2))));
+    setLabZoom(prev => Math.min(1.4, Number((prev + 0.15).toFixed(2))));
   };
   const handleZoomOut = () => {
-    setLabZoom(prev => Math.max(0.6, Number((prev - 0.15).toFixed(2))));
+    setLabZoom(prev => Math.max(0.7, Number((prev - 0.15).toFixed(2))));
   };
 
-  // Render bespoke character avatar based on active subject
+  // Render bespoke character avatar
   const renderSubjectAvatar = () => {
     const isExploded = reactionState === 'exploded';
     const isSuccess = reactionState === 'success';
 
     return (
-      <div className="flex flex-col items-center">
-        <div className={`text-[10px] font-bold px-2 py-0.5 rounded-lg mb-1 shadow-sm transition-colors ${
-          isExploded ? 'bg-rose-950 text-rose-300 border border-rose-500' :
-          isSuccess ? 'bg-emerald-950 text-emerald-300 border border-emerald-500' :
-          reactionState === 'reacting' ? 'bg-amber-950 text-amber-300 border border-amber-500' :
-          'bg-slate-800 text-slate-300 border border-slate-700'
+      <div className="flex flex-col items-center shrink-0">
+        <div className={`text-[10px] font-bold px-2 py-0.5 rounded-md mb-1 shadow-sm transition-colors border ${
+          isExploded ? 'bg-rose-950 text-rose-300 border-rose-500' :
+          isSuccess ? 'bg-emerald-950 text-emerald-300 border-emerald-500' :
+          reactionState === 'reacting' ? 'bg-amber-950 text-amber-300 border-amber-500' :
+          'bg-slate-800 text-slate-300 border-slate-700'
         }`}>
           {isExploded ? '😱 ว๊ากกก!' :
-           isSuccess ? '✨ สุดยอดมาก!' :
-           reactionState === 'reacting' ? '⚡ กำลังคำนวณ...' : `👤 ${activeConfig.avatarTitleTh}`}
+           isSuccess ? '✨ สุดยอด!' :
+           reactionState === 'reacting' ? '⚡ ประมวลผล...' : activeConfig.avatarTitleTh}
         </div>
 
-        {/* 1. CHEMISTRY AVATAR: Scientist in Lab Coat & Safety Goggles */}
+        {/* 1. CHEMISTRY: Scientist in Lab Coat & Safety Goggles */}
         {activeSubject === 'chemistry' && (
-          <svg width="80" height="105" viewBox="0 0 120 150" className="overflow-visible">
+          <svg width="72" height="96" viewBox="0 0 120 150" className="overflow-visible">
             {isExploded ? (
               <path d="M20 50 Q10 20 25 10 Q40 0 60 5 Q80 -5 95 12 Q115 25 100 55 Q115 50 110 65 Q95 70 95 55 Z" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
             ) : (
@@ -448,16 +452,12 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           </svg>
         )}
 
-        {/* 2. MATH & PHYSICS AVATAR: Astronaut / Flight Engineer */}
+        {/* 2. MATH & PHYSICS: Astronaut */}
         {activeSubject === 'math' && (
-          <svg width="80" height="105" viewBox="0 0 120 150" className="overflow-visible">
-            {/* Spacesuit Helmet */}
+          <svg width="72" height="96" viewBox="0 0 120 150" className="overflow-visible">
             <circle cx="60" cy="50" r="34" fill={isExploded ? '#334155' : '#e2e8f0'} stroke="#64748b" strokeWidth="3" />
-            {/* Tinted Gold/Cyan Visor */}
             <ellipse cx="60" cy="50" rx="24" ry="18" fill={isExploded ? '#1e293b' : isSuccess ? '#38bdf8' : '#f59e0b'} opacity="0.9" />
-            {/* Reflection on visor */}
             <path d="M48 40 Q60 36 72 40" stroke="#ffffff" strokeWidth="2.5" fill="none" opacity="0.7" strokeLinecap="round" />
-            {/* Spacesuit Body with NASA / Mission Patches */}
             <path d="M30 82 L90 82 L98 145 L22 145 Z" fill={isExploded ? '#475569' : '#f8fafc'} stroke="#94a3b8" strokeWidth="2.5" />
             <circle cx="45" cy="98" r="6" fill="#3b82f6" />
             <rect x="65" y="94" width="16" height="8" rx="2" fill="#ef4444" />
@@ -465,38 +465,28 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           </svg>
         )}
 
-        {/* 3. ENGLISH GOURMET AVATAR: Master Chef with Toque Blanche */}
+        {/* 3. ENGLISH: Master Chef */}
         {activeSubject === 'english' && (
-          <svg width="80" height="105" viewBox="0 0 120 150" className="overflow-visible">
-            {/* Chef Tall Hat (Toque Blanche) */}
+          <svg width="72" height="96" viewBox="0 0 120 150" className="overflow-visible">
             <path d="M40 38 C35 15, 85 15, 80 38 Z" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2.5" />
             <path d="M35 38 L85 38 L83 48 L37 48 Z" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="2" />
-            {/* Face */}
             <circle cx="60" cy="62" r="22" fill={isExploded ? '#64748b' : '#fcd34d'} />
-            {/* Eyes & Mustache */}
             <circle cx="52" cy="59" r="3.5" fill="#0f172a" />
             <circle cx="68" cy="59" r="3.5" fill="#0f172a" />
             <path d="M46 68 Q56 64 60 68 Q64 64 74 68 Q60 74 46 68 Z" fill="#78350f" />
-            {/* Chef Double-breasted Jacket & Red Scarf */}
             <polygon points="56,76 64,76 60,88" fill="#dc2626" />
             <path d="M32 82 L88 82 L95 145 L25 145 Z" fill={isExploded ? '#475569' : '#ffffff'} stroke="#cbd5e1" strokeWidth="2.5" />
-            {/* Double buttons */}
             <circle cx="52" cy="96" r="2.5" fill="#0f172a" />
             <circle cx="68" cy="96" r="2.5" fill="#0f172a" />
-            <circle cx="52" cy="112" r="2.5" fill="#0f172a" />
-            <circle cx="68" cy="112" r="2.5" fill="#0f172a" />
           </svg>
         )}
 
-        {/* 4. CODING & ROBOTICS AVATAR: Cybernetic Robo-Bit Assistant */}
+        {/* 4. CODING: Robo-Bit */}
         {activeSubject === 'computer' && (
-          <svg width="80" height="105" viewBox="0 0 120 150" className="overflow-visible">
-            {/* Antenna with glowing beacon */}
+          <svg width="72" height="96" viewBox="0 0 120 150" className="overflow-visible">
             <line x1="60" y1="20" x2="60" y2="40" stroke="#94a3b8" strokeWidth="3" />
             <circle cx="60" cy="18" r="6" fill={isExploded ? '#ef4444' : isSuccess ? '#10b981' : '#38bdf8'} className="animate-pulse" />
-            {/* Robot Head Box */}
             <rect x="35" y="38" width="50" height="42" rx="8" fill={isExploded ? '#334155' : '#1e293b'} stroke="#6366f1" strokeWidth="3" />
-            {/* LED Screen Eyes */}
             {isExploded ? (
               <g stroke="#ef4444" strokeWidth="2.5">
                 <line x1="45" y1="52" x2="53" y2="60" />
@@ -506,7 +496,6 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               </g>
             ) : isSuccess ? (
               <g fill="#10b981">
-                {/* Heart eyes */}
                 <path d="M46 54 A3,3 0 0,0 52,54 A3,3 0 0,0 58,54 Q58,60 52,64 Q46,60 46,54 Z" fill="#ec4899" />
                 <path d="M62 54 A3,3 0 0,0 68,54 A3,3 0 0,0 74,54 Q74,60 68,64 Q62,60 62,54 Z" fill="#ec4899" />
               </g>
@@ -516,26 +505,20 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 <rect x="64" y="52" width="10" height="8" rx="2" />
               </g>
             )}
-            {/* Digital Mouth meter */}
             <rect x="48" y="68" width="24" height="4" rx="2" fill={isSuccess ? '#10b981' : '#6366f1'} />
-            {/* Cybernetic Chassis */}
             <path d="M30 84 L90 84 L96 145 L24 145 Z" fill={isExploded ? '#1e293b' : '#312e81'} stroke="#818cf8" strokeWidth="2.5" />
             <circle cx="60" cy="110" r="12" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
-            <polygon points="60,103 66,114 54,114" fill="#38bdf8" />
           </svg>
         )}
 
-        {/* 5. THAI WISDOM AVATAR: Classical Poet Laureate */}
+        {/* 5. THAI: Classical Poet */}
         {activeSubject === 'thai' && (
-          <svg width="80" height="105" viewBox="0 0 120 150" className="overflow-visible">
-            {/* Golden Headdress / Chada Crest or Topknot */}
+          <svg width="72" height="96" viewBox="0 0 120 150" className="overflow-visible">
             <polygon points="60,15 65,35 55,35" fill="#eab308" stroke="#ca8a04" strokeWidth="1.5" />
             <circle cx="60" cy="38" r="8" fill="#ca8a04" />
-            {/* Face */}
             <circle cx="60" cy="58" r="23" fill={isExploded ? '#64748b' : '#fcd34d'} />
             <circle cx="52" cy="56" r="3.5" fill="#0f172a" />
             <circle cx="68" cy="56" r="3.5" fill="#0f172a" />
-            {/* Gentle smile or coconut bonk expression */}
             {isExploded ? (
               <ellipse cx="60" cy="72" rx="7" ry="5" fill="#0f172a" />
             ) : isSuccess ? (
@@ -543,21 +526,17 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             ) : (
               <path d="M54 69 Q60 73 66 69" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" />
             )}
-            {/* Traditional Thai Golden Raj Pattern & Silk Vest */}
             <path d="M32 84 L88 84 L96 145 L24 145 Z" fill={isExploded ? '#475569' : '#ca8a04'} stroke="#eab308" strokeWidth="2" />
-            {/* Golden Thai Sash (Sabai) crossing chest */}
             <polygon points="36,84 56,84 84,145 64,145" fill="#facc15" opacity="0.9" />
           </svg>
         )}
 
-        {/* 6. SOCIAL STUDIES & WORLD EXPLORER AVATAR: Archaeologist with Fedora */}
+        {/* 6. SOCIAL: Explorer with Fedora */}
         {activeSubject === 'social' && (
-          <svg width="80" height="105" viewBox="0 0 120 150" className="overflow-visible">
-            {/* Explorer Fedora Hat */}
+          <svg width="72" height="96" viewBox="0 0 120 150" className="overflow-visible">
             <ellipse cx="60" cy="40" rx="38" ry="8" fill="#78350f" stroke="#451a03" strokeWidth="2" />
             <path d="M38 38 C38 18, 82 18, 82 38 Z" fill="#92400e" stroke="#78350f" strokeWidth="2" />
             <rect x="38" y="34" width="44" height="4" fill="#d97706" />
-            {/* Face */}
             <circle cx="60" cy="62" r="22" fill={isExploded ? '#64748b' : '#fcd34d'} />
             <circle cx="52" cy="60" r="3.5" fill="#0f172a" />
             <circle cx="68" cy="60" r="3.5" fill="#0f172a" />
@@ -566,7 +545,6 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             ) : (
               <path d="M52 68 Q60 76 68 68" fill="none" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" />
             )}
-            {/* Khaki Expedition Vest with Pockets */}
             <path d="M32 84 L88 84 L95 145 L25 145 Z" fill={isExploded ? '#475569' : '#b45309'} stroke="#78350f" strokeWidth="2" />
             <rect x="38" y="94" width="16" height="16" rx="3" fill="#78350f" />
             <rect x="66" y="94" width="16" height="16" rx="3" fill="#78350f" />
@@ -576,31 +554,28 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
     );
   };
 
-  // Render bespoke subject apparatus stage (Flask / Rocket / Soup Pot / Robo-Dock / Stone Tablet / World Map)
+  // Render bespoke subject apparatus stage
   const renderSubjectApparatus = () => {
     return (
-      <div className="flex flex-col items-center relative">
-        {/* ========================================================= */}
-        {/* 1. CHEMISTRY APPARATUS: Erlenmeyer Flask & Bunsen Burner */}
-        {/* ========================================================= */}
+      <div className="flex flex-col items-center relative shrink-0">
+        {/* CHEMISTRY */}
         {activeSubject === 'chemistry' && (
-          <div className="relative w-36 h-44 flex items-center justify-center">
-            {/* Steam vapor */}
+          <div className="relative w-32 h-40 flex items-center justify-center">
             {beakerItems.length > 0 && reactionState !== 'exploded' && (
-              <div className="absolute -top-7 flex gap-1 pointer-events-none">
-                <div className="w-1.5 h-5 rounded-full bg-cyan-300/40 blur-xs animate-pulse" />
-                <div className="w-2 h-7 rounded-full bg-blue-300/40 blur-xs animate-bounce" />
+              <div className="absolute -top-6 flex gap-1 pointer-events-none">
+                <div className="w-1.5 h-4 rounded-full bg-cyan-300/40 blur-2xs animate-pulse" />
+                <div className="w-2 h-6 rounded-full bg-blue-300/40 blur-2xs animate-bounce" />
               </div>
             )}
 
-            <svg width="140" height="175" viewBox="0 0 180 230">
+            <svg width="120" height="150" viewBox="0 0 180 230">
               <defs>
-                <clipPath id="flaskClipSubject">
+                <clipPath id="flaskClipSubjectClean">
                   <polygon points="76,40 104,40 104,80 156,195 24,195 76,80" />
                 </clipPath>
               </defs>
 
-              <g clipPath="url(#flaskClipSubject)">
+              <g clipPath="url(#flaskClipSubjectClean)">
                 <rect
                   x="0"
                   y={200 - liquidLevelPct * 1.3}
@@ -626,7 +601,6 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 )}
               </g>
 
-              {/* Glass Outline */}
               <polygon
                 points="76,40 104,40 104,80 156,195 24,195 76,80"
                 fill="none"
@@ -636,48 +610,37 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <rect x="73" y="36" width="34" height="6" rx="2" fill="none" stroke="#38bdf8" strokeWidth="3" />
             </svg>
 
-            {/* Flame Burner */}
             {isBurnerActive && (
-              <div className="absolute -bottom-3 flex flex-col items-center">
-                <div className="w-5 h-7 bg-gradient-to-t from-amber-500 via-orange-400 to-yellow-200 rounded-full animate-bounce blur-xs" />
+              <div className="absolute -bottom-2 flex flex-col items-center">
+                <div className="w-5 h-7 bg-gradient-to-t from-amber-500 via-orange-400 to-yellow-200 rounded-full animate-bounce blur-2xs" />
               </div>
             )}
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* 2. MATH & PHYSICS APPARATUS: Space Rocket & Launch Gantry */}
-        {/* ========================================================= */}
+        {/* MATH & PHYSICS */}
         {activeSubject === 'math' && (
-          <div className="relative w-40 h-48 flex items-center justify-center">
-            <svg width="150" height="185" viewBox="0 0 180 230">
-              {/* Launch Gantry Tower Grid */}
+          <div className="relative w-36 h-40 flex items-center justify-center">
+            <svg width="130" height="155" viewBox="0 0 180 230">
               <line x1="30" y1="20" x2="30" y2="210" stroke="#475569" strokeWidth="3" />
               <line x1="30" y1="50" x2="55" y2="50" stroke="#64748b" strokeWidth="2" />
               <line x1="30" y1="90" x2="55" y2="90" stroke="#64748b" strokeWidth="2" />
               <line x1="30" y1="130" x2="55" y2="130" stroke="#64748b" strokeWidth="2" />
               <line x1="30" y1="170" x2="55" y2="170" stroke="#64748b" strokeWidth="2" />
 
-              {/* Launch Trajectory Angle Arc (e.g. θ = 45°) */}
               {isStirred && (
                 <g opacity="0.8">
                   <path d="M85 200 Q130 140 170 110" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeDasharray="4 3" />
-                  <text x="110" y="150" fill="#38bdf8" fontSize="10" fontWeight="bold">θ = 45°</text>
+                  <text x="110" y="150" fill="#38bdf8" fontSize="11" fontWeight="bold">θ = 45°</text>
                 </g>
               )}
 
-              {/* Rocket Body */}
               <g className={`transition-transform duration-300 ${isBurnerActive ? 'translate-y-[-6px]' : ''}`}>
-                {/* Nose Cone */}
                 <polygon points="90,30 108,70 72,70" fill="#ef4444" stroke="#b91c1c" strokeWidth="2" />
-                {/* Fuselage Cylinder */}
                 <rect x="72" y="70" width="36" height="100" rx="3" fill="#f8fafc" stroke="#94a3b8" strokeWidth="2" />
-                {/* Cockpit Window */}
                 <circle cx="90" cy="90" r="7" fill="#0284c7" stroke="#ffffff" strokeWidth="2" />
-                {/* Fins */}
                 <polygon points="72,140 50,175 72,170" fill="#f97316" />
                 <polygon points="108,140 130,175 108,170" fill="#f97316" />
-                {/* Fuel gauge fill inside rocket */}
                 <rect
                   x="76"
                   y={165 - liquidLevelPct * 0.65}
@@ -689,25 +652,20 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 />
               </g>
 
-              {/* Thruster Flame Jets */}
               {isBurnerActive && (
                 <g>
                   <polygon points="82,172 90,215 98,172" fill="#f59e0b" className="animate-pulse" />
                   <polygon points="86,172 90,198 94,172" fill="#ffffff" />
-                  <circle cx="90" cy="210" r="14" fill="#f97316" opacity="0.3" className="animate-ping" />
                 </g>
               )}
             </svg>
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* 3. ENGLISH GOURMET APPARATUS: Golden Cooking Pot & Cloche */}
-        {/* ========================================================= */}
+        {/* ENGLISH */}
         {activeSubject === 'english' && (
-          <div className="relative w-40 h-44 flex items-center justify-center">
-            <svg width="150" height="175" viewBox="0 0 180 230">
-              {/* Steaming Aroma Spirals */}
+          <div className="relative w-36 h-40 flex items-center justify-center">
+            <svg width="130" height="155" viewBox="0 0 180 230">
               {beakerItems.length > 0 && reactionState !== 'exploded' && (
                 <g stroke="#10b981" strokeWidth="2" fill="none" opacity="0.7">
                   <path d="M75 60 Q65 45 75 30" className="animate-pulse" />
@@ -716,15 +674,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 </g>
               )}
 
-              {/* Pot Handles */}
               <path d="M30 115 C15 115, 15 145, 30 145" fill="none" stroke="#d97706" strokeWidth="4" />
               <path d="M150 115 C165 115, 165 145, 150 145" fill="none" stroke="#d97706" strokeWidth="4" />
-
-              {/* Soup Pot Body */}
               <ellipse cx="90" cy="110" rx="58" ry="14" fill="#451a03" stroke="#b45309" strokeWidth="3" />
               <path d="M32 110 C32 175, 148 175, 148 110 Z" fill="#78350f" stroke="#b45309" strokeWidth="3" />
 
-              {/* Simmering Soup Level */}
               <ellipse
                 cx="90"
                 cy={150 - liquidLevelPct * 0.35}
@@ -734,7 +688,6 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 opacity="0.9"
               />
 
-              {/* Stirring Spoon */}
               {isStirred && (
                 <g className="animate-spin" style={{ transformOrigin: '90px 125px' }}>
                   <line x1="90" y1="70" x2="90" y2="125" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
@@ -742,7 +695,6 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 </g>
               )}
 
-              {/* Simmering Stove Flame underneath */}
               {isBurnerActive && (
                 <g>
                   <ellipse cx="90" cy="178" rx="35" ry="6" fill="#f59e0b" opacity="0.8" className="animate-pulse" />
@@ -755,16 +707,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* 4. CODING & ROBOTICS APPARATUS: Motherboard Chip Dock */}
-        {/* ========================================================= */}
+        {/* CODING */}
         {activeSubject === 'computer' && (
-          <div className="relative w-44 h-44 flex items-center justify-center">
-            <svg width="160" height="175" viewBox="0 0 190 220">
-              {/* Motherboard PCB Base */}
+          <div className="relative w-36 h-40 flex items-center justify-center">
+            <svg width="135" height="155" viewBox="0 0 190 220">
               <rect x="25" y="45" width="140" height="140" rx="10" fill="#0f172a" stroke="#6366f1" strokeWidth="3" />
-              
-              {/* Bus trace lines */}
               <g stroke="#4338ca" strokeWidth="1.5" fill="none">
                 <path d="M40 60 L70 60 L70 90 L120 90" />
                 <path d="M150 70 L130 70 L130 110" />
@@ -772,13 +719,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 <path d="M150 160 L110 160" />
               </g>
 
-              {/* Central Microprocessor Core */}
               <rect x="65" y="85" width="60" height="60" rx="6" fill={getFluidColor()} stroke="#818cf8" strokeWidth="2.5" opacity="0.9" />
               <text x="95" y="120" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="black" fontFamily="monospace">
-                CPU {isBurnerActive ? '4.8GHz' : '2.4GHz'}
+                CPU {isBurnerActive ? '4.8G' : '2.4G'}
               </text>
 
-              {/* Algorithm queue memory slots */}
               <g>
                 {[0, 1, 2, 3].map((slotIdx) => {
                   const hasItem = beakerItems.length > slotIdx;
@@ -798,7 +743,6 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 })}
               </g>
 
-              {/* Overclock Lightning Sparks */}
               {isBurnerActive && (
                 <g stroke="#38bdf8" strokeWidth="2" fill="none" className="animate-pulse">
                   <path d="M55 75 L62 82 L58 86 L66 94" />
@@ -809,24 +753,17 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* 5. THAI WISDOM APPARATUS: Ancient Inscribed Stele & Vault */}
-        {/* ========================================================= */}
+        {/* THAI */}
         {activeSubject === 'thai' && (
-          <div className="relative w-40 h-44 flex items-center justify-center">
-            <svg width="150" height="175" viewBox="0 0 180 230">
-              {/* Golden Lotus Pedestal */}
+          <div className="relative w-36 h-40 flex items-center justify-center">
+            <svg width="130" height="155" viewBox="0 0 180 230">
               <ellipse cx="90" cy="185" rx="55" ry="14" fill="#ca8a04" stroke="#eab308" strokeWidth="2.5" />
-              
-              {/* Stele Stone Tablet Body */}
               <path
                 d="M50 180 L50 70 C50 35, 130 35, 130 70 L130 180 Z"
                 fill="#1e293b"
                 stroke="#eab308"
                 strokeWidth="3"
               />
-
-              {/* Mystical Thai Script Inscription Lines */}
               <g stroke="#facc15" strokeWidth="1.8" strokeLinecap="round" opacity="0.8">
                 <line x1="68" y1="80" x2="112" y2="80" />
                 <line x1="64" y1="96" x2="116" y2="96" />
@@ -834,10 +771,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 <line x1="64" y1="128" x2="116" y2="128" />
               </g>
 
-              {/* Lotus Blossom in center */}
               <circle cx="90" cy="150" r="10" fill={getFluidColor()} stroke="#eab308" strokeWidth="2" />
 
-              {/* Wisdom Lamp Flame */}
               {isBurnerActive && (
                 <g className="animate-pulse">
                   <polygon points="86,30 90,12 94,30" fill="#f59e0b" />
@@ -848,22 +783,14 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* 6. SOCIAL STUDIES APPARATUS: World Globe & Navigation Map */}
-        {/* ========================================================= */}
+        {/* SOCIAL */}
         {activeSubject === 'social' && (
-          <div className="relative w-42 h-44 flex items-center justify-center">
-            <svg width="155" height="175" viewBox="0 0 180 230">
-              {/* Antique Globe Stand */}
+          <div className="relative w-36 h-40 flex items-center justify-center">
+            <svg width="135" height="155" viewBox="0 0 180 230">
               <ellipse cx="90" cy="190" rx="45" ry="10" fill="#451a03" stroke="#92400e" strokeWidth="2" />
               <line x1="90" y1="155" x2="90" y2="190" stroke="#b45309" strokeWidth="5" />
-              
-              {/* Globe Brass Semi-Circle Ring */}
               <path d="M40 95 A55 55 0 0 0 140 95" fill="none" stroke="#d97706" strokeWidth="4" />
-
-              {/* Globe Sphere */}
               <circle cx="90" cy="95" r="42" fill="#0284c7" stroke="#0369a1" strokeWidth="2.5" />
-              {/* Continental Map Shapes */}
               <path
                 d="M75 75 Q85 70 95 80 Q105 90 90 105 Q80 115 75 100 Z"
                 fill="#10b981"
@@ -874,11 +801,9 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 fill="#10b981"
                 opacity="0.8"
               />
-              {/* Longitude & Latitude Lines */}
               <ellipse cx="90" cy="95" rx="20" ry="42" fill="none" stroke="#ffffff" strokeWidth="1" opacity="0.4" />
               <line x1="48" y1="95" x2="132" y2="95" stroke="#ffffff" strokeWidth="1" opacity="0.4" />
 
-              {/* Navigational Compass Rose or Artifact Beacon */}
               {isBurnerActive && (
                 <g className="animate-spin" style={{ transformOrigin: '90px 95px' }}>
                   <polygon points="90,65 94,95 90,92 86,95" fill="#ef4444" />
@@ -896,66 +821,41 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
     <div className="h-full w-full flex flex-col bg-slate-950 text-white select-none overflow-hidden font-sans">
       
       {/* ========================================================= */}
-      {/* COMPACT TOP HUD / HEADER BAR (Exit, Subjects, Zoom, Sound) */}
+      {/* 1. TOP HEADER BAR: Compact, Single-line, No Multi-line Wrapping */}
       {/* ========================================================= */}
-      <header className="shrink-0 px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 z-20">
+      <header className="shrink-0 h-12 px-3 sm:px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 z-20">
         
-        {/* Left: Exit Game / Back to Hub */}
-        <div className="flex items-center gap-2">
+        {/* Left: Compact Exit Button & Title Badge */}
+        <div className="flex items-center gap-2 min-w-0">
           {onBackToGames && (
             <button
               type="button"
               onClick={onBackToGames}
-              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-rose-600/30 cursor-pointer active:scale-95"
-              title="ออกจากเกม กลับสู่หน้าหลัก"
+              className="h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-200 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap transition cursor-pointer active:scale-95"
+              title="ออกจากเวิร์กช็อป กลับสู่หน้าหลัก"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? '❌ ออกจากเกม' : '❌ Exit Game'}</span>
+              <ArrowLeft className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>ออก</span>
             </button>
           )}
 
-          <div className="flex items-center gap-1.5">
-            <span className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 ${activeConfig.badgeBg}`}>
-              <activeConfig.icon className="w-4 h-4 animate-pulse" />
-              <span className="hidden sm:inline font-extrabold">{lang === 'th' ? activeConfig.stageTitleTh : activeConfig.stageTitleEn}</span>
-            </span>
+          <div className={`h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 shrink-0 ${activeConfig.badgeBg}`}>
+            <activeConfig.icon className="w-3.5 h-3.5 animate-pulse shrink-0" />
+            <span className="font-extrabold whitespace-nowrap">{activeConfig.stageTitleTh}</span>
           </div>
         </div>
 
-        {/* Center: Dynamic Subject Categories (6 Disciplines) */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
-          {(Object.keys(SUBJECT_CONFIGS) as LabSubjectCategory[]).map(subjKey => {
-            const cfg = SUBJECT_CONFIGS[subjKey];
-            const Icon = cfg.icon;
-            const isActive = activeSubject === subjKey;
-
-            return (
-              <button
-                key={subjKey}
-                type="button"
-                onClick={() => {
-                  setActiveSubject(subjKey);
-                  const firstQuest = quests.find(q => q.subject === subjKey);
-                  if (firstQuest) setSelectedQuestId(firstQuest.id);
-                  handleResetLab();
-                }}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 border border-blue-400'
-                    : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700/80 hover:text-white'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? cfg.nameTh : cfg.nameEn}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right: Zoom controls, Audio & Teacher Creator */}
+        {/* Right: Progress Tracker, Sound Toggle, Zoom & Teacher Button */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Zoom Buttons */}
-          <div className="hidden sm:flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+          {/* Progress Tracker Pill */}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-xs shrink-0">
+            <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-slate-400 text-[11px] hidden xs:inline">ผ่าน:</span>
+            <span className="font-bold text-amber-300 font-mono text-xs">{completedQuestIds.length}/{quests.length}</span>
+          </div>
+
+          {/* Zoom Buttons (Hidden on smallest mobile to prevent crowding) */}
+          <div className="hidden sm:flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 border border-slate-700 shrink-0">
             <button
               type="button"
               onClick={handleZoomOut}
@@ -981,13 +881,13 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           <button
             type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition cursor-pointer"
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition shrink-0 cursor-pointer"
             title={soundEnabled ? 'ปิดเสียง' : 'เปิดเสียง'}
           >
             {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
           </button>
 
-          {/* Teacher Creator */}
+          {/* Teacher Custom Quest Creator */}
           {(currentUserRole === 'teacher' || currentUserRole === 'admin') && (
             <button
               type="button"
@@ -996,7 +896,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 setNewSubject(activeSubject);
                 setShowTeacherBuilder(true);
               }}
-              className="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer"
+              className="hidden md:flex items-center gap-1 h-8 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>สร้างโจทย์</span>
@@ -1005,273 +905,331 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
         </div>
       </header>
 
-      {/* MAIN RESPONSIVE WORKSPACE */}
-      <main className="flex-1 min-h-0 w-full p-2.5 sm:p-3 grid grid-cols-1 md:grid-cols-12 gap-2.5 overflow-y-auto">
-        
-        {/* ========================================================= */}
-        {/* ZONE 1: APPARATUS STAGE, CONTROLS & REACTION FEEDBACK (Left 6 cols) */}
-        {/* ========================================================= */}
-        <section className="md:col-span-6 flex flex-col justify-between rounded-2xl bg-slate-900/90 border border-slate-800 p-2.5 sm:p-3 relative overflow-hidden shadow-xl">
+      {/* ========================================================= */}
+      {/* 2. SECONDARY SUB-NAV: Dedicated Horizontal Subject Tabs */}
+      {/* ========================================================= */}
+      <nav className="shrink-0 bg-slate-950 border-b border-slate-800/80 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar z-10">
+        {(Object.keys(SUBJECT_CONFIGS) as LabSubjectCategory[]).map(subjKey => {
+          const cfg = SUBJECT_CONFIGS[subjKey];
+          const Icon = cfg.icon;
+          const isActive = activeSubject === subjKey;
+
+          return (
+            <button
+              key={subjKey}
+              type="button"
+              onClick={() => {
+                setActiveSubject(subjKey);
+                const firstQuest = quests.find(q => q.subject === subjKey);
+                if (firstQuest) setSelectedQuestId(firstQuest.id);
+                handleResetLab();
+              }}
+              className={`h-7 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-blue-400'
+                  : 'bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 hover:text-white'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{cfg.nameTh}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ========================================================= */}
+      {/* 3. MAIN WORKSPACE: Standard Flow, No Text Collisions, Smooth Scroll */}
+      {/* ========================================================= */}
+      <main className="flex-1 min-h-0 w-full p-2.5 sm:p-4 overflow-y-auto">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 pb-6">
           
-          {/* Top of stage: Beaker item tags */}
-          <div className="flex items-center justify-between text-xs z-10 pb-1.5 border-b border-slate-800">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              <span className="text-[11px] text-slate-400 font-bold shrink-0">{activeConfig.trayLabelTh}</span>
-              {beakerItems.length === 0 ? (
-                <span className="text-[11px] text-slate-500 italic">{activeConfig.trayHintTh}</span>
-              ) : (
-                beakerItems.map(item => (
-                  <span
-                    key={item.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 border border-slate-700 text-cyan-200 shrink-0"
-                  >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                    {item.formula}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="text-rose-400 hover:text-rose-200 ml-0.5 cursor-pointer"
-                    >
-                      ✕
-                    </button>
+          {/* ========================================================= */}
+          {/* ZONE 1: APPARATUS STAGE, TOOLS & FEEDBACK (Left 6 cols) */}
+          {/* ========================================================= */}
+          <section className="md:col-span-6 flex flex-col gap-3 rounded-2xl bg-slate-900 border border-slate-800 p-3 sm:p-4 shadow-xl">
+            
+            {/* Top of stage: Items currently on stage */}
+            <div className="pb-2 border-b border-slate-800">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1">
+                  <span>{activeConfig.trayLabelTh}</span>
+                </span>
+                <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span>+{activeQuest.expReward} EXP</span>
+                </span>
+              </div>
+
+              {/* Items chips */}
+              <div className="min-h-7 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {beakerItems.length === 0 ? (
+                  <span className="text-[11px] text-slate-400 italic">
+                    ยังไม่มีรายการ — แตะเลือกจากคลังด้านล่าง
                   </span>
-                ))
+                ) : (
+                  beakerItems.map(item => (
+                    <span
+                      key={item.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 border border-slate-700 text-cyan-200 shrink-0 shadow-xs"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs border border-white/20" style={{ backgroundColor: item.color }} />
+                      <span className="font-mono text-[11px]">{item.formula}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item.id)}
+                        className="text-rose-400 hover:text-rose-200 ml-0.5 cursor-pointer text-xs font-black p-0.5"
+                        title="ลบออก"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Visual Stage Container: Frame with Balanced Height */}
+            <div className="w-full h-44 sm:h-52 rounded-xl bg-slate-950/70 border border-slate-800/90 flex items-end justify-center relative overflow-hidden py-2 px-4 shadow-inner">
+              
+              {/* Comic Failure/Explosion Overlay */}
+              {reactionState === 'exploded' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none bg-slate-950/80 animate-in zoom-in-75 duration-200 p-2">
+                  <div className="text-3xl sm:text-4xl font-black text-rose-500 tracking-wider font-mono animate-bounce drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">
+                    💥 BOOM!!
+                  </div>
+                  <div className="text-amber-300 font-bold text-xs mt-1 text-center bg-slate-900/90 px-2.5 py-0.5 rounded-md border border-amber-500/30">
+                    {activeQuest.failTitleTh || 'การทดสอบคลาดเคลื่อน!'}
+                  </div>
+                </div>
+              )}
+
+              {/* Success Celebration Overlay */}
+              {reactionState === 'success' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none bg-slate-950/80 animate-in zoom-in-75 duration-300 p-2">
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-wide text-center animate-pulse drop-shadow-[0_0_20px_rgba(16,185,129,0.8)]">
+                    ✨ สำเร็จสมบูรณ์แบบ!
+                  </div>
+                  <div className="text-cyan-200 font-bold text-xs mt-1 text-center bg-slate-900/90 px-2.5 py-0.5 rounded-md border border-cyan-500/30">
+                    {activeQuest.successTitleTh || 'ภารกิจสำเร็จ!'}
+                  </div>
+                </div>
+              )}
+
+              {/* Scalable Stage Actors */}
+              <div 
+                style={{ transform: `scale(${labZoom})`, transformOrigin: 'bottom center' }}
+                className="flex items-end justify-center gap-4 transition-transform duration-200"
+              >
+                {renderSubjectAvatar()}
+                {renderSubjectApparatus()}
+              </div>
+            </div>
+
+            {/* Controls & Action Row */}
+            <div className="pt-2 border-t border-slate-800 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-1.5">
+                  {/* Tool 1 (Stir / Angle / Blend / Loop / Inscribe / Inspect) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStirred(!isStirred);
+                      triggerSound(playBubbleSound);
+                    }}
+                    className={`h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                      isStirred 
+                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm shadow-indigo-600/30' 
+                        : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+                    }`}
+                    title={activeConfig.tool1LabelTh}
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isStirred ? 'animate-spin' : ''}`} />
+                    <span>{activeConfig.tool1LabelTh}</span>
+                  </button>
+
+                  {/* Tool 2 (Burner / Thruster / Simmer / Overclock / Lamp / Compass) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBurnerActive(!isBurnerActive);
+                      triggerSound(playSparkSound);
+                    }}
+                    className={`h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                      isBurnerActive 
+                        ? 'bg-amber-600 text-white border-amber-400 shadow-sm shadow-amber-600/30 animate-pulse' 
+                        : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+                    }`}
+                    title={activeConfig.tool2LabelTh}
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{activeConfig.tool2LabelTh}</span>
+                  </button>
+
+                  {/* Reset Button */}
+                  <button
+                    type="button"
+                    onClick={handleResetLab}
+                    className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0"
+                    title="ล้างแท่นทดลอง"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Main Action Button */}
+                <button
+                  type="button"
+                  disabled={reactionState === 'reacting'}
+                  onClick={handleAnalyzeReaction}
+                  className="flex-1 min-w-[150px] h-9 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-600/30 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                >
+                  <Zap className="w-4 h-4 text-amber-300 fill-amber-300 shrink-0" />
+                  <span className="truncate">
+                    {reactionState === 'reacting'
+                      ? 'กำลังประมวลผล...'
+                      : activeConfig.actionButtonLabelTh}
+                  </span>
+                </button>
+              </div>
+
+              {/* Reaction Feedback Box */}
+              {reactionMessage && (
+                <div className={`p-3 rounded-xl text-xs border leading-relaxed animate-in fade-in duration-200 shadow-md ${
+                  reactionState === 'success'
+                    ? 'bg-emerald-950/90 border-emerald-500 text-emerald-100'
+                    : reactionState === 'exploded'
+                    ? 'bg-rose-950/90 border-rose-500 text-rose-100'
+                    : 'bg-slate-800 border-slate-700 text-slate-200'
+                }`}>
+                  <div className="font-bold flex items-center gap-1.5 mb-1 text-sm">
+                    {reactionState === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                    {reactionState === 'exploded' && <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
+                    <span>{reactionMessage}</span>
+                  </div>
+                  {(reactionState === 'success' || reactionState === 'exploded') && (
+                    <p className="text-xs text-slate-200 mt-1 pl-5">
+                      💡 <strong className="text-white">สาระองค์ความรู้:</strong> {activeQuest.scientificExplanationTh}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-1 text-[11px] text-amber-400 font-bold shrink-0">
-              <Trophy className="w-3 h-3" />
-              <span>+{activeQuest.expReward} EXP</span>
-            </div>
-          </div>
+          </section>
 
-          {/* Center Stage: Character & Bespoke Apparatus (Scalable via labZoom) */}
-          <div className="flex-1 min-h-0 flex items-center justify-center relative overflow-hidden my-1">
+          {/* ========================================================= */}
+          {/* ZONE 2: QUEST MISSION & SUBJECT ITEM SHELF (Right 6 cols) */}
+          {/* ========================================================= */}
+          <section className="md:col-span-6 flex flex-col gap-3 rounded-2xl bg-slate-900 border border-slate-800 p-3 sm:p-4 shadow-xl">
             
-            {/* Comic Failure/Explosion Overlay */}
-            {reactionState === 'exploded' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none animate-in zoom-in-75 duration-200">
-                <div className="text-3xl sm:text-5xl font-black text-rose-500 tracking-wider drop-shadow-[0_0_20px_rgba(239,68,68,0.8)] font-mono animate-bounce text-center">
-                  💥 BOOM!!
-                </div>
-                <div className="text-amber-300 font-bold text-xs mt-1 text-center bg-slate-950/80 px-2 py-0.5 rounded-md">
-                  {activeQuest.failTitleTh || 'การทดสอบคลาดเคลื่อน!'}
-                </div>
-              </div>
-            )}
-
-            {/* Success Celebration Overlay */}
-            {reactionState === 'success' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none animate-in zoom-in-75 duration-300">
-                <div className="text-2xl sm:text-4xl font-black text-emerald-400 tracking-wide drop-shadow-[0_0_25px_rgba(16,185,129,0.8)] text-center animate-pulse">
-                  ✨ SUCCESS!!
-                </div>
-                <div className="text-cyan-200 font-bold text-xs mt-1 text-center bg-slate-950/80 px-2.5 py-0.5 rounded-md">
-                  {activeQuest.successTitleTh || 'ภารกิจสำเร็จสมบูรณ์แบบ!'}
-                </div>
-              </div>
-            )}
-
-            <div 
-              style={{ transform: `scale(${labZoom})`, transformOrigin: 'center' }}
-              className="flex items-end justify-center gap-4 transition-transform duration-200"
-            >
-              {/* Bespoke Subject Avatar */}
-              {renderSubjectAvatar()}
-
-              {/* Bespoke Subject Apparatus */}
-              {renderSubjectApparatus()}
-            </div>
-          </div>
-
-          {/* Action Row & Subject-Adaptive Tools */}
-          <div className="space-y-1.5 pt-1.5 border-t border-slate-800 z-10">
-            <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1">
-                {/* Tool 1 (Stir / Trajectory / Blend / Loop / Inscribe / Inspect) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsStirred(!isStirred);
-                    triggerSound(playBubbleSound);
-                  }}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                    isStirred ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  }`}
-                  title={activeConfig.tool1LabelTh}
-                >
-                  <RotateCcw className={`w-3.5 h-3.5 ${isStirred ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">{activeConfig.tool1LabelTh}</span>
-                </button>
-
-                {/* Tool 2 (Burner / Thruster / Simmer / Overclock / Lamp / Compass) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsBurnerActive(!isBurnerActive);
-                    triggerSound(playSparkSound);
-                  }}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                    isBurnerActive ? 'bg-amber-600 text-white animate-pulse shadow-sm' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  }`}
-                  title={activeConfig.tool2LabelTh}
-                >
-                  <Flame className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">{activeConfig.tool2LabelTh}</span>
-                </button>
-
-                {/* Reset Button */}
-                <button
-                  type="button"
-                  onClick={handleResetLab}
-                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
-                  title="ล้างแท่นทดลอง"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Big Subject Action Button */}
-              <button
-                type="button"
-                disabled={reactionState === 'reacting'}
-                onClick={handleAnalyzeReaction}
-                className="flex-1 max-w-[240px] py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/30 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
-              >
-                <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                <span>
-                  {reactionState === 'reacting'
-                    ? (lang === 'th' ? 'กำลังประมวลผล...' : 'Processing...')
-                    : (lang === 'th' ? activeConfig.actionButtonLabelTh : activeConfig.actionButtonLabelEn)}
+            {/* Mission Header Card */}
+            <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700 space-y-1.5 shadow-sm">
+              <div className="flex items-center justify-between text-xs gap-2">
+                <span className="font-bold text-cyan-300 flex items-center gap-1.5 text-xs truncate">
+                  <Target className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span className="truncate">{activeQuest.titleTh}</span>
                 </span>
-              </button>
-            </div>
-
-            {/* Reaction Feedback & Scientific/Academic Explanation */}
-            {reactionMessage && (
-              <div className={`p-2 rounded-xl text-xs border leading-tight animate-in fade-in duration-200 ${
-                reactionState === 'success'
-                  ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200'
-                  : reactionState === 'exploded'
-                  ? 'bg-rose-950/90 border-rose-500 text-rose-200'
-                  : 'bg-slate-800 border-slate-700 text-slate-300'
-              }`}>
-                <div className="font-bold flex items-center gap-1">
-                  {reactionState === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-                  {reactionState === 'exploded' && <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
-                  <span>{reactionMessage}</span>
-                </div>
-                {(reactionState === 'success' || reactionState === 'exploded') && (
-                  <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">
-                    💡 <strong>สาระองค์ความรู้:</strong> {activeQuest.scientificExplanationTh}
-                  </p>
-                )}
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
+                  {activeQuest.gradeLevel}
+                </span>
               </div>
-            )}
-          </div>
 
-        </section>
+              <div className="text-xs leading-normal">
+                <strong className="text-amber-300">🎯 เป้าหมาย:</strong>{' '}
+                <span className="text-white font-semibold">{activeQuest.targetGoalTh}</span>
+              </div>
 
-        {/* ========================================================= */}
-        {/* ZONE 2: QUEST OBJECTIVE & SUBJECT-THEMED SHELF (Right 6 cols) */}
-        {/* ========================================================= */}
-        <section className="md:col-span-6 flex flex-col justify-between rounded-2xl bg-slate-900/90 border border-slate-800 p-2.5 sm:p-3 overflow-hidden shadow-xl">
-          
-          {/* Quest Scenario Box */}
-          <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-cyan-300 flex items-center gap-1 text-[11px]">
-                <Target className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{lang === 'th' ? activeQuest.titleTh : activeQuest.titleEn}</span>
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">
-                {activeQuest.gradeLevel}
-              </span>
+              <p className="text-xs text-slate-300 leading-relaxed pt-0.5">
+                {activeQuest.scenarioTh}
+              </p>
             </div>
 
-            <p className="text-xs font-semibold text-white leading-snug">
-              🎯 <strong>โจทย์ภารกิจ:</strong> {lang === 'th' ? (activeQuest.goalTh || activeQuest.targetGoalTh) : (activeQuest.goalEn || activeQuest.targetGoalTh)}
-            </p>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              {lang === 'th' ? activeQuest.scenarioTh : (activeQuest.scenarioEn || activeQuest.scenarioTh)}
-            </p>
-          </div>
+            {/* Item Shelf Section */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs px-0.5">
+                <span className="font-bold text-white flex items-center gap-1.5 text-xs">
+                  <Atom className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span>{activeConfig.shelfLabelTh}</span>
+                </span>
+                <span className="text-[11px] text-slate-400">{activeConfig.trayHintTh}</span>
+              </div>
 
-          {/* Subject-Themed Shelf - Grid of Tap-to-Add Buttons */}
-          <div className="flex-1 min-h-0 flex flex-col justify-center py-1">
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-bold text-slate-300 flex items-center gap-1 text-[11px]">
-                <Atom className="w-3.5 h-3.5 text-indigo-400" />
-                <span>{activeConfig.shelfLabelTh}</span>
-              </span>
-              <span className="text-[10px] text-slate-500">{activeConfig.trayHintTh}</span>
-            </div>
-
-            {/* Compact Reagent/Item Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {activeQuest.availableItems.map(item => {
-                const isSelected = beakerItems.some(i => i.id === item.id);
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    disabled={isSelected || reactionState === 'reacting'}
-                    onClick={() => handleAddItemToBeaker(item)}
-                    className={`p-2 rounded-xl border text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-950/40 border-blue-600 text-blue-300 opacity-60'
-                        : 'bg-slate-800 hover:bg-slate-750 hover:border-blue-400 border-slate-700 active:scale-95'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/20 shadow-xs" style={{ backgroundColor: item.color }} />
-                      <div className="min-w-0">
-                        <div className="font-mono text-xs font-bold text-white truncate">
-                          {item.formula}
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {item.nameTh}
+              {/* Items Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {activeQuest.availableItems.map(item => {
+                  const isSelected = beakerItems.some(i => i.id === item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      disabled={isSelected || reactionState === 'reacting'}
+                      onClick={() => handleAddItemToBeaker(item)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-950/30 border-emerald-500/60 text-emerald-200'
+                          : 'bg-slate-800 hover:bg-slate-750 hover:border-blue-400 border-slate-700 active:scale-95 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span 
+                          className="w-4 h-4 rounded-full shrink-0 border border-white/30 shadow-xs" 
+                          style={{ backgroundColor: item.color }} 
+                        />
+                        <div className="min-w-0">
+                          <div className="font-mono text-xs font-bold text-white truncate">
+                            {item.formula}
+                          </div>
+                          <div className="text-[11px] text-slate-300 truncate mt-0.5">
+                            {item.nameTh}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                      isSelected ? 'bg-blue-900/60 text-blue-200' : 'bg-blue-600 text-white'
-                    }`}>
-                      {isSelected ? '✓ เพิ่มแล้ว' : '+ เลือก'}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap ${
+                        isSelected 
+                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' 
+                          : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xs'
+                      }`}>
+                        {isSelected ? '✓ ในแท่นแล้ว' : '+ เลือก'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Quick Quest Pill Switcher */}
-          {subjectQuests.length > 1 && (
-            <div className="pt-1.5 border-t border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] font-bold text-slate-400 shrink-0">เปลี่ยนโจทย์:</span>
-              {subjectQuests.map((q, idx) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedQuestId(q.id);
-                    handleResetLab();
-                  }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition shrink-0 cursor-pointer ${
-                    q.id === activeQuest.id
-                      ? 'bg-cyan-500 text-slate-950 font-black'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {completedQuestIds.includes(q.id) ? '✓ ' : ''}ข้อ {idx + 1}
-                </button>
-              ))}
-            </div>
-          )}
+            {/* Quest Pagination Switcher */}
+            {subjectQuests.length > 1 && (
+              <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                  <span>สลับโจทย์ในหมวดนี้:</span>
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {subjectQuests.map((q, idx) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedQuestId(q.id);
+                        handleResetLab();
+                      }}
+                      className={`h-7 px-3 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer ${
+                        q.id === activeQuest.id
+                          ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {completedQuestIds.includes(q.id) ? '✓ ' : ''}ข้อ {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        </section>
+          </section>
 
+        </div>
       </main>
 
       {/* ========================================================= */}
@@ -1279,9 +1237,12 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       {/* ========================================================= */}
       {showTeacherBuilder && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="font-bold text-sm text-cyan-300">สร้างโจทย์การทดลอง & เวิร์กช็อปใหม่ (ครูผู้สอน)</h3>
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
+              <h3 className="font-bold text-sm text-cyan-300 flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-cyan-400" />
+                <span>สร้างโจทย์จำลองใหม่ (ครูผู้สอน)</span>
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowTeacherBuilder(false)}
@@ -1291,7 +1252,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               </button>
             </div>
 
-            <div className="space-y-2 text-xs">
+            <div className="space-y-3 text-xs">
               {builderStep === 0 && (
                 <>
                   <div>
@@ -1315,7 +1276,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       type="text"
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="เช่น การสังเคราะห์แสงของพืช หรือ การวิเคราะห์โครงสร้าง Present Perfect"
+                      placeholder="เช่น การสังเคราะห์ด้วยแสง หรือ กฎข้อที่ 1 ของนิวตัน"
                       className="w-full mt-1 p-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs"
                     />
                   </div>
@@ -1382,7 +1343,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     <button
                       type="button"
                       onClick={() => {
-                        if (!newTitle.trim()) return;
+                        const subjectTemplate = quests.find(q => q.subject === newSubject) || activeQuest;
+                        const subjectItems = subjectTemplate.availableItems;
                         const customQuest: LabSimulationQuest = {
                           id: `custom-${Date.now()}`,
                           subject: newSubject,
@@ -1397,8 +1359,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                           targetGoalTh: newGoal || 'เลือกองค์ประกอบที่ถูกต้อง',
                           goalTh: newGoal || 'เลือกองค์ประกอบที่ถูกต้อง',
                           goalEn: newGoal || 'Select correct items',
-                          availableItems: activeQuest.availableItems,
-                          correctItemIds: [activeQuest.availableItems[0]?.id || 'chem-hcl'],
+                          availableItems: subjectItems,
+                          correctItemIds: [subjectItems[0]?.id || 'chem-hcl'],
                           requiredTool: 'none',
                           resultingColor: SUBJECT_CONFIGS[newSubject]?.accentColor || '#06b6d4',
                           successProductColor: SUBJECT_CONFIGS[newSubject]?.accentColor || '#06b6d4',
@@ -1412,7 +1374,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                           failDescTh: 'ลองทบทวนหลักการและเลือกองค์ประกอบใหม่อีกครั้ง',
                           failDescEn: 'Please review and try again',
                           failAnimation: newSubject === 'math' ? 'rocket_crash' : newSubject === 'english' ? 'burnt_food' : newSubject === 'computer' ? 'short_circuit' : newSubject === 'thai' ? 'banana_slip' : newSubject === 'social' ? 'lost_explorer' : 'lab_explosion',
-                          scientificExplanationTh: newExplanation || 'การเรียนรู้ผ่านการทดลองและการลงมือปฏิบัติช่วยสร้างความเข้าใจที่คงทน',
+                          scientificExplanationTh: newExplanation || 'การเรียนรู้ผ่านการทดลองช่วยสร้างความเข้าใจที่คงทน',
                           expReward: 200,
                           gemReward: 30,
                           createdByTeacherName: currentUserName,
