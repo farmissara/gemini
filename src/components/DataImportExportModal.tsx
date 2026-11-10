@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Download, 
@@ -13,52 +13,84 @@ import {
   Sparkles,
   ArrowDownToLine,
   RefreshCw,
-  Trash2
+  Trash2,
+  Layers,
+  Award,
+  ShieldCheck,
+  FolderPlus
 } from 'lucide-react';
-import { Student, Teacher, QuizQuestion, AppLanguage } from '../types';
+import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage } from '../types';
+
+export type ImportExportTab = 'students' | 'courses' | 'enrollment' | 'grades' | 'teachers' | 'questions';
 
 interface DataImportExportModalProps {
   students: Student[];
   teachers: Teacher[];
   questions: QuizQuestion[];
+  courses?: Course[];
+  grades?: GradeRecord[];
   lang: AppLanguage;
   onImportStudents: (newStudents: Student[]) => void;
   onImportTeachers: (newTeachers: Teacher[]) => void;
   onImportQuestions: (newQuestions: QuizQuestion[]) => void;
+  onImportCourses?: (newCourses: Course[]) => void;
+  onImportEnrollment?: (courseId: string, studentIds: string[]) => void;
+  onImportGrades?: (newGrades: GradeRecord[]) => void;
   onClose: () => void;
-  initialTab?: 'students' | 'teachers' | 'questions';
+  initialTab?: ImportExportTab;
 }
 
 export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   students,
   teachers,
   questions,
+  courses = [],
+  grades = [],
   lang,
   onImportStudents,
   onImportTeachers,
   onImportQuestions,
+  onImportCourses,
+  onImportEnrollment,
+  onImportGrades,
   onClose,
   initialTab = 'students',
 }) => {
-  const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'questions'>(initialTab);
+  const [activeTab, setActiveTab] = useState<ImportExportTab>(initialTab);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Hidden file input refs
+  const studentFileRef = useRef<HTMLInputElement>(null);
+  const courseFileRef = useRef<HTMLInputElement>(null);
+  const enrollmentFileRef = useRef<HTMLInputElement>(null);
+  const gradeFileRef = useRef<HTMLInputElement>(null);
+  const teacherFileRef = useRef<HTMLInputElement>(null);
+  const questionFileRef = useRef<HTMLInputElement>(null);
 
   // Preview States for Imported Data
   const [previewStudents, setPreviewStudents] = useState<Student[]>([]);
+  const [previewCourses, setPreviewCourses] = useState<Course[]>([]);
+  const [previewEnrollments, setPreviewEnrollments] = useState<{ courseCode: string; studentId: string; studentName: string }[]>([]);
+  const [previewGrades, setPreviewGrades] = useState<GradeRecord[]>([]);
   const [previewTeachers, setPreviewTeachers] = useState<Teacher[]>([]);
   const [previewQuestions, setPreviewQuestions] = useState<QuizQuestion[]>([]);
+
+  // Preview Page numbers
   const [studentPreviewPage, setStudentPreviewPage] = useState(0);
+  const [coursePreviewPage, setCoursePreviewPage] = useState(0);
+  const [enrollmentPreviewPage, setEnrollmentPreviewPage] = useState(0);
+  const [gradePreviewPage, setGradePreviewPage] = useState(0);
   const [teacherPreviewPage, setTeacherPreviewPage] = useState(0);
   const [questionPreviewPage, setQuestionPreviewPage] = useState(0);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Helper: Trigger file download in browser
+  // Helper: Trigger file download in browser with UTF-8 BOM
   const downloadFile = (filename: string, content: string, mimeType: string = 'text/csv;charset=utf-8;') => {
-    const blob = new Blob(['\uFEFF' + content], { type: mimeType }); // Add BOM for Excel Thai language support
+    const blob = new Blob(['\uFEFF' + content], { type: mimeType }); // BOM for Excel Thai support
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -67,6 +99,30 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Robust CSV Line Parser
+  const parseCSVLines = (text: string): string[][] => {
+    const cleanText = text.replace(/^\uFEFF/, '').trim();
+    const lines = cleanText.split(/\r?\n/).filter(line => line.trim().length > 0);
+    return lines.map(line => {
+      const row: string[] = [];
+      let insideQuotes = false;
+      let cur = '';
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"' && (i === 0 || line[i - 1] !== '\\')) {
+          insideQuotes = !insideQuotes;
+        } else if (char === ',' && !insideQuotes) {
+          row.push(cur.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+          cur = '';
+        } else {
+          cur += char;
+        }
+      }
+      row.push(cur.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+      return row;
+    });
   };
 
   // ==========================================
@@ -84,15 +140,10 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       'วันเกิด (DOB)',
       'ระดับชั้น (Grade)',
       'ห้องเรียน (Room)',
-      'ห้องเรียนเพิ่มเติม/ชมรม (Enrolled Rooms)',
       'เกรดเฉลี่ย (GPA)',
-      'ชื่อผู้ปกครองหลัก',
-      'ความสัมพันธ์',
+      'ชื่อผู้ปกครอง',
       'เบอร์โทรผู้ปกครอง',
-      'อีเมลผู้ปกครอง',
-      'กรุ๊ปเลือด',
-      'ประวัติการแพ้',
-      'เบอร์โทรฉุกเฉิน'
+      'อีเมลผู้ปกครอง'
     ];
 
     const rows = students.map(s => [
@@ -106,20 +157,15 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       s.dateOfBirth || '',
       `"${s.gradeLevel || ''}"`,
       `"${s.room || ''}"`,
-      `"${(s.enrolledRooms || []).join(';')}"`,
       s.gpa || '0.00',
       `"${s.guardianName || ''}"`,
-      `"${s.guardianRelation || ''}"`,
       `"${s.guardianPhone || ''}"`,
-      `"${s.guardianEmail || ''}"`,
-      s.bloodType || 'O',
-      `"${(s.allergies || []).join(';')}"`,
-      `"${s.emergencyPhone || s.guardianPhone || ''}"`
+      `"${s.guardianEmail || ''}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     downloadFile(`students_export_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
-    showToast(lang === 'th' ? 'ส่งออกข้อมูลนักเรียนสำเร็จ (CSV)' : 'Students exported successfully');
+    showToast('ส่งออกข้อมูลนักเรียนสำเร็จ (CSV)');
   };
 
   const handleDownloadStudentTemplate = () => {
@@ -134,19 +180,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       'dateOfBirth',
       'gradeLevel',
       'room',
-      'enrolledRooms',
       'gpa',
       'guardianName',
       'guardianRelation',
-      'guardianPhone',
-      'guardianEmail',
-      'bloodType',
-      'allergies',
-      'emergencyPhone'
+      'guardianPhone'
     ];
-
-    const sampleRow1 = [
-      'ED-6910',
+    const sampleRow = [
+      'ED-6920',
       '1-1002-00999-11-2',
       'กิตติกร',
       'เจริญกุล',
@@ -156,49 +196,21 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       '2008-07-15',
       'มัธยมศึกษาปีที่ 4 (M.4)',
       'ห้อง 401 (วิทย์-คณิต)',
-      'ห้อง 401;ชมรมหุ่นยนต์ AI',
       '3.88',
       'นายสมหมาย เจริญกุล',
       'บิดา',
-      '081-234-5678',
-      'sommai.c@gmail.com',
-      'B',
-      'อาหารทะเล',
       '081-234-5678'
     ];
-
-    const sampleRow2 = [
-      'ED-6911',
-      '1-1002-00888-22-3',
-      'นภัสสร',
-      'สุวรรณภูมิ',
-      'Napassorn',
-      'Suwannaphum',
-      'female',
-      '2008-11-20',
-      'มัธยมศึกษาปีที่ 4 (M.4)',
-      'ห้อง 402 (ศิลป์-ภาษา)',
-      'ห้อง 402;ชมรมการทูต Model UN',
-      '3.95',
-      'นางวรรณา สุวรรณภูมิ',
-      'มารดา',
-      '089-876-5432',
-      'wanna.s@gmail.com',
-      'O',
-      'ไม่มี',
-      '089-876-5432'
-    ];
-
-    const csvContent = [headers.join(','), sampleRow1.join(','), sampleRow2.join(',')].join('\n');
+    const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
     downloadFile('template_students_import.csv', csvContent);
-    showToast(lang === 'th' ? 'ดาวน์โหลดแบบฟอร์มตัวอย่างนักเรียนแล้ว' : 'Student template downloaded');
+    showToast('ดาวน์โหลดแบบฟอร์มตัวอย่างนักเรียนแล้ว');
   };
 
   const handleLoadSampleStudents = () => {
     const samples: Student[] = [
       {
         id: `stu-imp-${Date.now()}-1`,
-        studentIdNumber: 'ED-6915',
+        studentIdNumber: 'ED-6921',
         nationalId: '1-1002-00444-11-0',
         firstNameTh: 'สิรินธร',
         lastNameTh: 'บุญญาภินันท์',
@@ -208,7 +220,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         dateOfBirth: '2008-03-25',
         gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
         room: 'ห้อง 401 (วิทย์-คณิต)',
-        enrolledRooms: ['ห้อง 401 (วิทย์-คณิต)', 'ห้อง AI Innovation Lab'],
+        enrolledRooms: ['ห้อง 401 (วิทย์-คณิต)'],
         status: 'active',
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
         gpa: 3.96,
@@ -216,100 +228,381 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         guardianRelation: 'บิดา',
         guardianPhone: '081-332-9988',
         guardianEmail: 'theerachai.b@gmail.com',
-        guardians: [
-          {
-            id: 'g-imp-1',
-            name: 'นายธีรชัย บุญญาภินันท์',
-            relation: 'บิดา',
-            phone: '081-332-9988',
-            email: 'theerachai.b@gmail.com',
-            isPrimary: true
-          },
-          {
-            id: 'g-imp-2',
-            name: 'นางพิมพา บุญญาภินันท์',
-            relation: 'มารดา',
-            phone: '089-112-4455',
-            isPrimary: false
-          }
-        ],
         lineLinked: true,
         lineNotifyEnabled: true,
-        enrolledDate: '2026-05-15',
-        bloodType: 'A',
-        allergies: ['เกสรดอกไม้']
-      },
-      {
-        id: `stu-imp-${Date.now()}-2`,
-        studentIdNumber: 'ED-6916',
-        nationalId: '1-1002-00555-22-1',
-        firstNameTh: 'ภาคภูมิ',
-        lastNameTh: 'เกียรติขจร',
-        firstNameEn: 'Phakphum',
-        lastNameEn: 'Kiatkhachorn',
-        gender: 'male',
-        dateOfBirth: '2008-08-10',
-        gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
-        room: 'ห้อง 402 (ศิลป์-ภาษาอังกฤษ)',
-        enrolledRooms: ['ห้อง 402 (ศิลป์-ภาษาอังกฤษ)', 'ชมรมดนตรีสากล'],
-        status: 'active',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-        gpa: 3.65,
-        guardianName: 'นางรัตนา เกียรติขจร',
-        guardianRelation: 'มารดา',
-        guardianPhone: '084-221-7788',
-        guardianEmail: 'rattana.k@yahoo.com',
-        guardians: [
-          {
-            id: 'g-imp-3',
-            name: 'นางรัตนา เกียรติขจร',
-            relation: 'มารดา',
-            phone: '084-221-7788',
-            isPrimary: true
-          }
-        ],
-        lineLinked: false,
-        lineNotifyEnabled: false,
-        enrolledDate: '2026-05-15',
-        bloodType: 'O',
-        allergies: []
+        enrolledDate: '2026-05-15'
       }
     ];
     setStudentPreviewPage(0);
     setPreviewStudents(samples);
-    showToast('โหลดข้อมูลตัวอย่างนักเรียน 2 รายการสำหรับทดสอบแล้ว');
+    showToast('โหลดข้อมูลตัวอย่างนักเรียนสำหรับทดสอบแล้ว');
   };
 
   const handleConfirmImportStudents = () => {
     if (previewStudents.length === 0) return;
     onImportStudents(previewStudents);
-    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนเข้าสู่ระบบสำเร็จ!`);
+    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนสำเร็จ!`);
     setStudentPreviewPage(0);
     setPreviewStudents([]);
   };
 
   // ==========================================
-  // 2. TEACHERS EXPORT / TEMPLATE / IMPORT
+  // 2. COURSES / SYLLABUS EXPORT / TEMPLATE / IMPORT
+  // ==========================================
+  const handleExportCourses = () => {
+    const headers = [
+      'รหัสวิชา (Code)',
+      'ชื่อวิชา (ภาษาไทย)',
+      'Course Title (English)',
+      'หมวดหมู่วิชา (Category)',
+      'หน่วยกิต (Credits)',
+      'คาบต่อสัปดาห์ (Weekly Hours)',
+      'ชั่วโมงรวม/เทอม (Total Hours)',
+      'เกณฑ์ 80% (Min Attendance Hours)',
+      'กลุ่มสาระการเรียนรู้ (Department)',
+      'ครูผู้สอน (Teacher Name)',
+      'อีเมลครู (Teacher Email)',
+      'ห้องเรียน (Room)',
+      'วันและเวลาเรียน (Schedule)',
+      'ปีการศึกษา (Academic Year)',
+      'ภาคเรียน (Semester)',
+      'จำนวนนักเรียนลงทะเบียน (Enrolled Count)'
+    ];
+
+    const rows = courses.map(c => [
+      c.code,
+      `"${c.titleTh}"`,
+      `"${c.titleEn}"`,
+      c.category,
+      c.credits,
+      c.weeklyHours || Math.round(c.credits * 2),
+      c.totalHours || (c.credits * 40),
+      c.minAttendanceHours || Math.round((c.credits * 40) * 0.8),
+      `"${c.department}"`,
+      `"${c.teacherName}"`,
+      c.teacherEmail,
+      `"${c.room}"`,
+      `"${c.schedule}"`,
+      c.academicYear || '2569',
+      c.semester || '1',
+      c.enrolledStudentIds?.length || 0
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    downloadFile(`academic_courses_syllabus_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
+    showToast('ส่งออกข้อมูลหลักสูตรและรายวิชาสำเร็จ (CSV)');
+  };
+
+  const handleDownloadCourseTemplate = () => {
+    const headers = [
+      'code',
+      'titleTh',
+      'titleEn',
+      'category',
+      'credits',
+      'weeklyHours',
+      'totalHours',
+      'minAttendanceHours',
+      'department',
+      'teacherName',
+      'teacherEmail',
+      'room',
+      'schedule',
+      'academicYear',
+      'semester',
+      'description'
+    ];
+
+    const sampleRows = [
+      [
+        'ว30205',
+        'ปัญญาประดิษฐ์ประยุกต์และ Edge Computing',
+        'Applied AI & Edge Computing',
+        'stem',
+        '1.5',
+        '3',
+        '60',
+        '48',
+        'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
+        'อ.ดร.ประเสริฐ ถาวร',
+        'prasert.t@eduverse.ac.th',
+        'Lab คอมพิวเตอร์ 3',
+        'จันทร์, พุธ 09:00 - 10:30',
+        '2569',
+        '1',
+        'ศึกษาการประยุกต์ใช้โมเดล Deep Learning บนอุปกรณ์ไมโครคอนโทรลเลอร์และการตรวจจับวัตถุ'
+      ],
+      [
+        'อ31201',
+        'ภาษาอังกฤษเชิงวิชาการและการสื่อสารสากล',
+        'Academic English & Global Communication',
+        'language',
+        '1.0',
+        '2',
+        '40',
+        '32',
+        'กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ',
+        'ครูชัชวาลย์ กล้าหาญ',
+        'chatchawal.k@eduverse.ac.th',
+        'ห้อง 401',
+        'อังคาร, พฤหัสบดี 10:20 - 11:10',
+        '2569',
+        '1',
+        'การอ่านบทความวิจัย การเขียนรายงานเชิงวิชาการ และการนำเสนองานสัมมนาระดับนานาชาติ'
+      ]
+    ];
+
+    const csvContent = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
+    downloadFile('template_academic_courses_import.csv', csvContent);
+    showToast('ดาวน์โหลดแบบฟอร์มนำเข้าหลักสูตรและรายวิชาแล้ว');
+  };
+
+  const handleLoadSampleCourses = () => {
+    const samples: Course[] = [
+      {
+        id: `crs-imp-${Date.now()}-1`,
+        code: 'ว30208',
+        titleTh: 'ชีววิทยาระดับโมเลกุลและพันธุวิศวกรรม',
+        titleEn: 'Molecular Biology & Genetic Engineering',
+        category: 'stem',
+        credits: 1.5,
+        weeklyHours: 3,
+        totalHours: 60,
+        minAttendanceHours: 48,
+        teacherName: 'อ.ดร.กมลทิพย์ ศรีสวัสดิ์',
+        teacherEmail: 'kamonthip.s@eduverse.ac.th',
+        department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
+        room: 'ห้องปฏิบัติการชีววิทยา 2',
+        schedule: 'อังคาร, พฤหัสบดี 13:00 - 14:30',
+        academicYear: '2569',
+        semester: '1',
+        enrolledStudentIds: [],
+        description: 'ปฏิบัติการสกัดดีเอ็นเอ การทำ PCR และการวิเคราะห์ลำดับเบสพันธุกรรม'
+      },
+      {
+        id: `crs-imp-${Date.now()}-2`,
+        code: 'ท31101',
+        titleTh: 'ภาษาไทยพื้นฐาน 1 (วรรณคดีและวรรณกรรม)',
+        titleEn: 'Fundamental Thai 1 (Literature & Arts)',
+        category: 'core',
+        credits: 1.0,
+        weeklyHours: 2,
+        totalHours: 40,
+        minAttendanceHours: 32,
+        teacherName: 'ครูสมศักดิ์ ปรีชากุล',
+        teacherEmail: 'somsak.p@eduverse.ac.th',
+        department: 'กลุ่มสาระการเรียนรู้ภาษาไทย',
+        room: 'ห้อง 401',
+        schedule: 'พุธ, ศุกร์ 11:10 - 12:00',
+        academicYear: '2569',
+        semester: '1',
+        enrolledStudentIds: [],
+        description: 'การวิเคราะห์คุณค่าวรรณคดีไทย วรรณศิลป์ และการประยุกต์ใช้ข้อคิดในชีวิตประจำวัน'
+      }
+    ];
+    setCoursePreviewPage(0);
+    setPreviewCourses(samples);
+    showToast('โหลดข้อมูลตัวอย่างหลักสูตรและรายวิชาแล้ว');
+  };
+
+  const handleConfirmImportCourses = () => {
+    if (previewCourses.length === 0) return;
+    if (onImportCourses) {
+      onImportCourses(previewCourses);
+      showToast(`นำเข้ารายวิชาใหม่ ${previewCourses.length} วิชาเข้าสู่ระบบหลักสูตรสำเร็จ!`);
+      setCoursePreviewPage(0);
+      setPreviewCourses([]);
+    } else {
+      showToast('ไม่พบฟังก์ชันบันทึกหลักสูตร');
+    }
+  };
+
+  // ==========================================
+  // 3. REGISTRAR ENROLLMENT EXPORT / TEMPLATE / IMPORT
+  // ==========================================
+  const handleExportEnrollment = () => {
+    const headers = [
+      'รหัสนักเรียน (Student ID)',
+      'ชื่อ - นามสกุล (ไทย)',
+      'ห้องเรียน (Room)',
+      'รหัสวิชา (Course Code)',
+      'ชื่อวิชา (Course Title)',
+      'ภาคเรียน / ปีการศึกษา',
+      'สถานะการลงทะเบียน (Status)'
+    ];
+
+    const rows: string[] = [];
+    courses.forEach(c => {
+      (c.enrolledStudentIds || []).forEach(stId => {
+        const student = students.find(s => s.id === stId);
+        if (student) {
+          rows.push([
+            student.studentIdNumber,
+            `"${student.firstNameTh} ${student.lastNameTh}"`,
+            `"${student.room}"`,
+            c.code,
+            `"${c.titleTh}"`,
+            `"${c.semester}/${c.academicYear || '2569'}"`,
+            'Enrolled'
+          ].join(','));
+        }
+      });
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    downloadFile(`student_course_enrollments_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
+    showToast('ส่งออกข้อมูลการลงทะเบียนเรียนสำเร็จ (CSV)');
+  };
+
+  const handleDownloadEnrollmentTemplate = () => {
+    const headers = ['studentIdNumber', 'courseCode', 'semester', 'academicYear'];
+    const sampleRows = [
+      ['ED-6910', 'ว30201', '1', '2569'],
+      ['ED-6910', 'ค30201', '1', '2569'],
+      ['ED-6911', 'อ30201', '1', '2569']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
+    downloadFile('template_student_enrollment.csv', csvContent);
+    showToast('ดาวน์โหลดแบบฟอร์มการลงทะเบียนเรียนแล้ว');
+  };
+
+  const handleLoadSampleEnrollment = () => {
+    const firstCourse = courses[0] || { code: 'ว30201' };
+    const samples = students.slice(0, 3).map(st => ({
+      courseCode: firstCourse.code,
+      studentId: st.id,
+      studentName: `${st.studentIdNumber} - ${st.firstNameTh} ${st.lastNameTh}`
+    }));
+    setEnrollmentPreviewPage(0);
+    setPreviewEnrollments(samples);
+    showToast('โหลดตัวอย่างการลงทะเบียน 3 รายการแล้ว');
+  };
+
+  const handleConfirmImportEnrollment = () => {
+    if (previewEnrollments.length === 0) return;
+    if (onImportEnrollment) {
+      // Group by course
+      const map: Record<string, string[]> = {};
+      previewEnrollments.forEach(item => {
+        if (!map[item.courseCode]) map[item.courseCode] = [];
+        map[item.courseCode].push(item.studentId);
+      });
+      Object.entries(map).forEach(([courseCode, stIds]) => {
+        onImportEnrollment(courseCode, stIds);
+      });
+      showToast(`บันทึกการลงทะเบียนนักเรียน ${previewEnrollments.length} รายการสำเร็จ!`);
+      setEnrollmentPreviewPage(0);
+      setPreviewEnrollments([]);
+    } else {
+      showToast('ไม่พบฟังก์ชันบันทึกการลงทะเบียน');
+    }
+  };
+
+  // ==========================================
+  // 4. GRADEBOOK / ASSESSMENT (ปพ.5) EXPORT / TEMPLATE / IMPORT
+  // ==========================================
+  const handleExportGrades = () => {
+    const headers = [
+      'รหัสนักเรียน (Student ID)',
+      'ชื่อ-นามสกุล',
+      'รหัสวิชา (Course Code)',
+      'คะแนนเก็บ (Assignment / 20)',
+      'สอบย่อย (Quiz / 20)',
+      'สอบกลางภาค (Midterm / 30)',
+      'สอบปลายภาค (Final / 30)',
+      'คะแนนรวม (Total / 100)',
+      'ระดับเกรด (Letter Grade)',
+      'ค่าระดับเกรด (Grade Point)'
+    ];
+
+    const rows = grades.map(g => {
+      const student = students.find(s => s.id === g.studentId);
+      const course = courses.find(c => c.id === g.courseId);
+      return [
+        student?.studentIdNumber || g.studentId,
+        `"${student ? `${student.firstNameTh} ${student.lastNameTh}` : ''}"`,
+        course?.code || g.courseId,
+        g.assignmentScore,
+        g.quizScore,
+        g.midtermScore,
+        g.finalScore,
+        g.totalScore,
+        g.letterGrade,
+        g.gradePoint
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    downloadFile(`academic_gradebook_pp5_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
+    showToast('ส่งออกข้อมูลผลการเรียน (ปพ.5) สำเร็จ (CSV)');
+  };
+
+  const handleDownloadGradeTemplate = () => {
+    const headers = ['studentIdNumber', 'courseCode', 'assignmentScore', 'quizScore', 'midtermScore', 'finalScore'];
+    const sampleRows = [
+      ['ED-6910', 'ว30201', '19', '18', '28', '27'],
+      ['ED-6911', 'ว30201', '17', '16', '25', '24']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
+    downloadFile('template_gradebook_pp5.csv', csvContent);
+    showToast('ดาวน์โหลดแบบฟอร์มนำเข้าผลการเรียนแล้ว');
+  };
+
+  const handleLoadSampleGrades = () => {
+    const targetCourse = courses[0];
+    const targetStudent = students[0];
+    if (!targetCourse || !targetStudent) {
+      showToast('ต้องมีข้อมูลรายวิชาและนักเรียนในระบบก่อน');
+      return;
+    }
+
+    const samples: GradeRecord[] = [
+      {
+        id: `grd-imp-${Date.now()}-1`,
+        studentId: targetStudent.id,
+        courseId: targetCourse.id,
+        academicYear: targetCourse.academicYear || '2569',
+        semester: targetCourse.semester || '1',
+        assignmentScore: 19,
+        quizScore: 19,
+        midtermScore: 28,
+        finalScore: 29,
+        totalScore: 95,
+        letterGrade: 'A',
+        gradePoint: 4.0
+      }
+    ];
+    setGradePreviewPage(0);
+    setPreviewGrades(samples);
+    showToast('โหลดตัวอย่างผลการเรียนแล้ว');
+  };
+
+  const handleConfirmImportGrades = () => {
+    if (previewGrades.length === 0) return;
+    if (onImportGrades) {
+      onImportGrades(previewGrades);
+      showToast(`บันทึกผลการเรียน ${previewGrades.length} รายการเข้าสู่ระบบ ปพ.5 สำเร็จ!`);
+      setGradePreviewPage(0);
+      setPreviewGrades([]);
+    } else {
+      showToast('ไม่พบฟังก์ชันบันทึกผลการเรียน');
+    }
+  };
+
+  // ==========================================
+  // 5. TEACHERS EXPORT / TEMPLATE / IMPORT
   // ==========================================
   const handleExportTeachers = () => {
     const headers = [
-      'รหัสประจำตัวครู (Teacher ID)',
-      'ชื่อ-นามสกุล (ไทย)',
-      'Full Name (EN)',
-      'เพศ (Gender)',
-      'อีเมล (Email)',
+      'รหัสประจำตัวครู (ID)',
+      'ชื่อ - นามสกุล (ไทย)',
+      'Name (EN)',
+      'เพศ',
+      'อีเมล',
       'เบอร์โทรศัพท์',
-      'วุฒิการศึกษา',
-      'วิชาเอก/สาขา',
-      'วิทยฐานะ (Academic Standing)',
-      'กลุ่มสาระการเรียนรู้ (Department)',
-      'เลขที่ใบอนุญาตคุรุสภา',
-      'รายวิชาที่สอน (Teaching Subjects)',
-      'ห้องประจำชั้น/ห้องที่สอน (Homeroom / Classes)',
-      'ระดับชั้นที่สอน (Teaching Grades)',
-      'สิทธิ์ผู้ดูแลระบบโรงเรียน (Is School Admin)'
+      'กลุ่มสาระการเรียนรู้',
+      'วิทยฐานะ'
     ];
-
     const rows = teachers.map(t => [
       t.teacherIdNumber,
       `"${t.fullNameTh}"`,
@@ -317,126 +610,33 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       t.gender,
       t.email,
       `"${t.phone}"`,
-      `"${t.academicDegree}"`,
-      `"${t.major}"`,
-      `"${t.academicStanding}"`,
       `"${t.department}"`,
-      `"${t.teacherLicenseNo}"`,
-      `"${(t.teachingSubjects || []).join(';')}"`,
-      `"${(t.homeroomClasses || []).join(';')}"`,
-      `"${(t.teachingGrades || []).join(';')}"`,
-      t.isSchoolAdmin ? 'YES' : 'NO'
+      `"${t.academicStanding}"`
     ]);
-
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     downloadFile(`teachers_export_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
-    showToast(lang === 'th' ? 'ส่งออกข้อมูลอาจารย์สำเร็จ (CSV)' : 'Teachers exported successfully');
-  };
-
-  const handleDownloadTeacherTemplate = () => {
-    const headers = [
-      'teacherIdNumber',
-      'fullNameTh',
-      'fullNameEn',
-      'gender',
-      'email',
-      'phone',
-      'academicDegree',
-      'major',
-      'academicStanding',
-      'department',
-      'teacherLicenseNo',
-      'teachingSubjects',
-      'homeroomClasses',
-      'teachingGrades',
-      'isSchoolAdmin'
-    ];
-
-    const sampleRow = [
-      'TCH-2024-0099',
-      'อ.อนุชา วัฒนศิริ',
-      'Mr. Anucha Wattanasiri',
-      'male',
-      'anucha.w@eduverse.ac.th',
-      '081-555-4321',
-      'ปริญญาโท กศ.ม. การสอนฟิสิกส์',
-      'ฟิสิกส์และดาราศาสตร์',
-      'ครูชำนาญการพิเศษ (คศ.3)',
-      'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
-      'คส. 6010900012345',
-      'ว31201 ฟิสิกส์ 1 (ม.4);ว32202 ฟิสิกส์ 2 (ม.5)',
-      'ห้อง 401;ห้อง 402;ห้อง 501',
-      'มัธยมศึกษาปีที่ 4 (M.4);มัธยมศึกษาปีที่ 5 (M.5)',
-      'YES'
-    ];
-
-    const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
-    downloadFile('template_teachers_import.csv', csvContent);
-    showToast('ดาวน์โหลดแบบฟอร์มตัวอย่างคุณครูแล้ว');
-  };
-
-  const handleLoadSampleTeachers = () => {
-    const samples: Teacher[] = [
-      {
-        id: `tch-imp-${Date.now()}-1`,
-        schoolId: 'sch-1',
-        teacherIdNumber: 'TCH-2024-0060',
-        fullNameTh: 'อ.ดร.กมลทิพย์ ศรีสวัสดิ์',
-        fullNameEn: 'Dr. Kamonthip Srisawat, Ph.D.',
-        gender: 'female',
-        email: 'kamonthip.s@eduverse.ac.th',
-        phone: '082-998-3344',
-        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-        academicDegree: 'ปริญญาเอก Ph.D. in STEM Education',
-        major: 'การวิจัยนวัตกรรมการเรียนรู้และเคมีประยุกต์',
-        academicStanding: 'ครูเชี่ยวชาญ (คศ.4)',
-        department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
-        teacherLicenseNo: 'คส. 5710900088991',
-        teachingSubjects: ['ว31221 เคมี 1 (ม.4)', 'ว32222 เคมี 2 (ม.5)', 'ว30299 นาโนเทคโนโลยี'],
-        homeroomClasses: ['ห้อง 401 (วิทย์-คณิต)', 'ห้อง 501 (วิทย์-คณิต)', 'ห้อง 601 (ห้องพิเศษ STEM)'],
-        teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)', 'มัธยมศึกษาปีที่ 6 (M.6)'],
-        isSchoolAdmin: true, // ครูมีสิทธิ์เป็น admin
-        lineUserId: 'Ukamonthip_official',
-        lineLinked: true
-      }
-    ];
-    setTeacherPreviewPage(0);
-    setPreviewTeachers(samples);
-    showToast('โหลดข้อมูลตัวอย่างคุณครูสำหรับทดสอบแล้ว (สอนหลายห้อง และมีสิทธิ์ Admin)');
-  };
-
-  const handleConfirmImportTeachers = () => {
-    if (previewTeachers.length === 0) return;
-    onImportTeachers(previewTeachers);
-    showToast(`นำเข้าข้อมูลคุณครู ${previewTeachers.length} ท่านเข้าสู่ระบบสำเร็จ!`);
-    setTeacherPreviewPage(0);
-    setPreviewTeachers([]);
+    showToast('ส่งออกข้อมูลอาจารย์สำเร็จ (CSV)');
   };
 
   // ==========================================
-  // 3. QUESTIONS EXPORT / TEMPLATE / IMPORT
+  // 6. QUESTIONS EXPORT / TEMPLATE / IMPORT
   // ==========================================
   const handleExportQuestions = () => {
     const headers = [
       'วิชา (Subject)',
-      'ระดับชั้น (Grade Level)',
-      'หมวดหมู่ (Category)',
-      'คำถาม (ภาษาไทย)',
-      'Question (English)',
-      'ตัวเลือก ก / A',
-      'ตัวเลือก ข / B',
-      'ตัวเลือก ค / C',
-      'ตัวเลือก ง / D',
-      'ตัวเลือกที่ถูกต้อง (Index 0-3)',
-      'คำอธิบายเฉลย (Explanation)'
+      'ระดับชั้น (Grade)',
+      'คำถาม (ไทย)',
+      'ตัวเลือก ก',
+      'ตัวเลือก ข',
+      'ตัวเลือก ค',
+      'ตัวเลือก ง',
+      'ข้อถูก (0-3)',
+      'เฉลย'
     ];
-
     const rows = questions.map(q => [
       `"${q.subject}"`,
       `"${q.gradeLevel}"`,
-      q.category,
       `"${q.questionTh.replace(/"/g, '""')}"`,
-      `"${(q.questionEn || '').replace(/"/g, '""')}"`,
       `"${(q.options[0] || '').replace(/"/g, '""')}"`,
       `"${(q.options[1] || '').replace(/"/g, '""')}"`,
       `"${(q.options[2] || '').replace(/"/g, '""')}"`,
@@ -444,103 +644,14 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       q.correctIndex,
       `"${(q.explanationTh || '').replace(/"/g, '""')}"`
     ]);
-
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     downloadFile(`quiz_questions_export_${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
-    showToast(lang === 'th' ? 'ส่งออกคลังข้อสอบสำเร็จ (CSV)' : 'Questions exported successfully');
-  };
-
-  const handleDownloadQuestionTemplate = () => {
-    const headers = [
-      'subject',
-      'gradeLevel',
-      'category',
-      'questionTh',
-      'questionEn',
-      'optionA',
-      'optionB',
-      'optionC',
-      'optionD',
-      'correctIndex',
-      'explanationTh'
-    ];
-
-    const sampleRow1 = [
-      'วิทยาศาสตร์ AI',
-      'ม.4',
-      'exam',
-      'อัลกอริทึมใดจัดเป็น Supervised Learning ใน Machine Learning?',
-      'Which algorithm is considered Supervised Learning?',
-      'Linear Regression',
-      'K-Means Clustering',
-      'PCA Dimensionality Reduction',
-      'Apriori Association Rule',
-      '0',
-      'Linear Regression ต้องการ Target Label จึงเป็น Supervised Learning'
-    ];
-
-    const sampleRow2 = [
-      'คณิตศาสตร์',
-      'ม.4',
-      'standard_exam',
-      'ถ้า log10(x) = 3 ค่าของ x เท่ากับข้อใด?',
-      'If log10(x) = 3, what is the value of x?',
-      '30',
-      '100',
-      '1000',
-      '3000',
-      '2',
-      'จากนิยามลอการิทึม x = 10^3 = 1000'
-    ];
-
-    const csvContent = [headers.join(','), sampleRow1.join(','), sampleRow2.join(',')].join('\n');
-    downloadFile('template_quiz_questions_import.csv', csvContent);
-    showToast('ดาวน์โหลดแบบฟอร์มตัวอย่างข้อสอบแล้ว');
-  };
-
-  const handleLoadSampleQuestions = () => {
-    const samples: QuizQuestion[] = [
-      {
-        id: `q-imp-${Date.now()}-1`,
-        subject: 'วิทยาการคำนวณและปัญญาประดิษฐ์',
-        gradeLevel: 'ม.4',
-        questionTh: 'โมเดล Deep Learning โครงข่ายประสาทเทียมแบบใดที่ได้รับความนิยมสูงสุดในการประมวลผลภาษาธรรมชาติ (NLP) ในปัจจุบัน?',
-        questionEn: 'Which Deep Learning architecture is most widely used in modern NLP?',
-        options: ['Transformer Architecture', 'Recurrent Neural Network (RNN)', 'Simple Perceptron', 'Decision Tree'],
-        correctIndex: 0,
-        explanationTh: 'สถาปัตยกรรม Transformer พร้อมกลไก Self-Attention คือรากฐานของโมเดลภาษาขนาดใหญ่ (LLM) ในปัจจุบัน',
-        category: 'exam',
-        points: 150
-      },
-      {
-        id: `q-imp-${Date.now()}-2`,
-        subject: 'สุขศึกษาและสุขภาพ',
-        gradeLevel: 'ม.4',
-        questionTh: 'กรุ๊ปเลือดใดที่ถือเป็น ผู้รับสากล (Universal Recipient) ของเม็ดเลือดแดง?',
-        questionEn: 'Which blood type is considered the Universal Recipient?',
-        options: ['กรุ๊ป O', 'กรุ๊ป A', 'กรุ๊ป B', 'กรุ๊ป AB'],
-        correctIndex: 3,
-        explanationTh: 'ผู้มีเลือดกรุ๊ป AB ไม่มีแอนติบอดีต่อต้านทั้งสาร A และ B จึงสามารถรับเม็ดเลือดแดงได้จากทุกหมู่เลือด',
-        category: 'general',
-        points: 100
-      }
-    ];
-    setQuestionPreviewPage(0);
-    setPreviewQuestions(samples);
-    showToast('โหลดข้อมูลตัวอย่างข้อสอบ 2 ข้อสำหรับทดสอบแล้ว');
-  };
-
-  const handleConfirmImportQuestions = () => {
-    if (previewQuestions.length === 0) return;
-    onImportQuestions(previewQuestions);
-    showToast(`นำเข้าข้อสอบใหม่ ${previewQuestions.length} ข้อเข้าสู่คลัง "ล่าสมบัติ 3D" สำเร็จ!`);
-    setQuestionPreviewPage(0);
-    setPreviewQuestions([]);
+    showToast('ส่งออกคลังข้อสอบสำเร็จ (CSV)');
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs select-none">
-      <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-5xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Toast Notification */}
         {toastMessage && (
@@ -559,16 +670,14 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                  {lang === 'th' ? 'ศูนย์นำเข้า - ส่งออกข้อมูลสถานศึกษา (Data Hub)' : 'School Data Import & Export Center'}
+                  ศูนย์นำเข้า - ส่งออกข้อมูลวิชาการและทะเบียน (Academic &amp; Registrar Hub)
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900 text-blue-100 border border-blue-600 font-bold">
                   EXCEL / CSV
                 </span>
               </div>
               <p className="text-xs text-slate-200">
-                {lang === 'th'
-                  ? 'ส่งออกและนำเข้าข้อมูลนักเรียน, คุณครู, และคลังข้อสอบด้วยไฟล์มาตรฐาน เพื่อการบริหารจัดการที่รวดเร็ว'
-                  : 'Batch import & export students, teachers, and question bank with standardized templates'}
+                รองรับหลักสูตร, การลงทะเบียนเรียน, งานวัดผล ปพ.5, ทะเบียนนักเรียน และบุคลากรแบบครบวงจร
               </p>
             </div>
           </div>
@@ -583,44 +692,83 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-6 pt-2 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <div className="px-6 pt-2 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('courses')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'courses'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>หลักสูตร &amp; รายวิชา ({courses.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('enrollment')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'enrollment'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>งานทะเบียนลงทะเบียนเรียน</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('grades')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'grades'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span>งานวัดผล &amp; ปพ.5 ({grades.length})</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('students')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'students'
                 ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
                 : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>ทะเบียนนักเรียน ({students.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('teachers')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'teachers'
                 ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
                 : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <GraduationCap className="w-4 h-4" />
-            <span>ทะเบียนคุณครู & บุคลากร ({teachers.length})</span>
+            <GraduationCap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span>ทะเบียนคุณครู ({teachers.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('questions')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'questions'
                 ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
                 : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            <span>คลังข้อสอบ & แบบทดสอบ ({questions.length})</span>
+            <Sparkles className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+            <span>คลังข้อสอบ ({questions.length})</span>
           </button>
         </div>
 
@@ -628,9 +776,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-[var(--color-card)] text-[var(--color-text-body)] space-y-4">
 
           {/* ======================================= */}
-          {/* TAB 1: นักเรียน (STUDENTS)              */}
+          {/* TAB 1: หลักสูตรและรายวิชา (COURSES)     */}
           {/* ======================================= */}
-          {activeTab === 'students' && (
+          {activeTab === 'courses' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Export Card */}
@@ -638,15 +786,15 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   <div>
                     <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
                       <Download className="w-4 h-4 text-[var(--color-primary-text)]" />
-                      <span>ส่งออกข้อมูลนักเรียนทั้งหมด</span>
+                      <span>ส่งออกหลักสูตรและรายวิชาทั้งหมด</span>
                     </div>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ดาวน์โหลดรายชื่อนักเรียน {students.length} คน พร้อมรหัสประจำตัว, แผนการเรียน, ผู้ปกครอง, ผลการเรียน และข้อมูลสุขภาพเป็นไฟล์ CSV
+                      ดาวน์โหลดรายวิชา {courses.length} วิชา พร้อมหน่วยกิต, หมวดวิชา, คาบสอน, เกณฑ์ 80% ปพ.5 และครูผู้สอน
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={handleExportStudents}
+                    onClick={handleExportCourses}
                     className="w-full py-2 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
                   >
                     <Download className="w-4 h-4" />
@@ -658,11 +806,371 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
                   <div>
                     <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
-                      <ArrowDownToLine className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-                      <span>แบบฟอร์มนำเข้า (Template)</span>
+                      <ArrowDownToLine className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                      <span>แบบฟอร์มนำเข้าหลักสูตร (Template)</span>
                     </div>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ดาวน์โหลดโครงสร้างหัวตารางมาตรฐาน เพื่อกรอกข้อมูลนักเรียนใหม่ได้อย่างถูกต้องครบถ้วน
+                      ดาวน์โหลดโครงสร้างหัวตารางหลักสูตรตามมาตรฐาน สพฐ. เพื่อกรอกวิชาใหม่เข้าสู่ระบบ
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadCourseTemplate}
+                      className="flex-1 py-2 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>ดาวน์โหลด Template</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLoadSampleCourses}
+                      className="py-2 px-3 rounded-xl bg-indigo-100 dark:bg-indigo-950 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>โหลดตัวอย่าง</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Table for Courses */}
+              {previewCourses.length > 0 && (
+                <div className="space-y-3 p-4 rounded-2xl border border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/40">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-100 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                      <span>ตรวจสอบรายวิชาที่จะนำเข้า ({previewCourses.length} วิชา)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setCoursePreviewPage(0); setPreviewCourses([]); }}
+                      className="text-xs text-rose-700 dark:text-rose-300 hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>ล้างข้อมูลพรีวิว</span>
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="px-3 py-2">รหัสวิชา</th>
+                          <th className="px-3 py-2">ชื่อวิชา (ไทย / EN)</th>
+                          <th className="px-3 py-2">หมวดหมู่วิชา</th>
+                          <th className="px-3 py-2 text-center">หน่วยกิต</th>
+                          <th className="px-3 py-2 text-center">คาบ/สัปดาห์</th>
+                          <th className="px-3 py-2 text-center">เกณฑ์ 80% (ชม.)</th>
+                          <th className="px-3 py-2">ครูผู้สอน</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {previewCourses.slice(coursePreviewPage * 4, (coursePreviewPage + 1) * 4).map((c, i) => (
+                          <tr key={i} className="hover:bg-[var(--color-card-subtle)]">
+                            <td className="px-3 py-2 font-mono font-bold text-[var(--color-primary-text)]">{c.code}</td>
+                            <td className="px-3 py-2">
+                              <div className="font-bold text-[var(--color-text-title)]">{c.titleTh}</div>
+                              <div className="text-[10px] text-[var(--color-text-muted)]">{c.titleEn}</div>
+                            </td>
+                            <td className="px-3 py-2 font-medium">{c.category}</td>
+                            <td className="px-3 py-2 text-center font-bold">{c.credits}</td>
+                            <td className="px-3 py-2 text-center">{c.weeklyHours || 3}</td>
+                            <td className="px-3 py-2 text-center font-bold text-emerald-700 dark:text-emerald-300">
+                              {c.minAttendanceHours || 48} / {c.totalHours || 60} ชม.
+                            </td>
+                            <td className="px-3 py-2 text-[var(--color-text-body)]">{c.teacherName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmImportCourses}
+                      className="px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>ยืนยันบันทึกรายวิชาใหม่ ({previewCourses.length} วิชา) เข้าสู่หลักสูตร</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ======================================= */}
+          {/* TAB 2: งานทะเบียนลงทะเบียนเรียน (ENROLL) */}
+          {/* ======================================= */}
+          {activeTab === 'enrollment' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Export Card */}
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
+                      <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>ส่งออกทะเบียนการลงทะเบียนเรียน</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ดาวน์โหลดรายชื่อการลงทะเบียนเรียนของนักเรียนทุกวิชา พร้อมรหัสนักเรียน รหัสวิชา และสถานะ
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportEnrollment}
+                    className="w-full py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>ส่งออกเป็นไฟล์ CSV (Excel UTF-8)</span>
+                  </button>
+                </div>
+
+                {/* Template & Sample Card */}
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
+                      <ArrowDownToLine className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                      <span>แบบฟอร์มลงทะเบียนเรียน (Template)</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ดาวน์โหลด Template สำหรับจับคู่นักเรียนเข้าสู่รายวิชาเป็นกลุ่ม (Batch Enrollment)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadEnrollmentTemplate}
+                      className="flex-1 py-2 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>ดาวน์โหลด Template</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLoadSampleEnrollment}
+                      className="py-2 px-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>โหลดตัวอย่าง</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Table for Enrollment */}
+              {previewEnrollments.length > 0 && (
+                <div className="space-y-3 p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/40">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-950 dark:text-emerald-100 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                      <span>ตรวจสอบการลงทะเบียนที่จะบันทึก ({previewEnrollments.length} รายการ)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setEnrollmentPreviewPage(0); setPreviewEnrollments([]); }}
+                      className="text-xs text-rose-700 dark:text-rose-300 hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>ล้างข้อมูลพรีวิว</span>
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="px-3 py-2">รหัสวิชา</th>
+                          <th className="px-3 py-2">นักเรียนผู้ลงทะเบียน</th>
+                          <th className="px-3 py-2 text-center">สถานะ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {previewEnrollments.slice(enrollmentPreviewPage * 5, (enrollmentPreviewPage + 1) * 5).map((en, i) => (
+                          <tr key={i} className="hover:bg-[var(--color-card-subtle)]">
+                            <td className="px-3 py-2 font-mono font-bold text-[var(--color-primary-text)]">{en.courseCode}</td>
+                            <td className="px-3 py-2 font-medium text-[var(--color-text-title)]">{en.studentName}</td>
+                            <td className="px-3 py-2 text-center font-bold text-emerald-700 dark:text-emerald-300">พร้อมลงทะเบียน</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmImportEnrollment}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>ยืนยันบันทึกการลงทะเบียนเรียน ({previewEnrollments.length} รายการ)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ======================================= */}
+          {/* TAB 3: งานวัดผล & ปพ.5 (GRADES)        */}
+          {/* ======================================= */}
+          {activeTab === 'grades' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Export Card */}
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
+                      <Download className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>ส่งออกผลการเรียน ปพ.5 ทั้งหมด</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ดาวน์โหลดบันทึกผลการเรียน {grades.length} รายการ พร้อมคะแนนเก็บ กลางภาค ปลายภาค และระดับเกรด
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportGrades}
+                    className="w-full py-2 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>ส่งออกเป็นไฟล์ CSV (Excel UTF-8)</span>
+                  </button>
+                </div>
+
+                {/* Template & Sample Card */}
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
+                      <ArrowDownToLine className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      <span>แบบฟอร์มคะแนน ปพ.5 (Template)</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ดาวน์โหลด Template สำหรับครูผู้สอนเพื่อกรอกคะแนนดิบ 100 คะแนน แล้วนำเข้าอัตโนมัติ
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadGradeTemplate}
+                      className="flex-1 py-2 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>ดาวน์โหลด Template</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLoadSampleGrades}
+                      className="py-2 px-3 rounded-xl bg-amber-100 dark:bg-amber-950 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>โหลดตัวอย่าง</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Table for Grades */}
+              {previewGrades.length > 0 && (
+                <div className="space-y-3 p-4 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-950 dark:text-amber-100 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      <span>ตรวจสอบคะแนนที่จะบันทึก ({previewGrades.length} รายการ)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setGradePreviewPage(0); setPreviewGrades([]); }}
+                      className="text-xs text-rose-700 dark:text-rose-300 hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>ล้างข้อมูลพรีวิว</span>
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="px-3 py-2">รหัสนักเรียน</th>
+                          <th className="px-3 py-2">รหัสวิชา</th>
+                          <th className="px-3 py-2 text-center">คะแนนเก็บ (20)</th>
+                          <th className="px-3 py-2 text-center">สอบย่อย (20)</th>
+                          <th className="px-3 py-2 text-center">กลางภาค (30)</th>
+                          <th className="px-3 py-2 text-center">ปลายภาค (30)</th>
+                          <th className="px-3 py-2 text-center">รวม (100)</th>
+                          <th className="px-3 py-2 text-center">เกรด</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {previewGrades.slice(gradePreviewPage * 5, (gradePreviewPage + 1) * 5).map((g, i) => (
+                          <tr key={i} className="hover:bg-[var(--color-card-subtle)]">
+                            <td className="px-3 py-2 font-mono font-bold">{g.studentId}</td>
+                            <td className="px-3 py-2 font-mono text-[var(--color-primary-text)] font-bold">{g.courseId}</td>
+                            <td className="px-3 py-2 text-center">{g.assignmentScore}</td>
+                            <td className="px-3 py-2 text-center">{g.quizScore}</td>
+                            <td className="px-3 py-2 text-center">{g.midtermScore}</td>
+                            <td className="px-3 py-2 text-center">{g.finalScore}</td>
+                            <td className="px-3 py-2 text-center font-bold text-blue-700 dark:text-blue-300">{g.totalScore}</td>
+                            <td className="px-3 py-2 text-center font-bold text-emerald-700 dark:text-emerald-300">{g.letterGrade}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmImportGrades}
+                      className="px-5 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>ยืนยันบันทึกผลการเรียน ปพ.5 ({previewGrades.length} รายการ)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ======================================= */}
+          {/* TAB 4: ทะเบียนนักเรียน (STUDENTS)       */}
+          {/* ======================================= */}
+          {activeTab === 'students' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
+                      <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span>ส่งออกทะเบียนประวัตินักเรียนทั้งหมด</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ดาวน์โหลดรายชื่อนักเรียน {students.length} คน พร้อมรหัสประจำตัว ห้องเรียน ผู้ปกครอง และ GPAX
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportStudents}
+                    className="w-full py-2 px-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>ส่งออกเป็นไฟล์ CSV (Excel UTF-8)</span>
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
+                      <ArrowDownToLine className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      <span>แบบฟอร์มนำเข้านักเรียน (Template)</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ดาวน์โหลดโครงสร้างหัวตารางมาตรฐาน เพื่อกรอกข้อมูลนักเรียนใหม่ได้อย่างถูกต้อง
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -677,8 +1185,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleLoadSampleStudents}
-                      className="py-2 px-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
-                      title="โหลดข้อมูลตัวอย่างเพื่อทดสอบทันที"
+                      className="py-2 px-3 rounded-xl bg-blue-100 dark:bg-blue-950 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>โหลดตัวอย่าง</span>
@@ -687,9 +1194,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 </div>
               </div>
 
-              {/* Preview & Import Table */}
               {previewStudents.length > 0 && (
-                <div className="space-y-3 p-4 rounded-2xl border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-950">
+                <div className="space-y-3 p-4 rounded-2xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/40">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-blue-950 dark:text-blue-100 font-bold text-sm">
                       <CheckCircle2 className="w-4 h-4 text-blue-700 dark:text-blue-300" />
@@ -707,14 +1213,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
                   <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs">
                     <table className="w-full text-xs text-left">
-                      <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-bold uppercase tracking-wider text-[10px]">
+                      <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-bold uppercase text-[10px]">
                         <tr>
                           <th className="px-3 py-2">รหัสนักเรียน</th>
                           <th className="px-3 py-2">ชื่อ - นามสกุล</th>
                           <th className="px-3 py-2">ระดับชั้น / ห้อง</th>
                           <th className="px-3 py-2">GPAX</th>
-                          <th className="px-3 py-2">ผู้ปกครอง & ความสัมพันธ์</th>
-                          <th className="px-3 py-2">เบอร์โทรศัพท์</th>
+                          <th className="px-3 py-2">ผู้ปกครอง</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
@@ -724,31 +1229,18 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                             <td className="px-3 py-2 font-medium text-[var(--color-text-title)]">{st.firstNameTh} {st.lastNameTh}</td>
                             <td className="px-3 py-2 text-[var(--color-text-muted)]">{st.room}</td>
                             <td className="px-3 py-2 font-bold text-emerald-700 dark:text-emerald-300">{st.gpa}</td>
-                            <td className="px-3 py-2 text-[var(--color-text-body)]">
-                              {st.guardianName} ({st.guardianRelation})
-                              {st.guardians && st.guardians.length > 1 && (
-                                <span className="ml-1 text-[10px] text-[var(--color-primary-text)] font-bold">+{st.guardians.length - 1} คน</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 font-mono text-[var(--color-text-muted)]">{st.guardianPhone}</td>
+                            <td className="px-3 py-2">{st.guardianName} ({st.guardianPhone})</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  {previewStudents.length > 4 && (
-                    <div className="flex items-center justify-between text-xs text-[var(--color-text-body)]">
-                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.max(0, page - 1))} disabled={studentPreviewPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-                      <span className="font-medium">หน้า {studentPreviewPage + 1} / {Math.ceil(previewStudents.length / 4)} · {previewStudents.length} คน</span>
-                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.min(Math.ceil(previewStudents.length / 4) - 1, page + 1))} disabled={studentPreviewPage >= Math.ceil(previewStudents.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
-                    </div>
-                  )}
 
                   <div className="flex justify-end pt-2">
                     <button
                       type="button"
                       onClick={handleConfirmImportStudents}
-                      className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
+                      className="px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
                       <Upload className="w-4 h-4" />
                       <span>ยืนยันบันทึกนักเรียนใหม่ ({previewStudents.length} คน) เข้าสู่ระบบ</span>
@@ -760,270 +1252,46 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           )}
 
           {/* ======================================= */}
-          {/* TAB 2: คุณครู (TEACHERS)                */}
+          {/* TAB 5: ทะเบียนครู (TEACHERS)            */}
           {/* ======================================= */}
           {activeTab === 'teachers' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Export Card */}
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
-                      <Download className="w-4 h-4 text-[var(--color-primary-text)]" />
-                      <span>ส่งออกข้อมูลคุณครูทั้งหมด</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ดาวน์โหลดรายชื่อคุณครู {teachers.length} ท่าน พร้อมวิทยฐานะ, กลุ่มสาระ, ห้องที่สอนหลายห้อง, และสิทธิ์การเป็น Admin โรงเรียน
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleExportTeachers}
-                    className="w-full py-2 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>ส่งออกเป็นไฟล์ CSV (Excel UTF-8)</span>
-                  </button>
+              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">ส่งออกทะเบียนครูและบุคลากรทางการศึกษา</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">ดาวน์โหลดข้อมูลครู {teachers.length} ท่าน พร้อมกลุ่มสาระและวิทยฐานะ</p>
                 </div>
-
-                {/* Template & Sample Card */}
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
-                      <ArrowDownToLine className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
-                      <span>แบบฟอร์มนำเข้าคุณครู (Template)</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ดาวน์โหลด Template พร้อมโครงสร้างระบุหลายห้องเรียน หลายชั้นเรียน และสิทธิ์ผู้ดูแลระบบโรงเรียน
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDownloadTeacherTemplate}
-                      className="flex-1 py-2 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>ดาวน์โหลด Template</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleLoadSampleTeachers}
-                      className="py-2 px-3 rounded-xl bg-indigo-100 dark:bg-indigo-950 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
-                      title="โหลดข้อมูลตัวอย่างเพื่อทดสอบทันที"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>โหลดตัวอย่าง</span>
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleExportTeachers}
+                  className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>ส่งออกไฟล์ CSV</span>
+                </button>
               </div>
-
-              {/* Preview & Import Table */}
-              {previewTeachers.length > 0 && (
-                <div className="space-y-3 p-4 rounded-2xl border border-indigo-300 dark:border-indigo-700 bg-indigo-100 dark:bg-indigo-950">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-100 font-bold text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
-                      <span>ตรวจสอบข้อมูลคุณครูที่จะนำเข้า ({previewTeachers.length} ท่าน)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setTeacherPreviewPage(0); setPreviewTeachers([]); }}
-                      className="text-xs text-rose-700 dark:text-rose-300 hover:underline font-medium flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>ล้างข้อมูลพรีวิว</span>
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-bold uppercase tracking-wider text-[10px]">
-                        <tr>
-                          <th className="px-3 py-2">รหัสประจำตัว</th>
-                          <th className="px-3 py-2">ชื่อ - นามสกุล</th>
-                          <th className="px-3 py-2">กลุ่มสาระฯ / วิทยฐานะ</th>
-                          <th className="px-3 py-2">ห้องและระดับชั้นที่สอน</th>
-                          <th className="px-3 py-2">สิทธิ์ Admin โรงเรียน</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewTeachers.slice(teacherPreviewPage * 4, (teacherPreviewPage + 1) * 4).map((tc, i) => (
-                          <tr key={i} className="hover:bg-[var(--color-card-subtle)]">
-                            <td className="px-3 py-2 font-mono font-bold text-indigo-700 dark:text-indigo-300">{tc.teacherIdNumber}</td>
-                            <td className="px-3 py-2 font-medium text-[var(--color-text-title)]">{tc.fullNameTh}</td>
-                            <td className="px-3 py-2 text-[var(--color-text-muted)]">{tc.department} ({tc.academicStanding})</td>
-                            <td className="px-3 py-2 text-[var(--color-text-body)]">
-                              <span className="font-medium text-[var(--color-primary-text)]">{(tc.homeroomClasses || []).join(', ')}</span>
-                            </td>
-                            <td className="px-3 py-2">
-                              {tc.isSchoolAdmin ? (
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
-                                  🛡️ มีสิทธิ์ Admin
-                                </span>
-                              ) : (
-                                <span className="text-[var(--color-text-muted)] text-[11px]">อาจารย์ผู้สอน</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {previewTeachers.length > 4 && (
-                    <div className="flex items-center justify-between text-xs text-[var(--color-text-body)]">
-                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.max(0, page - 1))} disabled={teacherPreviewPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-                      <span className="font-medium">หน้า {teacherPreviewPage + 1} / {Math.ceil(previewTeachers.length / 4)} · {previewTeachers.length} คน</span>
-                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.min(Math.ceil(previewTeachers.length / 4) - 1, page + 1))} disabled={teacherPreviewPage >= Math.ceil(previewTeachers.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={handleConfirmImportTeachers}
-                      className="px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกคุณครูใหม่ ({previewTeachers.length} ท่าน)</span>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
           {/* ======================================= */}
-          {/* TAB 3: ข้อสอบ (QUESTIONS)               */}
+          {/* TAB 6: คลังข้อสอบ (QUESTIONS)           */}
           {/* ======================================= */}
           {activeTab === 'questions' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Export Card */}
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
-                      <Download className="w-4 h-4 text-[var(--color-primary-text)]" />
-                      <span>ส่งออกคลังข้อสอบทั้งหมด</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ดาวน์โหลดข้อสอบ {questions.length} ข้อในระบบ พร้อมตัวเลือก, เฉลย และคำอธิบายเป็นไฟล์ CSV
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleExportQuestions}
-                    className="w-full py-2 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>ส่งออกเป็นไฟล์ CSV (Excel UTF-8)</span>
-                  </button>
+              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">ส่งออกคลังข้อสอบและแบบทดสอบ</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">ดาวน์โหลดข้อสอบ {questions.length} ข้อในระบบ พร้อมตัวเลือกและเฉลย</p>
                 </div>
-
-                {/* Template & Sample Card */}
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[var(--color-text-title)] font-bold text-sm">
-                      <ArrowDownToLine className="w-4 h-4 text-purple-700 dark:text-purple-300" />
-                      <span>แบบฟอร์มนำเข้าข้อสอบ (Template)</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ดาวน์โหลด Template พร้อมโครงสร้าง 4 ตัวเลือก และคำอธิบายเฉลย เพื่อใช้ในเกม "ล่าสมบัติ 3D" และ LMS
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDownloadQuestionTemplate}
-                      className="flex-1 py-2 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>ดาวน์โหลด Template</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleLoadSampleQuestions}
-                      className="py-2 px-3 rounded-xl bg-purple-100 dark:bg-purple-950 hover:bg-purple-200 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
-                      title="โหลดข้อสอบตัวอย่างเพื่อทดสอบทันที"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>โหลดตัวอย่าง</span>
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleExportQuestions}
+                  className="px-4 py-2 rounded-xl bg-pink-700 hover:bg-pink-800 text-white text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>ส่งออกไฟล์ CSV</span>
+                </button>
               </div>
-
-              {/* Preview & Import Table */}
-              {previewQuestions.length > 0 && (
-                <div className="space-y-3 p-4 rounded-2xl border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-950">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-purple-950 dark:text-purple-100 font-bold text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-purple-700 dark:text-purple-300" />
-                      <span>ตรวจสอบข้อสอบใหม่ที่จะนำเข้า ({previewQuestions.length} ข้อ)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setQuestionPreviewPage(0); setPreviewQuestions([]); }}
-                      className="text-xs text-rose-700 dark:text-rose-300 hover:underline font-medium flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>ล้างข้อมูลพรีวิว</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {previewQuestions.slice(questionPreviewPage * 2, (questionPreviewPage + 1) * 2).map((q, i) => (
-                      <div key={i} className="p-3 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] text-xs space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-purple-700 dark:text-purple-300">ข้อที่ {questionPreviewPage * 2 + i + 1} • {q.subject} ({q.gradeLevel})</span>
-                          <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100 border border-purple-300 dark:border-purple-700 text-[10px] font-bold">
-                            เฉลยข้อ: {['ก (A)', 'ข (B)', 'ค (C)', 'ง (D)'][q.correctIndex]}
-                          </span>
-                        </div>
-                        <p className="font-medium text-[var(--color-text-title)]">{q.questionTh}</p>
-                        <div className="grid grid-cols-2 gap-2 text-[var(--color-text-body)] pt-1">
-                          {q.options.map((opt, optIdx) => (
-                            <div 
-                              key={optIdx} 
-                              className={`p-1.5 rounded-lg border text-[11px] ${
-                                optIdx === q.correctIndex 
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold' 
-                                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                              }`}
-                            >
-                              {['ก.', 'ข.', 'ค.', 'ง.'][optIdx]} {opt}
-                            </div>
-                          ))}
-                        </div>
-                        {q.explanationTh && (
-                          <div className="text-[11px] text-[var(--color-text-muted)] pt-1 border-t border-[var(--color-border)]">
-                            💡 <span className="font-medium">คำอธิบายเฉลย:</span> {q.explanationTh}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {previewQuestions.length > 2 && (
-                    <div className="flex items-center justify-between text-xs text-[var(--color-text-body)]">
-                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.max(0, page - 1))} disabled={questionPreviewPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-                      <span className="font-medium">หน้า {questionPreviewPage + 1} / {Math.ceil(previewQuestions.length / 2)} · {previewQuestions.length} ข้อ</span>
-                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.min(Math.ceil(previewQuestions.length / 2) - 1, page + 1))} disabled={questionPreviewPage >= Math.ceil(previewQuestions.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={handleConfirmImportQuestions}
-                      className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>นำเข้าข้อสอบใหม่ ({previewQuestions.length} ข้อ) เข้าสู่คลังล่าสมบัติ 3D</span>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

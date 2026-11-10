@@ -370,8 +370,11 @@ export interface Course {
   code: string; // e.g. "CS301", "MA201"
   titleEn: string;
   titleTh: string;
-  category: 'core' | 'elective' | 'stem' | 'language' | 'arts';
+  category: 'core' | 'elective' | 'stem' | 'language' | 'arts' | 'social' | 'pe' | 'career' | 'activities' | string;
   credits: number;
+  weeklyHours?: number;
+  totalHours?: number;
+  minAttendanceHours?: number;
   teacherName: string;
   teacherEmail: string;
   department: string;
@@ -633,6 +636,9 @@ export interface TimetableSlot {
   room: string;
   classRoom: string; // e.g. "ห้อง 401 (วิทย์-คณิต)", "ห้อง 402"
   colorTag: 'sky' | 'emerald' | 'amber' | 'rose' | 'purple' | 'indigo' | 'cyan';
+  courseId?: string;
+  credits?: number;
+  totalSemesterHours?: number;
 }
 
 // 2. Behavior Points & SDQ

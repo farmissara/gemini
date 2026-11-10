@@ -15,12 +15,24 @@ import {
   Sparkles,
   Layers,
   Search,
-  Filter
+  Filter,
+  ShieldCheck,
+  GraduationCap,
+  Users,
+  Info,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  SlidersHorizontal,
+  ChevronRight
 } from 'lucide-react';
-import { TimetableSlot, DayOfWeek, AppLanguage, UserRole } from '../types';
+import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student } from '../types';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
+  courses: Course[];
+  teachers: Teacher[];
+  students: Student[];
   onAddSlot: (slot: TimetableSlot) => void;
   onDeleteSlot: (id: string) => void;
   lang: AppLanguage;
@@ -30,10 +42,10 @@ interface TimetableScheduleViewProps {
 
 const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
   { key: 'mon', th: 'วันจันทร์', en: 'Monday', color: 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200' },
-  { key: 'tue', th: 'วันอังคาร', en: 'วันอังคาร (Tue)', color: 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-200' },
+  { key: 'tue', th: 'วันอังคาร', en: 'Tuesday', color: 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-200' },
   { key: 'wed', th: 'วันพุธ', en: 'Wednesday', color: 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-200' },
   { key: 'thu', th: 'วันพฤหัสบดี', en: 'Thursday', color: 'bg-orange-100 dark:bg-orange-950 border-orange-300 dark:border-orange-700 text-orange-950 dark:text-orange-200' },
-  { key: 'fri', th: 'วันศุกร์', en: 'วันศุกร์ (Fri)', color: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-200' }
+  { key: 'fri', th: 'วันศุกร์', en: 'Friday', color: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-200' }
 ];
 
 const PERIODS = [
@@ -47,7 +59,7 @@ const PERIODS = [
   { num: 7, time: '14:40 - 15:30' }
 ];
 
-const CLASSROOMS = [
+const DEFAULT_CLASSROOMS = [
   'ห้อง 401 (วิทย์-คณิต)',
   'ห้อง 402 (ศิลป์-ภาษาอังกฤษ)',
   'ห้อง 501 (วิทย์-คณิต)',
@@ -66,53 +78,132 @@ const COLOR_CLASSES: Record<string, string> = {
 
 export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   slots,
+  courses,
+  teachers,
+  students,
   onAddSlot,
   onDeleteSlot,
   lang,
   currentRole,
   schoolName
 }) => {
-  const [selectedClassRoom, setSelectedClassRoom] = useState<string>('ห้อง 401 (วิทย์-คณิต)');
+  // Main view mode: 'classroom' | 'teacher' | 'hours_criteria'
+  const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria'>('classroom');
+
+  // Classroom selection
+  const uniqueClassRooms = Array.from(
+    new Set([
+      ...DEFAULT_CLASSROOMS,
+      ...slots.map((s) => s.classRoom).filter(Boolean),
+      ...students.map((st) => st.room).filter(Boolean),
+    ])
+  );
+  const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || 'ห้อง 401 (วิทย์-คณิต)');
+
+  // Teacher selection for Teacher Workload Timetable
+  const teacherNames = Array.from(
+    new Set([
+      ...teachers.map((t) => t.fullNameTh),
+      ...slots.map((s) => s.teacherName).filter(Boolean),
+      ...courses.map((c) => c.teacherName).filter(Boolean),
+    ])
+  );
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>(teacherNames[0] || 'อ.ดร.ประเสริฐ ถาวร');
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<TimetableSlot | null>(null);
 
-  // New slot form state
+  // Add slot form state
   const [newDay, setNewDay] = useState<DayOfWeek>('mon');
   const [newPeriod, setNewPeriod] = useState<number>(1);
-  const [newCourseCode, setNewCourseCode] = useState('CS301');
-  const [newTitleTh, setNewTitleTh] = useState('');
-  const [newTitleEn, setNewTitleEn] = useState('');
-  const [newTeacher, setNewTeacher] = useState('อ.ดร.ประเสริฐ ถาวร');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('custom');
+  const [newCourseCode, setNewCourseCode] = useState('ว30201');
+  const [newTitleTh, setNewTitleTh] = useState('โครงสร้างข้อมูลและ Python');
+  const [newTitleEn, setNewTitleEn] = useState('Data Structures & Python');
+  const [newTeacher, setNewTeacher] = useState(teacherNames[0] || 'อ.ดร.ประเสริฐ ถาวร');
   const [newRoom, setNewRoom] = useState('ห้อง 401');
+  const [newCredits, setNewCredits] = useState<number>(1.5);
   const [newColor, setNewColor] = useState<TimetableSlot['colorTag']>('sky');
 
-  // Filter slots for selected room
-  const activeSlots = slots.filter((s) => s.classRoom === selectedClassRoom);
+  // Filter slots based on active view mode
+  const activeSlots = viewMode === 'teacher'
+    ? slots.filter((s) => s.teacherName === selectedTeacherName)
+    : slots.filter((s) => s.classRoom === selectedClassRoom);
 
-  // Check for teacher or room conflicts across the entire school
+  // Overall conflict detection across the school
   const conflicts: { slotId: string; reason: string }[] = [];
   slots.forEach((s1, i) => {
     slots.slice(i + 1).forEach((s2) => {
       if (s1.dayOfWeek === s2.dayOfWeek && s1.periodNumber === s2.periodNumber) {
-        if (s1.teacherName === s2.teacherName && s1.classRoom !== s2.classRoom) {
+        // Teacher double-booking conflict
+        if (s1.teacherName && s2.teacherName && s1.teacherName === s2.teacherName && s1.classRoom !== s2.classRoom) {
           conflicts.push({
             slotId: s1.id,
-            reason: `ครูผู้สอน (${s1.teacherName}) ชนกับ ${s2.classRoom}`
+            reason: `ครูผู้สอน (${s1.teacherName}) ชนกับ ${s2.classRoom} ในคาบนี้`
           });
           conflicts.push({
             slotId: s2.id,
-            reason: `ครูผู้สอน (${s2.teacherName}) ชนกับ ${s1.classRoom}`
+            reason: `ครูผู้สอน (${s2.teacherName}) ชนกับ ${s1.classRoom} ในคาบนี้`
           });
         }
-        if (s1.room === s2.room && s1.classRoom !== s2.classRoom) {
+        // Room double-booking conflict
+        if (s1.room && s2.room && s1.room === s2.room && s1.classRoom !== s2.classRoom) {
           conflicts.push({
             slotId: s1.id,
             reason: `ห้องเรียน (${s1.room}) ถูกจองซ้ำซ้อนโดย ${s2.classRoom}`
+          });
+          conflicts.push({
+            slotId: s2.id,
+            reason: `ห้องเรียน (${s2.room}) ถูกจองซ้ำซ้อนโดย ${s1.classRoom}`
           });
         }
       }
     });
   });
+
+  // Calculate teacher weekly workload in teaching view
+  const teacherWeeklyPeriods = slots.filter((s) => s.teacherName === selectedTeacherName).length;
+  const teacherWeeklyHours = teacherWeeklyPeriods * 0.833; // 50 mins = ~0.833 hr
+
+  // Check course auto-fill when course selector changes in Add Modal
+  const handleSelectCourse = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    if (courseId === 'custom') {
+      return;
+    }
+    const c = courses.find((crs) => crs.id === courseId);
+    if (c) {
+      setNewCourseCode(c.code);
+      setNewTitleTh(c.titleTh);
+      setNewTitleEn(c.titleEn);
+      setNewTeacher(c.teacherName || teacherNames[0] || '');
+      setNewRoom(c.room || 'ห้อง 401');
+      setNewCredits(c.credits || 1.5);
+
+      // Recommend color tag by category
+      if (c.category === 'stem') setNewColor('emerald');
+      else if (c.category === 'core') setNewColor('sky');
+      else if (c.category === 'language') setNewColor('amber');
+      else if (c.category === 'arts') setNewColor('rose');
+      else if (c.category === 'social') setNewColor('amber');
+      else setNewColor('purple');
+    }
+  };
+
+  // Check if prospective new slot has a conflict
+  const checkProspectiveConflict = () => {
+    return slots.find((s) => 
+      s.dayOfWeek === newDay && 
+      s.periodNumber === newPeriod && 
+      (
+        (s.teacherName === newTeacher.trim() && s.classRoom !== selectedClassRoom) ||
+        (s.room === newRoom.trim() && s.classRoom !== selectedClassRoom) ||
+        (s.classRoom === selectedClassRoom)
+      )
+    );
+  };
+  const prospectiveConflict = showAddModal ? checkProspectiveConflict() : null;
 
   const handleCreateSlot = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +219,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       7: { start: '14:40', end: '15:30' }
     };
 
+    const targetCourse = selectedCourseId !== 'custom' ? courses.find((c) => c.id === selectedCourseId) : null;
+    const credits = targetCourse?.credits || newCredits || 1.5;
+    const totalSemesterHours = targetCourse?.totalHours || Math.round(credits * 40);
+
     const newSlot: TimetableSlot = {
       id: `time-${Date.now()}`,
       dayOfWeek: newDay,
@@ -140,241 +235,596 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       teacherName: newTeacher.trim(),
       room: newRoom.trim(),
       classRoom: selectedClassRoom,
-      colorTag: newColor
+      colorTag: newColor,
+      courseId: targetCourse?.id,
+      credits,
+      totalSemesterHours,
     };
 
     onAddSlot(newSlot);
     setShowAddModal(false);
-    setNewTitleTh('');
-    setNewTitleEn('');
   };
+
+  // Compute academic hours breakdown per course in this classroom
+  const classroomSlots = slots.filter((s) => s.classRoom === selectedClassRoom);
+  const classroomCourseMap: Record<string, { code: string; titleTh: string; titleEn: string; teacher: string; scheduledPeriods: number; course?: Course }> = {};
+  
+  classroomSlots.forEach((s) => {
+    if (!classroomCourseMap[s.courseCode]) {
+      const matchCourse = courses.find((c) => c.code.toLowerCase() === s.courseCode.toLowerCase());
+      classroomCourseMap[s.courseCode] = {
+        code: s.courseCode,
+        titleTh: s.courseTitleTh,
+        titleEn: s.courseTitleEn,
+        teacher: s.teacherName,
+        scheduledPeriods: 0,
+        course: matchCourse,
+      };
+    }
+    classroomCourseMap[s.courseCode].scheduledPeriods += 1;
+  });
+
+  const classroomCoursesList = Object.values(classroomCourseMap);
+  const classroomStudents = students.filter((st) => st.room === selectedClassRoom);
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Header & Controls */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[var(--color-card)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
+      {/* Top Header & View Mode Switcher */}
+      <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[var(--color-card)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-5 h-5" />
             </span>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-                {lang === 'th' ? 'ตารางเรียนและตารางสอนรายสัปดาห์' : 'Weekly Timetable & Schedule'}
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-semibold">
-                  {lang === 'th' ? 'ตรวจคาบชนอัตโนมัติ' : 'Conflict Detection'}
+                <span>ตารางเรียน ตารางสอน และเกณฑ์ชั่วโมงเรียน</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-semibold">
+                  สัมพันธ์กับวิชาการ / ครู / เกณฑ์ 80%
                 </span>
               </h1>
               <p className="text-xs text-[var(--color-text-muted)]">
-                {lang === 'th' 
-                  ? 'จัดตารางเรียนรายห้อง ตรวจสอบการซ้ำซ้อนของครูผู้สอนและห้องเรียน พร้อมพิมพ์ขนาด A4' 
-                  : 'Manage weekly schedules, resolve room/teacher conflicts, and print classroom timetables.'}
+                ตรวจสอบการจัดคาบเรียนให้ครบตามหน่วยกิต ตรวจสอบภาระงานสอนครู ตรวจจับคาบชน และคำนวณเกณฑ์เวลาเรียน 80% มีสิทธิ์สอบ (ปพ.5)
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Classroom Selector */}
-          <div className="relative">
-            <select
-              value={selectedClassRoom}
-              onChange={(e) => setSelectedClassRoom(e.target.value)}
-              className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold px-3 py-2 rounded-xl border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
+        {/* View Mode Switcher Tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setViewMode('classroom')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'classroom'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
             >
-              {CLASSROOMS.map((room) => (
-                <option key={room} value={room}>
-                  {room}
-                </option>
-              ))}
-            </select>
+              <Layers className="w-3.5 h-3.5" />
+              <span>ตารางเรียนรายห้อง</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('teacher')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'teacher'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>ตารางสอนรายครู (ภาระงาน ว.PA)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('hours_criteria')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'hours_criteria'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>หลักเกณฑ์ชั่วโมงเรียน &amp; สิทธิ์สอบ 80%</span>
+            </button>
           </div>
 
-          {/* Print Button */}
+          {/* Print Timetable Button */}
           <button
             type="button"
-            onClick={() => setShowPrintModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary-text)] border border-[var(--color-border)] transition shadow-xs cursor-pointer"
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition shadow-xs cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>{lang === 'th' ? 'พิมพ์ตารางเรียน' : 'Print A4'}</span>
+            <span className="hidden sm:inline">พิมพ์ตาราง (A4)</span>
           </button>
 
-          {/* Add Slot Button (Admin/Teacher) */}
+          {/* Add Slot Button (Admin / Teacher / Super Admin) */}
           {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
             <button
               type="button"
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
+              onClick={() => {
+                if (courses.length > 0) {
+                  handleSelectCourse(courses[0].id);
+                }
+                setShowAddModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>{lang === 'th' ? 'เพิ่มคาบเรียน' : 'Add Class Slot'}</span>
+              <span>เพิ่มคาบเรียน</span>
             </button>
           )}
         </div>
       </div>
 
+      {/* Secondary Controls Bar: Select Classroom or Select Teacher */}
+      <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        {viewMode === 'classroom' || viewMode === 'hours_criteria' ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+              <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
+              <span>เลือกห้องเรียน:</span>
+            </span>
+            <select
+              value={selectedClassRoom}
+              onChange={(e) => setSelectedClassRoom(e.target.value)}
+              className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold px-3 py-1.5 rounded-xl border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
+            >
+              {uniqueClassRooms.map((room) => (
+                <option key={room} value={room}>
+                  {room} ({students.filter((s) => s.room === room).length} นักเรียน)
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-[var(--color-text-muted)]">
+              • จัดตารางแล้ว <strong>{classroomSlots.length}</strong> คาบ/สัปดาห์
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+              <User className="w-4 h-4 text-[var(--color-primary-text)]" />
+              <span>เลือกครูผู้สอน:</span>
+            </span>
+            <select
+              value={selectedTeacherName}
+              onChange={(e) => setSelectedTeacherName(e.target.value)}
+              className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold px-3 py-1.5 rounded-xl border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
+            >
+              {teacherNames.map((name) => {
+                const count = slots.filter((s) => s.teacherName === name).length;
+                return (
+                  <option key={name} value={name}>
+                    {name} ({count} คาบสอน/สัปดาห์)
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+
+        {/* Workload / Status Summary Badge */}
+        {viewMode === 'teacher' ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">
+              ภาระงานสอนจริง:
+            </span>
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+              teacherWeeklyPeriods >= 12 && teacherWeeklyPeriods <= 22
+                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                : teacherWeeklyPeriods < 12
+                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+            }`}>
+              {teacherWeeklyPeriods} คาบ/สัปดาห์ ({teacherWeeklyHours.toFixed(1)} ชม.) {teacherWeeklyPeriods >= 12 ? '✓ ผ่านเกณฑ์ ก.ค.ศ.' : '⚠ ต่ำกว่าเกณฑ์ขั้นต่ำ 12 คาบ'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <span>นักเรียนในห้อง: <strong className="text-[var(--color-text-title)]">{classroomStudents.length}</strong> คน</span>
+            <span>• วิชาที่เปิดสอน: <strong className="text-[var(--color-primary-text)]">{classroomCoursesList.length}</strong> วิชา</span>
+          </div>
+        )}
+      </div>
+
       {/* Conflict Warning Banner (if any) */}
       {conflicts.length > 0 && (
-        <div className="p-4 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 flex items-start gap-3 shadow-sm">
-          <AlertTriangle className="w-5 h-5 text-amber-800 dark:text-amber-300 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-amber-950 dark:text-amber-200">
-              {lang === 'th' ? 'ตรวจพบคาบเรียนซ้ำซ้อนในระบบ!' : 'Schedule Conflict Detected!'}
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex items-start gap-3 shadow-xs">
+          <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <h4 className="text-xs font-bold text-amber-950 dark:text-amber-100">
+              ระบบตรวจพบข้อขัดแย้งตารางเรียน (Schedule Conflicts Detected)
             </h4>
-            <p className="text-[11px] text-amber-900 dark:text-amber-100">
-              {lang === 'th'
-                ? `พบข้อขัดแย้งจำนวน ${conflicts.length / 2} รายการ (ครูผู้สอนหรือห้องเรียนถูกจัดชนในเวลาเดียวกัน) กรุณาตรวจสอบคาบที่มีเครื่องหมายเตือน`
-                : `${conflicts.length / 2} slot conflict(s) detected. Please check flagged periods.`}
+            <p className="text-[11px] text-amber-900 dark:text-amber-200">
+              พบคาบเรียนที่มีครูผู้สอนหรือห้องเรียนถูกจัดซ้ำซ้อนในเวลาเดียวกัน {conflicts.length / 2} รายการ (คาบที่มีปัญหาจะมีกรอบไฮไลท์สีส้มเตือน)
             </p>
           </div>
         </div>
       )}
 
-      {/* Timetable Grid View */}
-      <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
-        <div className="shrink-0 p-3.5 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-card)]">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
-              {selectedClassRoom} — {lang === 'th' ? 'ภาคเรียนที่ 1 ปีการศึกษา 2569' : 'Semester 1, Academic Year 2026'}
+      {/* MAIN VIEW CONTENT: Grid Table OR Hours Criteria */}
+      {viewMode === 'hours_criteria' ? (
+        /* TAB: Academic Hours Criteria & 80% Attendance Table */
+        <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+            <div>
+              <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>เกณฑ์การคำนวณชั่วโมงเรียน และสิทธิ์เข้าสอบปลายภาค (เกณฑ์ 80% ปพ.5)</span>
+              </h2>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                ห้องเรียน: <strong>{selectedClassRoom}</strong> • ภาคเรียนที่ 1 ปีการศึกษา 2569 (คำนวณจากภาคเรียน 20 สัปดาห์ตามหลักสูตร สพฐ.)
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 font-semibold">
+              นักเรียนขาดเรียนได้ไม่เกิน 20% ของเวลาเรียนทั้งหมด
             </span>
           </div>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'รวมทั้งหมด' : 'Total'}: <strong className="text-[var(--color-primary-text)]">{activeSlots.length}</strong> {lang === 'th' ? 'คาบ/สัปดาห์' : 'periods/week'}
-          </span>
-        </div>
 
-        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
-          <table className="w-full text-left border-collapse min-w-[850px]">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
-                <th className="p-3 w-28 text-center font-bold text-[var(--color-text-title)]">{lang === 'th' ? 'วัน / คาบ' : 'Day / Period'}</th>
-                {PERIODS.map((p, idx) => (
-                  <th key={idx} className={`p-2.5 text-center font-medium ${p.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
-                    <div className={`font-bold ${p.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
-                      {p.isBreak ? (lang === 'th' ? 'พัก' : 'Lunch') : `${lang === 'th' ? 'คาบ' : 'P'}${p.num}`}
-                    </div>
-                    <div className={`text-[10px] font-mono mt-0.5 ${p.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>{p.time}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border)] text-xs">
-              {DAYS.map((day) => (
-                <tr key={day.key} className="hover:bg-[var(--color-card-subtle)] transition">
-                  {/* Day Header */}
-                  <td className="p-3 text-center border-r border-[var(--color-border)]">
-                    <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${day.color}`}>
-                      {lang === 'th' ? day.th : day.en}
-                    </span>
-                  </td>
-
-                  {/* Periods 1 to 7 with lunch */}
-                  {PERIODS.map((period, pIdx) => {
-                    if (period.isBreak) {
-                      return (
-                        <td key={pIdx} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
-                          <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 writing-vertical rotate-180">
-                            {lang === 'th' ? 'พักกลางวัน' : 'Lunch Break'}
-                          </span>
-                        </td>
-                      );
-                    }
-
-                    // Find matching slot
-                    const slot = activeSlots.find(
-                      (s) => s.dayOfWeek === day.key && s.periodNumber === period.num
-                    );
-
-                    const hasConflict = slot && conflicts.some((c) => c.slotId === slot.id);
-
-                    if (!slot) {
-                      return (
-                        <td key={pIdx} className="p-2 text-center border-r border-[var(--color-border)]">
-                          <div className="h-20 rounded-xl border border-dashed border-[var(--color-border)] flex items-center justify-center text-[10px] text-[var(--color-text-muted)] transition">
-                            {lang === 'th' ? 'ว่าง' : 'Free'}
-                          </div>
-                        </td>
-                      );
-                    }
-
-                    const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)] font-bold text-[11px]">
+                  <th className="p-3">รหัสวิชา</th>
+                  <th className="p-3">ชื่อวิชา (ไทย / EN)</th>
+                  <th className="p-3">ครูผู้สอน</th>
+                  <th className="p-3 text-center">หน่วยกิต</th>
+                  <th className="p-3 text-center">คาบจัดสอนจริง</th>
+                  <th className="p-3 text-center">ชั่วโมงรวม/เทอม (20 สัปดาห์)</th>
+                  <th className="p-3 text-center">เกณฑ์เวลาเรียน 80%</th>
+                  <th className="p-3 text-center">ขาดได้สูงสุด (20%)</th>
+                  <th className="p-3 text-center">สถานะความครบถ้วน</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {classroomCoursesList.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
+                      ยังไม่มีการจัดตารางสอนสำหรับห้องนี้ กดปุ่ม &quot;+ เพิ่มคาบเรียน&quot; เพื่อเริ่มต้นจัดตาราง
+                    </td>
+                  </tr>
+                ) : (
+                  classroomCoursesList.map((item) => {
+                    const credits = item.course?.credits || 1.5;
+                    const requiredWeeklyPeriods = Math.round(credits * 2);
+                    const totalHours = item.scheduledPeriods * 20; // 20 weeks
+                    const minAttendanceHours = Math.round(totalHours * 0.8);
+                    const maxAllowedAbsentHours = totalHours - minAttendanceHours;
+                    const isComplete = item.scheduledPeriods === requiredWeeklyPeriods;
+                    const isUnder = item.scheduledPeriods < requiredWeeklyPeriods;
 
                     return (
-                      <td key={pIdx} className="p-1.5 border-r border-[var(--color-border)] align-top">
-                        <div className={`p-2 rounded-xl border transition group relative flex flex-col justify-between h-22 ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}>
-                          <div>
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
-                                {slot.courseCode}
-                              </span>
-                              {hasConflict && (
-                                <span title="มีข้อขัดแย้งคาบเรียน" className="text-amber-700 dark:text-amber-300">
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                </span>
-                              )}
-                            </div>
-                            <h4 className="text-[11px] font-bold mt-1 line-clamp-1 leading-tight">
-                              {lang === 'th' ? slot.courseTitleTh : slot.courseTitleEn}
-                            </h4>
-                          </div>
-
-                          <div className="pt-1 border-t border-current/20 space-y-0.5 text-[10px] opacity-95">
-                            <div className="flex items-center gap-1 truncate">
-                              <User className="w-2.5 h-2.5 shrink-0" />
-                              <span className="truncate">{slot.teacherName}</span>
-                            </div>
-                            <div className="flex items-center gap-1 truncate">
-                              <MapPin className="w-2.5 h-2.5 shrink-0" />
-                              <span className="truncate">{slot.room}</span>
-                            </div>
-                          </div>
-
-                          {/* Delete on hover for admin */}
-                          {(currentRole === 'admin' || currentRole === 'super_admin') && (
-                            <button
-                              type="button"
-                              onClick={() => onDeleteSlot(slot.id)}
-                              className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
-                              title="ลบคาบนี้"
-                            >
-                              <Trash2 className="w-2.5 h-2.5" />
-                            </button>
+                      <tr key={item.code} className="hover:bg-[var(--color-card-subtle)] transition">
+                        <td className="p-3 font-mono font-bold text-[var(--color-primary-text)]">
+                          {item.code}
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-[var(--color-text-title)]">{item.titleTh}</div>
+                          <div className="text-[10px] text-[var(--color-text-muted)]">{item.titleEn}</div>
+                        </td>
+                        <td className="p-3 text-[var(--color-text-body)]">
+                          {item.teacher}
+                        </td>
+                        <td className="p-3 text-center font-bold text-[var(--color-text-title)]">
+                          {credits}
+                        </td>
+                        <td className="p-3 text-center font-bold">
+                          <span className={`px-2 py-0.5 rounded ${
+                            isComplete
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200'
+                              : isUnder
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200'
+                                : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200'
+                          }`}>
+                            {item.scheduledPeriods} คาบ/สัปดาห์
+                          </span>
+                        </td>
+                        <td className="p-3 text-center font-semibold text-[var(--color-text-title)]">
+                          {totalHours} ชั่วโมง
+                        </td>
+                        <td className="p-3 text-center font-bold text-emerald-700 dark:text-emerald-300">
+                          {minAttendanceHours} ชั่วโมง (80%)
+                        </td>
+                        <td className="p-3 text-center font-bold text-rose-700 dark:text-rose-300">
+                          {maxAllowedAbsentHours} ชั่วโมง
+                        </td>
+                        <td className="p-3 text-center">
+                          {isComplete ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>ครบตามเกณฑ์</span>
+                            </span>
+                          ) : isUnder ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              <span>ขาดอีก {requiredWeeklyPeriods - item.scheduledPeriods} คาบ</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300">
+                              <Info className="w-3.5 h-3.5" />
+                              <span>จัดเสริม +{item.scheduledPeriods - requiredWeeklyPeriods} คาบ</span>
+                            </span>
                           )}
-                        </div>
-                      </td>
+                        </td>
+                      </tr>
                     );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* TAB: Timetable 5-Day Weekly Grid View */
+        <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
+          <div className="shrink-0 p-3.5 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-card)]">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
+              <span className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
+                {viewMode === 'teacher' ? `ตารางสอน: ${selectedTeacherName}` : `${selectedClassRoom}`} — ภาคเรียนที่ 1 ปีการศึกษา 2569
+              </span>
+            </div>
+            <span className="text-xs text-[var(--color-text-muted)]">
+              รวมตาราง: <strong className="text-[var(--color-primary-text)]">{activeSlots.length}</strong> คาบ/สัปดาห์
+            </span>
+          </div>
 
-      {/* Add Slot Modal */}
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
+            <table className="w-full text-left border-collapse min-w-[880px]">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
+                  <th className="p-3 w-28 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
+                  {PERIODS.map((p, idx) => (
+                    <th key={idx} className={`p-2.5 text-center font-medium ${p.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
+                      <div className={`font-bold ${p.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
+                        {p.isBreak ? 'พัก' : `คาบ ${p.num}`}
+                      </div>
+                      <div className={`text-[10px] font-mono mt-0.5 ${p.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>{p.time}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)] text-xs">
+                {DAYS.map((day) => (
+                  <tr key={day.key} className="hover:bg-[var(--color-card-subtle)] transition">
+                    {/* Day Column */}
+                    <td className="p-3 text-center border-r border-[var(--color-border)]">
+                      <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${day.color}`}>
+                        {day.th}
+                      </span>
+                    </td>
+
+                    {/* Periods */}
+                    {PERIODS.map((period, pIdx) => {
+                      if (period.isBreak) {
+                        return (
+                          <td key={pIdx} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
+                            <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 writing-vertical rotate-180">
+                              พักกลางวัน
+                            </span>
+                          </td>
+                        );
+                      }
+
+                      // Find matching slot
+                      const slot = activeSlots.find(
+                        (s) => s.dayOfWeek === day.key && s.periodNumber === period.num
+                      );
+
+                      const hasConflict = slot && conflicts.some((c) => c.slotId === slot.id);
+
+                      if (!slot) {
+                        return (
+                          <td key={pIdx} className="p-1.5 text-center border-r border-[var(--color-border)]">
+                            <div className="h-22 rounded-xl border border-dashed border-[var(--color-border)] flex items-center justify-center text-[10px] text-[var(--color-text-muted)] transition">
+                              ว่าง
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
+
+                      return (
+                        <td key={pIdx} className="p-1.5 border-r border-[var(--color-border)] align-top">
+                          <div 
+                            onClick={() => setSelectedSlotForDetail(slot)}
+                            className={`p-2 rounded-xl border transition group relative flex flex-col justify-between h-22 cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
+                                  {slot.courseCode}
+                                </span>
+                                {hasConflict && (
+                                  <span title="ตรวจพบคาบชนกัน!" className="text-amber-700 dark:text-amber-300">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-[11px] font-bold mt-1 line-clamp-1 leading-tight">
+                                {slot.courseTitleTh}
+                              </h4>
+                            </div>
+
+                            <div className="pt-1 border-t border-current/20 space-y-0.5 text-[10px] opacity-95">
+                              <div className="flex items-center gap-1 truncate">
+                                <User className="w-2.5 h-2.5 shrink-0" />
+                                <span className="truncate">{viewMode === 'teacher' ? slot.classRoom : slot.teacherName}</span>
+                              </div>
+                              <div className="flex items-center gap-1 truncate">
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                <span className="truncate">{slot.room}</span>
+                              </div>
+                            </div>
+
+                            {/* Delete Button on hover */}
+                            {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) หรือไม่?`)) {
+                                    onDeleteSlot(slot.id);
+                                  }
+                                }}
+                                className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
+                                title="ลบคาบนี้"
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Popover Modal for Clicked Slot */}
+      {selectedSlotForDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
+                  {selectedSlotForDetail.courseCode}
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">คาบที่ {selectedSlotForDetail.periodNumber} ({selectedSlotForDetail.startTime} - {selectedSlotForDetail.endTime})</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSlotForDetail(null)}
+                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                {selectedSlotForDetail.courseTitleTh}
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {selectedSlotForDetail.courseTitleEn}
+              </p>
+
+              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">ห้องเรียน (Classroom):</span>
+                  <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.classRoom}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">ครูผู้สอน (Instructor):</span>
+                  <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.teacherName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">สถานที่/ห้องแล็บ (Room):</span>
+                  <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.room}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">หน่วยกิต (Credits):</span>
+                  <span className="font-bold text-[var(--color-primary-text)]">{selectedSlotForDetail.credits || 1.5} หน่วยกิต</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--color-text-muted)]">เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ):</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                    {Math.round(((selectedSlotForDetail.credits || 1.5) * 40) * 0.8)} / {((selectedSlotForDetail.credits || 1.5) * 40)} ชั่วโมง
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteSlot(selectedSlotForDetail.id);
+                    setSelectedSlotForDetail(null);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold hover:bg-rose-200 cursor-pointer"
+                >
+                  ลบคาบนี้ออกจากตาราง
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedSlotForDetail(null)}
+                className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-semibold cursor-pointer ml-auto"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Slot Modal with Course Catalog Selector */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                {lang === 'th' ? 'เพิ่มคาบเรียนลงในตาราง' : 'Add Timetable Slot'}
+                <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />
+                <span>เพิ่มคาบเรียนลงตาราง (Add Class Slot)</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] text-sm cursor-pointer"
+                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleCreateSlot} className="space-y-4 text-xs">
+              {/* Conflict Preview Warning inside Modal */}
+              {prospectiveConflict && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">คำเตือน คาบนี้มีข้อขัดแย้ง:</span>
+                    <p className="text-[11px] mt-0.5">
+                      {prospectiveConflict.teacherName === newTeacher.trim()
+                        ? `อาจารย์ ${newTeacher} มีสอนห้อง ${prospectiveConflict.classRoom} ในคาบนี้อยู่แล้ว`
+                        : `ห้องเรียน ${newRoom} ถูกใช้โดย ${prospectiveConflict.classRoom}`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Course Selector from Course Catalog */}
+              <div>
+                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                  เลือกจากรายวิชาที่เปิดสอนในหลักสูตร (Auto-fill Course Catalog)
+                </label>
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => handleSelectCourse(e.target.value)}
+                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)] font-medium"
+                >
+                  <option value="custom">-- กรอกข้อมูลเองแบบอิสระ (Custom Course) --</option>
+                  {courses.map((crs) => (
+                    <option key={crs.id} value={crs.id}>
+                      {crs.code} - {crs.titleTh} ({crs.credits} หน่วยกิต • {crs.teacherName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Day & Period Selection */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'วัน' : 'Day'}</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">วันในสัปดาห์</label>
                   <select
                     value={newDay}
                     onChange={(e) => setNewDay(e.target.value as DayOfWeek)}
@@ -386,47 +836,49 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'คาบที่' : 'Period'}</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">คาบเรียนที่</label>
                   <select
                     value={newPeriod}
                     onChange={(e) => setNewPeriod(Number(e.target.value))}
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   >
                     {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                      <option key={num} value={num}>คาบที่ {num}</option>
+                      <option key={num} value={num}>คาบที่ {num} ({PERIODS.find((p) => p.num === num)?.time})</option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {/* Code & Title */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'รหัสวิชา' : 'Course Code'}</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">รหัสวิชา</label>
                   <input
                     type="text"
                     required
                     value={newCourseCode}
                     onChange={(e) => setNewCourseCode(e.target.value)}
-                    placeholder="เช่น CS301"
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                    placeholder="เช่น ว30201"
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-primary-text)] font-mono font-bold"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'ชื่อวิชา (ภาษาไทย)' : 'Course Title (TH)'}</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ชื่อวิชา (ภาษาไทย)</label>
                   <input
                     type="text"
                     required
                     value={newTitleTh}
                     onChange={(e) => setNewTitleTh(e.target.value)}
-                    placeholder="เช่น วิทยาการคำนวณและ AI"
+                    placeholder="เช่น เคมี: สารอินทรีย์"
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   />
                 </div>
               </div>
 
+              {/* Teacher and Room */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'ครูผู้สอน' : 'Teacher'}</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ครูผู้สอน</label>
                   <input
                     type="text"
                     required
@@ -437,154 +889,66 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'ห้องเรียน/แล็บ' : 'Room'}</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียน / แล็บ</label>
                   <input
                     type="text"
                     required
                     value={newRoom}
                     onChange={(e) => setNewRoom(e.target.value)}
-                    placeholder="เช่น Lab คอมพิวเตอร์ 3"
+                    placeholder="เช่น ห้อง 401 หรือ Lab 2"
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'โทนสีประจำวิชา' : 'Color Tag'}</label>
-                <div className="flex gap-2">
-                  {(['sky', 'emerald', 'amber', 'rose', 'purple', 'indigo', 'cyan'] as const).map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setNewColor(color)}
-                      aria-label={color}
-                      className={`w-7 h-7 rounded-full border-2 transition cursor-pointer ${
-                        newColor === color ? 'border-[var(--color-text-title)] scale-110 shadow-md' : 'border-transparent opacity-80 hover:opacity-100'
-                      } ${
-                        color === 'sky' ? 'bg-sky-600' :
-                        color === 'emerald' ? 'bg-emerald-600' :
-                        color === 'amber' ? 'bg-amber-500' :
-                        color === 'rose' ? 'bg-rose-600' :
-                        color === 'purple' ? 'bg-purple-600' :
-                        color === 'indigo' ? 'bg-indigo-600' : 'bg-cyan-600'
-                      }`}
-                    />
-                  ))}
+              {/* Classroom destination & Color tag */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียนผู้เรียน</label>
+                  <select
+                    value={selectedClassRoom}
+                    onChange={(e) => setSelectedClassRoom(e.target.value)}
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)] font-bold"
+                  >
+                    {uniqueClassRooms.map((room) => (
+                      <option key={room} value={room}>{room}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">โทนสีหมวดวิชา</label>
+                  <select
+                    value={newColor}
+                    onChange={(e) => setNewColor(e.target.value as any)}
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                  >
+                    <option value="sky">ฟ้า (วิทยาศาสตร์ / พื้นฐาน)</option>
+                    <option value="emerald">เขียว (STEM / เทคโนโลยี)</option>
+                    <option value="amber">เหลืองส้ม (ภาษาไทย / ต่างประเทศ)</option>
+                    <option value="purple">ม่วง (คณิตศาสตร์ / เพิ่มเติม)</option>
+                    <option value="rose">ชมพูแดง (ศิลปะ / สุขศึกษา)</option>
+                    <option value="cyan">ฟ้าสว่าง (กิจกรรมพัฒนาผู้เรียน)</option>
+                  </select>
                 </div>
               </div>
 
+              {/* Action Buttons */}
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-medium cursor-pointer"
                 >
-                  {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+                  ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold shadow-sm cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold cursor-pointer shadow-sm"
                 >
-                  {lang === 'th' ? 'บันทึกลงตาราง' : 'Save Slot'}
+                  บันทึกคาบเรียนลงตาราง
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Printable Sheet Modal */}
-      {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl p-4 sm:p-8 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b pb-4">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">{schoolName}</h2>
-                <p className="text-xs text-slate-600">
-                  ตารางเรียนและตารางสอน ระดับชั้น {selectedClassRoom} | ภาคเรียนที่ 1 ปีการศึกษา 2569
-                </p>
-              </div>
-              <div className="flex gap-2 print:hidden">
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 shadow"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>พิมพ์ / พิมพ์เป็น PDF</span>
-                </button>
-                <button
-                  onClick={() => setShowPrintModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-300"
-                >
-                  ปิดหน้าต่าง
-                </button>
-              </div>
-            </div>
-
-            {/* Print Table Grid */}
-            <div className="border border-slate-300 rounded-lg overflow-hidden text-xs">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 text-center w-24">วัน / คาบ</th>
-                    {PERIODS.map((p, idx) => (
-                      <th key={idx} className="p-2 border-r border-slate-300 text-center">
-                        <div className="font-bold">{p.isBreak ? 'พัก' : `คาบ ${p.num}`}</div>
-                        <div className="text-[10px] text-slate-600 font-mono">{p.time}</div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {DAYS.map((day) => (
-                    <tr key={day.key} className="border-b border-slate-300">
-                      <td className="p-2 text-center font-bold bg-slate-50 border-r border-slate-300">
-                        {day.th}
-                      </td>
-                      {PERIODS.map((period, pIdx) => {
-                        if (period.isBreak) {
-                          return (
-                            <td key={pIdx} className="p-2 text-center bg-slate-100 border-r border-slate-300 text-[10px] font-semibold text-slate-600">
-                              พักกลางวัน
-                            </td>
-                          );
-                        }
-                        const slot = activeSlots.find(
-                          (s) => s.dayOfWeek === day.key && s.periodNumber === period.num
-                        );
-                        return (
-                          <td key={pIdx} className="p-2 border-r border-slate-300 text-center align-top h-16">
-                            {slot ? (
-                              <div>
-                                <div className="font-bold text-slate-800">{slot.courseCode}</div>
-                                <div className="text-[10px] text-slate-600 line-clamp-1">{slot.courseTitleTh}</div>
-                                <div className="text-[9px] text-slate-600 mt-1">{slot.teacherName} ({slot.room})</div>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-600">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Signatures */}
-            <div className="grid grid-cols-2 pt-8 text-center text-xs text-slate-700">
-              <div>
-                <p>ลงชื่อ..............................................................</p>
-                <p className="mt-1 font-semibold">(อ.ดร.ประเสริฐ ถาวร)</p>
-                <p className="text-slate-600">ครูที่ปรึกษาประจำชั้น</p>
-              </div>
-              <div>
-                <p>ลงชื่อ..............................................................</p>
-                <p className="mt-1 font-semibold">(ดร.ธนพร กิตติศักดิ์)</p>
-                <p className="text-slate-600">ผู้อำนวยการสถานศึกษา</p>
-              </div>
-            </div>
           </div>
         </div>
       )}

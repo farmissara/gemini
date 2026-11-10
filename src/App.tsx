@@ -278,6 +278,7 @@ export const App: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
+  const [importExportInitialTab, setImportExportInitialTab] = useState<'students' | 'courses' | 'enrollment' | 'grades' | 'teachers' | 'questions'>('courses');
   const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
 
   // Filter items by active school
@@ -629,6 +630,44 @@ export const App: React.FC = () => {
         return c;
       })
     );
+  };
+
+  const handleImportCourses = (newCourses: Course[]) => {
+    setCourses((prev) => [
+      ...newCourses.map((c) => ({ ...c, schoolId: activeSchool.id })),
+      ...prev.filter((existing) => !newCourses.some((n) => n.code.toLowerCase() === existing.code.toLowerCase())),
+    ]);
+  };
+
+  const handleImportEnrollment = (courseCode: string, studentIds: string[]) => {
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.code.toLowerCase() === courseCode.toLowerCase() || c.id === courseCode) {
+          const merged = Array.from(new Set([...(c.enrolledStudentIds || []), ...studentIds]));
+          return { ...c, enrolledStudentIds: merged };
+        }
+        return c;
+      })
+    );
+  };
+
+  const handleImportGrades = (newGrades: GradeRecord[]) => {
+    setGrades((prev) => {
+      const updated = [...prev];
+      newGrades.forEach((ng) => {
+        const idx = updated.findIndex((g) => (g.studentId === ng.studentId || g.id === ng.id) && g.courseId === ng.courseId);
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], ...ng, schoolId: activeSchool.id };
+        } else {
+          updated.push({
+            ...ng,
+            id: ng.id || `grd-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            schoolId: activeSchool.id,
+          });
+        }
+      });
+      return updated;
+    });
   };
 
   const handleRecordAttendance = (
@@ -1454,6 +1493,10 @@ export const App: React.FC = () => {
                     onUpdateCourse={handleUpdateCourse}
                     onDeleteCourse={handleDeleteCourse}
                     onEnrollStudent={handleEnrollStudent}
+                    onOpenImportExport={(tab = 'courses') => {
+                      setImportExportInitialTab(tab);
+                      setShowImportExportModal(true);
+                    }}
                   />
                 )}
 
@@ -1536,6 +1579,9 @@ export const App: React.FC = () => {
                 {currentTab === 'timetable' && (
                   <TimetableScheduleView
                     slots={schoolTimetableSlots}
+                    courses={schoolCourses}
+                    teachers={schoolTeachers}
+                    students={schoolStudents}
                     onAddSlot={handleAddTimetableSlot}
                     onDeleteSlot={handleDeleteTimetableSlot}
                     lang={lang}
@@ -1842,16 +1888,22 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Data Import / Export Modal (Bulk CSV/Excel for Students, Teachers, Questions) */}
+      {/* Data Import / Export Modal (Bulk CSV/Excel for Courses, Enrollment, Grades, Students, Teachers, Questions) */}
       {showImportExportModal && (
         <DataImportExportModal
           students={schoolStudents}
           teachers={schoolTeachers}
           questions={schoolQuestions}
+          courses={schoolCourses}
+          grades={schoolGrades}
           lang={lang}
+          initialTab={importExportInitialTab}
           onImportStudents={handleImportStudents}
           onImportTeachers={handleImportTeachers}
           onImportQuestions={handleImportQuestions}
+          onImportCourses={handleImportCourses}
+          onImportEnrollment={handleImportEnrollment}
+          onImportGrades={handleImportGrades}
           onClose={() => setShowImportExportModal(false)}
         />
       )}
