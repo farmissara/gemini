@@ -38,6 +38,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
+import { playGrandVictoryFanfare, playLootBeamSound } from '../lib/labSoundEffects';
 import { 
   COMPREHENSIVE_QUESTION_BANK, 
   EXAM_CATEGORIES, 
@@ -1524,6 +1525,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     if (!chest || chest.opened) return;
 
     battleAudio.playChestOpen();
+    playLootBeamSound();
     chest.opened = true;
     chest.beaconMesh.visible = false; // Turn off god-ray beam
     const box = chest.mesh.children[0] as THREE.Mesh;
@@ -1571,11 +1573,11 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       if (openedChestsCount + 1 >= totalChests) {
         setTimeout(() => {
           setGameWon(true);
-          battleAudio.playVictory();
+          playGrandVictoryFanfare();
           if (currentUser) {
             onEarnRewards(currentUser.id, 600, 150, true);
           }
-        }, 1200);
+        }, 1000);
       }
     } else {
       battleAudio.playWrong();

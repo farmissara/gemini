@@ -182,6 +182,125 @@ export function playSparkSound() {
   }
 }
 
+// 6. Heavy Boss Impact & Critical Strike Sound Effect
+export function playHeavyImpactSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // Sub bass thud
+  const subOsc = ctx.createOscillator();
+  const subGain = ctx.createGain();
+  subOsc.type = 'sine';
+  subOsc.frequency.setValueAtTime(140, now);
+  subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.35);
+  subGain.gain.setValueAtTime(0.45, now);
+  subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+  subOsc.connect(subGain);
+  subGain.connect(ctx.destination);
+  subOsc.start(now);
+  subOsc.stop(now + 0.4);
+
+  // Metallic crack
+  const crackOsc = ctx.createOscillator();
+  const crackGain = ctx.createGain();
+  crackOsc.type = 'sawtooth';
+  crackOsc.frequency.setValueAtTime(750, now);
+  crackOsc.frequency.exponentialRampToValueAtTime(90, now + 0.15);
+  crackGain.gain.setValueAtTime(0.3, now);
+  crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+  crackOsc.connect(crackGain);
+  crackGain.connect(ctx.destination);
+  crackOsc.start(now);
+  crackOsc.stop(now + 0.2);
+}
+
+// 7. Legendary Loot Beam / Mythic Drop Sound Effect
+export function playLootBeamSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // Rising crystalline arpeggio with shimmer
+  const frequencies = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+  frequencies.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = now + idx * 0.055;
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.05, start + 0.3);
+
+    gain.gain.setValueAtTime(0.18, start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(start);
+    osc.stop(start + 0.55);
+  });
+}
+
+// 8. Combo Streak Sound Effect (Multi-pitch crescendo)
+export function playComboStreakSound(comboCount = 1) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const baseFreq = 440 + Math.min(600, comboCount * 70);
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(baseFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.18);
+
+  gain.gain.setValueAtTime(0.22, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.25);
+}
+
+// 9. Grand Orchestral Victory Fanfare
+export function playGrandVictoryFanfare() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const chords = [
+    { freqs: [523.25, 659.25, 783.99], time: 0, dur: 0.22 },      // C Maj
+    { freqs: [587.33, 739.99, 880.00], time: 0.22, dur: 0.22 },   // D Maj
+    { freqs: [659.25, 830.61, 987.77], time: 0.44, dur: 0.28 },   // E Maj
+    { freqs: [783.99, 987.77, 1174.66, 1567.98], time: 0.72, dur: 0.85 } // Grand G chord
+  ];
+
+  chords.forEach(({ freqs, time, dur }) => {
+    freqs.forEach(f => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const st = now + time;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, st);
+
+      gain.gain.setValueAtTime(0.16, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(st);
+      osc.stop(st + dur);
+    });
+  });
+}
+
 // Aliases for compatibility
 export const playExplosionSound = playBoomExplosionSound;
 export const playSuccessSound = playSuccessChimeSound;

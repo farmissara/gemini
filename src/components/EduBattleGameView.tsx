@@ -31,6 +31,7 @@ import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '..
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 import { PagedList } from './PagedList';
+import { playHeavyImpactSound, playComboStreakSound, playGrandVictoryFanfare } from '../lib/labSoundEffects';
 
 interface EduBattleGameViewProps {
   questions: QuizQuestion[];
@@ -202,8 +203,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
     const isCorrect = index === currentQ.correctIndex;
     if (isCorrect) {
-      playArcadeSound(587.33, 'triangle', 0.12);
-      setTimeout(() => playArcadeSound(880, 'sine', 0.2), 90);
+      playHeavyImpactSound();
+      playComboStreakSound(streak + 1);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([30, 40, 30]);
       }
@@ -213,7 +214,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       setOpponentHp(newOpponentHp);
       setStreak(prev => prev + 1);
       setRoundScore(prev => prev + currentQ.points + timeBonus);
-      setBattleFeedback(`💥 ถูกต้อง! โจมตี +${damage} HP (โบนัสความเร็ว +${timeBonus})`);
+      setBattleFeedback(`💥 คริติคอลสตริก! โจมตี +${damage} HP (โบนัสความเร็ว +${timeBonus})`);
       checkBattleEnd(playerHp, newOpponentHp);
     } else {
       playArcadeSound(200, 'sawtooth', 0.25);
@@ -234,10 +235,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         setBattleState('finished');
         const isWin = newOpponentHp <= 0 || (newPlayerHp > newOpponentHp);
         if (isWin) {
-          playArcadeSound(523, 'triangle', 0.12);
-          setTimeout(() => playArcadeSound(659, 'triangle', 0.12), 120);
-          setTimeout(() => playArcadeSound(784, 'triangle', 0.15), 240);
-          setTimeout(() => playArcadeSound(1046, 'sine', 0.35), 360);
+          playGrandVictoryFanfare();
         }
         const expGained = isWin ? 250 : 80;
         const gemsGained = isWin ? 30 : 10;

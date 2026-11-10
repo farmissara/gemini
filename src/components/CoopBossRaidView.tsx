@@ -33,6 +33,7 @@ import {
   INITIAL_RAID_PARTIES 
 } from '../data/innovativeFeaturesData';
 import { PagedList } from './PagedList';
+import { playHeavyImpactSound, playComboStreakSound, playGrandVictoryFanfare } from '../lib/labSoundEffects';
 
 interface CoopBossRaidViewProps {
   lang?: AppLanguage;
@@ -68,6 +69,8 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
     const isCorrect = optionIdx === bossConfig.activeQuestion.correctIndex;
     if (isCorrect) {
+      playHeavyImpactSound();
+      playComboStreakSound(2);
       const damage = Math.round(bossConfig.activeQuestion.baseDamage * 1.5);
       setLastDamage(damage);
       setAttackAnimation(true);
@@ -94,6 +97,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
       if (nextHp === 0) {
         setVictoryCelebration(true);
+        playGrandVictoryFanfare();
       }
     } else {
       setLastDamage(0);
