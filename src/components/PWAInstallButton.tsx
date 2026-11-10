@@ -54,7 +54,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <span className="block leading-tight">{buttonText}</span>
             <span className="block text-[10px] text-blue-100 font-normal">{subtitleText}</span>
           </div>
-          <Download className="w-4 h-4 ml-1 opacity-80 group-hover:translate-y-0.5 transition-transform" />
+          <Download className="w-4 h-4 ml-1 text-white group-hover:translate-y-0.5 transition-transform" />
         </button>
       );
     }
@@ -97,7 +97,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <button
               type="button"
               onClick={() => setShowGuide(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition"
               aria-label="Close"
             >
               <X className="w-5 h-5" />

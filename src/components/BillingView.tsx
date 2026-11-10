@@ -53,17 +53,17 @@ export const BillingView: React.FC<BillingViewProps> = ({
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Tuition Fees &amp; Payment Invoicing
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
             Manage school fee schedules, Thai PromptPay QR reconciliation, and automated LINE OA guardian reminders.
           </p>
         </div>
 
         {reminderToast && (
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-600/50 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
+          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
             <MessageSquare className="w-4 h-4 text-[#06C755] fill-current" />
             <span>{reminderToast}</span>
           </div>
@@ -71,7 +71,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
       </div>
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-3">
+      <div className="shrink-0 p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {['all', 'paid', 'pending', 'overdue'].map((st) => (
             <button
@@ -80,7 +80,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
               className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                 filterStatus === st
                   ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-700/60'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700'
               }`}
             >
               {st}
@@ -88,7 +88,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
           ))}
         </div>
 
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-300">
           Showing <strong className="text-white">{filteredInvoices.length}</strong> invoices
         </span>
       </div>
@@ -106,23 +106,23 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 onClick={() => setActiveInvoice(inv)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-slate-800/90 border-indigo-500 shadow-md shadow-indigo-500/10'
-                    : 'bg-slate-800/40 border-slate-800 hover:border-slate-700'
+                    ? 'bg-slate-800 border-indigo-500 shadow-md shadow-indigo-500/10'
+                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                      <span className="font-mono font-bold text-xs text-indigo-300 bg-indigo-500/15 px-2 py-0.5 rounded border border-indigo-500/30">
                         {inv.invoiceNumber}
                       </span>
                       <span
                         className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
                           inv.status === 'paid'
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                             : inv.status === 'pending'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                         }`}
                       >
                         {inv.status}
@@ -132,7 +132,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                     <h3 className="font-bold text-white text-sm mt-2">
                       {student?.firstNameEn} {student?.lastNameEn}
                     </h3>
-                    <p className="text-xs text-slate-400 font-thai">
+                    <p className="text-xs text-slate-300 font-thai">
                       {student?.firstNameTh} ({student?.studentIdNumber}) • {inv.semester}
                     </p>
                   </div>
@@ -141,14 +141,14 @@ export const BillingView: React.FC<BillingViewProps> = ({
                     <span className="text-base font-extrabold text-white font-mono block">
                       ฿{inv.totalAmount.toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-slate-300 font-mono">
                       Due: {inv.dueDate}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-700/50 text-xs">
-                  <span className="text-slate-400">
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-700 text-xs">
+                  <span className="text-slate-300">
                     Guardian: {student?.guardianName} ({student?.guardianPhone})
                   </span>
 
@@ -159,7 +159,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                           e.stopPropagation();
                           handleTriggerReminder(inv);
                         }}
-                        className="px-2 py-1 rounded bg-[#06C755]/15 hover:bg-[#06C755]/25 text-[#06C755] border border-[#06C755]/30 text-[11px] font-medium flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1 rounded bg-[#06C755]/20 hover:bg-[#06C755]/30 text-[#34d399] border border-[#06C755]/40 text-[11px] font-semibold flex items-center gap-1 transition-colors"
                       >
                         <MessageSquare className="w-3 h-3 fill-current" />
                         LINE Reminder
@@ -178,16 +178,16 @@ export const BillingView: React.FC<BillingViewProps> = ({
             <>
               <div className="border-b border-slate-800 pb-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-indigo-400">
+                  <span className="text-xs font-mono font-bold text-indigo-300">
                     {activeInvoice.invoiceNumber}
                   </span>
                   <span
                     className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
                       activeInvoice.status === 'paid'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         : activeInvoice.status === 'pending'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                     }`}
                   >
                     {activeInvoice.status}
@@ -197,21 +197,21 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 <h3 className="text-base font-bold text-white mt-2">
                   Tuition Fee Statement
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300">
                   Student: {activeStudent.firstNameEn} {activeStudent.lastNameEn} ({activeStudent.studentIdNumber})
                 </p>
               </div>
 
               {/* Fee Items */}
               <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
                   Breakdown of School Services
                 </p>
-                <div className="space-y-1.5 rounded-lg bg-slate-950 p-3 border border-slate-800/80 text-xs">
+                <div className="space-y-1.5 rounded-lg bg-slate-950 p-3 border border-slate-800 text-xs">
                   <PagedList items={activeInvoice.items} pageSize={4} renderItem={(item) => (
-                    <div key={item.id} className="flex justify-between py-1 border-b border-slate-800/50 last:border-0">
-                      <span className="text-slate-300">{item.title}</span>
-                      <span className="font-mono font-medium text-slate-200">
+                    <div key={item.id} className="flex justify-between py-1 border-b border-slate-800 last:border-0">
+                      <span className="text-slate-200">{item.title}</span>
+                      <span className="font-mono font-medium text-white">
                         ฿{item.amount.toLocaleString()}
                       </span>
                     </div>
@@ -227,12 +227,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
               {/* Payment or Paid Status */}
               {activeInvoice.status === 'paid' ? (
-                <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-500/30 space-y-1.5 text-xs text-emerald-300">
-                  <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+                <div className="p-3.5 rounded-xl bg-emerald-950 border border-emerald-500/40 space-y-1.5 text-xs text-emerald-200">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-300">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Payment Received &amp; Verified</span>
                   </div>
-                  <p className="text-[11px] text-slate-300">
+                  <p className="text-[11px] text-slate-200">
                     Method: <span className="uppercase font-mono font-semibold">{activeInvoice.paymentMethod}</span>
                   </p>
                   <p className="text-[11px] text-slate-300">

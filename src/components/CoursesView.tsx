@@ -153,11 +153,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Curriculum &amp; Course Management
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
             Manage course catalog, Thai/English syllabi, credit allocations, and enrolled students.
           </p>
         </div>
@@ -172,15 +172,15 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       </div>
 
       {/* Search & Filter */}
-      <div className="shrink-0 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="shrink-0 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search by code, title, or instructor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+            className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-indigo-500"
           />
         </div>
 
@@ -192,7 +192,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                 selectedCategory === cat
                   ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-700/60'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-700'
               }`}
             >
               {cat}
@@ -213,20 +213,20 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 onClick={() => setActiveCourseId(course.id)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-slate-800/90 border-indigo-500 shadow-md shadow-indigo-500/10'
-                    : 'bg-slate-800/40 border-slate-800 hover:border-slate-700'
+                    ? 'bg-slate-800 border-indigo-500 shadow-md shadow-indigo-500/15'
+                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-sm text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-bold text-sm text-indigo-300 bg-indigo-500/15 px-2 py-0.5 rounded border border-indigo-500/30">
                         {course.code}
                       </span>
-                      <span className="text-xs uppercase px-2 py-0.5 rounded bg-slate-700/60 text-slate-300 font-semibold">
+                      <span className="text-xs uppercase px-2 py-0.5 rounded bg-slate-700 text-slate-200 font-semibold">
                         {course.category}
                       </span>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-300">
                         {course.credits} Credits
                       </span>
                     </div>
@@ -234,18 +234,18 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                     <h3 className="font-bold text-white text-base mt-2">
                       {course.titleEn}
                     </h3>
-                    <p className="text-xs text-slate-400 font-thai">
+                    <p className="text-xs text-slate-300 font-thai">
                       {course.titleTh}
                     </p>
                   </div>
 
-                  <span className="text-xs font-semibold px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 shrink-0 flex items-center gap-1">
+                  <span className="text-xs font-semibold px-2 py-1 rounded bg-slate-950 border border-slate-700 text-slate-200 shrink-0 flex items-center gap-1">
                     <Users className="w-3.5 h-3.5 text-indigo-400" />
                     {course.enrolledStudentIds.length} Enrolled
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-700/50 text-xs text-slate-400">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-700/70 text-xs text-slate-300">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                     <span className="truncate">{course.teacherName}</span>
@@ -261,7 +261,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         </div>
 
         {/* Right: Enrolled Students & Syllabus Detail */}
-        <div className="lg:col-span-5 h-full min-h-0 overflow-hidden pr-1 rounded-xl bg-slate-800/50 border border-slate-700/60 p-5 space-y-4">
+        <div className="lg:col-span-5 h-full min-h-0 overflow-hidden pr-1 rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4">
           {activeCourse ? (
             <>
               <div className="border-b border-slate-700/60 pb-3">
@@ -298,10 +298,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 <h2 className="text-lg font-bold text-white mt-1">
                   {activeCourse.titleEn}
                 </h2>
-                <p className="text-xs text-slate-300 font-thai mt-0.5">
+                <p className="text-xs text-slate-200 font-thai mt-0.5">
                   {activeCourse.titleTh}
                 </p>
-                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                <p className="text-xs text-slate-300 mt-2 leading-relaxed">
                   {activeCourse.description}
                 </p>
               </div>
@@ -309,7 +309,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               {/* Enrolled Students Roster */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-indigo-400" />
                     Enrolled Class Roster ({activeCourse.enrolledStudentIds.length})
                   </h3>
@@ -317,7 +317,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
                 <div className="space-y-2 pr-1">
                   {activeCourse.enrolledStudentIds.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-4 text-center">
+                    <p className="text-xs text-slate-300 py-4 text-center">
                       No students enrolled yet.
                     </p>
                   ) : (
@@ -327,24 +327,24 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       return (
                         <div
                           key={student.id}
-                          className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between"
+                          className="p-2.5 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-between"
                         >
                           <div className="flex items-center gap-2.5">
                             <img
                               src={student.avatarUrl}
                               alt={student.firstNameEn}
-                              className="w-7 h-7 rounded-full object-cover border border-slate-700"
+                              className="w-7 h-7 rounded-full object-cover border border-slate-600"
                             />
                             <div>
                               <p className="text-xs font-semibold text-white">
                                 {student.firstNameEn} {student.lastNameEn}
                               </p>
-                              <p className="text-[10px] text-slate-400 font-thai">
+                              <p className="text-[10px] text-slate-300 font-thai">
                                 {student.firstNameTh} • {student.room}
                               </p>
                             </div>
                           </div>
-                          <span className="text-[11px] font-mono text-indigo-400 font-bold">
+                          <span className="text-[11px] font-mono text-indigo-300 font-bold">
                             {student.studentIdNumber}
                           </span>
                         </div>

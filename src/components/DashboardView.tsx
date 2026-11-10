@@ -47,6 +47,7 @@ import {
 } from '../types';
 import { NavTab } from './Sidebar';
 import { getLocalDateString } from '../lib/date';
+import { filterAttendanceForUser } from '../lib/attendanceScope';
 import { PagedList } from './PagedList';
 
 interface DashboardViewProps {
@@ -105,10 +106,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const lineConnectedCount = students.filter(s => s.lineLinked).length;
   const linePercent = totalStudents > 0 ? Math.round((lineConnectedCount / totalStudents) * 100) : 0;
 
+  // Scope attendance so students/parents only see their own check-in records & photos
+  const scopedAttendance = useMemo(
+    () => filterAttendanceForUser(attendance, currentUser, students),
+    [attendance, currentUser, students]
+  );
+
   // Filter attendance for the selected date
   const filteredAttendanceByDate = useMemo(() => {
-    return attendance.filter(a => a.date === selectedDate);
-  }, [attendance, selectedDate]);
+    return scopedAttendance.filter(a => a.date === selectedDate);
+  }, [scopedAttendance, selectedDate]);
 
   // Filtered by role and type
   const displayRecords = useMemo(() => {
@@ -301,7 +308,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
               {lang === 'th' ? '⚡ ภารกิจด่วนประจำวัน (Quick Actions)' : '⚡ Daily Quick Actions'}
             </h2>
-            <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium hidden sm:inline">
               {lang === 'th' ? 'เข้าถึงงานสำคัญได้ทันทีในคลิกเดียว' : 'Direct access to your high-priority daily tasks'}
             </span>
           </div>
@@ -323,11 +330,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">เช็คชื่อ</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">เช็คชื่อ</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">เช็คชื่อคาบนี้</div>
-                  <div className="text-[10px] text-slate-500">สแกน GPS / ภาพถ่าย</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">สแกน GPS / ภาพถ่าย</div>
                 </div>
               </button>
 
@@ -338,11 +345,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <FileCheck2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">3 รอตรวจ</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-slate-950">3 รอตรวจ</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ตรวจการบ้าน</div>
-                  <div className="text-[10px] text-slate-500">ตรวจและให้คะแนน</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ตรวจและให้คะแนน</div>
                 </div>
               </button>
 
@@ -353,11 +360,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">ปพ.5</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">ปพ.5</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บันทึกคะแนน</div>
-                  <div className="text-[10px] text-slate-500">กลางภาค / ปลายภาค</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">กลางภาค / ปลายภาค</div>
                 </div>
               </button>
 
@@ -368,11 +375,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">ตารางสอน</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">ตารางสอน</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ตารางสอนวันนี้</div>
-                  <div className="text-[10px] text-slate-500">ดูห้องเรียน & คาบ</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ดูห้องเรียน & คาบ</div>
                 </div>
               </button>
 
@@ -383,11 +390,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <HeartPulse className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">SDQ</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-600 text-white">SDQ</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">คัดกรอง SDQ</div>
-                  <div className="text-[10px] text-slate-500">บันทึกพฤติกรรม</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">บันทึกพฤติกรรม</div>
                 </div>
               </button>
 
@@ -398,11 +405,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Swords className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">BOSS</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-600 text-white">BOSS</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">เปิดเรดบอสคาบนี้</div>
-                  <div className="text-[10px] text-slate-500">กิจกรรมตอบโจทย์</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">กิจกรรมตอบโจทย์</div>
                 </div>
               </button>
             </>
@@ -418,11 +425,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">ตาราง</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">ตาราง</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ตารางเรียนวันนี้</div>
-                  <div className="text-[10px] text-slate-500">วิชาถัดไป & คาบ</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">วิชาถัดไป & คาบ</div>
                 </div>
               </button>
 
@@ -433,11 +440,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <FileCheck2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">ด่วน</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-600 text-white">ด่วน</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">การบ้านที่ต้องส่ง</div>
-                  <div className="text-[10px] text-slate-500">ส่งการบ้านออนไลน์</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ส่งการบ้านออนไลน์</div>
                 </div>
               </button>
 
@@ -448,11 +455,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">GPS</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">GPS</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">สแกนเช็คชื่อเข้าเรียน</div>
-                  <div className="text-[10px] text-slate-500">ถ่ายรูปเช็คชื่อ</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ถ่ายรูปเช็คชื่อ</div>
                 </div>
               </button>
 
@@ -463,11 +470,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">+EXP</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-slate-950">+EXP</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ทำเควสต์สะสมแต้ม</div>
-                  <div className="text-[10px] text-slate-500">1v1, 3D Battle, แล็บ</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">1v1, 3D Battle, แล็บ</div>
                 </div>
               </button>
 
@@ -478,11 +485,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <QrCode className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">ID</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-600 text-white">ID</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บัตรนักเรียนดิจิทัล</div>
-                  <div className="text-[10px] text-slate-500">Virtual ID Card</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">Virtual ID Card</div>
                 </div>
               </button>
 
@@ -493,11 +500,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">เกรด</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">เกรด</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ดูผลการเรียน</div>
-                  <div className="text-[10px] text-slate-500">คะแนนสะสม & เกรด</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">คะแนนสะสม & เกรด</div>
                 </div>
               </button>
             </>
@@ -513,11 +520,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-white">มาเรียนแล้ว</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">มาเรียนแล้ว</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">สถานะเข้าเรียนวันนี้</div>
-                  <div className="text-[10px] text-slate-500">เข้าประตู 07:42 น.</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">เข้าประตู 07:42 น.</div>
                 </div>
               </button>
 
@@ -528,11 +535,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <FileCheck2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">แจ้งลา</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-slate-950">แจ้งลา</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">แจ้งการลาออนไลน์</div>
-                  <div className="text-[10px] text-slate-500">ลาป่วย / ลากิจ</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ลาป่วย / ลากิจ</div>
                 </div>
               </button>
 
@@ -543,11 +550,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">ค่าเทอม</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">ค่าเทอม</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บิลค่าเทอม & ชำระเงิน</div>
-                  <div className="text-[10px] text-slate-500">QR PromptPay</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">QR PromptPay</div>
                 </div>
               </button>
 
@@ -558,11 +565,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">การบ้าน</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">การบ้าน</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ติดตามการบ้านลูก</div>
-                  <div className="text-[10px] text-slate-500">เช็คงานค้าง</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">เช็คงานค้าง</div>
                 </div>
               </button>
 
@@ -573,11 +580,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <HeartPulse className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">สุขภาพ</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-600 text-white">สุขภาพ</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ห้องพยาบาล & สุขภาพ</div>
-                  <div className="text-[10px] text-slate-500">ประวัติเข้าห้องพยาบาล</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ประวัติเข้าห้องพยาบาล</div>
                 </div>
               </button>
 
@@ -588,11 +595,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <BellRing className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">ประกาศ</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-600 text-white">ประกาศ</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ข่าวสารจากโรงเรียน</div>
-                  <div className="text-[10px] text-slate-500">จดหมาย & นัดหมาย</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">จดหมาย & นัดหมาย</div>
                 </div>
               </button>
             </>
@@ -608,11 +615,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">GPS สด</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">GPS สด</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">สแกนประตู & GPS</div>
-                  <div className="text-[10px] text-slate-500">สถิติเข้าเรียนเรียลไทม์</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">สถิติเข้าเรียนเรียลไทม์</div>
                 </div>
               </button>
 
@@ -623,11 +630,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">{totalStudents} คน</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">{totalStudents} คน</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ทะเบียนนักเรียน</div>
-                  <div className="text-[10px] text-slate-500">จัดการข้อมูล & ปพ.</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">จัดการข้อมูล & ปพ.</div>
                 </div>
               </button>
 
@@ -638,11 +645,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">เตือนภัย</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-600 text-white">เตือนภัย</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Early Warning เสี่ยงหลุด</div>
-                  <div className="text-[10px] text-slate-500">มส. / เสี่ยงเกรดตก</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">มส. / เสี่ยงเกรดตก</div>
                 </div>
               </button>
 
@@ -653,11 +660,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">การเงิน</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-slate-950">การเงิน</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">จัดเก็บค่าเทอม</div>
-                  <div className="text-[10px] text-slate-500">ใบเสร็จ & PromptPay</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">ใบเสร็จ & PromptPay</div>
                 </div>
               </button>
 
@@ -668,11 +675,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <QrCode className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">พิมพ์ A4</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">พิมพ์ A4</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บัตรนักเรียน Virtual ID</div>
-                  <div className="text-[10px] text-slate-500">พิมพ์บัตรบาร์โค้ด</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">พิมพ์บัตรบาร์โค้ด</div>
                 </div>
               </button>
 
@@ -683,11 +690,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">ตารางสอน</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-600 text-white">ตารางสอน</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">จัดตาราง & เช็คชน</div>
-                  <div className="text-[10px] text-slate-500">วิเคราะห์ห้องเรียน</div>
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">วิเคราะห์ห้องเรียน</div>
                 </div>
               </button>
             </>
@@ -703,7 +710,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             dashboardTab === 'overview'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -716,12 +723,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             dashboardTab === 'live_attendance'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <Camera className="w-4 h-4" />
           <span>{lang === 'th' ? '2. บันทึกสแกน & ภาพถ่าย GPS สด' : 'Live Attendance & GPS'}</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 text-[10px] font-mono">
+          <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 text-[10px] font-mono">
             {displayRecords.length}
           </span>
         </button>
@@ -732,10 +739,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             dashboardTab === 'innovative_hub'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-amber-400" />
+          <Sparkles className={`w-4 h-4 ${dashboardTab === 'innovative_hub' ? 'text-amber-300' : 'text-amber-600 dark:text-amber-400'}`} />
           <span>{lang === 'th' ? '3. นวัตกรรมห้องเรียน & เควสต์' : 'Innovative Hub'}</span>
         </button>
 
@@ -745,7 +752,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             dashboardTab === 'announcements'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <BellRing className="w-4 h-4" />
@@ -894,9 +901,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                           <span>{rec.userName}</span>
-                          <span className="text-slate-400 font-mono text-[10px]">({rec.studentId})</span>
+                          <span className="text-slate-600 dark:text-slate-300 font-mono text-[10px]">({rec.studentId})</span>
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
                           {rec.userDepartmentOrRoom || rec.userRole} • เวลา {rec.time} น. • {rec.location?.geofenceZoneName || 'ประตูโรงเรียน'}
                         </div>
                       </div>
@@ -923,7 +930,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Main Section: Selfie Check-in/Out Records, Detailed Graphs & Historical Viewer */}
             <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
               {/* Section Header */}
-              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/70 dark:bg-slate-850">
+              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/70 dark:bg-slate-800">
                 <div>
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">
@@ -1240,17 +1247,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               placeholder={lang === 'th' ? 'ค้นหาชื่อ, รหัสนักเรียน, หรือห้อง...' : 'Search student name, ID, or room...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 w-full sm:w-64 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-500 dark:placeholder-slate-400 w-full sm:w-64 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           {displayRecords.length === 0 ? (
             <div className="text-center py-12 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-2">
-              <Camera className="w-10 h-10 text-slate-400 mx-auto" />
+              <Camera className="w-10 h-10 text-slate-500 dark:text-slate-400 mx-auto" />
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                 {lang === 'th' ? `ไม่พบบันทึกเช็กชื่อในวันที่เลือก (${selectedDate})` : `No records found for ${selectedDate}`}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600 dark:text-slate-300">
                 {lang === 'th'
                   ? 'ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน หรือกด "ถ่ายรูปเช็กชื่อมือถือ" เพื่อบันทึกข้อมูลใหม่'
                   : 'Try selecting another date or use Mobile Check-in to capture a new record.'}
@@ -1597,13 +1604,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
                       {lang === 'th' ? 'พร้อมใช้งาน' : 'Ready'}
                     </span>
                     <button
                       type="button"
                       onClick={() => onNavigate(item.id as any)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-600 text-blue-700 dark:text-blue-300 hover:text-white text-xs font-bold transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-600 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-200 hover:text-white dark:hover:text-white text-xs font-bold transition cursor-pointer"
                     >
                       <span>{item.actionLabel}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1685,7 +1692,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-5 text-center font-bold text-slate-400 text-xs">
+                        <div className="w-5 text-center font-bold text-slate-600 dark:text-slate-300 text-xs">
                           #{idx + 1}
                         </div>
                         <img
@@ -1707,7 +1714,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="font-bold text-blue-700 dark:text-blue-400 font-mono text-sm">
                           {st.gpa.toFixed(2)}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-medium">GPA</div>
+                        <div className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">GPA</div>
                       </div>
                     </div>
                   )} />
@@ -1723,7 +1730,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col">
             {/* Modal Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
                   <Camera className="w-4 h-4" />
@@ -1740,7 +1747,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPhotoRecord(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1757,7 +1764,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
 
                 {/* Live Watermark on Photo */}
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 p-2 rounded-xl bg-black/60 backdrop-blur-md text-white text-[10px] space-y-0.5 border border-white/20">
+                <div className="absolute bottom-2.5 left-2.5 right-2.5 p-2 rounded-xl bg-black/75 backdrop-blur-md text-white text-[10px] space-y-0.5 border border-white/20">
                   <div className="flex items-center justify-between">
                     <span className="font-bold flex items-center gap-1 text-cyan-300">
                       <ShieldCheck className="w-3.5 h-3.5" />
@@ -1765,23 +1772,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                     <span className="font-mono">{selectedPhotoRecord.time} {lang === 'th' ? 'น.' : ''}</span>
                   </div>
-                  <div className="flex items-center justify-between text-white/80">
+                  <div className="flex items-center justify-between text-white/90">
                     <span>{selectedPhotoRecord.userName} ({selectedPhotoRecord.userDepartmentOrRoom || selectedPhotoRecord.userRole})</span>
                     <span>{selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'ออกโรงเรียน' : 'Exit') : (lang === 'th' ? 'เข้าโรงเรียน' : 'Entry')}</span>
                   </div>
-                  <div className="text-[9px] text-white/60 font-mono truncate">
+                  <div className="text-[9px] text-slate-200 font-mono truncate">
                     GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} • {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม.` : `${selectedPhotoRecord.location?.distanceMeters || 18}m away`}
                   </div>
                 </div>
               </div>}
 
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-500">{photoModalStep + 1} / 2</span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">{photoModalStep + 1} / 2</span>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setPhotoModalStep(0)} disabled={photoModalStep === 0} className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-xs font-bold disabled:opacity-40">
+                  <button type="button" onClick={() => setPhotoModalStep(0)} disabled={photoModalStep === 0} className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold disabled:opacity-40 cursor-pointer">
                     {lang === 'th' ? 'ภาพถ่าย' : 'Photo'}
                   </button>
-                  <button type="button" onClick={() => setPhotoModalStep(1)} disabled={photoModalStep === 1} className="px-3 py-1.5 rounded-lg bg-blue-700 text-white text-xs font-bold disabled:opacity-40">
+                  <button type="button" onClick={() => setPhotoModalStep(1)} disabled={photoModalStep === 1} className="px-3 py-1.5 rounded-lg bg-blue-700 text-white text-xs font-bold disabled:opacity-40 cursor-pointer">
                     {lang === 'th' ? 'รายละเอียด' : 'Details'}
                   </button>
                 </div>
@@ -1790,7 +1797,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Information Grid */}
               {photoModalStep === 1 && <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
+                  <span className="text-[10px] text-slate-600 dark:text-slate-300 font-bold uppercase">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
                   <p className="font-bold text-slate-900 dark:text-white">{selectedPhotoRecord.userName}</p>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300">
                     {selectedPhotoRecord.userRole} • {selectedPhotoRecord.userDepartmentOrRoom}
@@ -1798,19 +1805,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">{lang === 'th' ? 'ประเภทและสถานะ' : 'Type & Status'}</span>
+                  <span className="text-[10px] text-slate-600 dark:text-slate-300 font-bold uppercase">{lang === 'th' ? 'ประเภทและสถานะ' : 'Type & Status'}</span>
                   <div className="flex items-center gap-2">
                     {selectedPhotoRecord.recordType === 'check_out' ? (
-                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[11px]">
+                      <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-200 font-bold text-[11px]">
                         {lang === 'th' ? 'เช็กชื่อออก' : 'Check-out'}
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 font-bold text-[11px]">
                         {lang === 'th' ? 'เช็กชื่อเข้า' : 'Check-in'}
                       </span>
                     )}
                     <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                      selectedPhotoRecord.status === 'present' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                      selectedPhotoRecord.status === 'present' ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-200' : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200'
                     }`}>
                       {selectedPhotoRecord.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'On-time') : (lang === 'th' ? 'มาสาย' : 'Late')}
                     </span>
@@ -1844,7 +1851,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
               <span className="text-[11px] text-slate-500 font-mono">
                 ID: {selectedPhotoRecord.id}
               </span>

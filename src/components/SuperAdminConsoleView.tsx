@@ -336,29 +336,29 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       )}
 
       {/* Super Admin Identity Banner */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>พอร์ทัลแม่ข่ายระดับสูงสุด • Super Admin Master Console</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             ศูนย์ควบคุมระบบและกำกับดูแลสถานศึกษา
           </h1>
-          <p className="text-xs text-slate-500 max-w-2xl">
+          <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl">
             ภาพรวมสถานศึกษา ตรวจสอบคำขอสมัคร และเลือกดูข้อมูลโรงเรียนเป็นรายแห่ง
           </p>
         </div>
 
         {/* Quick KPI stats */}
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center min-w-[90px]">
-            <div className="text-xs text-slate-500">โรงเรียนในระบบ</div>
-            <div className="text-xl font-extrabold text-slate-900 mt-0.5">{schools.length}</div>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center min-w-[90px]">
+            <div className="text-xs text-slate-600 dark:text-slate-300">โรงเรียนในระบบ</div>
+            <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">{schools.length}</div>
           </div>
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center min-w-[90px]">
-            <div className="text-xs text-amber-800">รออนุมัติ</div>
-            <div className="text-xl font-extrabold text-amber-700 mt-0.5">
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-center min-w-[90px]">
+            <div className="text-xs text-amber-800 dark:text-amber-300">รออนุมัติ</div>
+            <div className="text-xl font-extrabold text-amber-700 dark:text-amber-400 mt-0.5">
               {pendingRegistrations.length}
             </div>
           </div>
@@ -366,14 +366,14 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       </div>
 
       {/* Sub Tabs */}
-      <div className="flex items-center border-b border-slate-200 gap-2">
+      <div className="flex items-center border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveSubTab('approvals')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
             activeSubTab === 'approvals'
-              ? 'border-blue-700 text-blue-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-blue-700 dark:border-blue-400 text-blue-700 dark:text-blue-300'
+              : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <MailCheck className="w-4 h-4" />
@@ -382,10 +382,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveSubTab('schools')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
             activeSubTab === 'schools'
-              ? 'border-blue-700 text-blue-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-blue-700 dark:border-blue-400 text-blue-700 dark:text-blue-300'
+              : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Building2 className="w-4 h-4" />
@@ -394,11 +394,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       </div>
 
       {activeSubTab === 'approvals' && (
-        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">รายการสมัครโรงเรียนที่รอเปิดใช้งาน</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">รายการสมัครโรงเรียนที่รอเปิดใช้งาน</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
                 อนุมัติเฉพาะผู้ดูแลโรงเรียนใหม่ที่ตรวจสอบตัวตนแล้ว การอนุมัติรายการที่ยังไม่ยืนยันอีเมลจะยืนยันอีเมลและเปิดใช้บัญชี/โรงเรียนด้วย
               </p>
             </div>
@@ -407,7 +407,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 type="button"
                 onClick={() => setRegistrationRefreshKey((current) => current + 1)}
                 disabled={registrationsLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 text-xs font-semibold"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${registrationsLoading ? 'animate-spin' : ''}`} />
                 <span>รีเฟรช</span>
@@ -415,29 +415,29 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             )}
           </div>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs text-amber-900">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 px-3.5 py-3 text-xs text-amber-900 dark:text-amber-200">
             การอนุมัติแทนการยืนยันอีเมลเป็นการข้ามการพิสูจน์การครอบครองอีเมล โปรดตรวจสอบผู้สมัครผ่านช่องทางอื่นก่อนทุกครั้ง
           </div>
 
           {isDemoMode ? (
-            <p className="text-sm text-slate-500 py-6 text-center">
+            <p className="text-sm text-slate-600 dark:text-slate-300 py-6 text-center">
               โหมดสาธิตไม่เชื่อมต่อข้อมูลผู้สมัครจริง กรุณาเข้าสู่ระบบด้วยบัญชี Super Admin เพื่อจัดการคำขอจริง
             </p>
           ) : (
             <>
               {registrationError && (
-                <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
+                <div role="alert" className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 px-3.5 py-3 text-xs text-rose-800 dark:text-rose-200">
                   {registrationError}
                 </div>
               )}
               {registrationsLoading ? (
-                <p className="text-sm text-slate-500 py-6 text-center">กำลังโหลดรายการสมัคร...</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 py-6 text-center">กำลังโหลดรายการสมัคร...</p>
               ) : pendingRegistrations.length === 0 && !registrationError ? (
-                <p className="text-sm text-slate-500 py-6 text-center">ไม่มีรายการสมัครโรงเรียนที่รออนุมัติ</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 py-6 text-center">ไม่มีรายการสมัครโรงเรียนที่รออนุมัติ</p>
               ) : pendingRegistrations.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-semibold">
+                    <thead className="bg-slate-50 dark:bg-slate-800/80 border-y border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
                       <tr>
                         <th className="py-2.5 px-3">สถานศึกษา</th>
                         <th className="py-2.5 px-3">ผู้สมัคร / อีเมล</th>
@@ -446,25 +446,25 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                         <th className="py-2.5 px-3 text-right">การจัดการ</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {pendingRegistrations.slice(approvalPage * 4, (approvalPage + 1) * 4).map((registration) => (
-                        <tr key={registration.user_id} className="hover:bg-slate-50/50">
+                        <tr key={registration.user_id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60">
                           <td className="py-3 px-3">
-                            <div className="font-bold text-slate-900">{registration.school_name_th}</div>
-                            <div className="text-[11px] text-slate-500">{registration.province}</div>
+                            <div className="font-bold text-slate-900 dark:text-white">{registration.school_name_th}</div>
+                            <div className="text-[11px] text-slate-600 dark:text-slate-300">{registration.province}</div>
                           </td>
                           <td className="py-3 px-3">
-                            <div className="font-medium text-slate-900">{registration.full_name_th}</div>
-                            <div className="text-[11px] font-mono text-slate-500">{registration.email}</div>
+                            <div className="font-medium text-slate-900 dark:text-white">{registration.full_name_th}</div>
+                            <div className="text-[11px] font-mono text-slate-600 dark:text-slate-300">{registration.email}</div>
                           </td>
-                          <td className="py-3 px-3 text-slate-600">
+                          <td className="py-3 px-3 text-slate-700 dark:text-slate-300">
                             {new Date(registration.registration_created_at).toLocaleString('th-TH')}
                           </td>
                           <td className="py-3 px-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               registration.email_confirmed
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                                : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
                             }`}>
                               {registration.email_confirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}
                             </span>
@@ -488,10 +488,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     </tbody>
                   </table>
                   {pendingRegistrations.length > 4 && (
-                    <div className="flex items-center justify-between p-3 text-xs">
-                      <button type="button" onClick={() => setApprovalPage(page => Math.max(0, page - 1))} disabled={approvalPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                    <div className="flex items-center justify-between p-3 text-xs text-slate-700 dark:text-slate-300">
+                      <button type="button" onClick={() => setApprovalPage(page => Math.max(0, page - 1))} disabled={approvalPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
                       <span>หน้า {approvalPage + 1} / {Math.ceil(pendingRegistrations.length / 4)} · {pendingRegistrations.length} รายการ</span>
-                      <button type="button" onClick={() => setApprovalPage(page => Math.min(Math.ceil(pendingRegistrations.length / 4) - 1, page + 1))} disabled={approvalPage >= Math.ceil(pendingRegistrations.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                      <button type="button" onClick={() => setApprovalPage(page => Math.min(Math.ceil(pendingRegistrations.length / 4) - 1, page + 1))} disabled={approvalPage >= Math.ceil(pendingRegistrations.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
                     </div>
                   )}
                 </div>
@@ -505,22 +505,22 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {activeSubTab === 'permissions' && (
         <div className="space-y-6">
           <div className="flex gap-2">
-            <button type="button" onClick={() => setPermissionSection('policies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${permissionSection === 'policies' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>กำหนดสิทธิ์</button>
-            <button type="button" onClick={() => setPermissionSection('accounts')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${permissionSection === 'accounts' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>บัญชีผู้ใช้ ({allUsers.length})</button>
+            <button type="button" onClick={() => setPermissionSection('policies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${permissionSection === 'policies' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'}`}>กำหนดสิทธิ์</button>
+            <button type="button" onClick={() => setPermissionSection('accounts')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${permissionSection === 'accounts' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'}`}>บัญชีผู้ใช้ ({allUsers.length})</button>
           </div>
           {permissionSection === 'policies' && (
           <>
           {/* Role selector tabs */}
-          <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+          <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">เลือกบทบาทเพื่อกำหนดสิทธิ์ (Select Role to Configure)</h3>
-                <p className="text-xs text-slate-500">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">เลือกบทบาทเพื่อกำหนดสิทธิ์ (Select Role to Configure)</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                   สิทธิ์ที่เปิดใช้งานจะถูกบังคับใช้กับผู้ใช้งานทุกคนที่มีบทบาทนี้ในระบบ
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5 p-1 rounded-lg bg-slate-100 border border-slate-200">
+              <div className="flex items-center gap-1.5 p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-wrap">
                 {rolePermissions.map((rp) => (
                   <button
                     key={rp.role}
@@ -528,8 +528,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     onClick={() => setSelectedRole(rp.role)}
                     className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
                       selectedRole === rp.role
-                        ? 'bg-white text-blue-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     {rp.role === 'admin'
@@ -545,12 +545,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             </div>
 
             {/* Current Role Description */}
-            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
               <div>
-                <span className="font-bold text-slate-900 block">{currentRoleConfig.roleNameTh}</span>
-                <span className="text-slate-500">{currentRoleConfig.descriptionTh}</span>
+                <span className="font-bold text-slate-900 dark:text-white block">{currentRoleConfig.roleNameTh}</span>
+                <span className="text-slate-600 dark:text-slate-300">{currentRoleConfig.descriptionTh}</span>
               </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 font-bold">
                 Role: {currentRoleConfig.role}
               </span>
             </div>
@@ -566,27 +566,27 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     key={permKey}
                     className={`p-3.5 rounded-xl border transition flex items-center justify-between gap-3 ${
                       isEnabled
-                        ? 'bg-white border-blue-200 shadow-xs'
-                        : 'bg-slate-50/50 border-slate-200 opacity-70'
+                        ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-700/70 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 opacity-85'
                     }`}
                   >
                     <div>
-                      <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                      <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                         {isEnabled ? (
-                          <Check className="w-3.5 h-3.5 text-blue-600" />
+                          <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         ) : (
-                          <X className="w-3.5 h-3.5 text-slate-400" />
+                          <X className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                         )}
                         <span>{meta.title}</span>
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">{meta.desc}</div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">{meta.desc}</div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleTogglePermission(permKey)}
                       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        isEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                        isEnabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
                       }`}
                     >
                       <span
@@ -600,10 +600,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               })}
             </div>
             {Object.keys(currentRoleConfig.permissions).length > 4 && (
-              <div className="flex items-center justify-between pt-2 text-xs">
-                <button type="button" onClick={() => setPermissionPage(page => Math.max(0, page - 1))} disabled={permissionPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+              <div className="flex items-center justify-between pt-2 text-xs text-slate-700 dark:text-slate-300">
+                <button type="button" onClick={() => setPermissionPage(page => Math.max(0, page - 1))} disabled={permissionPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
                 <span>หน้า {permissionPage + 1} / {Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4)} · {Object.keys(currentRoleConfig.permissions).length} สิทธิ์</span>
-                <button type="button" onClick={() => setPermissionPage(page => Math.min(Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4) - 1, page + 1))} disabled={permissionPage >= Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                <button type="button" onClick={() => setPermissionPage(page => Math.min(Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4) - 1, page + 1))} disabled={permissionPage >= Math.ceil(Object.keys(currentRoleConfig.permissions).length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
               </div>
             )}
           </div>
@@ -611,15 +611,15 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           )}
 
           {/* User Accounts Overview */}
-          {permissionSection === 'accounts' && <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-700" />
+          {permissionSection === 'accounts' && <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-700 dark:text-blue-400" />
               <span>บัญชีผู้ใช้งานในระบบทั้งหมด (All Registered Accounts)</span>
             </h3>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-semibold">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 border-y border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
                   <tr>
                     <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
                     <th className="py-2.5 px-3">อีเมล / บัญชี</th>
@@ -628,32 +628,32 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     <th className="py-2.5 px-3 text-right">สถานะบัญชี</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {allUsers.slice(accountPage * 5, (accountPage + 1) * 5).map((u) => {
                     const sch = schools.find((s) => s.id === u.schoolId);
                     return (
-                      <tr key={u.id} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 px-3 flex items-center gap-2 font-medium text-slate-900">
+                      <tr key={u.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60">
+                        <td className="py-2.5 px-3 flex items-center gap-2 font-medium text-slate-900 dark:text-white">
                           <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
                           <span>{u.fullNameTh}</span>
                         </td>
-                        <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">{u.email}</td>
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-mono text-[11px]">{u.email}</td>
                         <td className="py-2.5 px-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             u.role === 'super_admin'
-                              ? 'bg-amber-100 text-amber-800'
+                              ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
                               : u.role === 'admin'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300'
                               : u.role === 'teacher'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-100 text-slate-700'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
                           }`}>
                             {u.role.toUpperCase()}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-slate-600">{sch?.nameTh || u.schoolId}</td>
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{sch?.nameTh || u.schoolId}</td>
                         <td className="py-2.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Active</span>
                           </span>
@@ -665,10 +665,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </table>
             </div>
             {allUsers.length > 5 && (
-              <div className="flex items-center justify-between text-xs">
-                <button type="button" onClick={() => setAccountPage(page => Math.max(0, page - 1))} disabled={accountPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+              <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                <button type="button" onClick={() => setAccountPage(page => Math.max(0, page - 1))} disabled={accountPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
                 <span>หน้า {accountPage + 1} / {Math.ceil(allUsers.length / 5)} · {allUsers.length} บัญชี</span>
-                <button type="button" onClick={() => setAccountPage(page => Math.min(Math.ceil(allUsers.length / 5) - 1, page + 1))} disabled={accountPage >= Math.ceil(allUsers.length / 5) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                <button type="button" onClick={() => setAccountPage(page => Math.min(Math.ceil(allUsers.length / 5) - 1, page + 1))} disabled={accountPage >= Math.ceil(allUsers.length / 5) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
               </div>
             )}
           </div>}
@@ -679,17 +679,17 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {activeSubTab === 'promotions' && (
         <div className="space-y-6">
           <div className="flex gap-2">
-            <button type="button" onClick={() => setPromotionSection('campaigns')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${promotionSection === 'campaigns' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>แคมเปญ ({promotions.length})</button>
-            <button type="button" onClick={() => setPromotionSection('assignments')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${promotionSection === 'assignments' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ผูกแพ็กเกจโรงเรียน</button>
+            <button type="button" onClick={() => setPromotionSection('campaigns')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${promotionSection === 'campaigns' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'}`}>แคมเปญ ({promotions.length})</button>
+            <button type="button" onClick={() => setPromotionSection('assignments')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${promotionSection === 'assignments' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'}`}>ผูกแพ็กเกจโรงเรียน</button>
           </div>
           {promotionSection === 'campaigns' && (
           <>
           {/* Header + Add Promo Button */}
-          <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+          <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">แคมเปญโปรโมชั่นที่เปิดใช้งาน (Active Promotion Campaigns)</h3>
-                <p className="text-xs text-slate-500">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">แคมเปญโปรโมชั่นที่เปิดใช้งาน (Active Promotion Campaigns)</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                   กำหนดโค้ดส่วนลด อัตราค่าบริการรายปี หรือสิทธิ์ทดลองใช้ฟรีสำหรับสถานศึกษา
                 </p>
               </div>
@@ -707,7 +707,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             {/* Promotions Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-semibold">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 border-y border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
                   <tr>
                     <th className="py-2.5 px-3">โค้ดโปรโมชั่น</th>
                     <th className="py-2.5 px-3">ชื่อแคมเปญ</th>
@@ -719,17 +719,17 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     <th className="py-2.5 px-3 text-right">การจัดการ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
                   {promotions.slice(promotionPage * 4, (promotionPage + 1) * 4).map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/50">
+                    <tr key={p.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60">
                       <td className="py-3 px-3">
-                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                        <span className="font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-1 rounded border border-blue-200 dark:border-blue-800">
                           {p.code}
                         </span>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="font-bold text-slate-900">{p.titleTh}</div>
-                        <div className="text-[11px] text-slate-500">{p.descriptionTh}</div>
+                        <div className="font-bold text-slate-900 dark:text-white">{p.titleTh}</div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300">{p.descriptionTh}</div>
                       </td>
                       <td className="py-3 px-3">
                         {p.discountType === 'percentage'
@@ -738,7 +738,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                           ? 'ลดเป็นจำนวนเงิน (฿)'
                           : 'ทดลองใช้ฟรี (เดือน)'}
                       </td>
-                      <td className="py-3 px-3 font-bold text-slate-900">
+                      <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
                         {p.discountType === 'percentage'
                           ? `${p.discountValue}%`
                           : p.discountType === 'fixed_amount'
@@ -748,12 +748,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       <td className="py-3 px-3 font-mono">
                         {p.currentRedemptions} / {p.maxRedemptions} สิทธิ์
                       </td>
-                      <td className="py-3 px-3 text-slate-600">{p.validUntil}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-300">{p.validUntil}</td>
                       <td className="py-3 px-3 text-right">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           p.status === 'active'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                         }`}>
                           {p.status === 'active' ? 'เปิดใช้งาน' : 'หมดอายุ'}
                         </span>
@@ -762,7 +762,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleTogglePromoStatus(p.id)}
-                          className="text-xs text-blue-700 hover:underline font-medium"
+                          className="text-xs text-blue-700 dark:text-blue-400 hover:underline font-medium"
                         >
                           {p.status === 'active' ? 'พักแคมเปญ' : 'เปิดใหม่'}
                         </button>
@@ -773,10 +773,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </table>
             </div>
             {promotions.length > 4 && (
-              <div className="flex items-center justify-between text-xs">
-                <button type="button" onClick={() => setPromotionPage(page => Math.max(0, page - 1))} disabled={promotionPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+              <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                <button type="button" onClick={() => setPromotionPage(page => Math.max(0, page - 1))} disabled={promotionPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
                 <span>หน้า {promotionPage + 1} / {Math.ceil(promotions.length / 4)} · {promotions.length} แคมเปญ</span>
-                <button type="button" onClick={() => setPromotionPage(page => Math.min(Math.ceil(promotions.length / 4) - 1, page + 1))} disabled={promotionPage >= Math.ceil(promotions.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                <button type="button" onClick={() => setPromotionPage(page => Math.min(Math.ceil(promotions.length / 4) - 1, page + 1))} disabled={promotionPage >= Math.ceil(promotions.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
               </div>
             )}
           </div>
@@ -784,19 +784,19 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           )}
 
           {/* Quick Apply Promo to School Form */}
-          {promotionSection === 'assignments' && <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-blue-700" />
+          {promotionSection === 'assignments' && <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-blue-700 dark:text-blue-400" />
               <span>ผูกโปรโมชั่นและแพ็กเกจให้สถานศึกษา (Assign Promotion to School)</span>
             </h3>
 
             <form onSubmit={handleApplyPromoToSchool} className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs items-end">
               <div>
-                <label className="block text-slate-700 font-medium mb-1">เลือกโรงเรียน</label>
+                <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">เลือกโรงเรียน</label>
                 <select
                   value={selectedSchoolForPromo}
                   onChange={(e) => setSelectedSchoolForPromo(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                 >
                   {schools.map((sch) => (
                     <option key={sch.id} value={sch.id}>
@@ -807,11 +807,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-medium mb-1">เลือกแคมเปญโปรโมชั่น</label>
+                <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">เลือกแคมเปญโปรโมชั่น</label>
                 <select
                   value={selectedPromoCodeToApply}
                   onChange={(e) => setSelectedPromoCodeToApply(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                 >
                   {promotions.map((p) => (
                     <option key={p.id} value={p.code}>
@@ -832,28 +832,28 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             </form>
 
             {/* School Subscriptions Status Overview */}
-            <div className="pt-3 border-t border-slate-100">
-              <h4 className="text-xs font-bold text-slate-700 mb-2">สถานะแพ็กเกจปัจจุบันของสถานศึกษา</h4>
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">สถานะแพ็กเกจปัจจุบันของสถานศึกษา</h4>
               <div className="space-y-2">
                 {schools.slice(subscriptionPage * 4, (subscriptionPage + 1) * 4).map((sch) => {
                   const plan = subscriptionPlans.find((p) => p.schoolId === sch.id);
                   return (
                     <div
                       key={sch.id}
-                      className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
+                      className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs"
                     >
                       <div>
-                        <span className="font-bold text-slate-900">{sch.nameTh}</span>
-                        <div className="text-[11px] text-slate-500">
-                          แพ็กเกจ: <strong className="text-slate-800">{plan?.planName || 'Enterprise'}</strong> • รองรับนักเรียนสูงสุด {plan?.maxStudents || 3000} คน
+                        <span className="font-bold text-slate-900 dark:text-white">{sch.nameTh}</span>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                          แพ็กเกจ: <strong className="text-slate-800 dark:text-slate-100">{plan?.planName || 'Enterprise'}</strong> • รองรับนักเรียนสูงสุด {plan?.maxStudents || 3000} คน
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="font-bold text-blue-700 font-mono text-sm">
+                        <div className="font-bold text-blue-700 dark:text-blue-400 font-mono text-sm">
                           ฿{plan?.finalPrice?.toLocaleString() || '11,250'} / ปี
                         </div>
-                        <div className="text-[10px] text-emerald-700 font-semibold">
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
                           โค้ดที่ใช้: {sch.appliedPromoCode || plan?.appliedPromoCode || 'BACK2SCHOOL26'}
                         </div>
                       </div>
@@ -862,10 +862,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 })}
               </div>
               {schools.length > 4 && (
-                <div className="flex items-center justify-between text-xs">
-                  <button type="button" onClick={() => setSubscriptionPage(page => Math.max(0, page - 1))} disabled={subscriptionPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+                <div className="flex items-center justify-between text-xs pt-2 text-slate-700 dark:text-slate-300">
+                  <button type="button" onClick={() => setSubscriptionPage(page => Math.max(0, page - 1))} disabled={subscriptionPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
                   <span>หน้า {subscriptionPage + 1} / {Math.ceil(schools.length / 4)} · {schools.length} โรงเรียน</span>
-                  <button type="button" onClick={() => setSubscriptionPage(page => Math.min(Math.ceil(schools.length / 4) - 1, page + 1))} disabled={subscriptionPage >= Math.ceil(schools.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                  <button type="button" onClick={() => setSubscriptionPage(page => Math.min(Math.ceil(schools.length / 4) - 1, page + 1))} disabled={subscriptionPage >= Math.ceil(schools.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
                 </div>
               )}
             </div>
@@ -875,16 +875,16 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
       {/* View 3: All Schools Directory & Tenant Governance */}
       {activeSubTab === 'schools' && (
-        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           {schoolStatusError && (
-            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs text-rose-800">
+            <div role="alert" className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 px-3.5 py-3 text-xs text-rose-800 dark:text-rose-200">
               {schoolStatusError}
             </div>
           )}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">ทะเบียนสถาบันการศึกษาทั้งหมด (Registered Institutions)</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">ทะเบียนสถาบันการศึกษาทั้งหมด (Registered Institutions)</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
                 กำกับดูแลสถานะการใช้งาน ตรวจสอบจำนวนนักเรียน และระงับ/เปิดใช้งานสถานศึกษา
               </p>
             </div>
@@ -892,7 +892,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-y border-slate-200 text-slate-500 font-semibold">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-y border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold">
                 <tr>
                   <th className="py-2.5 px-3">รหัสโรงเรียน</th>
                   <th className="py-2.5 px-3">ชื่อสถานศึกษา</th>
@@ -904,29 +904,29 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   <th className="py-2.5 px-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
                 {schools.slice(schoolPage * 4, (schoolPage + 1) * 4).map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/50">
-                    <td className="py-3 px-3 font-mono font-bold text-blue-700">{s.code}</td>
+                  <tr key={s.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60">
+                    <td className="py-3 px-3 font-mono font-bold text-blue-700 dark:text-blue-400">{s.code}</td>
                     <td className="py-3 px-3">
-                      <div className="font-bold text-slate-900">{s.nameTh}</div>
-                      <div className="text-[11px] text-slate-500">{s.nameEn}</div>
+                      <div className="font-bold text-slate-900 dark:text-white">{s.nameTh}</div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300">{s.nameEn}</div>
                     </td>
-                    <td className="py-3 px-3 capitalize text-slate-700">{s.type}</td>
-                    <td className="py-3 px-3 text-slate-600">{s.province}</td>
+                    <td className="py-3 px-3 capitalize text-slate-700 dark:text-slate-300">{s.type}</td>
+                    <td className="py-3 px-3 text-slate-600 dark:text-slate-300">{s.province}</td>
                     <td className="py-3 px-3">
-                      <span className="font-semibold text-slate-900">{s.studentsCount}</span> คน / {s.teachersCount} ครู
+                      <span className="font-semibold text-slate-900 dark:text-white">{s.studentsCount}</span> คน / {s.teachersCount} ครู
                     </td>
                     <td className="py-3 px-3">
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
                         {s.appliedPromoCode || 'BACK2SCHOOL26'}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         s.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-rose-100 text-rose-800'
+                          ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                          : 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300'
                       }`}>
                         {s.status === 'active'
                           ? 'เปิดใช้งาน'
@@ -939,19 +939,19 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onViewSchool(s)}
-                        className="text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline mr-3"
+                        className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline mr-3"
                       >
                         ดูข้อมูลโรงเรียน
                       </button>
                       {s.status === 'pending' ? (
-                        <span className="text-xs text-slate-400">รออนุมัติจากคิวสมัคร</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">รออนุมัติจากคิวสมัคร</span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => void handleToggleSchoolStatus(s.id)}
                           disabled={updatingSchoolId !== null}
                           className={`text-xs font-medium hover:underline ${
-                            s.status === 'active' ? 'text-rose-600' : 'text-emerald-600'
+                            s.status === 'active' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                           } disabled:opacity-50`}
                         >
                           {updatingSchoolId === s.id ? 'กำลังบันทึก...' : s.status === 'active' ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
@@ -964,10 +964,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             </table>
           </div>
           {schools.length > 4 && (
-            <div className="flex items-center justify-between text-xs">
-              <button type="button" onClick={() => setSchoolPage(page => Math.max(0, page - 1))} disabled={schoolPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+            <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+              <button type="button" onClick={() => setSchoolPage(page => Math.max(0, page - 1))} disabled={schoolPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
               <span>หน้า {schoolPage + 1} / {Math.ceil(schools.length / 4)} · {schools.length} โรงเรียน</span>
-              <button type="button" onClick={() => setSchoolPage(page => Math.min(Math.ceil(schools.length / 4) - 1, page + 1))} disabled={schoolPage >= Math.ceil(schools.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              <button type="button" onClick={() => setSchoolPage(page => Math.min(Math.ceil(schools.length / 4) - 1, page + 1))} disabled={schoolPage >= Math.ceil(schools.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
             </div>
           )}
         </div>
@@ -976,16 +976,16 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {/* Modal: Create New Promotion */}
       {showNewPromoModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Tag className="w-4 h-4 text-blue-700" />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Tag className="w-4 h-4 text-blue-700 dark:text-blue-400" />
                 <span>สร้างแคมเปญโปรโมชั่นใหม่ (Create Promotion)</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowNewPromoModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm"
+                className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-sm font-bold px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 ✕
               </button>
@@ -994,23 +994,23 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             <form onSubmit={handleCreatePromo} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">โค้ดโปรโมชั่น (Promo Code)</label>
+                  <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">โค้ดโปรโมชั่น (Promo Code)</label>
                   <input
                     type="text"
                     required
                     placeholder="เช่น NEWCAMPUS30"
                     value={newPromoForm.code}
                     onChange={(e) => setNewPromoForm({ ...newPromoForm, code: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-blue-700 font-mono font-bold focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-700 dark:text-blue-300 font-mono font-bold focus:outline-none focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">ประเภทส่วนลด</label>
+                  <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">ประเภทส่วนลด</label>
                   <select
                     value={newPromoForm.discountType}
                     onChange={(e) => setNewPromoForm({ ...newPromoForm, discountType: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                   >
                     <option value="percentage">เปอร์เซ็นต์ส่วนลด (%)</option>
                     <option value="fixed_amount">จำนวนเงินบาท (฿)</option>
@@ -1021,7 +1021,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">
+                  <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">
                     {newPromoForm.discountType === 'percentage'
                       ? 'เปอร์เซ็นต์ส่วนลด (%)'
                       : newPromoForm.discountType === 'fixed_amount'
@@ -1033,41 +1033,41 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     required
                     value={newPromoForm.discountValue}
                     onChange={(e) => setNewPromoForm({ ...newPromoForm, discountValue: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">โควตาสิทธิ์สูงสุด (สิทธิ์)</label>
+                  <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">โควตาสิทธิ์สูงสุด (สิทธิ์)</label>
                   <input
                     type="number"
                     required
                     value={newPromoForm.maxRedemptions}
                     onChange={(e) => setNewPromoForm({ ...newPromoForm, maxRedemptions: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-medium mb-1">ชื่อแคมเปญ (ภาษาไทย)</label>
+                <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">ชื่อแคมเปญ (ภาษาไทย)</label>
                 <input
                   type="text"
                   required
                   placeholder="เช่น ส่วนลดพิเศษสำหรับโรงเรียนเอกชนเปิดใหม่"
                   value={newPromoForm.titleTh}
                   onChange={(e) => setNewPromoForm({ ...newPromoForm, titleTh: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">ใช้ได้กับประเภทโรงเรียน</label>
+                  <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">ใช้ได้กับประเภทโรงเรียน</label>
                   <select
                     value={newPromoForm.applicableSchoolType}
                     onChange={(e) => setNewPromoForm({ ...newPromoForm, applicableSchoolType: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                   >
                     <option value="all">ทุกประเภทสถานศึกษา (All)</option>
                     <option value="public">เฉพาะโรงเรียนรัฐบาล (Public)</option>
@@ -1078,25 +1078,25 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-medium mb-1">วันหมดอายุโปรโมชั่น</label>
+                  <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">วันหมดอายุโปรโมชั่น</label>
                   <input
                     type="date"
                     required
                     value={newPromoForm.validUntil}
                     onChange={(e) => setNewPromoForm({ ...newPromoForm, validUntil: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-medium mb-1">รายละเอียดและเงื่อนไข</label>
+                <label className="block text-slate-700 dark:text-slate-200 font-medium mb-1">รายละเอียดและเงื่อนไข</label>
                 <textarea
                   rows={2}
                   placeholder="ระบุเงื่อนไขการใช้งาน เช่น สำหรับสัญญา 1 ปีขึ้นไป..."
                   value={newPromoForm.descriptionTh}
                   onChange={(e) => setNewPromoForm({ ...newPromoForm, descriptionTh: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                 />
               </div>
 
@@ -1104,7 +1104,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowNewPromoModal(false)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                 >
                   ยกเลิก
                 </button>

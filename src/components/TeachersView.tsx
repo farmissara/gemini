@@ -54,9 +54,9 @@ const PaginatedTableRows = <T,>({
         <tr>
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-40">ก่อนหน้า</button>
-              <span className="text-[11px] text-slate-500">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-40">ถัดไป</button>
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-600 dark:text-slate-300">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">ถัดไป</button>
             </div>
           </td>
         </tr>
@@ -351,7 +351,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <GraduationCap className="w-5 h-5 text-blue-600" />
             {lang === 'th' ? 'ทำเนียบคณาจารย์และแฟ้มวิทยฐานะ (PA)' : 'Faculty & Staff Directory (PA Hub)'}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
             {lang === 'th'
               ? 'ระบบทะเบียนครูครบวงจร จัดเก็บวิชาเอก-โท แฟ้มผลงานเลื่อนวิทยฐานะ (ว.PA) และวิเคราะห์ศักยภาพการสอน'
               : 'Comprehensive faculty database with major/minor specialties, PA portfolio artifacts, and teaching analytics.'}
@@ -363,7 +363,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <button
               type="button"
               onClick={onOpenImportExport}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
             >
               นำเข้า/ส่งออก Excel
             </button>
@@ -372,7 +372,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
@@ -428,7 +428,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             className={`p-2 rounded-xl text-xs font-semibold cursor-pointer transition ${
               viewMode === 'cards'
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             การ์ดโปรไฟล์
@@ -439,7 +439,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             className={`p-2 rounded-xl text-xs font-semibold cursor-pointer transition ${
               viewMode === 'table'
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             ตารางรายชื่อ
@@ -467,7 +467,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         className="w-13 h-13 rounded-2xl object-cover border-2 border-blue-500/30 shadow-sm"
                       />
                       {teacher.isSchoolAdmin && (
-                        <span className="absolute -bottom-1 -right-1 p-0.5 bg-amber-500 text-white rounded-full shadow" title="School Admin">
+                        <span className="absolute -bottom-1 -right-1 p-0.5 bg-amber-400 text-slate-950 rounded-full shadow" title="School Admin">
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </span>
                       )}
@@ -476,7 +476,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <h3 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
                         {teacher.fullNameTh}
                       </h3>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{teacher.fullNameEn}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{teacher.fullNameEn}</p>
                       <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
                         {teacher.academicStanding}
                       </span>
@@ -484,11 +484,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
 
                   {canManage && (
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
+                    <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100">
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(teacher)}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 text-slate-500 transition cursor-pointer"
+                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 dark:hover:text-blue-300 text-slate-600 dark:text-slate-300 transition cursor-pointer"
                         title="แก้ไขข้อมูลครู"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -500,7 +500,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             onDeleteTeacher(teacher.id);
                           }
                         }}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 text-slate-500 transition cursor-pointer"
+                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-700 dark:hover:text-rose-300 text-slate-600 dark:text-slate-300 transition cursor-pointer"
                         title="ลบข้อมูลครู"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -510,25 +510,25 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
 
                 <div className="mt-3.5 space-y-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                    <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
                     <span className="truncate">{teacher.department.replace('กลุ่มสาระการเรียนรู้', '')}</span>
                   </div>
 
-                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
                     <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-500">วิชาเอก:</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[170px]">{teacher.major}</span>
+                      <span className="text-slate-600 dark:text-slate-300">วิชาเอก:</span>
+                      <span className="font-bold text-slate-900 dark:text-white truncate max-w-[170px]">{teacher.major}</span>
                     </div>
                     {teacher.minor && (
                       <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-500">วิชาโท:</span>
-                        <span className="font-semibold text-indigo-600 dark:text-indigo-400 truncate max-w-[170px]">{teacher.minor}</span>
+                        <span className="text-slate-600 dark:text-slate-300">วิชาโท:</span>
+                        <span className="font-semibold text-indigo-700 dark:text-indigo-300 truncate max-w-[170px]">{teacher.minor}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-500">ประสบการณ์:</span>
-                      <span className="font-mono text-slate-700 dark:text-slate-300">{teacher.teachingExperienceYears || 1} ปี</span>
+                      <span className="text-slate-600 dark:text-slate-300">ประสบการณ์:</span>
+                      <span className="font-mono text-slate-800 dark:text-slate-200">{teacher.teachingExperienceYears || 1} ปี</span>
                     </div>
                   </div>
 
@@ -536,12 +536,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   {teacher.otherSkills && teacher.otherSkills.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
                       {teacher.otherSkills.slice(0, 3).map((skill, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
                           ⚡ {skill}
                         </span>
                       ))}
                       {teacher.otherSkills.length > 3 && (
-                        <span className="text-[10px] text-slate-400">+{teacher.otherSkills.length - 3}</span>
+                        <span className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold">+{teacher.otherSkills.length - 3}</span>
                       )}
                     </div>
                   )}
@@ -549,8 +549,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <FileCheck2 className="w-3.5 h-3.5 text-emerald-500" />
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                  <FileCheck2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>ผลงาน PA: <strong>{teacher.paPortfolio?.length || 0}</strong> ชิ้น</span>
                 </div>
 
@@ -573,7 +573,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-bold uppercase tracking-wider">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800 font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3">ครูผู้สอน</th>
                   <th className="px-4 py-3">กลุ่มสาระ</th>
@@ -591,27 +591,27 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         <img
                           src={teacher.avatarUrl}
                           alt={teacher.fullNameTh}
-                          className="w-9 h-9 rounded-xl object-cover border border-slate-200"
+                          className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
                         />
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white">{teacher.fullNameTh}</p>
-                          <p className="text-[11px] text-slate-400 font-mono">{teacher.teacherIdNumber}</p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono">{teacher.teacherIdNumber}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                       {teacher.department.replace('กลุ่มสาระการเรียนรู้', '')}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-900 dark:text-white">{teacher.major}</div>
-                      {teacher.minor && <div className="text-[10px] text-indigo-500">โท: {teacher.minor}</div>}
+                      {teacher.minor && <div className="text-[10px] text-indigo-600 dark:text-indigo-300">โท: {teacher.minor}</div>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-bold text-[10px]">
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200 font-bold text-[10px]">
                         {teacher.academicStanding}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">
+                    <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">
                       {teacher.teachingExperienceYears || 1} ปี
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -622,7 +622,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             setSelectedTeacherForDetail(teacher);
                             setDetailTab('profile');
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold cursor-pointer"
                         >
                           รายละเอียด
                         </button>
@@ -631,7 +631,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(teacher)}
-                              className="p-1 rounded-lg hover:bg-blue-50 text-blue-600 cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/60 text-blue-600 dark:text-blue-400 cursor-pointer"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
@@ -642,7 +642,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                                   onDeleteTeacher(teacher.id);
                                 }
                               }}
-                              className="p-1 rounded-lg hover:bg-rose-50 text-rose-600 cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -711,14 +711,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-6 pt-3 gap-2 text-xs font-bold">
+            <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-6 pt-3 gap-2 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setDetailTab('profile')}
                 className={`pb-2.5 px-3 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
                   detailTab === 'profile'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
+                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
@@ -730,11 +730,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 onClick={() => setDetailTab('pa_portfolio')}
                 className={`pb-2.5 px-3 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
                   detailTab === 'pa_portfolio'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
+                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <FileCheck2 className="w-4 h-4 text-emerald-500" />
+                <FileCheck2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>แฟ้มผลงานเพิ่มวิทยฐานะ (ว.PA)</span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
                   {selectedTeacherForDetail.paPortfolio?.length || 0}
@@ -746,8 +746,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 onClick={() => setDetailTab('teaching_analytics')}
                 className={`pb-2.5 px-3 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
                   detailTab === 'teaching_analytics'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
+                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <BrainCircuit className="w-4 h-4 text-indigo-500" />
@@ -784,26 +784,26 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
 
                   {/* General Qualifications Grid */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-3">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2">
                       คุณวุฒิการศึกษาและการรับรองวิชาชีพ
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <span className="text-slate-500 block">วุฒิการศึกษาสูงสุด:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedTeacherForDetail.academicDegree}</span>
+                        <span className="text-slate-600 dark:text-slate-300 block">วุฒิการศึกษาสูงสุด:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.academicDegree}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">เลขที่ใบอนุญาตประกอบวิชาชีพครู:</span>
-                        <span className="font-mono text-slate-800 dark:text-slate-200">{selectedTeacherForDetail.teacherLicenseNo}</span>
+                        <span className="text-slate-600 dark:text-slate-300 block">เลขที่ใบอนุญาตประกอบวิชาชีพครู:</span>
+                        <span className="font-mono text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.teacherLicenseNo}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">กลุ่มสาระการเรียนรู้:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedTeacherForDetail.department}</span>
+                        <span className="text-slate-600 dark:text-slate-300 block">กลุ่มสาระการเรียนรู้:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.department}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">เบอร์โทรศัพท์และอีเมล:</span>
-                        <span className="font-mono text-slate-800 dark:text-slate-200">{selectedTeacherForDetail.phone} • {selectedTeacherForDetail.email}</span>
+                        <span className="text-slate-600 dark:text-slate-300 block">เบอร์โทรศัพท์และอีเมล:</span>
+                        <span className="font-mono text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.phone} • {selectedTeacherForDetail.email}</span>
                       </div>
                     </div>
                   </div>
@@ -825,7 +825,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                           </span>
                         )} />
                       ) : (
-                        <p className="text-slate-400">ยังไม่มีการบันทึกทักษะเพิ่มเติม</p>
+                        <p className="text-slate-600 dark:text-slate-300">ยังไม่มีการบันทึกทักษะเพิ่มเติม</p>
                       )}
                     </div>
                   </div>
@@ -854,7 +854,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {detailTab === 'pa_portfolio' && (
                 <div className="space-y-6 text-xs">
                   {/* PA Header Card */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-slate-900 to-emerald-950/30 border border-emerald-500/30 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/40 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
                         <FileCheck2 className="w-5 h-5 text-emerald-400" />
@@ -883,7 +883,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <PagedList items={selectedTeacherForDetail.paPortfolio} pageSize={2} renderItem={(item) => (
                         <div
                           key={item.id}
-                          className="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2 hover:border-emerald-500/50 transition"
+                          className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2 hover:border-emerald-500/50 transition"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
@@ -891,7 +891,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                                 <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold">
                                   {item.paAspect}
                                 </span>
-                                <span className="text-slate-400 font-mono text-[11px]">
+                                <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">
                                   ปีการศึกษา {item.academicYear}
                                 </span>
                               </div>
@@ -910,7 +910,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             {item.description}
                           </p>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[11px] text-slate-400">
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300">
                             <span>หมวด: {item.category === 'pa_agreement' ? 'ข้อตกลง PA' : item.category === 'classroom_research' ? 'วิจัยในชั้นเรียน' : item.category === 'lesson_plan' ? 'แผนการสอน Active Learning' : item.category === 'teaching_media' ? 'สื่อนวัตกรรมดิจิทัล' : 'ผลงานรางวัล'}</span>
                             <span className="font-mono">วันที่ส่ง: {item.dateSubmitted}</span>
                           </div>
@@ -918,10 +918,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       )} />
                     </div>
                   ) : (
-                    <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                      <FileText className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                      <p className="font-bold text-slate-700 dark:text-slate-300">ยังไม่มีการบันทึกผลงาน PA สำหรับอาจารย์ท่านนี้</p>
-                      <p className="text-slate-500 mt-1">กดปุ่ม "เพิ่มผลงาน ว.PA" เพื่อบันทึกงานวิจัย สื่อนวัตกรรม หรือแผนการสอน</p>
+                    <div className="p-8 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                      <FileText className="w-10 h-10 text-slate-500 dark:text-slate-300 mx-auto mb-2" />
+                      <p className="font-bold text-slate-700 dark:text-slate-200">ยังไม่มีการบันทึกผลงาน PA สำหรับอาจารย์ท่านนี้</p>
+                      <p className="text-slate-600 dark:text-slate-300 mt-1">กดปุ่ม "เพิ่มผลงาน ว.PA" เพื่อบันทึกงานวิจัย สื่อนวัตกรรม หรือแผนการสอน</p>
                     </div>
                   )}
                 </div>
@@ -985,7 +985,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
 
                   {/* ID Plan Guidance */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
                     <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                       <BarChart3 className="w-4 h-4 text-blue-500" />
                       <span>แผนพัฒนาตนเองรายบุคคล (Individual Development Plan: ID Plan)</span>
@@ -1007,9 +1007,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   setPhotoTarget('detail');
                   setShowPhotoModal(true);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
               >
-                <Camera className="w-4 h-4 text-blue-600" />
+                <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>ถ่ายรูป/เปลี่ยนรูปโปรไฟล์ครู</span>
               </button>
 
@@ -1289,14 +1289,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         setSubjectInput('');
                       }
                     }}
-                    className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-xs font-semibold"
+                    className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-semibold cursor-pointer"
                   >
                     เพิ่ม
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   <PagedList items={formData.teachingSubjects || []} pageSize={4} renderItem={(sub, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[11px]">
+                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 text-[11px]">
                       {sub}
                       <button
                         type="button"
@@ -1306,7 +1306,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             teachingSubjects: (formData.teachingSubjects || []).filter((_, i) => i !== idx),
                           });
                         }}
-                        className="hover:text-rose-600 ml-1"
+                        className="hover:text-rose-600 dark:hover:text-rose-300 ml-1"
                       >
                         ×
                       </button>
@@ -1319,20 +1319,20 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setTeacherFormStep(1)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-semibold"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
                 >
                   Back
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-semibold"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/20"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/20 cursor-pointer"
                 >
                   {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
                 </button>
@@ -1341,13 +1341,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               )}
               {teacherFormStep === 1 && (
                 <div className="flex justify-between gap-2">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600">Cancel</button>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
                   <button
                     type="button"
                     onClick={() => {
                       if (formData.fullNameTh && formData.email && formData.major) setTeacherFormStep(2);
                     }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
                   >
                     Continue
                   </button>
@@ -1449,7 +1449,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddPaModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>

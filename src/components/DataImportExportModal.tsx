@@ -540,7 +540,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs select-none">
-      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Toast Notification */}
         {toastMessage && (
@@ -553,7 +553,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         {/* Modal Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/40 text-blue-300 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/40 text-blue-200 flex items-center justify-center">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
@@ -561,7 +561,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 <h2 className="text-base sm:text-lg font-black tracking-tight">
                   {lang === 'th' ? 'ศูนย์นำเข้า - ส่งออกข้อมูลสถานศึกษา (Data Hub)' : 'School Data Import & Export Center'}
                 </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 font-bold">
                   EXCEL / CSV
                 </span>
               </div>
@@ -576,21 +576,21 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/15 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-6 pt-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <div className="px-6 pt-2 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('students')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'students'
-                ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
+                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -602,8 +602,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             onClick={() => setActiveTab('teachers')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'teachers'
-                ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
+                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
             }`}
           >
             <GraduationCap className="w-4 h-4" />
@@ -615,8 +615,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             onClick={() => setActiveTab('questions')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'questions'
-                ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
+                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -625,7 +625,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 text-slate-800 space-y-4">
+        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 space-y-4">
 
           {/* ======================================= */}
           {/* TAB 1: นักเรียน (STUDENTS)              */}
@@ -634,13 +634,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Export Card */}
-                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 transition flex flex-col justify-between space-y-3">
                   <div>
-                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                      <Download className="w-4 h-4 text-blue-600" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                      <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>ส่งออกข้อมูลนักเรียนทั้งหมด</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       ดาวน์โหลดรายชื่อนักเรียน {students.length} คน พร้อมรหัสประจำตัว, แผนการเรียน, ผู้ปกครอง, ผลการเรียน และข้อมูลสุขภาพเป็นไฟล์ CSV
                     </p>
                   </div>
@@ -655,13 +655,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 </div>
 
                 {/* Template & Sample Card */}
-                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 transition flex flex-col justify-between space-y-3">
                   <div>
-                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                      <ArrowDownToLine className="w-4 h-4 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                      <ArrowDownToLine className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>แบบฟอร์มนำเข้า (Template)</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       ดาวน์โหลดโครงสร้างหัวตารางมาตรฐาน เพื่อกรอกข้อมูลนักเรียนใหม่ได้อย่างถูกต้องครบถ้วน
                     </p>
                   </div>
@@ -669,7 +669,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleDownloadStudentTemplate}
-                      className="flex-1 py-2 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                      className="flex-1 py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>ดาวน์โหลด Template</span>
@@ -677,7 +677,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleLoadSampleStudents}
-                      className="py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
+                      className="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 text-emerald-700 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700/60 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
                       title="โหลดข้อมูลตัวอย่างเพื่อทดสอบทันที"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -689,25 +689,25 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
               {/* Preview & Import Table */}
               {previewStudents.length > 0 && (
-                <div className="space-y-3 p-4 rounded-2xl border border-blue-200 bg-blue-50/50">
+                <div className="space-y-3 p-4 rounded-2xl border border-blue-200 dark:border-blue-700/60 bg-blue-50 dark:bg-blue-950/40">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-blue-900 font-bold text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                    <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>ตรวจสอบข้อมูลนักเรียนที่จะนำเข้า ({previewStudents.length} คน)</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setStudentPreviewPage(0); setPreviewStudents([]); }}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>ล้างข้อมูลพรีวิว</span>
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xs">
                     <table className="w-full text-xs text-left">
-                      <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold uppercase tracking-wider text-[10px]">
                         <tr>
                           <th className="px-3 py-2">รหัสนักเรียน</th>
                           <th className="px-3 py-2">ชื่อ - นามสกุล</th>
@@ -717,30 +717,30 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                           <th className="px-3 py-2">เบอร์โทรศัพท์</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {previewStudents.slice(studentPreviewPage * 4, (studentPreviewPage + 1) * 4).map((st, i) => (
-                          <tr key={i} className="hover:bg-slate-50">
-                            <td className="px-3 py-2 font-mono font-bold text-blue-700">{st.studentIdNumber}</td>
-                            <td className="px-3 py-2 font-medium text-slate-900">{st.firstNameTh} {st.lastNameTh}</td>
-                            <td className="px-3 py-2 text-slate-600">{st.room}</td>
-                            <td className="px-3 py-2 font-bold text-emerald-600">{st.gpa}</td>
-                            <td className="px-3 py-2 text-slate-700">
+                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                            <td className="px-3 py-2 font-mono font-bold text-blue-700 dark:text-blue-300">{st.studentIdNumber}</td>
+                            <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">{st.firstNameTh} {st.lastNameTh}</td>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{st.room}</td>
+                            <td className="px-3 py-2 font-bold text-emerald-600 dark:text-emerald-400">{st.gpa}</td>
+                            <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
                               {st.guardianName} ({st.guardianRelation})
                               {st.guardians && st.guardians.length > 1 && (
-                                <span className="ml-1 text-[10px] text-blue-600 font-bold">+{st.guardians.length - 1} คน</span>
+                                <span className="ml-1 text-[10px] text-blue-600 dark:text-blue-300 font-bold">+{st.guardians.length - 1} คน</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 font-mono text-slate-600">{st.guardianPhone}</td>
+                            <td className="px-3 py-2 font-mono text-slate-600 dark:text-slate-300">{st.guardianPhone}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                   {previewStudents.length > 4 && (
-                    <div className="flex items-center justify-between text-xs">
-                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.max(0, page - 1))} disabled={studentPreviewPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
-                      <span>หน้า {studentPreviewPage + 1} / {Math.ceil(previewStudents.length / 4)} · {previewStudents.length} คน</span>
-                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.min(Math.ceil(previewStudents.length / 4) - 1, page + 1))} disabled={studentPreviewPage >= Math.ceil(previewStudents.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.max(0, page - 1))} disabled={studentPreviewPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+                      <span className="font-medium">หน้า {studentPreviewPage + 1} / {Math.ceil(previewStudents.length / 4)} · {previewStudents.length} คน</span>
+                      <button type="button" onClick={() => setStudentPreviewPage(page => Math.min(Math.ceil(previewStudents.length / 4) - 1, page + 1))} disabled={studentPreviewPage >= Math.ceil(previewStudents.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
                     </div>
                   )}
 
@@ -766,13 +766,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Export Card */}
-                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 transition flex flex-col justify-between space-y-3">
                   <div>
-                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                      <Download className="w-4 h-4 text-blue-600" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                      <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>ส่งออกข้อมูลคุณครูทั้งหมด</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       ดาวน์โหลดรายชื่อคุณครู {teachers.length} ท่าน พร้อมวิทยฐานะ, กลุ่มสาระ, ห้องที่สอนหลายห้อง, และสิทธิ์การเป็น Admin โรงเรียน
                     </p>
                   </div>
@@ -787,13 +787,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 </div>
 
                 {/* Template & Sample Card */}
-                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 transition flex flex-col justify-between space-y-3">
                   <div>
-                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                      <ArrowDownToLine className="w-4 h-4 text-indigo-600" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                      <ArrowDownToLine className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                       <span>แบบฟอร์มนำเข้าคุณครู (Template)</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       ดาวน์โหลด Template พร้อมโครงสร้างระบุหลายห้องเรียน หลายชั้นเรียน และสิทธิ์ผู้ดูแลระบบโรงเรียน
                     </p>
                   </div>
@@ -801,7 +801,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleDownloadTeacherTemplate}
-                      className="flex-1 py-2 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                      className="flex-1 py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>ดาวน์โหลด Template</span>
@@ -809,7 +809,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleLoadSampleTeachers}
-                      className="py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
+                      className="py-2 px-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700/60 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
                       title="โหลดข้อมูลตัวอย่างเพื่อทดสอบทันที"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -821,25 +821,25 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
               {/* Preview & Import Table */}
               {previewTeachers.length > 0 && (
-                <div className="space-y-3 p-4 rounded-2xl border border-indigo-200 bg-indigo-50/50">
+                <div className="space-y-3 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-700/60 bg-indigo-50 dark:bg-indigo-950/40">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                    <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                       <span>ตรวจสอบข้อมูลคุณครูที่จะนำเข้า ({previewTeachers.length} ท่าน)</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setTeacherPreviewPage(0); setPreviewTeachers([]); }}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>ล้างข้อมูลพรีวิว</span>
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xs">
                     <table className="w-full text-xs text-left">
-                      <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold uppercase tracking-wider text-[10px]">
                         <tr>
                           <th className="px-3 py-2">รหัสประจำตัว</th>
                           <th className="px-3 py-2">ชื่อ - นามสกุล</th>
@@ -848,22 +848,22 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                           <th className="px-3 py-2">สิทธิ์ Admin โรงเรียน</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {previewTeachers.slice(teacherPreviewPage * 4, (teacherPreviewPage + 1) * 4).map((tc, i) => (
-                          <tr key={i} className="hover:bg-slate-50">
-                            <td className="px-3 py-2 font-mono font-bold text-indigo-700">{tc.teacherIdNumber}</td>
-                            <td className="px-3 py-2 font-medium text-slate-900">{tc.fullNameTh}</td>
-                            <td className="px-3 py-2 text-slate-600">{tc.department} ({tc.academicStanding})</td>
-                            <td className="px-3 py-2 text-slate-700">
-                              <span className="font-medium text-blue-700">{(tc.homeroomClasses || []).join(', ')}</span>
+                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                            <td className="px-3 py-2 font-mono font-bold text-indigo-700 dark:text-indigo-300">{tc.teacherIdNumber}</td>
+                            <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">{tc.fullNameTh}</td>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{tc.department} ({tc.academicStanding})</td>
+                            <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                              <span className="font-medium text-blue-700 dark:text-blue-300">{(tc.homeroomClasses || []).join(', ')}</span>
                             </td>
                             <td className="px-3 py-2">
                               {tc.isSchoolAdmin ? (
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold border border-emerald-200 dark:border-emerald-700/60">
                                   🛡️ มีสิทธิ์ Admin
                                 </span>
                               ) : (
-                                <span className="text-slate-400 text-[11px]">อาจารย์ผู้สอน</span>
+                                <span className="text-slate-500 dark:text-slate-300 text-[11px]">อาจารย์ผู้สอน</span>
                               )}
                             </td>
                           </tr>
@@ -872,10 +872,10 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     </table>
                   </div>
                   {previewTeachers.length > 4 && (
-                    <div className="flex items-center justify-between text-xs">
-                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.max(0, page - 1))} disabled={teacherPreviewPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
-                      <span>หน้า {teacherPreviewPage + 1} / {Math.ceil(previewTeachers.length / 4)} · {previewTeachers.length} คน</span>
-                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.min(Math.ceil(previewTeachers.length / 4) - 1, page + 1))} disabled={teacherPreviewPage >= Math.ceil(previewTeachers.length / 4) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.max(0, page - 1))} disabled={teacherPreviewPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+                      <span className="font-medium">หน้า {teacherPreviewPage + 1} / {Math.ceil(previewTeachers.length / 4)} · {previewTeachers.length} คน</span>
+                      <button type="button" onClick={() => setTeacherPreviewPage(page => Math.min(Math.ceil(previewTeachers.length / 4) - 1, page + 1))} disabled={teacherPreviewPage >= Math.ceil(previewTeachers.length / 4) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
                     </div>
                   )}
 
@@ -901,13 +901,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Export Card */}
-                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 transition flex flex-col justify-between space-y-3">
                   <div>
-                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                      <Download className="w-4 h-4 text-blue-600" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                      <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>ส่งออกคลังข้อสอบทั้งหมด</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       ดาวน์โหลดข้อสอบ {questions.length} ข้อในระบบ พร้อมตัวเลือก, เฉลย และคำอธิบายเป็นไฟล์ CSV
                     </p>
                   </div>
@@ -922,13 +922,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 </div>
 
                 {/* Template & Sample Card */}
-                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition flex flex-col justify-between space-y-3">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 transition flex flex-col justify-between space-y-3">
                   <div>
-                    <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                      <ArrowDownToLine className="w-4 h-4 text-purple-600" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                      <ArrowDownToLine className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       <span>แบบฟอร์มนำเข้าข้อสอบ (Template)</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                       ดาวน์โหลด Template พร้อมโครงสร้าง 4 ตัวเลือก และคำอธิบายเฉลย เพื่อใช้ในเกม "ล่าสมบัติ 3D" และ LMS
                     </p>
                   </div>
@@ -936,7 +936,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleDownloadQuestionTemplate}
-                      className="flex-1 py-2 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                      className="flex-1 py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>ดาวน์โหลด Template</span>
@@ -944,7 +944,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button
                       type="button"
                       onClick={handleLoadSampleQuestions}
-                      className="py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
+                      className="py-2 px-3 rounded-xl bg-purple-50 dark:bg-purple-950/70 hover:bg-purple-100 dark:hover:bg-purple-900/70 text-purple-700 dark:text-purple-200 border border-purple-200 dark:border-purple-700/60 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shrink-0"
                       title="โหลดข้อสอบตัวอย่างเพื่อทดสอบทันที"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -956,16 +956,16 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
               {/* Preview & Import Table */}
               {previewQuestions.length > 0 && (
-                <div className="space-y-3 p-4 rounded-2xl border border-purple-200 bg-purple-50/50">
+                <div className="space-y-3 p-4 rounded-2xl border border-purple-200 dark:border-purple-700/60 bg-purple-50 dark:bg-purple-950/40">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                    <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       <span>ตรวจสอบข้อสอบใหม่ที่จะนำเข้า ({previewQuestions.length} ข้อ)</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setQuestionPreviewPage(0); setPreviewQuestions([]); }}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 font-medium flex items-center gap-1 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>ล้างข้อมูลพรีวิว</span>
@@ -974,22 +974,22 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
                   <div className="space-y-2">
                     {previewQuestions.slice(questionPreviewPage * 2, (questionPreviewPage + 1) * 2).map((q, i) => (
-                      <div key={i} className="p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5">
+                      <div key={i} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-purple-700">ข้อที่ {questionPreviewPage * 2 + i + 1} • {q.subject} ({q.gradeLevel})</span>
-                          <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">
+                          <span className="font-bold text-purple-700 dark:text-purple-300">ข้อที่ {questionPreviewPage * 2 + i + 1} • {q.subject} ({q.gradeLevel})</span>
+                          <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 text-[10px] font-bold">
                             เฉลยข้อ: {['ก (A)', 'ข (B)', 'ค (C)', 'ง (D)'][q.correctIndex]}
                           </span>
                         </div>
-                        <p className="font-medium text-slate-900">{q.questionTh}</p>
-                        <div className="grid grid-cols-2 gap-2 text-slate-600 pt-1">
+                        <p className="font-medium text-slate-900 dark:text-white">{q.questionTh}</p>
+                        <div className="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-200 pt-1">
                           {q.options.map((opt, optIdx) => (
                             <div 
                               key={optIdx} 
                               className={`p-1.5 rounded-lg border text-[11px] ${
                                 optIdx === q.correctIndex 
-                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold' 
-                                  : 'bg-slate-50 border-slate-200'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700/60 text-emerald-800 dark:text-emerald-200 font-bold' 
+                                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
                               }`}
                             >
                               {['ก.', 'ข.', 'ค.', 'ง.'][optIdx]} {opt}
@@ -997,7 +997,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                           ))}
                         </div>
                         {q.explanationTh && (
-                          <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-700">
                             💡 <span className="font-medium">คำอธิบายเฉลย:</span> {q.explanationTh}
                           </div>
                         )}
@@ -1005,10 +1005,10 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     ))}
                   </div>
                   {previewQuestions.length > 2 && (
-                    <div className="flex items-center justify-between text-xs">
-                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.max(0, page - 1))} disabled={questionPreviewPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
-                      <span>หน้า {questionPreviewPage + 1} / {Math.ceil(previewQuestions.length / 2)} · {previewQuestions.length} ข้อ</span>
-                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.min(Math.ceil(previewQuestions.length / 2) - 1, page + 1))} disabled={questionPreviewPage >= Math.ceil(previewQuestions.length / 2) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                    <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.max(0, page - 1))} disabled={questionPreviewPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+                      <span className="font-medium">หน้า {questionPreviewPage + 1} / {Math.ceil(previewQuestions.length / 2)} · {previewQuestions.length} ข้อ</span>
+                      <button type="button" onClick={() => setQuestionPreviewPage(page => Math.min(Math.ceil(previewQuestions.length / 2) - 1, page + 1))} disabled={questionPreviewPage >= Math.ceil(previewQuestions.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
                     </div>
                   )}
 
@@ -1030,12 +1030,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
+        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 shrink-0">
           <span>EduVerse Data Exchange Standard • RFC-4180 CSV Compliant</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold cursor-pointer transition"
+            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold cursor-pointer transition"
           >
             ปิดหน้าต่าง
           </button>

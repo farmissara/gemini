@@ -38,7 +38,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
               <h3 className="text-base font-bold text-white">
                 {lang === 'th' ? 'ข้อมูลสถาบันการศึกษา (School Institution)' : 'School Institution Info'}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 {lang === 'th' ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง' : 'Only schools your account is authorized to access are shown.'}
               </p>
             </div>
@@ -46,7 +46,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -63,15 +63,15 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                   onSelectSchool(sch);
                   onClose();
                 }}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                className={`group p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
                   isActive
                     ? 'bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border-indigo-500 shadow-md shadow-indigo-500/10'
-                    : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                    : 'bg-slate-950 border-slate-800 hover:border-indigo-500/50'
                 }`}
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                    <span className="font-mono text-xs font-bold text-indigo-300 bg-indigo-500/15 px-2 py-0.5 rounded border border-indigo-500/30">
                       {sch.code}
                     </span>
                     <span className="text-xs font-bold text-white">
@@ -79,11 +79,11 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-300">
                     {sch.nameEn}
                   </p>
 
-                  <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400">
+                  <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-300">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-rose-400" />
                       {sch.province}
@@ -100,12 +100,12 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {isActive ? (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" />
                       {lang === 'th' ? 'ใช้งานอยู่' : 'Active'}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400 group-hover:text-white">
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">
                       {lang === 'th' ? 'สลับ' : 'Select'}
                     </span>
                   )}
@@ -116,7 +116,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
         </div>
 
         <div className="pt-3 border-t border-slate-800">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-300">
             {lang === 'th' ? `ระบบมีทั้งหมด ${schools.length} โรงเรียน` : `Total ${schools.length} Schools`}
           </span>
         </div>

@@ -53,6 +53,12 @@ import {
   AttendanceUserType
 } from '../types';
 import { getLocalDateString } from '../lib/date';
+import {
+  filterAttendanceForUser,
+  filterLeaveRequestsForUser,
+  isRestrictedAttendanceViewer,
+  resolveOwnStudent,
+} from '../lib/attendanceScope';
 import { MobileAttendanceView } from './MobileAttendanceView';
 import { EduBattleGameView } from './EduBattleGameView';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
@@ -129,6 +135,12 @@ interface MobileAppShellProps {
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onUpdateStudent?: (student: Student) => void;
+  initialMobileTab?: MobileTab;
+  initialAttendanceSubTab?: 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
+  initialPeriodCourseId?: string;
+  initialPeriodNumber?: number;
+  initialPeriodDate?: string;
+  initialPeriodCode?: string;
 }
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
@@ -163,9 +175,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onRedeemReward,
   onAddQuestion,
   onImportQuestions,
-  onUpdateStudent
+  onUpdateStudent,
+  initialMobileTab = 'home',
+  initialAttendanceSubTab = 'selfie_mobile',
+  initialPeriodCourseId,
+  initialPeriodNumber,
+  initialPeriodDate,
+  initialPeriodCode,
 }) => {
-  const [activeTab, setActiveTab] = useState<MobileTab>('home');
+  const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
   const [activeGameView, setActiveGameView] = useState<'hub' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
   const [homePage, setHomePage] = useState(0);
   const [gameHubPage, setGameHubPage] = useState(0);
@@ -175,13 +193,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const todayStr = getLocalDateString();
 
-  // Find today's check-in record for current user or first student
-  const currentPersonId = currentUser?.id || students[0]?.id;
-  const todayCheckin = attendance.find(a => a.studentId === currentPersonId && a.date === todayStr);
+  const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
+  const ownStudent = resolveOwnStudent(currentUser, students);
+  const currentPersonId = ownStudent?.id || currentUser?.id || students[0]?.id;
+  const scopedAttendance = filterAttendanceForUser(attendance, currentUser, students);
+  const todayCheckin = scopedAttendance.find(a => a.date === todayStr);
 
-  // My pending leave requests
-  const myLeaves = leaveRequests.filter(l => l.userId === currentPersonId || l.userRole === currentUser?.role);
-  const pendingLeavesCount = leaveRequests.filter(l => l.status === 'pending').length;
+  // Scoped leave requests (students/parents see ONLY their own leave counts)
+  const myLeaves = isRestrictedViewer
+    ? filterLeaveRequestsForUser(leaveRequests, currentUser, students)
+    : leaveRequests;
+  const pendingLeavesCount = myLeaves.filter(l => l.status === 'pending').length;
 
   // Pending homework
   const myCompletedSubmissions = new Set(homeworkSubmissions.filter(h => h.studentId === currentPersonId).map(h => h.assignmentId));
@@ -210,11 +232,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-sm tracking-tight truncate">EduVerse</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 shrink-0">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 shrink-0">
                 {lang === 'th' ? 'โหมดมือถือ' : 'Mobile'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 truncate max-w-[170px]">
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-[170px]">
               {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
             </p>
           </div>
@@ -237,7 +259,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <button
             type="button"
             onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-            className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+            className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
             title="เปลี่ยนภาษา (TH/EN)"
           >
             {lang.toUpperCase()}
@@ -323,7 +345,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 }`}
               >
                 {pendingLeavesCount > 0 && (
-                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black shadow-xs">
                     {pendingLeavesCount}
                   </span>
                 )}
@@ -384,9 +406,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <>
             {/* Today's Daily Status Strip */}
             <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center justify-between">
                 <span>สรุปสถานะประจำวัน</span>
-                <span className="text-slate-500 font-mono text-[10px]">{todayStr}</span>
+                <span className="text-slate-600 dark:text-slate-300 font-mono text-[10px]">{todayStr}</span>
               </h2>
 
               <div className="space-y-2 text-xs">
@@ -394,13 +416,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                   <div className="flex items-center gap-2.5">
                     {todayCheckin ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     ) : (
-                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                     )}
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white">การเช็คชื่อเข้าโรงเรียน</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
                         {todayCheckin 
                           ? `เช็คอินแล้วเวลา ${todayCheckin.time} น.` 
                           : 'ยังไม่พบข้อมูลเช็คชื่อวันนี้'}
@@ -410,7 +432,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('checkin')}
-                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:underline"
                   >
                     {todayCheckin ? 'ดูรายละเอียด' : 'เช็คอินเลย'}
                   </button>
@@ -419,10 +441,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 {/* Homework Count */}
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                   <div className="flex items-center gap-2.5">
-                    <BookOpen className="w-4 h-4 text-indigo-500 shrink-0" />
+                    <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white">การบ้านและงานค้าง</p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
                         {pendingHomeworkCount > 0 
                           ? `มีงานที่ยังไม่ส่ง ${pendingHomeworkCount} ชิ้น` 
                           : 'ไม่มีการบ้านค้าง ส่งครบทุกวิชาแล้ว!'}
@@ -432,7 +454,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('homework')}
-                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                    className="text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline"
                   >
                     ตรวจงาน
                   </button>
@@ -445,22 +467,22 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-2.5`}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Bell className="w-3.5 h-3.5 text-blue-600" />
+                    <Bell className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span>ข่าวสารและประกาศโรงเรียน</span>
                   </h2>
                   <button
                     type="button"
                     onClick={() => setActiveTab('announcements')}
-                    className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                    className="text-[11px] text-blue-700 dark:text-blue-300 font-semibold hover:underline"
                   >
                     ดูทั้งหมด
                   </button>
                 </div>
                 <div className="space-y-2">
                   {announcements.slice(0, 2).map((a) => (
-                    <div key={a.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs">
+                    <div key={a.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
                       <p className="font-bold text-slate-900 dark:text-white line-clamp-1">{a.title}</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{a.content}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">{a.content}</p>
                     </div>
                   ))}
                 </div>
@@ -476,14 +498,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
                   homePage === 0
                     ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 ภาพรวม (หน้า 1)
               </button>
               <div aria-live="polite" className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 0 ? 'bg-blue-600 scale-125' : 'bg-slate-350 dark:bg-slate-650'}`} />
-                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 1 ? 'bg-blue-600 scale-125' : 'bg-slate-350 dark:bg-slate-650'}`} />
+                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 0 ? 'bg-blue-600 scale-125' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 1 ? 'bg-blue-600 scale-125' : 'bg-slate-300 dark:bg-slate-600'}`} />
               </div>
               <button
                 type="button"
@@ -491,7 +513,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
                   homePage === 1
                     ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 สรุปวันนี้ (หน้า 2)
@@ -505,7 +527,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <div className="h-full min-h-0 animate-in fade-in duration-200">
             <MobileAttendanceView
               embeddedMobile
-              initialSubTab="selfie_mobile"
+              initialSubTab={initialAttendanceSubTab}
+              initialPeriodCourseId={initialPeriodCourseId}
+              initialPeriodNumber={initialPeriodNumber}
+              initialPeriodDate={initialPeriodDate}
+              initialPeriodCode={initialPeriodCode}
               students={students}
               teachers={teachers}
               courses={courses}
@@ -578,12 +604,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-black text-sm text-slate-900 dark:text-white">3D EduArena Battle Royale</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-amber-500 text-slate-950 font-black animate-pulse">3D HOT</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black animate-pulse">3D HOT</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">วิ่งล่าหีบสมบัติ ตอบคำถามชิงคะแนน มีปุ่มซูม 3D</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">วิ่งล่าหีบสมบัติ ตอบคำถามชิงคะแนน มีปุ่มซูม 3D</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
                   </button>
 
                   {/* Game 2: 1v1 Battle Arena */}
@@ -595,18 +621,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-500 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold shrink-0">
                         <Swords className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-black text-sm text-slate-900 dark:text-white">1v1 แบทเทิลดวลความเร็ว</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-rose-500/20 text-rose-300 font-bold">1v1</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200 font-bold">1v1</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">สู้กับบอทหรือเพื่อน ตอบโจทย์ไว ชิง HP หน้าเดียวกระชับ</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">สู้กับบอทหรือเพื่อน ตอบโจทย์ไว ชิง HP หน้าเดียวกระชับ</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
                   </button>
                 </>
               )}
@@ -622,18 +648,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-red-500/20 text-red-500 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center font-bold shrink-0">
                         <Flame className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-black text-sm text-slate-900 dark:text-white">Co-op Boss Raid (ตีบอส)</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-red-500 text-white font-bold">CO-OP</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-600 text-white font-bold">CO-OP</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">รวมพลังตีบอสประจำวิชา มีปุ่มซูมตัวบอส ไม่ต้องเลื่อนหน้า</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">รวมพลังตีบอสประจำวิชา มีปุ่มซูมตัวบอส ไม่ต้องเลื่อนหน้า</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
                   </button>
 
                   {/* Game 4: Subject Labs & Chemistry */}
@@ -645,18 +671,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
                         <FlaskConical className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-black text-sm text-slate-900 dark:text-white">เวิร์กช็อปจำลอง 6 สาระ</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-blue-500 text-white font-bold">SIM</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-600 text-white font-bold">SIM</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">จำลองการทดลองเคมี จรวดฟิสิกส์ ครัวไวยากรณ์ โค้ดดิ้ง และแผนที่โลก</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">จำลองการทดลองเคมี จรวดฟิสิกส์ ครัวไวยากรณ์ โค้ดดิ้ง และแผนที่โลก</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
                   </button>
                 </>
               )}
@@ -664,7 +690,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               {gameHubPage === 2 && (
                 <>
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                       รางวัลและผลงาน • ไม่ใช่โหมดเกม
                     </h3>
                   </div>
@@ -678,18 +704,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-500 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shrink-0">
                         <Trophy className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-black text-sm text-slate-900 dark:text-white">ถ้วยรางวัลและเกียรติบัตร</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-indigo-500 text-white font-bold">รางวัล</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold">รางวัล</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">ดูถ้วยรางวัล 3 มิติและเกียรติบัตรที่ได้รับ</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">ดูถ้วยรางวัล 3 มิติและเกียรติบัตรที่ได้รับ</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
                   </button>
                     </>
                   )}
@@ -704,7 +730,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   >
                     ก่อนหน้า
                   </button>
-                  <span aria-live="polite" className="text-[11px] font-medium text-slate-500">{gameHubPage + 1} / 3</span>
+                  <span aria-live="polite" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{gameHubPage + 1} / 3</span>
                   <button
                     type="button"
                     onClick={() => setGameHubPage((page) => Math.min(2, page + 1))}
@@ -722,7 +748,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <div className="space-y-4 animate-in fade-in duration-200">
             {profilePage === 0 && (
               <DigitalIdCardView
-                students={students}
+                students={currentRole === 'student' && ownStudent ? [ownStudent] : students}
                 school={activeSchool}
                 lang={lang}
                 currentRole={currentRole}
@@ -732,7 +758,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
             {/* Quick Profile Actions & Settings */}
             {profilePage === 1 && <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">การตั้งค่าและบัญชีผู้ใช้</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">การตั้งค่าและบัญชีผู้ใช้</h3>
               
               <div className="space-y-2 text-xs">
                 {/* Full Profile & Portfolio Modal trigger */}
@@ -742,10 +768,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
-                    <User className="w-4 h-4 text-blue-600" />
+                    <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span className="font-bold">แก้ไขข้อมูลส่วนตัว & พอร์ตฟอลิโอ</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 </button>
 
                 {/* Theme Palette Switcher */}
@@ -755,21 +781,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <button
                       type="button"
                       onClick={() => setThemePalette('light_warm')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold ${themePalette === 'light_warm' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 dark:bg-slate-800'}`}
+                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_warm' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
                       อบอุ่น
                     </button>
                     <button
                       type="button"
                       onClick={() => setThemePalette('light_sky')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold ${themePalette === 'light_sky' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800'}`}
+                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_sky' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
                       ฟ้าคราม
                     </button>
                     <button
                       type="button"
                       onClick={() => setThemePalette('sapphire')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold ${themePalette === 'sapphire' ? 'bg-indigo-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800'}`}
+                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'sapphire' ? 'bg-indigo-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
                       มืดคราม
                     </button>
@@ -783,14 +809,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <button
                       type="button"
                       onClick={() => setLang('th')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold ${lang === 'th' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800'}`}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'th' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
                       ไทย (TH)
                     </button>
                     <button
                       type="button"
                       onClick={() => setLang('en')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold ${lang === 'en' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800'}`}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'en' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
                       English (EN)
                     </button>
@@ -801,20 +827,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <button
                   type="button"
                   onClick={onSwitchToDesktopMode}
-                  className="w-full p-3 rounded-xl border border-blue-500/30 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-between text-left cursor-pointer"
+                  className="w-full p-3 rounded-xl border border-blue-500/30 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-200 font-bold flex items-center justify-between text-left cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Laptop className="w-4 h-4 text-blue-600" />
+                    <Laptop className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>สลับเป็นมุมมองคอมพิวเตอร์เต็มจอ (Desktop View)</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                  <ChevronRight className="w-4 h-4 text-blue-500 dark:text-blue-300" />
                 </button>
 
                 {/* Logout Button */}
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="w-full p-3 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-bold flex items-center justify-center gap-2 transition hover:bg-rose-100 cursor-pointer"
+                  className="w-full p-3 rounded-xl border border-rose-300 dark:border-rose-800/80 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-200 font-bold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>ออกจากระบบ</span>
@@ -831,7 +857,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               >
                 บัตรดิจิทัล
               </button>
-              <span aria-live="polite" className="text-[11px] font-medium text-slate-500">{profilePage + 1} / 2</span>
+              <span aria-live="polite" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{profilePage + 1} / 2</span>
               <button
                 type="button"
                 onClick={() => setProfilePage(1)}
@@ -865,7 +891,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
               nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
               paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าการบ้าน' : 'Homework pages'}
-              emptyState={<div className="text-center py-12 text-slate-400 text-xs">ไม่มีการบ้านในระบบ</div>}
+              emptyState={<div className="text-center py-12 text-slate-600 dark:text-slate-300 text-xs">ไม่มีการบ้านในระบบ</div>}
               renderItem={(asg) => {
                 const isDone = myCompletedSubmissions.has(asg.id);
                 return (
@@ -882,7 +908,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         {courses.find(c => c.id === asg.courseId)?.code || courses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        isDone ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
                       }`}>
                         {isDone ? '✓ ส่งแล้ว' : 'รอส่ง'}
                       </span>
@@ -892,9 +918,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       {lang === 'th' ? (asg.titleTh || asg.titleEn) : (asg.titleEn || asg.titleTh)}
                     </h4>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
                       <span>กำหนดส่ง: {asg.dueDate}</span>
-                      <span className="font-bold text-amber-600 dark:text-amber-400">{asg.points} คะแนน</span>
+                      <span className="font-bold text-amber-700 dark:text-amber-300">{asg.points} คะแนน</span>
                     </div>
                   </div>
                 );
@@ -917,11 +943,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>กลับสู่รายการ</span>
                   </button>
-                  <span className="text-[10px] text-slate-500">{selectedAnnouncement.publishedAt}</span>
+                  <span className="text-[10px] text-slate-600 dark:text-slate-300">{selectedAnnouncement.publishedAt}</span>
                 </div>
                 <article className={`p-3 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
                   <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">{selectedAnnouncement.title}</h2>
-                  <p className="mt-1 text-[10px] text-slate-500">
+                  <p className="mt-1 text-[10px] text-slate-600 dark:text-slate-300">
                     {selectedAnnouncement.author} ({selectedAnnouncement.authorRole})
                   </p>
                   <PagedList
@@ -958,7 +984,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
                   nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
                   paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
-                  emptyState={<p className="py-8 text-center text-xs text-slate-500">ไม่มีประกาศ</p>}
+                  emptyState={<p className="py-8 text-center text-xs text-slate-600 dark:text-slate-300">ไม่มีประกาศ</p>}
                   renderItem={(a) => (
                 <div 
                   key={a.id} 
@@ -972,14 +998,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
                       {a.category}
                     </span>
-                    <span className="text-[10px] text-slate-400">{a.publishedAt}</span>
+                    <span className="text-[10px] text-slate-600 dark:text-slate-300">{a.publishedAt}</span>
                   </div>
 
                   <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{a.title}</h4>
                   <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs whitespace-pre-line line-clamp-2">{a.content}</p>
 
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-600 dark:text-slate-300">
                       ผู้ประกาศ: {a.author} ({a.authorRole})
                     </span>
                     <button
@@ -1013,7 +1039,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'home'
                 ? 'text-blue-600 dark:text-blue-400 font-black'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Home className="w-5 h-5 mb-0.5" />
@@ -1027,7 +1053,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'checkin'
                 ? 'text-blue-600 dark:text-blue-400 font-black'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {!todayCheckin && (
@@ -1044,11 +1070,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'leave'
                 ? 'text-emerald-600 dark:text-emerald-400 font-black'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {pendingLeavesCount > 0 && (
-              <span className="absolute top-1 right-4 px-1 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">
+              <span className="absolute top-1 right-4 px-1 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
                 {pendingLeavesCount}
               </span>
             )}
@@ -1066,7 +1092,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'games'
                 ? 'text-amber-600 dark:text-amber-400 font-black'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Gamepad2 className="w-5 h-5 mb-0.5" />
@@ -1080,7 +1106,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'profile'
                 ? 'text-purple-600 dark:text-purple-400 font-black'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <User className="w-5 h-5 mb-0.5" />
@@ -1129,6 +1155,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           {activeGameView === 'boss_raid' && (
             <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-1 sm:p-3">
               <CoopBossRaidView
+                questions={questions}
                 lang={lang}
                 currentRole={currentRole}
                 currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}

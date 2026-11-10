@@ -119,11 +119,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                   title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
                 >
-                  <Building2 className="w-3 h-3 text-blue-600 shrink-0" />
+                  <Building2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
                   <span className="truncate">
                     {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
                   </span>
-                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                  <ChevronDown className="w-3 h-3 text-slate-500 dark:text-slate-300 shrink-0" />
                 </button>
 
                 {/* Dedicated GPS Settings Button for School Admin */}
@@ -152,7 +152,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-40 xl:w-52 pl-9 pr-3 py-1 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors ${
-              isLight ? 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400' : 'bg-slate-800 border-slate-700 text-slate-200'
+              isLight ? 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-500' : 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-400'
             }`}
           />
         </div>}
@@ -165,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => setThemePalette('light_warm')}
               className={`p-1 rounded transition ${
-                isLight ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-400 hover:text-white'
+                isLight ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-300 hover:text-white'
               }`}
               title="ถนอมสายตา"
             >
@@ -175,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => setThemePalette('sapphire')}
               className={`p-1 rounded transition ${
-                !isLight ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                !isLight ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
               title="โหมดมืด"
             >
@@ -253,7 +253,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* User Avatar & Profile Trigger & Logout */}
-          <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200">
+          <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200 dark:border-slate-700">
             <button
               type="button"
               onClick={onOpenProfile}
@@ -263,13 +263,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <img
                 src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                 alt="Profile"
-                className="w-7 h-7 rounded-full object-cover border border-slate-300 shrink-0 group-hover:ring-2 group-hover:ring-blue-500"
+                className="w-7 h-7 rounded-full object-cover border border-slate-300 dark:border-slate-600 shrink-0 group-hover:ring-2 group-hover:ring-blue-500"
               />
               <div className="hidden xl:block text-left text-xs">
-                <div className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[105px] group-hover:text-blue-700">
+                <div className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[105px] group-hover:text-blue-700 dark:group-hover:text-blue-300">
                   {currentUser?.fullNameTh?.split(' ')[0] || currentUser?.email?.split('@')[0]}
                 </div>
-                <div className="text-[10px] text-blue-700 font-medium leading-none">
+                <div className="text-[10px] text-blue-700 dark:text-blue-300 font-medium leading-none">
                   {roleLabelMap[currentRole]?.[lang] || currentRole}
                 </div>
               </div>
@@ -279,7 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 type="button"
                 onClick={onOpenProfile}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-semibold transition shrink-0 shadow-xs cursor-pointer"
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-950/60 dark:hover:bg-blue-900/70 dark:text-blue-200 text-[11px] font-semibold transition shrink-0 shadow-xs cursor-pointer"
                 title={lang === 'th' ? 'แก้ไขโปรไฟล์และสะสมผลงาน' : 'My Profile & Portfolio'}
               >
                 <User className="w-3.5 h-3.5" />
@@ -290,7 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onLogout}
-              className="p-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs flex items-center gap-1 transition shrink-0 cursor-pointer"
+              className="p-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:border-rose-800 dark:bg-rose-950/60 dark:hover:bg-rose-900/70 dark:text-rose-200 text-xs flex items-center gap-1 transition shrink-0 cursor-pointer"
               title={lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -300,15 +300,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Second Row: Program Mode Selector - Horizontally Scrollable on Mobile to prevent any overflow */}
-      {canAccessSchoolOperations && <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-center overflow-x-auto no-scrollbar w-full">
+      {canAccessSchoolOperations && <div className={`mt-1.5 pt-1.5 border-t ${isLight ? 'border-slate-100' : 'border-slate-800'} flex items-center justify-center overflow-x-auto no-scrollbar w-full`}>
         <div className={`inline-flex items-center p-0.5 rounded-lg border shrink-0 ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'}`}>
           <button
             type="button"
             onClick={() => setProgramMode('school_erp')}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition shrink-0 ${
               programMode === 'school_erp'
-                ? 'bg-white text-blue-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? (isLight ? 'bg-white text-blue-700 shadow-xs' : 'bg-blue-600 text-white shadow-xs')
+                : (isLight ? 'text-slate-700 hover:text-slate-950' : 'text-slate-300 hover:text-white')
             }`}
           >
             <Building2 className="w-3 h-3 shrink-0" />
@@ -320,8 +320,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setProgramMode('lms_classroom')}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition shrink-0 ${
               programMode === 'lms_classroom'
-                ? 'bg-white text-blue-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? (isLight ? 'bg-white text-blue-700 shadow-xs' : 'bg-blue-600 text-white shadow-xs')
+                : (isLight ? 'text-slate-700 hover:text-slate-950' : 'text-slate-300 hover:text-white')
             }`}
           >
             <Laptop className="w-3 h-3 shrink-0" />
@@ -333,8 +333,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setProgramMode('parent_portal')}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition shrink-0 ${
               programMode === 'parent_portal'
-                ? 'bg-white text-blue-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? (isLight ? 'bg-white text-blue-700 shadow-xs' : 'bg-blue-600 text-white shadow-xs')
+                : (isLight ? 'text-slate-700 hover:text-slate-950' : 'text-slate-300 hover:text-white')
             }`}
           >
             <Smartphone className="w-3 h-3 shrink-0" />

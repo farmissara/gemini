@@ -238,8 +238,8 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
           onClick={() => setActiveTab('quest_pass')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'quest_pass'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 border border-slate-200 dark:border-slate-700'
+              ? 'bg-amber-400 text-slate-950 shadow-xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-950 dark:hover:text-white border border-slate-300 dark:border-slate-700'
           }`}
         >
           <Zap className="w-3.5 h-3.5" />
@@ -252,7 +252,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'perks_store'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 border border-slate-200 dark:border-slate-700'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-950 dark:hover:text-white border border-slate-300 dark:border-slate-700'
           }`}
         >
           <ShoppingBag className="w-3.5 h-3.5" />
@@ -261,7 +261,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       </div>
 
       {/* Tab Panels Body */}
-      <div className="flex-1 min-h-0 overflow-hidden pr-1">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
       {activeTab === 'quest_pass' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-2">
         <div className="lg:col-span-12 flex items-center gap-2">
@@ -282,7 +282,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {lang === 'th' ? 'เควสต์ทบทวนประจำวัน 3 นาที (Daily Micro-Quest)' : 'Daily 3-Min Micro Quest'}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     {lang === 'th' ? `ข้อที่ ${activeQuestIndex + 1} จาก ${dailyQuests.length} ข้อ • วิชา: ${currentDailyQuest.subject}` : `Question ${activeQuestIndex + 1} of ${dailyQuests.length}`}
                   </p>
                 </div>
@@ -313,15 +313,15 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                       className={`w-full text-left p-3.5 rounded-xl border transition flex items-center justify-between text-xs sm:text-sm font-semibold cursor-pointer ${
                         isSelected 
                           ? optIdx === currentDailyQuest.correctIndex
-                            ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
-                            : 'bg-rose-500 text-white border-rose-600 shadow-sm'
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                            : 'bg-rose-600 text-white border-rose-700 shadow-sm'
                           : selectedOption !== null && optIdx === currentDailyQuest.correctIndex
-                          ? 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-400 text-emerald-800 dark:text-emerald-200 font-bold'
-                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-orange-400 text-slate-800 dark:text-slate-200'
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-400 text-emerald-900 dark:text-emerald-200 font-bold'
+                          : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:border-orange-400 text-slate-800 dark:text-slate-100'
                       }`}
                     >
                       <span>{opt}</span>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-300" />
                     </button>
                   );
                 })}
@@ -345,7 +345,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
           {/* Quest Navigation Button */}
           <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[11px] text-slate-600 dark:text-slate-300">
               {hasCompletedDaily ? (lang === 'th' ? '🔥 รักษาสตรีคของวันนี้สำเร็จแล้ว!' : '🔥 Today\'s streak secured!') : (lang === 'th' ? 'ทำถูก 1 ข้อเพื่อรักษาไฟสตรีค' : 'Answer correctly to keep streak alive')}
             </span>
 
@@ -372,13 +372,13 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {lang === 'th' ? 'ซีซันพาสความรู้ (Season Quest Pass)' : 'Knowledge Season Pass'}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     {lang === 'th' ? 'ปลดล็อกรางวัลพิเศษตามเลเวล XP สะสม' : 'Unlock exclusive rewards as you earn XP'}
                   </p>
                 </div>
               </div>
 
-              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+              <span className="text-xs font-black text-indigo-700 dark:text-indigo-300">
                 XP: {currentXp} / 1,000
               </span>
             </div>
@@ -394,17 +394,17 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                     key={tier.level}
                     className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition ${
                       tier.isClaimed
-                        ? 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-80'
+                        ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 opacity-95'
                         : canClaim
-                        ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700 shadow-xs'
-                        : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700 shadow-xs'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${
                         isPassed 
                           ? 'bg-indigo-600 text-white' 
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                       }`}>
                         Lv.{tier.level}
                       </div>
@@ -414,7 +414,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                           <Gift className="w-3.5 h-3.5 text-amber-500" />
                           <span>{tier.freeRewardTh}</span>
                         </div>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-slate-600 dark:text-slate-300">
                           {lang === 'th' ? `ต้องการ ${tier.requiredXp} XP` : `Requires ${tier.requiredXp} XP`}
                         </p>
                       </div>
@@ -423,7 +423,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                     {/* Claim Button */}
                     <div className="shrink-0">
                       {tier.isClaimed ? (
-                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {lang === 'th' ? 'รับแล้ว' : 'Claimed'}
                         </span>
@@ -436,7 +436,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                           {lang === 'th' ? 'กดรับรางวัล' : 'Claim'}
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400 font-medium">
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
                           {lang === 'th' ? 'ยังไม่ปลดล็อก' : 'Locked'}
                         </span>
                       )}
@@ -447,7 +447,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 flex items-center justify-between">
             <span>{lang === 'th' ? 'ฤดูกาลปัจจุบัน: Season 1 วิทยาการคำนวณ' : 'Current: Season 1 Tech & Sci'}</span>
             <span className="font-semibold">{lang === 'th' ? 'เหลือเวลาอีก 18 วัน' : '18 days left'}</span>
           </div>
@@ -491,7 +491,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
             return (
               <div 
                 key={perk.id}
-                className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-amber-400 transition-all flex flex-col justify-between"
+                className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-amber-400 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -511,8 +511,8 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-500">
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-600 dark:text-slate-300">
                     {lang === 'th' ? `เหลือ ${perk.stock} สิทธิ์` : `${perk.stock} left`}
                   </span>
 
@@ -522,8 +522,8 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                     onClick={() => handleRedeemPerk(perk)}
                     className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer ${
                       canAfford && perk.stock > 0
-                        ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                        ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-not-allowed'
                     }`}
                   >
                     <span>{lang === 'th' ? 'แลกสิทธิ์' : 'Redeem'}</span>
@@ -548,7 +548,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
               <button
                 type="button"
                 onClick={() => setShowAddPerkModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -601,13 +601,13 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 <button
                   type="button"
                   onClick={() => setShowAddPerkModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold"
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold"
                 >
                   {lang === 'th' ? 'สร้างสิทธิ์ทันที' : 'Save Perk'}
                 </button>

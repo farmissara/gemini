@@ -73,18 +73,26 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           type="button"
           onClick={() => setPage(Math.max(0, page - 1))}
           disabled={page === 0}
-          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 ${isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-200'}`}
+          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 transition ${
+            isLight
+              ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
+              : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+          }`}
         >
           ก่อนหน้า
         </button>
-        <span aria-live="polite" className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span aria-live="polite" className={`text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-700 dark:text-slate-300'}`}>
           หน้า {page + 1} / {pageCount} · {totalItems} รายการ
         </span>
         <button
           type="button"
           onClick={() => setPage(Math.min(pageCount - 1, page + 1))}
           disabled={page >= pageCount - 1}
-          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 ${isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-200'}`}
+          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 transition ${
+            isLight
+              ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
+              : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+          }`}
         >
           ถัดไป
         </button>
@@ -178,11 +186,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       {/* Header */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             ระบบวัดผลและประเมินผลการเรียนรู้ (Academic Gradebook &amp; ปพ.)
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
             บันทึกคะแนนเก็บ ตัดเกรดมาตรฐาน สพฐ. พิมพ์แบบ ปพ.5 (สมุดประจำวิชา) และ ปพ.6 (รายงานผลการเรียนรายบุคคล)
           </p>
         </div>
@@ -191,9 +199,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <button
             type="button"
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold shadow-xs transition cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>ส่งออก ปพ.5 (CSV)</span>
           </button>
 
@@ -212,14 +220,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       </div>
 
       {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 */}
-      <div className="shrink-0 flex rounded-xl bg-slate-900 border border-slate-800 p-1 gap-1 max-w-lg">
+      <div className="shrink-0 flex rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 gap-1 max-w-lg shadow-xs">
         <button
           type="button"
           onClick={() => setActiveTab('gradebook')}
           className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
             activeTab === 'gradebook'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-400 hover:text-white'
+              : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
           }`}
         >
           สมุดบันทึกคะแนน (Gradebook)
@@ -231,7 +239,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
             activeTab === 'pp5'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-400 hover:text-white'
+              : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
           }`}
         >
           เอกสาร ปพ.5 (ประจำวิชา)
@@ -243,7 +251,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
             activeTab === 'pp6'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-400 hover:text-white'
+              : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
           }`}
         >
           เอกสาร ปพ.6 (รายบุคคล)
@@ -252,7 +260,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
       {/* Course selector tabs (shown in Gradebook and ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800">
+        <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800">
           {courses.map((course) => (
             <button
               key={course.id}
@@ -264,7 +272,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                 selectedCourseId === course.id
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/60'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
               }`}
             >
               <span className="font-mono">{course.code}</span>
@@ -286,14 +294,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold text-indigo-400">{selectedCourse.code}</span>
                 <span className="text-white font-bold text-base">{selectedCourse.titleEn}</span>
-                <span className="text-xs text-slate-400 font-thai">({selectedCourse.titleTh})</span>
+                <span className="text-xs text-slate-300 font-thai">({selectedCourse.titleTh})</span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5">
                 Instructor: {selectedCourse.teacherName} • Credits: {selectedCourse.credits} • Academic Year {selectedCourse.academicYear}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-slate-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
               <span>Grading Scale: A (80+), B+ (75), B (70), C+ (65), C (60), D+ (55), D (50), F (&lt;50)</span>
             </div>
@@ -302,7 +310,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+              <thead className="bg-slate-950 text-slate-300 font-semibold border-b border-slate-800">
                 <tr>
                   <th className="py-3 px-3">Student</th>
                   <th className="py-3 px-3">Room</th>
@@ -318,7 +326,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <tbody className="divide-y divide-slate-800">
                 {courseGrades.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-400">
+                    <td colSpan={9} className="py-8 text-center text-slate-300">
                       No grades entered for this course yet.
                     </td>
                   </tr>
@@ -328,7 +336,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     if (!student) return null;
                     const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
                     return (
-                      <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-slate-800/40 transition-colors`}>
+                      <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-slate-800/60 transition-colors`}>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2.5">
                             <img
@@ -340,14 +348,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                               <div className="font-semibold text-white">
                                 {student.firstNameEn} {student.lastNameEn}
                               </div>
-                              <div className="text-[10px] text-slate-400 font-thai">
+                              <div className="text-[10px] text-slate-300 font-thai">
                                 {student.firstNameTh} ({student.studentIdNumber})
                               </div>
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-slate-300">
+                        <td className="py-3 px-3 text-slate-200">
                           {student.room}
                         </td>
 
@@ -424,7 +432,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         <td className="py-3 px-3 text-right">
                           <button
                             onClick={() => onOpenReportCard(student)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-medium inline-flex items-center gap-1 transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-200 text-xs font-medium inline-flex items-center gap-1 transition-colors"
                           >
                             <FileText className="w-3.5 h-3.5" />
                             <span>Transcript</span>
@@ -441,7 +449,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {/* MOBILE VIEW (< 768px): Card List View for Easy Touch Interaction */}
           <div className="md:hidden space-y-3">
             {courseGrades.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center">ไม่มีข้อมูลผลการเรียนในรายวิชานี้</p>
+              <p className="text-xs text-slate-300 py-6 text-center">ไม่มีข้อมูลผลการเรียนในรายวิชานี้</p>
             ) : (
               courseGrades.map((grade, index) => {
                 const student = students.find((s) => s.id === grade.studentId);
@@ -450,7 +458,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 if (!isVisible) return null;
 
                 return (
-                  <div key={grade.id} className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-md space-y-3">
+                  <div key={grade.id} className="p-3.5 rounded-2xl bg-slate-800 border border-slate-700 shadow-md space-y-3">
                     {/* Student Info Top */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -463,7 +471,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           <h4 className="text-xs font-bold text-white truncate">
                             {student.firstNameTh} {student.lastNameTh}
                           </h4>
-                          <p className="text-[10px] text-slate-400 font-mono">
+                          <p className="text-[10px] text-slate-300 font-mono">
                             {student.studentIdNumber} • ห้อง {student.room}
                           </p>
                         </div>
@@ -472,7 +480,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       {/* Total Score & Grade Badge */}
                       <div className="text-right shrink-0">
                         <div className="text-base font-black font-mono text-white">
-                          {grade.totalScore} <span className="text-[10px] font-normal text-slate-400">/ 100</span>
+                          {grade.totalScore} <span className="text-[10px] font-normal text-slate-300">/ 100</span>
                         </div>
                         <span
                           className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
@@ -490,8 +498,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                     {/* Touch Friendly Score Inputs Grid */}
                     <div className="grid grid-cols-4 gap-1.5 pt-1">
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
-                        <span className="block text-[9px] text-slate-400 font-medium">กลางภาค</span>
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
+                        <span className="block text-[9px] text-slate-300 font-medium">กลางภาค</span>
                         <input
                           type="number"
                           min="0"
@@ -500,11 +508,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           onChange={(e) => handleScoreChange(grade, 'midtermScore', Number(e.target.value))}
                           className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 30)</span>
+                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 30)</span>
                       </div>
 
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
-                        <span className="block text-[9px] text-slate-400 font-medium">ปลายภาค</span>
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
+                        <span className="block text-[9px] text-slate-300 font-medium">ปลายภาค</span>
                         <input
                           type="number"
                           min="0"
@@ -513,11 +521,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           onChange={(e) => handleScoreChange(grade, 'finalScore', Number(e.target.value))}
                           className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 40)</span>
+                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 40)</span>
                       </div>
 
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
-                        <span className="block text-[9px] text-slate-400 font-medium">การบ้าน</span>
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
+                        <span className="block text-[9px] text-slate-300 font-medium">การบ้าน</span>
                         <input
                           type="number"
                           min="0"
@@ -526,11 +534,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           onChange={(e) => handleScoreChange(grade, 'assignmentScore', Number(e.target.value))}
                           className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 20)</span>
+                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 20)</span>
                       </div>
 
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
-                        <span className="block text-[9px] text-slate-400 font-medium">ควิซ</span>
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
+                        <span className="block text-[9px] text-slate-300 font-medium">ควิซ</span>
                         <input
                           type="number"
                           min="0"
@@ -539,7 +547,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           onChange={(e) => handleScoreChange(grade, 'quizScore', Number(e.target.value))}
                           className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 10)</span>
+                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 10)</span>
                       </div>
                     </div>
 
@@ -717,8 +725,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       {activeTab === 'pp6' && (
         <div className="space-y-5">
           {/* Student Selector for P.P. 6 */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800 print:hidden">
-            <span className="text-xs text-slate-400 shrink-0 font-medium">เลือกนักเรียน:</span>
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 dark:border-slate-800 print:hidden">
+            <span className="text-xs text-slate-700 dark:text-slate-300 shrink-0 font-semibold">เลือกนักเรียน:</span>
             {students.map((student) => (
               <button
                 key={student.id}
@@ -727,10 +735,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   setPp6CoursePage(0);
                   setPp6Section('identity');
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                   selectedStudentIdForPp6 === student.id
                     ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                 }`}
               >
                 {student.firstNameTh} {student.lastNameTh} ({student.room})

@@ -133,7 +133,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 setAddFormStep(0);
                 setShowAddModal(true);
               }}
-              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'เพิ่มผลงานใหม่' : 'Add Work'}</span>
@@ -143,7 +143,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
       </div>
 
       {/* Target Selector: Student TCAS vs Teacher ว.PA */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -153,7 +153,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeRoleTab === 'student'
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-750'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <GraduationCap className="w-4 h-4" />
@@ -168,7 +168,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
               activeRoleTab === 'teacher'
                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-750'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Briefcase className="w-4 h-4" />
@@ -189,10 +189,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
                     selectedCategory === cat.id
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                      : 'bg-slate-800/60 text-slate-400 hover:text-white'
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {cat.label}
@@ -210,10 +210,10 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
                     selectedCategory === cat.id
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                      : 'bg-slate-800/60 text-slate-400 hover:text-white'
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {cat.label}
@@ -226,27 +226,27 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
       <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setPortfolioStep(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${portfolioStep === 0 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>{lang === 'th' ? 'โปรไฟล์' : 'Profile'}</button>
-        <button type="button" onClick={() => setPortfolioStep(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${portfolioStep === 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>{lang === 'th' ? `ผลงาน (${filteredItems.length})` : `Portfolio Items (${filteredItems.length})`}</button>
+        <button type="button" onClick={() => setPortfolioStep(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${portfolioStep === 0 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{lang === 'th' ? 'โปรไฟล์' : 'Profile'}</button>
+        <button type="button" onClick={() => setPortfolioStep(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${portfolioStep === 1 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{lang === 'th' ? `ผลงาน (${filteredItems.length})` : `Portfolio Items (${filteredItems.length})`}</button>
       </div>
       {/* Role Profile Header Preview Card */}
       {portfolioStep === 0 && (
       activeRoleTab === 'student' ? (
-        <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center shadow-lg">
           <div className="flex items-center gap-4 md:col-span-2">
             <img 
               src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80" 
               alt="Student"
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-indigo-500/40 shadow-lg shrink-0"
+              className="w-20 h-20 rounded-2xl object-cover border-2 border-indigo-500/50 shadow-lg shrink-0"
             />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">นายธนาธร สมชาย (STU-6901)</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/40">
                   เกรดเฉลี่ยสะสม GPAX: 3.94
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 โรงเรียนเอ็ดดูเวิร์สวิทยานุสรณ์ • แผนการเรียนวิทยาศาสตร์-คณิตศาสตร์-คอมพิวเตอร์
               </p>
               <div className="text-xs text-indigo-300 font-semibold flex items-center gap-1.5 pt-1">
@@ -256,37 +256,37 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/30 space-y-2 text-xs">
-            <div className="font-bold text-indigo-300 flex items-center gap-1.5">
+          <div className="p-4 rounded-2xl bg-indigo-950 border border-indigo-700/60 space-y-2 text-xs">
+            <div className="font-bold text-indigo-200 flex items-center gap-1.5">
               <Award className="w-4 h-4 text-amber-400" />
               <span>EduVerse Gamification Credentials</span>
             </div>
-            <div className="flex items-center justify-between text-slate-300 text-[11px]">
+            <div className="flex items-center justify-between text-slate-200 text-[11px]">
               <span>Academic Top Scorer Badge</span>
-              <span className="text-emerald-400 font-bold">ผ่านการรับรอง ✓</span>
+              <span className="text-emerald-300 font-bold">ผ่านการรับรอง ✓</span>
             </div>
-            <div className="flex items-center justify-between text-slate-300 text-[11px]">
+            <div className="flex items-center justify-between text-slate-200 text-[11px]">
               <span>Grandmaster Battle Rank</span>
-              <span className="text-amber-400 font-bold">4,850 EXP</span>
+              <span className="text-amber-300 font-bold">4,850 EXP</span>
             </div>
           </div>
         </div>
       ) : (
-        <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 items-center shadow-lg">
           <div className="flex items-center gap-4 md:col-span-2">
             <img 
               src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80" 
               alt="Teacher"
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg shrink-0"
+              className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-500/50 shadow-lg shrink-0"
             />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">อ.ดร.ประเสริฐ ถาวร</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 font-semibold border border-purple-500/40">
                   วิทยฐานะ: ครูชำนาญการพิเศษ
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • หัวหน้ากลุ่มงานนวัตกรรมการเรียนรู้
               </p>
               <div className="text-xs text-purple-300 font-semibold flex items-center gap-1.5 pt-1">
@@ -296,18 +296,18 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-purple-950/30 border border-purple-800/30 space-y-2 text-xs">
-            <div className="font-bold text-purple-300 flex items-center gap-1.5">
+          <div className="p-4 rounded-2xl bg-purple-950 border border-purple-700/60 space-y-2 text-xs">
+            <div className="font-bold text-purple-200 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>ความก้าวหน้าข้อตกลง PA (2569)</span>
             </div>
-            <div className="flex items-center justify-between text-slate-300 text-[11px]">
+            <div className="flex items-center justify-between text-slate-200 text-[11px]">
               <span>ด้านการจัดการเรียนรู้</span>
-              <span className="text-emerald-400 font-bold">100% ผ่านเกณฑ์</span>
+              <span className="text-emerald-300 font-bold">100% ผ่านเกณฑ์</span>
             </div>
-            <div className="flex items-center justify-between text-slate-300 text-[11px]">
+            <div className="flex items-center justify-between text-slate-200 text-[11px]">
               <span>สื่อนวัตกรรมในระบบ</span>
-              <span className="text-amber-400 font-bold">5 สื่อการสอน</span>
+              <span className="text-amber-300 font-bold">5 สื่อการสอน</span>
             </div>
           </div>
         </div>
@@ -319,11 +319,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         <PagedList
           items={filteredItems}
           pageSize={1}
-          emptyState={<p className="text-sm text-slate-400">{lang === 'th' ? 'ยังไม่มีผลงานในหมวดนี้' : 'No portfolio items in this category.'}</p>}
+          emptyState={<p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{lang === 'th' ? 'ยังไม่มีผลงานในหมวดนี้' : 'No portfolio items in this category.'}</p>}
           renderItem={(item) => (
           <div 
             key={item.id}
-            className="rounded-3xl bg-slate-900/60 border border-slate-800 overflow-hidden flex flex-col justify-between hover:border-slate-700 transition-all group"
+            className="rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden flex flex-col justify-between hover:border-slate-700 transition-all group shadow-lg"
           >
             {item.imageUrl && (
               <div className="relative h-48 w-full overflow-hidden bg-slate-800">
@@ -332,11 +332,11 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   alt={item.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/20">
+                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-[10px] font-bold text-white border border-white/25">
                   {item.year}
                 </div>
                 {item.certifiedBySchool && (
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1 shadow-md">
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-700 text-[10px] font-bold text-white flex items-center gap-1 shadow-md">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>โรงเรียนรับรองผลงาน</span>
                   </div>
@@ -347,17 +347,17 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
                     {item.category}
                   </span>
-                  <span className="text-xs text-slate-400">เจ้าของ: {item.ownerName}</span>
+                  <span className="text-xs text-slate-300">เจ้าของ: {item.ownerName}</span>
                 </div>
 
                 <h4 className="text-base font-bold text-white leading-snug group-hover:text-indigo-300 transition-colors">
                   {item.title}
                 </h4>
 
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-300 leading-relaxed">
                   {item.description}
                 </p>
               </div>
@@ -368,7 +368,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   {item.skills.map((skill, sIdx) => (
                     <span 
                       key={sIdx}
-                      className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center gap-1"
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1"
                     >
                       <Tag className="w-2.5 h-2.5 text-indigo-400" />
                       <span>{skill}</span>
@@ -377,14 +377,14 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <span className="text-emerald-300 font-semibold flex items-center gap-1">
                     <Award className="w-4 h-4 text-amber-400" />
                     <span>โบนัสคะแนน: +{item.scoreBonus || 100} แต้ม</span>
                   </span>
 
                   <button 
                     onClick={handlePrintPortfolio}
-                    className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 text-xs"
+                    className="text-indigo-300 hover:text-indigo-200 font-bold flex items-center gap-1 text-xs"
                   >
                     <span>ดูเอกสาร / ใบประกาศ</span>
                     <ExternalLink className="w-3.5 h-3.5" />

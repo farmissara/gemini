@@ -142,8 +142,36 @@ export const App: React.FC = () => {
   const [promotions, setPromotions] = useState<PromotionCampaign[]>(INITIAL_PROMOTIONS);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>(INITIAL_SUBSCRIPTION_PLANS);
 
+  // Parse URL query params for direct Period QR / Check-in Link entry
+  const deepLinkParams = (() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const tab = sp.get('tab');
+      const subTab = sp.get('subTab');
+      const courseId = sp.get('courseId') || undefined;
+      const periodStr = sp.get('period');
+      const date = sp.get('date') || undefined;
+      const code = sp.get('code') || undefined;
+      const periodNumber = periodStr && !Number.isNaN(Number(periodStr)) ? Number(periodStr) : undefined;
+      const isPeriodDeepLink = tab === 'mobile_checkin' || subTab === 'period_checkin' || Boolean(courseId);
+      if (!isPeriodDeepLink) return null;
+      return {
+        subTab: (subTab === 'leave_request' || subTab === 'period_checkin' || subTab === 'teacher_proxy'
+          ? subTab
+          : 'period_checkin') as 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin',
+        courseId,
+        periodNumber,
+        date,
+        code,
+      };
+    } catch {
+      return null;
+    }
+  })();
+
   // Navigation, Mode, Theme, Language & Mobile Drawer State
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const [currentTab, setCurrentTab] = useState<NavTab>(deepLinkParams ? 'mobile_checkin' : 'dashboard');
   const [isGamePlaying, setIsGamePlaying] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
@@ -172,6 +200,18 @@ export const App: React.FC = () => {
 
   const shouldShowMobileView = deviceViewPreference === 'mobile' || (deviceViewPreference === 'auto' && isMobileScreen);
   const useImmersiveGameLayout = isGamePlaying || ['games', 'boss_raid', 'subject_labs'].includes(currentTab);
+
+  // Sync Tailwind .dark class and custom CSS theme variables with active themePalette
+  useEffect(() => {
+    const isDarkTheme = themePalette?.includes('dark') || themePalette === 'sapphire';
+    const rootEl = document.documentElement;
+    rootEl.classList.toggle('dark', isDarkTheme);
+    rootEl.classList.remove('theme-light_warm', 'theme-light_sky', 'theme-sapphire', 'theme-light', 'theme-dark');
+    if (themePalette) {
+      rootEl.classList.add(`theme-${themePalette}`);
+    }
+    setTheme(isDarkTheme ? 'dark' : 'light');
+  }, [themePalette]);
 
   useEffect(() => {
     setIsGamePlaying(false);
@@ -1052,6 +1092,12 @@ export const App: React.FC = () => {
           onAddQuestion={handleAddQuestion}
           onImportQuestions={handleImportQuestions}
           onUpdateStudent={handleUpdateStudent}
+          initialMobileTab={deepLinkParams ? 'checkin' : 'home'}
+          initialAttendanceSubTab={deepLinkParams?.subTab || 'selfie_mobile'}
+          initialPeriodCourseId={deepLinkParams?.courseId}
+          initialPeriodNumber={deepLinkParams?.periodNumber}
+          initialPeriodDate={deepLinkParams?.date}
+          initialPeriodCode={deepLinkParams?.code}
         />
 
         {/* Modals for Mobile View */}
@@ -1145,13 +1191,13 @@ export const App: React.FC = () => {
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
       />}
       {!useImmersiveGameLayout && isDemoMode && (
-        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 bg-violet-50 text-[11px] text-violet-900 flex items-center justify-between">
+        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
           <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>
-          <span className="font-bold uppercase text-[9px] px-1.5 py-0.2 bg-violet-200 rounded">DEMO</span>
+          <span className="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-violet-200 dark:bg-violet-800 text-violet-950 dark:text-violet-100 rounded">DEMO</span>
         </div>
       )}
       {!useImmersiveGameLayout && dataSyncError && (
-        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-md border border-rose-300 bg-rose-50 text-[11px] text-rose-800 flex items-center justify-between">
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between">
           <span>ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}</span>
           <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2">✕</button>
         </div>
@@ -1164,13 +1210,13 @@ export const App: React.FC = () => {
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
             onClick={() => setIsMobileMenuOpen(false)} 
           />
-          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between">
-              <span className="font-bold text-xs text-slate-800">เมนูระบบโรงเรียน (EduVerse)</span>
+          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-slate-200 dark:border-slate-800">
+            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="font-bold text-xs text-slate-800 dark:text-slate-100">เมนูระบบโรงเรียน (EduVerse)</span>
               <button 
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-md text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1220,19 +1266,19 @@ export const App: React.FC = () => {
         <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-y-auto ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'p-2 sm:p-3 lg:p-4'}`}>
           <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : 'max-w-7xl mx-auto'} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
-              <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-sm font-bold text-blue-900">
+                  <div className="text-sm font-bold text-blue-900 dark:text-blue-100">
                     กำลังดูข้อมูลโรงเรียน: {activeSchool.nameTh}
                   </div>
-                  <div className="text-xs text-blue-800">
+                  <div className="text-xs text-blue-800 dark:text-blue-200">
                     โหมดตรวจสอบรายโรงเรียน — ข้อมูลและเมนูปฏิบัติงานของโรงเรียนจะแสดงตามบริบทนี้
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigateToAppTab('super_admin_console')}
-                  className="shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100"
+                  className="shrink-0 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-slate-700"
                 >
                   กลับศูนย์ควบคุม
                 </button>
@@ -1265,7 +1311,7 @@ export const App: React.FC = () => {
                             className={`min-w-0 px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                               isCatActive
                                 ? 'bg-blue-600 text-white shadow-xs'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900'
+                                : 'text-slate-700 dark:text-slate-200 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900 dark:hover:text-white'
                             }`}
                           >
                             <span>{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
@@ -1436,6 +1482,7 @@ export const App: React.FC = () => {
 
                 {currentTab === 'boss_raid' && (
                   <CoopBossRaidView
+                    questions={schoolQuestions}
                     lang={lang}
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
@@ -1516,6 +1563,7 @@ export const App: React.FC = () => {
                     leaveRequests={leaveRequests}
                     campusGates={campusGates}
                     activeSchool={activeSchool}
+                    currentUser={currentUser}
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
@@ -1536,9 +1584,15 @@ export const App: React.FC = () => {
                     campusGates={campusGates}
                     leaveRequests={leaveRequests}
                     lang={lang}
+                    initialSubTab={deepLinkParams?.subTab || 'selfie_mobile'}
+                    initialPeriodCourseId={deepLinkParams?.courseId}
+                    initialPeriodNumber={deepLinkParams?.periodNumber}
+                    initialPeriodDate={deepLinkParams?.date}
+                    initialPeriodCode={deepLinkParams?.code}
                     onRecordAttendance={handleRecordAttendance}
                     onRecordPeriodAttendance={handleRecordPeriodAttendance}
                     onAddLeaveRequest={handleAddLeaveRequest}
+                    onUpdateLeaveStatus={handleUpdateLeaveStatus}
                   />
                 )}
 
@@ -1652,7 +1706,7 @@ export const App: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar - Clean, Subtle & Ergonomic */}
       {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && !useImmersiveGameLayout && (
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-sm">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around shadow-sm">
         <button
           type="button"
           onClick={() => {
@@ -1661,8 +1715,8 @@ export const App: React.FC = () => {
           }}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'dashboard'
-              ? 'text-blue-700 font-bold bg-blue-50'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
@@ -1677,8 +1731,8 @@ export const App: React.FC = () => {
           }}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'attendance'
-              ? 'text-blue-700 font-bold bg-blue-50'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <QrCode className="w-5 h-5" />
@@ -1693,8 +1747,8 @@ export const App: React.FC = () => {
           }}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'games'
-              ? 'text-blue-700 font-bold bg-blue-50'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Gamepad2 className="w-5 h-5" />
@@ -1709,8 +1763,8 @@ export const App: React.FC = () => {
           }}
           className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
             programMode === 'school_erp' && currentTab === 'portfolio'
-              ? 'text-blue-700 font-bold bg-blue-50'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Briefcase className="w-5 h-5" />
@@ -1720,9 +1774,9 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowProfileModal(true)}
-          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition text-slate-500 hover:text-slate-800"
+          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
         >
-          <User className="w-5 h-5 text-blue-600" />
+          <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           <span>โปรไฟล์</span>
         </button>
       </nav>

@@ -42,6 +42,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   const [trophyZoom, setTrophyZoom] = useState<number>(1.0);
 
   // 3D Canvas Ref
+  const [webGlError, setWebGlError] = useState(false);
   const mountRef = useRef<HTMLDivElement>(null);
   const trophyGroupRef = useRef<THREE.Group | null>(null);
   const materialsRef = useRef<{ [key: string]: THREE.MeshStandardMaterial }>({});
@@ -62,16 +63,22 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
     camera.position.set(0, 1.2, 4.5);
     camera.lookAt(0, 0.8, 0);
 
-    // 2. Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    container.appendChild(renderer.domElement);
+    // 2. Renderer with graceful fallback when WebGL is unavailable
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+    } catch (err) {
+      console.warn('HallOfFame WebGL unavailable, using 2D fallback:', err);
+      setWebGlError(true);
+      return;
+    }
 
     // 3. Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
@@ -419,7 +426,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(prev => Math.max(0.5, Number((prev - 0.15).toFixed(2))))}
-                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-500 active:scale-90 transition cursor-pointer"
+                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 active:scale-90 transition cursor-pointer"
                     title="ซูมออก (-)"
                   >
                     <ZoomOut className="w-3 h-3" />
@@ -427,7 +434,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(1.0)}
-                    className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold px-1 hover:underline cursor-pointer"
+                    className="text-[10px] font-mono text-amber-700 dark:text-amber-400 font-bold px-1 hover:underline cursor-pointer"
                     title="รีเซ็ต 1.0x"
                   >
                     {trophyZoom}x
@@ -435,15 +442,15 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(prev => Math.min(2.0, Number((prev + 0.15).toFixed(2))))}
-                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-500 active:scale-90 transition cursor-pointer"
+                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 active:scale-90 transition cursor-pointer"
                     title="ซูมเข้า (+)"
                   >
                     <ZoomIn className="w-3 h-3" />
                   </button>
                 </div>
 
-                <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                  <RotateCw className="w-3 h-3 text-indigo-500" />
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
+                  <RotateCw className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
                   {lang === 'th' ? 'หมุน 360°' : '360°'}
                 </span>
               </div>
@@ -452,11 +459,23 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             {/* 3D Canvas Mount Point */}
             <div 
               ref={mountRef}
-              className="w-full h-80 rounded-xl bg-gradient-to-b from-slate-900 via-slate-850 to-slate-950 border border-slate-800 relative cursor-grab active:cursor-grabbing overflow-hidden flex items-center justify-center shadow-inner"
+              className="w-full h-80 rounded-xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-800 relative cursor-grab active:cursor-grabbing overflow-hidden flex items-center justify-center shadow-inner"
             >
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/50 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold">
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-white text-[10px] font-bold z-10">
                 {selectedTrophy.materialName}
               </div>
+              {webGlError && (
+                <div className="flex flex-col items-center justify-center text-center p-6 space-y-2.5 z-10">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500/30 to-yellow-400/20 border-2 border-amber-400/60 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                    <Trophy className="w-10 h-10 text-amber-300" />
+                  </div>
+                  <p className="text-sm font-bold text-amber-200">{selectedTrophy.titleTh}</p>
+                  <p className="text-xs text-slate-300">{selectedTrophy.recipientName}</p>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    {lang === 'th' ? 'แสดงผลโหมดภาพถ้วยรางวัล 2D (อุปกรณ์ไม่รองรับ WebGL)' : '2D Showcase Mode'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Selected Trophy Info */}
@@ -482,7 +501,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               </p>
 
               <div className="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-mono font-bold text-slate-500">
+                <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
                   {selectedTrophy.certificateCode}
                 </span>
 
@@ -552,10 +571,10 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 truncate">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 truncate">
                             {trophy.studentRoom}
                           </span>
-                          <span className="text-[10px] text-slate-500 flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center gap-1 shrink-0">
                             <Calendar className="w-3 h-3" />
                             {trophy.achievedDate.slice(0, 11)}
                           </span>
@@ -571,7 +590,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                     </div>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                      <span className="font-mono text-[10px] text-slate-500 font-semibold truncate">
+                      <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300 font-semibold truncate">
                         {trophy.certificateCode}
                       </span>
                       <button
@@ -602,7 +621,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             <button
               type="button"
               onClick={() => setSelectedCertForModal(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-950 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -610,7 +629,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             {/* Official Printable Certificate Layout */}
             <div className="border-4 border-double border-amber-600/60 p-3 sm:p-4 rounded-xl bg-radial from-amber-50/60 via-white to-amber-50/30 text-center space-y-2">
               {/* Header Crest */}
-              <div className="w-12 h-12 mx-auto rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md">
+              <div className="w-12 h-12 mx-auto rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-md">
                 <Award className="w-7 h-7" />
               </div>
 

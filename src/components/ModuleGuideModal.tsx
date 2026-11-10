@@ -787,10 +787,10 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
       <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden">
         
         {/* Top Header */}
-        <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between gap-4">
+        <div className="px-5 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-500 p-0.5 shadow-lg shadow-cyan-500/20 flex items-center justify-center shrink-0">
-              <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-cyan-400">
+              <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-cyan-300">
                 <BookOpen className="w-5 h-5" />
               </div>
             </div>
@@ -799,11 +799,11 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                 <h2 className="text-base sm:text-lg font-bold text-white">
                   {lang === 'th' ? 'คู่มือแนะนำวิธีใช้งานทุกโมดูล' : 'EduVerse Master User Guide'}
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                   {MODULE_GUIDES.length} {lang === 'th' ? 'ฟังก์ชัน' : 'Modules'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 {lang === 'th' 
                   ? 'คำแนะนำการใช้งานอย่างละเอียด ขั้นตอนทีละสเต็ป และคีย์ลัดสำหรับทุกฟังก์ชันในระบบ'
                   : 'Step-by-step walkthroughs, key capabilities, role permissions, and tips for every system module.'}
@@ -814,7 +814,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -825,17 +825,17 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left Column: Module Selector List */}
-          <div className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-950/40 flex flex-col shrink-0">
+          <div className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-950 flex flex-col shrink-0">
             {/* Search filter */}
             <div className="p-3 border-b border-slate-800">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder={lang === 'th' ? 'ค้นหาคู่มือโมดูล...' : 'Search module guide...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-cyan-500"
                 />
               </div>
             </div>
@@ -849,15 +849,15 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                   <button
                     key={guide.id}
                     onClick={() => setSelectedModuleId(guide.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all ${
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-gradient-to-r from-cyan-600/30 to-indigo-600/20 text-white font-bold border border-cyan-500/40 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        ? 'bg-gradient-to-r from-cyan-600/35 to-indigo-600/25 text-white font-bold border border-cyan-500/50 shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                        isSelected ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-400'
+                        isSelected ? 'bg-cyan-500/25 text-cyan-200' : 'bg-slate-800 text-slate-300'
                       }`}>
                         <IconComponent className="w-3.5 h-3.5" />
                       </div>
@@ -865,7 +865,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                         {lang === 'th' ? guide.titleTh.split('(')[0].trim() : guide.titleEn.split('&')[0].trim()}
                       </span>
                     </div>
-                    {isSelected && <ChevronRight className="w-3.5 h-3.5 text-cyan-400 shrink-0 ml-1" />}
+                    {isSelected && <ChevronRight className="w-3.5 h-3.5 text-cyan-300 shrink-0 ml-1" />}
                   </button>
                 );
               }} />
@@ -876,16 +876,16 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
           <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 space-y-3">
             
             {/* Module Title Banner */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-950 border border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500/25 to-indigo-500/25 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
                   <ActiveIcon className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-white">
                     {lang === 'th' ? activeGuide.titleTh : activeGuide.titleEn}
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-200 mt-0.5">
                     {lang === 'th' ? activeGuide.summaryTh : activeGuide.summaryEn}
                   </p>
                 </div>
@@ -897,7 +897,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                     onNavigateToModule(activeGuide.id);
                     onClose();
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-md transition-all self-start sm:self-auto"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-md transition-all self-start sm:self-auto cursor-pointer"
                 >
                   <span>{lang === 'th' ? 'ไปที่โมดูลนี้' : 'Open Module'}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -907,14 +907,14 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
             {/* Applicable Roles */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
+              <span className="text-xs text-slate-300 font-semibold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
                 <span>{lang === 'th' ? 'ผู้มีสิทธิ์ใช้งาน:' : 'Applicable Roles:'}</span>
               </span>
               {activeGuide.roles.map((role) => (
                 <span
                   key={role}
-                  className="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-medium"
+                  className="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-100 text-[11px] font-medium"
                 >
                   {role}
                 </span>
@@ -927,7 +927,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                 ['steps', lang === 'th' ? 'ขั้นตอน' : 'Steps'],
                 ['tips', lang === 'th' ? 'เคล็ดลับ' : 'Tips']
               ] as const).map(([section, label]) => (
-                <button key={section} type="button" onClick={() => setGuideSection(section)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${guideSection === section ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                <button key={section} type="button" onClick={() => setGuideSection(section)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${guideSection === section ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'}`}>
                   {label}
                 </button>
               ))}
@@ -937,7 +937,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
             <>
             {/* Key Capabilities / Features */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>{lang === 'th' ? 'ฟังก์ชันเด่น & ขีดความสามารถหลัก' : 'Key Capabilities'}</span>
               </h4>
@@ -946,13 +946,13 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                 <PagedList items={activeGuide.features} pageSize={3} renderItem={(feat, idx) => (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5"
+                    className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5"
                   >
                     <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                       <span>{lang === 'th' ? feat.titleTh : feat.titleEn}</span>
                     </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
                       {lang === 'th' ? feat.descTh : feat.descEn}
                     </p>
                   </div>
@@ -965,7 +965,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
             {/* Step-by-Step Instructions */}
             {guideSection === 'steps' && (
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{lang === 'th' ? 'ขั้นตอนการใช้งานทีละสเต็ป (Step-by-Step)' : 'How to Use'}</span>
               </h4>
@@ -974,16 +974,16 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                 <PagedList items={activeGuide.steps} pageSize={3} renderItem={(step, idx) => (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3"
+                    className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-3"
                   >
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                       {idx + 1}
                     </div>
                     <div className="space-y-0.5">
                       <div className="text-xs font-bold text-white">
                         {lang === 'th' ? step.titleTh : step.titleEn}
                       </div>
-                      <p className="text-xs text-slate-400 leading-relaxed">
+                      <p className="text-xs text-slate-300 leading-relaxed">
                         {lang === 'th' ? step.descTh : step.descEn}
                       </p>
                     </div>
@@ -995,12 +995,12 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
             {/* Pro Tips & Best Practices */}
             {guideSection === 'tips' && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-slate-950 to-slate-900 border border-amber-500/30 space-y-2">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950 via-slate-950 to-slate-900 border border-amber-500/40 space-y-2">
               <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                 <Lightbulb className="w-4 h-4 text-amber-400" />
                 <span>{lang === 'th' ? 'เคล็ดลับ & คำแนะนำพิเศษ (Pro Tips)' : 'Pro Tips & Recommendations'}</span>
               </div>
-              <div className="space-y-1.5 text-xs text-slate-300">
+              <div className="space-y-1.5 text-xs text-slate-200">
                 <PagedList items={lang === 'th' ? activeGuide.tipsTh : activeGuide.tipsEn} pageSize={3} renderItem={(tip, idx) => (
                   <p key={idx} className="leading-relaxed">
                     {tip}
@@ -1014,7 +1014,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs text-slate-400">
+        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-xs text-slate-300">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
             <span>EduVerse Enterprise School &amp; Learning Operating System</span>
@@ -1022,7 +1022,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
+            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold transition-colors cursor-pointer"
           >
             {lang === 'th' ? 'ปิดคู่มือ' : 'Close Guide'}
           </button>

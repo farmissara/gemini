@@ -55,13 +55,13 @@ const CLASSROOMS = [
 ];
 
 const COLOR_CLASSES: Record<string, string> = {
-  sky: 'bg-sky-500/15 border-sky-500/40 text-sky-200 hover:bg-sky-500/25',
-  emerald: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200 hover:bg-emerald-500/25',
-  amber: 'bg-amber-500/15 border-amber-500/40 text-amber-200 hover:bg-amber-500/25',
-  rose: 'bg-rose-500/15 border-rose-500/40 text-rose-200 hover:bg-rose-500/25',
-  purple: 'bg-purple-500/15 border-purple-500/40 text-purple-200 hover:bg-purple-500/25',
-  indigo: 'bg-indigo-500/15 border-indigo-500/40 text-indigo-200 hover:bg-indigo-500/25',
-  cyan: 'bg-cyan-500/15 border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/25'
+  sky: 'bg-sky-900/90 border-sky-500/50 text-sky-100 hover:bg-sky-800',
+  emerald: 'bg-emerald-900/90 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800',
+  amber: 'bg-amber-900/90 border-amber-500/50 text-amber-100 hover:bg-amber-800',
+  rose: 'bg-rose-900/90 border-rose-500/50 text-rose-100 hover:bg-rose-800',
+  purple: 'bg-purple-900/90 border-purple-500/50 text-purple-100 hover:bg-purple-800',
+  indigo: 'bg-indigo-900/90 border-indigo-500/50 text-indigo-100 hover:bg-indigo-800',
+  cyan: 'bg-cyan-900/90 border-cyan-500/50 text-cyan-100 hover:bg-cyan-800'
 };
 
 export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
@@ -152,20 +152,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header & Controls */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            <span className="p-2 rounded-xl bg-indigo-500/25 text-indigo-300 border border-indigo-500/40">
               <Calendar className="w-4 h-4" />
             </span>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 {lang === 'th' ? 'ตารางเรียนและตารางสอนรายสัปดาห์' : 'Weekly Timetable & Schedule'}
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 border border-indigo-500/40">
                   {lang === 'th' ? 'ตรวจคาบชนอัตโนมัติ' : 'Conflict Detection'}
                 </span>
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 {lang === 'th' 
                   ? 'จัดตารางเรียนรายห้อง ตรวจสอบการซ้ำซ้อนของครูผู้สอนและห้องเรียน พร้อมพิมพ์ขนาด A4' 
                   : 'Manage weekly schedules, resolve room/teacher conflicts, and print classroom timetables.'}
@@ -214,13 +214,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
       {/* Conflict Warning Banner (if any) */}
       {conflicts.length > 0 && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+        <div className="p-4 rounded-xl bg-amber-950 border border-amber-500/50 flex items-start gap-3 shadow-md">
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h4 className="text-xs font-bold text-amber-300">
               {lang === 'th' ? 'ตรวจพบคาบเรียนซ้ำซ้อนในระบบ!' : 'Schedule Conflict Detected!'}
             </h4>
-            <p className="text-[11px] text-amber-200/80">
+            <p className="text-[11px] text-amber-100">
               {lang === 'th'
                 ? `พบข้อขัดแย้งจำนวน ${conflicts.length / 2} รายการ (ครูผู้สอนหรือห้องเรียนถูกจัดชนในเวลาเดียวกัน) กรุณาตรวจสอบคาบที่มีเครื่องหมายเตือน`
                 : `${conflicts.length / 2} slot conflict(s) detected. Please check flagged periods.`}
@@ -230,30 +230,30 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       )}
 
       {/* Timetable Grid View */}
-      <div className="flex-1 min-h-0 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
-        <div className="shrink-0 p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+      <div className="flex-1 min-h-0 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
+        <div className="shrink-0 p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-indigo-400" />
             <span className="text-xs font-bold text-white uppercase tracking-wider">
               {selectedClassRoom} — {lang === 'th' ? 'ภาคเรียนที่ 1 ปีการศึกษา 2569' : 'Semester 1, Academic Year 2026'}
             </span>
           </div>
-          <span className="text-xs text-slate-400">
-            {lang === 'th' ? 'รวมทั้งหมด' : 'Total'}: <strong className="text-indigo-400">{activeSlots.length}</strong> {lang === 'th' ? 'คาบ/สัปดาห์' : 'periods/week'}
+          <span className="text-xs text-slate-300">
+            {lang === 'th' ? 'รวมทั้งหมด' : 'Total'}: <strong className="text-indigo-300">{activeSlots.length}</strong> {lang === 'th' ? 'คาบ/สัปดาห์' : 'periods/week'}
           </span>
         </div>
 
         <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">
+              <tr className="border-b border-slate-800 bg-slate-950 text-[11px] text-slate-300 uppercase">
                 <th className="p-3 w-28 text-center font-bold">{lang === 'th' ? 'วัน / คาบ' : 'Day / Period'}</th>
                 {PERIODS.map((p, idx) => (
-                  <th key={idx} className={`p-2.5 text-center font-medium ${p.isBreak ? 'bg-amber-950/20 text-amber-400/80 w-16' : ''}`}>
-                    <div className="font-bold text-slate-300">
+                  <th key={idx} className={`p-2.5 text-center font-medium ${p.isBreak ? 'bg-amber-950/60 text-amber-300 w-16' : ''}`}>
+                    <div className="font-bold text-slate-200">
                       {p.isBreak ? (lang === 'th' ? 'พัก' : 'Lunch') : `${lang === 'th' ? 'คาบ' : 'P'}${p.num}`}
                     </div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">{p.time}</div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">{p.time}</div>
                   </th>
                 ))}
               </tr>
@@ -272,8 +272,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   {PERIODS.map((period, pIdx) => {
                     if (period.isBreak) {
                       return (
-                        <td key={pIdx} className="p-2 text-center bg-amber-950/10 border-r border-slate-800/40">
-                          <span className="text-[10px] font-bold text-amber-500/70 writing-vertical rotate-180">
+                        <td key={pIdx} className="p-2 text-center bg-amber-950/40 border-r border-slate-800">
+                          <span className="text-[10px] font-bold text-amber-300 writing-vertical rotate-180">
                             {lang === 'th' ? 'พักกลางวัน' : 'Lunch Break'}
                           </span>
                         </td>
@@ -289,8 +289,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
                     if (!slot) {
                       return (
-                        <td key={pIdx} className="p-2 text-center border-r border-slate-800/40">
-                          <div className="h-20 rounded-xl border border-dashed border-slate-800 flex items-center justify-center text-[10px] text-slate-600 hover:border-slate-700 transition">
+                        <td key={pIdx} className="p-2 text-center border-r border-slate-800">
+                          <div className="h-20 rounded-xl border border-dashed border-slate-700 flex items-center justify-center text-[10px] text-slate-400 hover:border-slate-600 transition">
                             {lang === 'th' ? 'ว่าง' : 'Free'}
                           </div>
                         </td>
@@ -300,11 +300,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
 
                     return (
-                      <td key={pIdx} className="p-1.5 border-r border-slate-800/40 align-top">
+                      <td key={pIdx} className="p-1.5 border-r border-slate-800 align-top">
                         <div className={`p-2 rounded-xl border transition group relative flex flex-col justify-between h-22 ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}>
                           <div>
                             <div className="flex items-center justify-between gap-1">
-                              <span className="font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-black/30">
+                              <span className="font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-950/60 text-white">
                                 {slot.courseCode}
                               </span>
                               {hasConflict && (
@@ -318,12 +318,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                             </h4>
                           </div>
 
-                          <div className="pt-1 border-t border-white/10 space-y-0.5 text-[10px] opacity-80">
+                          <div className="pt-1 border-t border-white/15 space-y-0.5 text-[10px] text-slate-100">
                             <div className="flex items-center gap-1 truncate">
                               <User className="w-2.5 h-2.5 shrink-0" />
                               <span className="truncate">{slot.teacherName}</span>
                             </div>
-                            <div className="flex items-center gap-1 truncate text-slate-300">
+                            <div className="flex items-center gap-1 truncate text-slate-200">
                               <MapPin className="w-2.5 h-2.5 shrink-0" />
                               <span className="truncate">{slot.room}</span>
                             </div>
@@ -454,7 +454,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       type="button"
                       onClick={() => setNewColor(color)}
                       className={`w-7 h-7 rounded-full border-2 transition ${
-                        newColor === color ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-60'
+                        newColor === color ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-80 hover:opacity-100'
                       } ${
                         color === 'sky' ? 'bg-sky-500' :
                         color === 'emerald' ? 'bg-emerald-500' :
@@ -525,7 +525,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     {PERIODS.map((p, idx) => (
                       <th key={idx} className="p-2 border-r border-slate-300 text-center">
                         <div className="font-bold">{p.isBreak ? 'พัก' : `คาบ ${p.num}`}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">{p.time}</div>
+                        <div className="text-[10px] text-slate-600 font-mono">{p.time}</div>
                       </th>
                     ))}
                   </tr>
@@ -539,7 +539,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       {PERIODS.map((period, pIdx) => {
                         if (period.isBreak) {
                           return (
-                            <td key={pIdx} className="p-2 text-center bg-slate-100 border-r border-slate-300 text-[10px] font-semibold text-slate-500">
+                            <td key={pIdx} className="p-2 text-center bg-slate-100 border-r border-slate-300 text-[10px] font-semibold text-slate-600">
                               พักกลางวัน
                             </td>
                           );
@@ -553,10 +553,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                               <div>
                                 <div className="font-bold text-slate-800">{slot.courseCode}</div>
                                 <div className="text-[10px] text-slate-600 line-clamp-1">{slot.courseTitleTh}</div>
-                                <div className="text-[9px] text-slate-500 mt-1">{slot.teacherName} ({slot.room})</div>
+                                <div className="text-[9px] text-slate-600 mt-1">{slot.teacherName} ({slot.room})</div>
                               </div>
                             ) : (
-                              <span className="text-[10px] text-slate-300">-</span>
+                              <span className="text-[10px] text-slate-600">-</span>
                             )}
                           </td>
                         );
@@ -572,12 +572,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <div>
                 <p>ลงชื่อ..............................................................</p>
                 <p className="mt-1 font-semibold">(อ.ดร.ประเสริฐ ถาวร)</p>
-                <p className="text-slate-500">ครูที่ปรึกษาประจำชั้น</p>
+                <p className="text-slate-600">ครูที่ปรึกษาประจำชั้น</p>
               </div>
               <div>
                 <p>ลงชื่อ..............................................................</p>
                 <p className="mt-1 font-semibold">(ดร.ธนพร กิตติศักดิ์)</p>
-                <p className="text-slate-500">ผู้อำนวยการสถานศึกษา</p>
+                <p className="text-slate-600">ผู้อำนวยการสถานศึกษา</p>
               </div>
             </div>
           </div>

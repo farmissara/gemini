@@ -49,9 +49,9 @@ const PaginatedTableRows = <T,>({
         <tr>
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ก่อนหน้า</button>
-              <span className="text-[11px] text-slate-400">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ถัดไป</button>
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-300">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
             </div>
           </td>
         </tr>
@@ -225,19 +225,19 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md">
         <div className="flex items-center gap-3">
-          <span className="p-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
+          <span className="p-2 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
             <HeartHandshake className="w-5 h-5" />
           </span>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
               {lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & บันทึกพฤติกรรม' : 'Student Care & Behavior (SDQ)'}
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 สพฐ. Standard
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-300">
               {lang === 'th'
                 ? 'คะแนนความประพฤติ (Merit/Demerit) และแบบคัดกรองพฤติกรรม 5 ด้าน (SDQ) พร้อมแจ้งเตือนผู้ปกครอง'
                 : 'Merit/demerit tracking, SDQ 5-domain psychometric screening, and auto parent alerts.'}
@@ -253,7 +253,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 activeTab === 'merit'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               {lang === 'th' ? '1. คะแนนความประพฤติ' : 'Merit & Demerit'}
@@ -263,7 +263,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 activeTab === 'sdq'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               {lang === 'th' ? '2. แบบประเมิน SDQ' : 'SDQ Screening'}
@@ -298,49 +298,49 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden space-y-2.5">
           {/* Quick Metrics */}
           <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'คะแนนเฉลี่ยทั้งโรงเรียน' : 'Avg Score'}</span>
-                <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+                <span className="text-[11px] text-slate-300">{lang === 'th' ? 'คะแนนเฉลี่ยทั้งโรงเรียน' : 'Avg Score'}</span>
+                <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300">
                   <ShieldCheck className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <p className="text-lg font-bold text-white mt-1">96.4 <span className="text-[10px] font-normal text-slate-400">/ 100</span></p>
+              <p className="text-lg font-bold text-white mt-1">96.4 <span className="text-[10px] font-normal text-slate-300">/ 100</span></p>
             </div>
 
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'บันทึกความดี (Merit)' : 'Merits'}</span>
-                <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                <span className="text-[11px] text-slate-300">{lang === 'th' ? 'บันทึกความดี (Merit)' : 'Merits'}</span>
+                <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300">
                   <Award className="w-3.5 h-3.5" />
                 </span>
               </div>
               <p className="text-lg font-bold text-emerald-400 mt-1">
-                +{records.filter((r) => r.type === 'merit').reduce((acc, r) => acc + r.points, 0)} <span className="text-[10px] font-normal text-slate-400">แต้ม</span>
+                +{records.filter((r) => r.type === 'merit').reduce((acc, r) => acc + r.points, 0)} <span className="text-[10px] font-normal text-slate-300">แต้ม</span>
               </p>
             </div>
 
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'ตัดคะแนน (Demerit)' : 'Deductions'}</span>
-                <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                <span className="text-[11px] text-slate-300">{lang === 'th' ? 'ตัดคะแนน (Demerit)' : 'Deductions'}</span>
+                <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300">
                   <TrendingDown className="w-3.5 h-3.5" />
                 </span>
               </div>
               <p className="text-lg font-bold text-rose-400 mt-1">
-                {records.filter((r) => r.type === 'demerit').reduce((acc, r) => acc + r.points, 0)} <span className="text-[10px] font-normal text-slate-400">แต้ม</span>
+                {records.filter((r) => r.type === 'demerit').reduce((acc, r) => acc + r.points, 0)} <span className="text-[10px] font-normal text-slate-300">แต้ม</span>
               </p>
             </div>
 
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">{lang === 'th' ? 'แจ้งเตือน LINE' : 'LINE Alerts'}</span>
-                <span className="p-1.5 rounded-lg bg-[#06C755]/20 text-[#06C755]">
+                <span className="text-[11px] text-slate-300">{lang === 'th' ? 'แจ้งเตือน LINE' : 'LINE Alerts'}</span>
+                <span className="p-1.5 rounded-lg bg-[#06C755]/20 text-emerald-400">
                   <Send className="w-3.5 h-3.5" />
                 </span>
               </div>
               <p className="text-lg font-bold text-white mt-1">
-                {records.filter((r) => r.lineNotified).length} <span className="text-[10px] font-normal text-slate-400">ครั้ง</span>
+                {records.filter((r) => r.lineNotified).length} <span className="text-[10px] font-normal text-slate-300">ครั้ง</span>
               </p>
             </div>
           </div>
@@ -348,20 +348,20 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
           {/* Student Scores & Recent Records Grid */}
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-hidden">
             {/* Left 2 Cols: Student List with Scores */}
-            <div className="lg:col-span-2 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col min-h-0 overflow-hidden">
+            <div className="lg:col-span-2 bg-slate-900 rounded-xl border border-slate-800 shadow-md flex flex-col min-h-0 overflow-hidden">
               <div className="shrink-0 p-3 border-b border-slate-800 flex items-center justify-between">
                 <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-indigo-400" />
                   <span>{lang === 'th' ? 'บัญชีคะแนนความประพฤตินักเรียน' : 'Student Behavior Ledger'}</span>
                 </h3>
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-300" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัสนักเรียน...' : 'Search student...'}
-                    className="bg-slate-800 text-white text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 w-44"
+                    className="bg-slate-800 text-white placeholder-slate-400 text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 w-44"
                   />
                 </div>
               </div>
@@ -369,7 +369,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               <div className="flex-1 min-h-0 overflow-hidden">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                    <tr className="border-b border-slate-800 bg-slate-950 text-[11px] text-slate-300 uppercase">
                       <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
                       <th className="p-2.5">{lang === 'th' ? 'ห้องเรียน' : 'Room'}</th>
                       <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนนคงเหลือ' : 'Score'}</th>
@@ -377,12 +377,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                       <th className="p-2.5 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-800/80">
                     <PaginatedTableRows items={filteredStudents} colSpan={5} renderRow={(student) => {
                       const score = studentScores[student.id] ?? 100;
                       const badge = getStatusBadge(score);
                       return (
-                        <tr key={student.id} className="hover:bg-slate-800/20 transition">
+                        <tr key={student.id} className="hover:bg-slate-800/60 transition">
                           <td className="p-2.5">
                             <div className="flex items-center gap-2">
                               <img
@@ -396,16 +396,16 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                                     ? `${student.firstNameTh} ${student.lastNameTh}`
                                     : `${student.firstNameEn} ${student.lastNameEn}`}
                                 </p>
-                                <p className="text-[10px] text-slate-400 font-mono">{student.studentIdNumber}</p>
+                                <p className="text-[10px] text-slate-300 font-mono">{student.studentIdNumber}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="p-2.5 text-slate-300">{student.room}</td>
+                          <td className="p-2.5 text-slate-200">{student.room}</td>
                           <td className="p-2.5 text-center">
-                            <span className={`font-mono font-bold text-xs ${score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-sky-400' : score >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+                            <span className={`font-mono font-bold text-xs ${score >= 90 ? 'text-emerald-400' : score >= 75 ? 'text-sky-400' : score >= 60 ? 'text-amber-300' : 'text-rose-400'}`}>
                               {score}
                             </span>
-                            <span className="text-[10px] text-slate-500"> / 100</span>
+                            <span className="text-[10px] text-slate-300"> / 100</span>
                           </td>
                           <td className="p-2.5 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${badge.bg}`}>
@@ -418,7 +418,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                                 setSelectedStudentId(student.id);
                                 setShowAddRecordModal(true);
                               }}
-                              className="px-2 py-1 rounded-md bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 text-[10px] font-semibold transition"
+                              className="px-2 py-1 rounded-md bg-indigo-600/30 text-indigo-200 hover:bg-indigo-600 hover:text-white border border-indigo-500/40 text-[10px] font-semibold transition"
                             >
                               {lang === 'th' ? 'บันทึกคะแนน' : 'Add Record'}
                             </button>
@@ -432,7 +432,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
             </div>
 
             {/* Right 1 Col: Recent Behavior Activity */}
-            <div className="bg-slate-900/80 rounded-xl border border-slate-800 shadow-md p-3.5 flex flex-col min-h-0 overflow-hidden">
+            <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-md p-3.5 flex flex-col min-h-0 overflow-hidden">
               <h3 className="shrink-0 text-xs font-bold text-white flex items-center gap-1.5 pb-2 border-b border-slate-800">
                 <Activity className="w-3.5 h-3.5 text-purple-400" />
                 <span>{lang === 'th' ? 'ประวัติพฤติกรรมล่าสุด' : 'Recent Activity'}</span>
@@ -442,7 +442,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               <PagedList items={records} pageSize={2} renderItem={(rec) => (
                   <div
                     key={rec.id}
-                    className="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 text-xs space-y-1"
+                    className="p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-xs space-y-1"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-white text-[11px] truncate">{rec.studentName}</span>
@@ -450,12 +450,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                         {rec.points > 0 ? `+${rec.points}` : rec.points}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-300">{rec.category}</p>
-                    {rec.notes && <p className="text-[10px] text-slate-400 italic">"{rec.notes}"</p>}
-                    <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-800/60">
+                    <p className="text-[10px] text-slate-200">{rec.category}</p>
+                    {rec.notes && <p className="text-[10px] text-slate-300 italic">"{rec.notes}"</p>}
+                    <div className="flex items-center justify-between text-[9px] text-slate-300 pt-1 border-t border-slate-700">
                       <span>{rec.date}</span>
                       {rec.lineNotified && (
-                        <span className="text-[#06C755] flex items-center gap-0.5">
+                        <span className="text-emerald-400 flex items-center gap-0.5">
                           <CheckCircle2 className="w-2.5 h-2.5" /> LINE แล้ว
                         </span>
                       )}
@@ -472,29 +472,29 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       {activeTab === 'sdq' && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden space-y-2.5">
           {/* SDQ Guidelines Card */}
-          <div className="shrink-0 p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+          <div className="shrink-0 p-3 rounded-xl bg-indigo-950 border border-indigo-700 flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-indigo-300 shrink-0 mt-0.5" />
             <div className="text-xs space-y-0.5">
-              <h4 className="font-bold text-indigo-300 text-[11px]">
+              <h4 className="font-bold text-indigo-200 text-[11px]">
                 {lang === 'th' ? 'เกณฑ์การแปลผลแบบประเมินพฤติกรรมเด็ก (SDQ ฉบับ สพฐ.)' : 'SDQ Assessment Benchmark'}
               </h4>
-              <p className="text-slate-300 leading-relaxed text-[11px]">
+              <p className="text-slate-200 leading-relaxed text-[11px]">
                 แบบประเมิน SDQ ครอบคลุมพฤติกรรม 5 ด้าน (คะแนนความยากลำบาก 0-40):
-                <span className="text-emerald-400 font-bold ml-1">กลุ่มปกติ (0-15)</span>,
-                <span className="text-amber-400 font-bold ml-1">กลุ่มเสี่ยง (16-19)</span>,
-                <span className="text-rose-400 font-bold ml-1">กลุ่มมีปัญหา (20-40)</span>
+                <span className="text-emerald-300 font-bold ml-1">กลุ่มปกติ (0-15)</span>,
+                <span className="text-amber-300 font-bold ml-1">กลุ่มเสี่ยง (16-19)</span>,
+                <span className="text-rose-300 font-bold ml-1">กลุ่มมีปัญหา (20-40)</span>
               </p>
             </div>
           </div>
 
           {/* SDQ Assessments List */}
-          <div className="flex-1 min-h-0 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 bg-slate-900 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
             <div className="shrink-0 p-3 border-b border-slate-800 flex items-center justify-between">
               <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{lang === 'th' ? 'ผลการประเมิน SDQ รายบุคคล' : 'Individual SDQ Results'}</span>
               </h3>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-300">
                 {lang === 'th' ? 'ประเมินแล้ว' : 'Assessed'}: {sdqList.length} {lang === 'th' ? 'คน' : 'students'}
               </span>
             </div>
@@ -502,35 +502,36 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
             <div className="flex-1 min-h-0 overflow-hidden">
               <table className="w-full text-left text-xs">
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                  <tr className="border-b border-slate-800 bg-slate-950 text-[11px] text-slate-300 uppercase">
                     <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'ด้านอารมณ์' : 'Emotional'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'ความประพฤติ' : 'Conduct'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'อยู่ไม่นิ่ง' : 'Hyperactivity'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'เพื่อน' : 'Peer'}</th>
-                    <th className="p-2 text-center font-bold text-emerald-400">{lang === 'th' ? 'จุดแข็ง' : 'Prosocial'}</th>
-                    <th className="p-2 text-center font-bold">{lang === 'th' ? 'คะแนนรวม' : 'Total'}</th>
+                    <th className="p-2 text-center font-bold text-emerald-300">{lang === 'th' ? 'จุดแข็ง' : 'Prosocial'}</th>
+                    <th className="p-2 text-center font-bold text-white">{lang === 'th' ? 'คะแนนรวม' : 'Total'}</th>
+                    <th className="p-2 text-center">{lang === 'th' ? 'ผลประเมิน' : 'Status'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-800/80">
                   <PaginatedTableRows items={sdqList} colSpan={8} renderRow={(sdq) => {
                     const statusConfig = {
-                      normal: { label: 'กลุ่มปกติ', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-                      risk: { label: 'กลุ่มเสี่ยง', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-                      problem: { label: 'กลุ่มมีปัญหา', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' }
+                      normal: { label: 'กลุ่มปกติ', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+                      risk: { label: 'กลุ่มเสี่ยง', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+                      problem: { label: 'กลุ่มมีปัญหา', color: 'bg-rose-500/20 text-rose-300 border-rose-500/30' }
                     }[sdq.overallStatus];
 
                     return (
-                      <tr key={sdq.id} className="hover:bg-slate-800/20 transition">
+                      <tr key={sdq.id} className="hover:bg-slate-800/60 transition">
                         <td className="p-3">
                           <p className="font-bold text-white">{sdq.studentName}</p>
-                          <p className="text-[10px] text-slate-400">{sdq.studentRoom} • ประเมินโดย {sdq.assessorName}</p>
+                          <p className="text-[10px] text-slate-300">{sdq.studentRoom} • ประเมินโดย {sdq.assessorName}</p>
                         </td>
-                        <td className="p-2 text-center font-mono text-slate-300">{sdq.emotionalScore}/10</td>
-                        <td className="p-2 text-center font-mono text-slate-300">{sdq.conductScore}/10</td>
-                        <td className="p-2 text-center font-mono text-slate-300">{sdq.hyperactivityScore}/10</td>
-                        <td className="p-2 text-center font-mono text-slate-300">{sdq.peerScore}/10</td>
-                        <td className="p-2 text-center font-mono text-emerald-400 font-bold">{sdq.prosocialScore}/10</td>
+                        <td className="p-2 text-center font-mono text-slate-200">{sdq.emotionalScore}/10</td>
+                        <td className="p-2 text-center font-mono text-slate-200">{sdq.conductScore}/10</td>
+                        <td className="p-2 text-center font-mono text-slate-200">{sdq.hyperactivityScore}/10</td>
+                        <td className="p-2 text-center font-mono text-slate-200">{sdq.peerScore}/10</td>
+                        <td className="p-2 text-center font-mono text-emerald-300 font-bold">{sdq.prosocialScore}/10</td>
                         <td className="p-2 text-center font-mono font-bold text-sm text-indigo-300">
                           {sdq.totalDifficultiesScore}/40
                         </td>
@@ -558,12 +559,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <ShieldCheck className="w-5 h-5 text-indigo-400" />
                 {lang === 'th' ? 'บันทึกคะแนนความประพฤติ' : 'Add Behavior Record'}
               </h3>
-              <button onClick={() => setShowAddRecordModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowAddRecordModal(false)} className="text-slate-300 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800">✕</button>
             </div>
 
             <form onSubmit={handleCreateRecord} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียน' : 'Select Student'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียน' : 'Select Student'}</label>
                 <select
                   value={selectedStudentId}
                   onChange={(e) => setSelectedStudentId(e.target.value)}
@@ -704,11 +705,11 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <FileText className="w-5 h-5 text-emerald-400" />
                 {lang === 'th' ? 'ทำแบบคัดกรองพฤติกรรม SDQ (5 ด้าน)' : 'SDQ Assessment'}
               </h3>
-              <button onClick={() => setShowSdqModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowSdqModal(false)} className="text-slate-300 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800">✕</button>
             </div>
 
             <form onSubmit={handleCreateSdq} className="space-y-4 text-xs">
-              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-300">
                 <span className={sdqFormStep === 1 ? 'font-bold text-emerald-300' : ''}>1. Student & scores</span>
                 <span>→</span>
                 <span className={sdqFormStep === 2 ? 'font-bold text-emerald-300' : ''}>2. Review & recommendations</span>
@@ -716,7 +717,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               {sdqFormStep === 1 && (
                 <div className="space-y-4">
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'นักเรียนที่รับการประเมิน' : 'Student'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'นักเรียนที่รับการประเมิน' : 'Student'}</label>
                 <select
                   value={sdqStudentId}
                   onChange={(e) => setSdqStudentId(e.target.value)}
@@ -731,11 +732,11 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               </div>
 
               {/* 5 Domains Sliders */}
-              <div className="space-y-3 p-4 rounded-xl bg-slate-800/40 border border-slate-800">
+              <div className="space-y-3 p-4 rounded-xl bg-slate-800 border border-slate-700">
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-slate-300 font-semibold">1. ด้านอารมณ์ (Emotional Symptoms)</span>
-                    <span className="font-mono text-indigo-400 font-bold">{sdqEmotional} / 10</span>
+                    <span className="text-slate-200 font-semibold">1. ด้านอารมณ์ (Emotional Symptoms)</span>
+                    <span className="font-mono text-indigo-300 font-bold">{sdqEmotional} / 10</span>
                   </div>
                   <input
                     type="range"
@@ -749,8 +750,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-slate-300 font-semibold">2. ด้านความประพฤติ / เกเร (Conduct Problems)</span>
-                    <span className="font-mono text-indigo-400 font-bold">{sdqConduct} / 10</span>
+                    <span className="text-slate-200 font-semibold">2. ด้านความประพฤติ / เกเร (Conduct Problems)</span>
+                    <span className="font-mono text-indigo-300 font-bold">{sdqConduct} / 10</span>
                   </div>
                   <input
                     type="range"
@@ -764,8 +765,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-slate-300 font-semibold">3. ด้านพฤติกรรมอยู่ไม่นิ่ง (Hyperactivity)</span>
-                    <span className="font-mono text-indigo-400 font-bold">{sdqHyperactivity} / 10</span>
+                    <span className="text-slate-200 font-semibold">3. ด้านพฤติกรรมอยู่ไม่นิ่ง (Hyperactivity)</span>
+                    <span className="font-mono text-indigo-300 font-bold">{sdqHyperactivity} / 10</span>
                   </div>
                   <input
                     type="range"
@@ -779,8 +780,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-slate-300 font-semibold">4. ด้านความสัมพันธ์กับเพื่อน (Peer Problems)</span>
-                    <span className="font-mono text-indigo-400 font-bold">{sdqPeer} / 10</span>
+                    <span className="text-slate-200 font-semibold">4. ด้านความสัมพันธ์กับเพื่อน (Peer Problems)</span>
+                    <span className="font-mono text-indigo-300 font-bold">{sdqPeer} / 10</span>
                   </div>
                   <input
                     type="range"
@@ -792,10 +793,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   />
                 </div>
 
-                <div className="pt-2 border-t border-slate-700/60">
+                <div className="pt-2 border-t border-slate-700">
                   <div className="flex justify-between mb-1">
-                    <span className="text-emerald-400 font-bold">5. ด้านสัมพันธภาพทางสังคม / จุดแข็ง (Prosocial)</span>
-                    <span className="font-mono text-emerald-400 font-bold">{sdqProsocial} / 10</span>
+                    <span className="text-emerald-300 font-bold">5. ด้านสัมพันธภาพทางสังคม / จุดแข็ง (Prosocial)</span>
+                    <span className="font-mono text-emerald-300 font-bold">{sdqProsocial} / 10</span>
                   </div>
                   <input
                     type="range"
@@ -807,7 +808,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   />
                 </div>
               </div>
-                  <button type="button" onClick={() => setSdqFormStep(2)} className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold">
+                  <button type="button" onClick={() => setSdqFormStep(2)} className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
                     Continue to review
                   </button>
                 </div>
@@ -816,32 +817,32 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               {sdqFormStep === 2 && (
                 <div className="space-y-4">
               {/* Total Calculation Preview */}
-              <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-indigo-950 border border-indigo-700 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-indigo-300 font-semibold">คะแนนรวมความยากลำบาก (4 ด้านแรก):</span>
-                  <p className="text-[11px] text-slate-400">
+                  <span className="text-xs text-indigo-200 font-semibold">คะแนนรวมความยากลำบาก (4 ด้านแรก):</span>
+                  <p className="text-[11px] text-slate-200">
                     {sdqEmotional + sdqConduct + sdqHyperactivity + sdqPeer >= 20 ? (
-                      <span className="text-rose-400 font-bold">ผลการแปล: กลุ่มมีปัญหา (ต้องส่งต่อ)</span>
+                      <span className="text-rose-300 font-bold">ผลการแปล: กลุ่มมีปัญหา (ต้องส่งต่อ)</span>
                     ) : sdqEmotional + sdqConduct + sdqHyperactivity + sdqPeer >= 16 ? (
-                      <span className="text-amber-400 font-bold">ผลการแปล: กลุ่มเสี่ยง (ต้องติดตาม)</span>
+                      <span className="text-amber-300 font-bold">ผลการแปล: กลุ่มเสี่ยง (ต้องติดตาม)</span>
                     ) : (
-                      <span className="text-emerald-400 font-bold">ผลการแปล: กลุ่มปกติ</span>
+                      <span className="text-emerald-300 font-bold">ผลการแปล: กลุ่มปกติ</span>
                     )}
                   </p>
                 </div>
                 <span className="text-xl font-bold font-mono text-white">
-                  {sdqEmotional + sdqConduct + sdqHyperactivity + sdqPeer} <span className="text-xs text-slate-400">/ 40</span>
+                  {sdqEmotional + sdqConduct + sdqHyperactivity + sdqPeer} <span className="text-xs text-slate-300">/ 40</span>
                 </span>
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'ข้อสังเกตและแนวทางช่วยเหลือ' : 'Teacher Recommendations'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'ข้อสังเกตและแนวทางช่วยเหลือ' : 'Teacher Recommendations'}</label>
                 <textarea
                   rows={2}
                   value={sdqNotes}
                   onChange={(e) => setSdqNotes(e.target.value)}
                   placeholder="ระบุคำแนะนำหรือแผนการดูแลช่วยเหลือนักเรียน..."
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-400"
                 />
               </div>
 
@@ -849,7 +850,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSdqFormStep(1)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
                 >
                   Back
                 </button>

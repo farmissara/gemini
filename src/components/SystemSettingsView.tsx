@@ -157,7 +157,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       titleTh: '1. ระบบเข้า-ออกโรงเรียน & เช็คชื่อ (Attendance & Gates)',
       descriptionTh: 'ส่งแจ้งเตือนเข้าห้องแชตผู้ปกครองทันทีที่นักเรียนสแกนบัตรหรือเช็คชื่อในชั้นเรียน',
       icon: Clock,
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      badgeColor: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       events: [
         {
           key: 'notifyAttendanceCheckIn' as const,
@@ -186,7 +186,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       titleTh: '2. ห้องพยาบาล & การปฐมพยาบาล (Infirmary Health Alert)',
       descriptionTh: 'แจ้งเตือนเร่งด่วนเมื่อนักเรียนมีอาการเจ็บป่วยหรือเข้ารับการรักษาที่ห้องพยาบาล',
       icon: HeartPulse,
-      badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+      badgeColor: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
       events: [
         {
           key: 'notifyInfirmaryVisit' as const,
@@ -200,7 +200,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       titleTh: '3. ความประพฤติ & วินัยนักเรียน (Behavior & Conduct)',
       descriptionTh: 'แจ้งเตือนพฤติกรรมทั้งด้านบวก (ทำความดี) และการตักเตือน (หักคะแนนพฤติกรรม)',
       icon: ShieldAlert,
-      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+      badgeColor: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
       events: [
         {
           key: 'notifyBehaviorDeduction' as const,
@@ -219,7 +219,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       titleTh: '4. การเรียน การบ้าน & ผลการสอบ (Academics & Gradebook)',
       descriptionTh: 'รายงานความคืบหน้าทางการศึกษา มอบหมายงาน และการประเมินผลสัมฤทธิ์',
       icon: FileCheck2,
-      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+      badgeColor: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
       events: [
         {
           key: 'notifyNewHomework' as const,
@@ -248,7 +248,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       titleTh: '5. ค่าธรรมเนียมการเรียน & การเงิน (Tuition & PromptPay Invoices)',
       descriptionTh: 'ส่งใบแจ้งยอดค่าเทอม พร้อม QR Code PromptPay และใบเสร็จรับเงิน',
       icon: Receipt,
-      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+      badgeColor: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
       events: [
         {
           key: 'notifyBillingInvoice' as const,
@@ -267,7 +267,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       titleTh: '6. ข่าวสาร & ประกาศด่วนสถานศึกษา (School Broadcast)',
       descriptionTh: 'กระจายข่าวสารสำคัญ การปิดเรียนฉุกเฉิน หรือจดหมายข่าวจากโรงเรียน',
       icon: Radio,
-      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      badgeColor: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
       events: [
         {
           key: 'notifyEmergencyBroadcast' as const,
@@ -342,18 +342,18 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
       {/* Save Success Banner */}
       {saveSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-medium flex items-center justify-between shadow-xs animate-in fade-in duration-200">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
               <span className="font-bold">บันทึกการตั้งค่าระบบและเงื่อนไขการแจ้งเตือน LINE เรียบร้อยแล้ว!</span>
-              <p className="text-[11px] text-emerald-700 mt-0.5">ระบบจะใช้การตั้งค่าใหม่นี้ในการส่งการแจ้งเตือนอัตโนมัติไปยังผู้ปกครองทันที</p>
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">ระบบจะใช้การตั้งค่าใหม่นี้ในการส่งการแจ้งเตือนอัตโนมัติไปยังผู้ปกครองทันที</p>
             </div>
           </div>
           <button 
             type="button" 
             onClick={() => setSaveSuccess(false)}
-            className="text-emerald-600 hover:text-emerald-900 font-bold px-2 py-1"
+            className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-white font-bold px-2 py-1"
           >
             ✕
           </button>
@@ -361,14 +361,14 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 no-scrollbar">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800 no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('line_events')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             activeTab === 'line_events'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <BellRing className="w-4 h-4" />
@@ -381,7 +381,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             activeTab === 'preview_simulator'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <Smartphone className="w-4 h-4" />
@@ -394,7 +394,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             activeTab === 'line_connection'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <MessageSquare className="w-4 h-4" />
@@ -407,7 +407,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             activeTab === 'subscribers'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -420,7 +420,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             activeTab === 'school_general'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <Settings className="w-4 h-4" />
@@ -433,7 +433,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
             activeTab === 'school_gps'
               ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
           }`}
         >
           <MapPin className="w-4 h-4" />
@@ -447,45 +447,45 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {activeTab === 'line_events' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Rules & Cutoff Timers Card */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center gap-2 text-slate-800">
-              <Clock className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 text-slate-800 dark:text-white">
+              <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="font-bold text-sm">การตั้งค่าเวลาและเกณฑ์การแจ้งเตือนอัตโนมัติ (Cutoff Times & Rules)</h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">เวลาเริ่มกิจกรรมหน้าเสาธง</label>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">เวลาเริ่มกิจกรรมหน้าเสาธง</label>
                 <input
                   type="time"
                   value={lineSettings.schoolStartTime}
                   onChange={(e) => setLineSettings(prev => ({ ...prev, schoolStartTime: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">เวลาตัดสาย (Late Cutoff)</label>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">เวลาตัดสาย (Late Cutoff)</label>
                 <input
                   type="time"
                   value={lineSettings.lateCutoffTime}
                   onChange={(e) => setLineSettings(prev => ({ ...prev, lateCutoffTime: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold text-amber-700"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold text-amber-700 dark:text-amber-300"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">เวลาตัดขาดเรียน (Absence Cutoff)</label>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">เวลาตัดขาดเรียน (Absence Cutoff)</label>
                 <input
                   type="time"
                   value={lineSettings.absenceCutoffTime}
                   onChange={(e) => setLineSettings(prev => ({ ...prev, absenceCutoffTime: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold text-rose-700"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold text-rose-700 dark:text-rose-300"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">เกณฑ์เตือนตัดคะแนนพฤติกรรม</label>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">เกณฑ์เตือนตัดคะแนนพฤติกรรม</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -493,9 +493,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     max="50"
                     value={lineSettings.behaviorAlertThreshold}
                     onChange={(e) => setLineSettings(prev => ({ ...prev, behaviorAlertThreshold: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono font-bold"
                   />
-                  <span className="text-xs text-slate-500 shrink-0">คะแนนขึ้นไป</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300 shrink-0">คะแนนขึ้นไป</span>
                 </div>
               </div>
             </div>
@@ -506,45 +506,45 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             {eventCategories.slice(eventCategoryPage, eventCategoryPage + 1).map((cat) => {
               const Icon = cat.icon;
               return (
-                <div key={cat.id} className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                  <div className="p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
+                <div key={cat.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className={`p-1.5 rounded-lg border ${cat.badgeColor}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-xs sm:text-sm text-slate-800">{cat.titleTh}</h4>
-                        <p className="text-[11px] text-slate-500">{cat.descriptionTh}</p>
+                        <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">{cat.titleTh}</h4>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300">{cat.descriptionTh}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {cat.events.map((evt) => {
                       const isEnabled = Boolean(lineSettings[evt.key]);
                       return (
-                        <div key={evt.key} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition">
+                        <div key={evt.key} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
                           <div className="space-y-0.5 pr-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-slate-800">{evt.titleTh}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-slate-900 dark:text-white">{evt.titleTh}</span>
                               {isEnabled ? (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold">
                                   เปิดใช้งาน (Active)
                                 </span>
                               ) : (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-semibold">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold">
                                   ปิดการส่ง (Disabled)
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-500 leading-relaxed">{evt.descTh}</p>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{evt.descTh}</p>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => handleToggleEvent(evt.key)}
                             className={`shrink-0 transition-transform active:scale-95 cursor-pointer ${
-                              isEnabled ? 'text-emerald-600' : 'text-slate-300 hover:text-slate-400'
+                              isEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
                             title={isEnabled ? 'คลิกเพื่อปิด' : 'คลิกเพื่อเปิด'}
                           >
@@ -559,10 +559,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     })}
                   </div>
                   {eventCategories.length > 1 && (
-                    <div className="flex items-center justify-between text-xs">
-                      <button type="button" onClick={() => setEventCategoryPage(page => Math.max(0, page - 1))} disabled={eventCategoryPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">หมวดก่อนหน้า</button>
+                    <div className="flex items-center justify-between p-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                      <button type="button" onClick={() => setEventCategoryPage(page => Math.max(0, page - 1))} disabled={eventCategoryPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">หมวดก่อนหน้า</button>
                       <span>{eventCategoryPage + 1} / {eventCategories.length}</span>
-                      <button type="button" onClick={() => setEventCategoryPage(page => Math.min(eventCategories.length - 1, page + 1))} disabled={eventCategoryPage === eventCategories.length - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">หมวดถัดไป</button>
+                      <button type="button" onClick={() => setEventCategoryPage(page => Math.min(eventCategories.length - 1, page + 1))} disabled={eventCategoryPage === eventCategories.length - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">หมวดถัดไป</button>
                     </div>
                   )}
                 </div>
@@ -588,9 +588,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
           {/* Left Column: Sample Selector & Trigger Simulation */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-slate-800">
-                <Sliders className="w-4 h-4 text-emerald-600" />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-slate-800 dark:text-white">
+                <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <h3 className="font-bold text-sm">เลือกรูปแบบการ์ดจำลอง (Select Sample Message)</h3>
               </div>
 
@@ -633,25 +633,25 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     onClick={() => setPreviewSampleType(sample.id)}
                     className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
                       previewSampleType === sample.id
-                        ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20'
-                        : 'bg-slate-50/70 border-slate-200 hover:bg-slate-100/80'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-500/20'
+                        : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-bold ${previewSampleType === sample.id ? 'text-emerald-900' : 'text-slate-800'}`}>
+                      <span className={`text-xs font-bold ${previewSampleType === sample.id ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-800 dark:text-white'}`}>
                         {sample.title}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-slate-600 font-semibold border border-slate-200">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-slate-700">
                         {sample.badge}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{sample.desc}</p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">{sample.desc}</p>
                   </button>
                 ))}
               </div>
 
               {/* Action: Simulate Send */}
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={handleSimulateSend}
@@ -679,34 +679,34 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
 
             {/* Customization Details */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
-              <h4 className="font-bold text-xs text-slate-800">ปรับแต่งสีและข้อความท้ายบัตร (Custom Styling)</h4>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+              <h4 className="font-bold text-xs text-slate-800 dark:text-white">ปรับแต่งสีและข้อความท้ายบัตร (Custom Styling)</h4>
               
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">สีแถบหัวการ์ด (Header Accent Color)</label>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">สีแถบหัวการ์ด (Header Accent Color)</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={lineSettings.customHeaderColor}
                     onChange={(e) => setLineSettings(prev => ({ ...prev, customHeaderColor: e.target.value }))}
-                    className="w-8 h-8 rounded-lg cursor-pointer border border-slate-300"
+                    className="w-8 h-8 rounded-lg cursor-pointer border border-slate-300 dark:border-slate-700"
                   />
                   <input
                     type="text"
                     value={lineSettings.customHeaderColor}
                     onChange={(e) => setLineSettings(prev => ({ ...prev, customHeaderColor: e.target.value }))}
-                    className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 font-mono uppercase"
+                    className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono uppercase"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600">ข้อความท้ายบัตร (Footer Disclaimer)</label>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">ข้อความท้ายบัตร (Footer Disclaimer)</label>
                 <textarea
                   rows={2}
                   value={lineSettings.customFooterNote}
                   onChange={(e) => setLineSettings(prev => ({ ...prev, customFooterNote: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
             </div>
@@ -771,7 +771,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     {previewSampleType === 'checkin' && (
                       <div className="p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">แจ้งเตือนเข้าเรียน</span>
+                          <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">แจ้งเตือนเข้าเรียน</span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
                             ✓ ตรงเวลา
                           </span>
@@ -783,19 +783,19 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
                         <div className="bg-slate-50 rounded-xl p-2.5 space-y-1 text-[11px]">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">รหัสนักเรียน:</span>
+                            <span className="text-slate-600">รหัสนักเรียน:</span>
                             <span className="font-semibold text-slate-800">STU-2026-0842</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">ระดับชั้น:</span>
+                            <span className="text-slate-600">ระดับชั้น:</span>
                             <span className="font-semibold text-slate-800">มัธยมศึกษาปีที่ 4/1</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">เวลาที่สแกน:</span>
+                            <span className="text-slate-600">เวลาที่สแกน:</span>
                             <span className="font-semibold text-emerald-700">07:42:15 น.</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">ช่องทาง:</span>
+                            <span className="text-slate-600">ช่องทาง:</span>
                             <span className="font-semibold text-slate-800">Gate Turnstile 1 (หน้าโรงเรียน)</span>
                           </div>
                         </div>
@@ -824,15 +824,15 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
                         <div className="bg-rose-50/50 rounded-xl p-2.5 space-y-1 text-[11px]">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">อาการที่พบ:</span>
+                            <span className="text-slate-600">อาการที่พบ:</span>
                             <span className="font-bold text-rose-700">ปวดศีรษะ เป็นไข้ (38.1°C)</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">การดูแล:</span>
+                            <span className="text-slate-600">การดูแล:</span>
                             <span className="font-semibold text-slate-800">พักผ่อนเตียง 2 + พาราเซตามอล 1 เม็ด</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">ครูพยาบาล:</span>
+                            <span className="text-slate-600">ครูพยาบาล:</span>
                             <span className="font-semibold text-slate-800">อ.สุดารัตน์ พยาบาลวิชาชีพ</span>
                           </div>
                         </div>
@@ -861,11 +861,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
                         <div className="bg-purple-50/60 rounded-xl p-2.5 space-y-1 text-[11px]">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">ยอดที่ต้องชำระ:</span>
+                            <span className="text-slate-600">ยอดที่ต้องชำระ:</span>
                             <span className="font-extrabold text-purple-800 text-xs">฿14,500.00</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">กำหนดชำระ:</span>
+                            <span className="text-slate-600">กำหนดชำระ:</span>
                             <span className="font-semibold text-slate-800">30 พ.ย. 2569</span>
                           </div>
                         </div>
@@ -903,15 +903,15 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
                         <div className="bg-blue-50/50 rounded-xl p-2.5 space-y-1 text-[11px]">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">วิทยาการคำนวณ AI:</span>
+                            <span className="text-slate-600">วิทยาการคำนวณ AI:</span>
                             <span className="font-bold text-blue-700">เกรด 4.00 (A)</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">คณิตศาสตร์ขั้นสูง:</span>
+                            <span className="text-slate-600">คณิตศาสตร์ขั้นสูง:</span>
                             <span className="font-bold text-blue-700">เกรด 4.00 (A)</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">ภาษาอังกฤษวิชาการ:</span>
+                            <span className="text-slate-600">ภาษาอังกฤษวิชาการ:</span>
                             <span className="font-bold text-blue-700">เกรด 3.50 (B+)</span>
                           </div>
                         </div>
@@ -940,15 +940,15 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
                         <div className="bg-amber-50/50 rounded-xl p-2.5 space-y-1 text-[11px]">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">หัวข้อ:</span>
+                            <span className="text-slate-600">หัวข้อ:</span>
                             <span className="font-bold text-slate-800">โครงงาน Mini AI Image Classifier</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">กำหนดส่ง:</span>
+                            <span className="text-slate-600">กำหนดส่ง:</span>
                             <span className="font-semibold text-rose-700">8 พ.ย. 2569 (23:59 น.)</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">คะแนนเต็ม:</span>
+                            <span className="text-slate-600">คะแนนเต็ม:</span>
                             <span className="font-semibold text-slate-800">20 คะแนน</span>
                           </div>
                         </div>
@@ -963,14 +963,14 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     )}
 
                     {/* Disclaimer Footer */}
-                    <div className="px-3 pb-2.5 pt-1 text-[9px] text-slate-400 text-center border-t border-slate-100">
+                    <div className="px-3 pb-2.5 pt-1 text-[9px] text-slate-600 text-center border-t border-slate-100">
                       {lineSettings.customFooterNote}
                     </div>
                   </div>
                 </div>
 
                 {/* LINE Chat Input Simulation */}
-                <div className="bg-white border-t border-slate-200 px-3 py-2 flex items-center justify-between text-slate-400 text-xs">
+                <div className="bg-white border-t border-slate-200 px-3 py-2 flex items-center justify-between text-slate-600 text-xs">
                   <span>พิมพ์ข้อความถึงห้องธุรการ...</span>
                   <Send className="w-4 h-4 text-emerald-600" />
                 </div>
@@ -985,18 +985,18 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left: API Keys Form */}
-            <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs">
                     API
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900">LINE Developers Console Credentials</h3>
-                    <p className="text-[11px] text-slate-500">ข้อมูลจาก https://developers.line.biz ในส่วน Messaging API Channel</p>
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">LINE Developers Console Credentials</h3>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">ข้อมูลจาก https://developers.line.biz ในส่วน Messaging API Channel</p>
                   </div>
                 </div>
-                <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold">
                   ✓ Configured
                 </span>
               </div>
@@ -1004,79 +1004,79 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">LINE Official Account ID</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">LINE Official Account ID</label>
                     <input
                       type="text"
                       value={lineSettings.lineOaId}
                       onChange={(e) => setLineSettings(prev => ({ ...prev, lineOaId: e.target.value }))}
                       placeholder="@eduverse_official"
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">ชื่อที่แสดงของบัญชี (LINE OA Name)</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">ชื่อที่แสดงของบัญชี (LINE OA Name)</label>
                     <input
                       type="text"
                       value={lineSettings.lineOaName}
                       onChange={(e) => setLineSettings(prev => ({ ...prev, lineOaName: e.target.value }))}
                       placeholder="EduVerse School Connect OA"
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Channel ID</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Channel ID</label>
                     <input
                       type="text"
                       value={lineSettings.channelId}
                       onChange={(e) => setLineSettings(prev => ({ ...prev, channelId: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Channel Secret</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Channel Secret</label>
                     <input
                       type="password"
                       value={lineSettings.channelSecret}
                       onChange={(e) => setLineSettings(prev => ({ ...prev, channelSecret: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Channel Access Token (Long-Lived 24/7)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Channel Access Token (Long-Lived 24/7)</label>
                   <textarea
                     rows={2}
                     value={lineSettings.channelAccessToken}
                     onChange={(e) => setLineSettings(prev => ({ ...prev, channelAccessToken: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono text-[11px]"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono text-[11px]"
                   />
                 </div>
 
                 {/* Webhook Endpoint with Copy Button */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Webhook URL (นำไปใส่ใน LINE Developers Console &gt; Messaging API)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Webhook URL (นำไปใส่ใน LINE Developers Console &gt; Messaging API)</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
                       value={lineSettings.webhookUrl}
-                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-mono text-slate-700 select-all"
+                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-slate-700 dark:text-slate-200 select-all"
                     />
                     <button
                       type="button"
                       onClick={() => handleCopy(lineSettings.webhookUrl, 'webhook')}
-                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                     >
                       {copiedField === 'webhook' ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700">คัดลอกแล้ว</span>
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-700 dark:text-emerald-300">คัดลอกแล้ว</span>
                         </>
                       ) : (
                         <>
@@ -1089,22 +1089,22 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">LIFF ID (LINE Front-end Framework สำหรับบัตรดิจิทัล)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">LIFF ID (LINE Front-end Framework สำหรับบัตรดิจิทัล)</label>
                   <input
                     type="text"
                     value={lineSettings.liffId}
                     onChange={(e) => setLineSettings(prev => ({ ...prev, liffId: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">ข้อความทักทายอัตโนมัติเมื่อกดเพิ่มเพื่อน (Greeting Message)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">ข้อความทักทายอัตโนมัติเมื่อกดเพิ่มเพื่อน (Greeting Message)</label>
                   <textarea
                     rows={2}
                     value={lineSettings.autoReplyGreeting}
                     onChange={(e) => setLineSettings(prev => ({ ...prev, autoReplyGreeting: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
               </div>
@@ -1112,27 +1112,27 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
             {/* Right: QR Code & Add Friend Guide */}
             <div className="lg:col-span-4 space-y-4">
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs text-center space-y-3">
-                <h4 className="font-bold text-xs text-slate-800">QR Code เพิ่มเพื่อน LINE OA โรงเรียน</h4>
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 inline-block shadow-inner">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs text-center space-y-3">
+                <h4 className="font-bold text-xs text-slate-800 dark:text-white">QR Code เพิ่มเพื่อน LINE OA โรงเรียน</h4>
+                <div className="p-3 bg-white rounded-2xl border border-slate-200 inline-block shadow-inner">
                   <img
                     src={lineSettings.qrCodeImageUrl || 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://line.me/R/ti/p/@eduverse_official'}
                     alt="LINE OA QR"
                     className="w-36 h-36 object-contain mx-auto"
                   />
                 </div>
-                <div className="font-mono text-xs font-bold text-emerald-800">
+                <div className="font-mono text-xs font-bold text-emerald-800 dark:text-emerald-300">
                   {lineSettings.lineOaId}
                 </div>
                 <div className="pt-1">
                   <button
                     type="button"
                     onClick={() => handleCopy(lineSettings.addFriendUrl, 'addFriend')}
-                    className="w-full py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="w-full py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     {copiedField === 'addFriend' ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>คัดลอกลิงก์เรียบร้อย</span>
                       </>
                     ) : (
@@ -1146,12 +1146,12 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               </div>
 
               {/* Developer Checklist */}
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-2">
-                <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-emerald-600" />
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+                <span className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   ข้อกำหนดในการเปิดใช้งานจริง:
                 </span>
-                <ul className="text-[11px] text-slate-600 space-y-1 list-disc pl-4">
+                <ul className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1 list-disc pl-4">
                   <li>เปิด <strong>Use webhook</strong> ใน LINE Developers เป็น Enabled</li>
                   <li>ปิด <strong>Auto-reply messages</strong> ใน LINE Official Account Manager เพื่อให้บอท Flex Message ทำงานได้สมบูรณ์</li>
                   <li>ตั้งค่า Webhook redelivery หากต้องการความแม่นยำสูง</li>
@@ -1176,27 +1176,27 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* TAB 4: Subscribers & Connection Roster */}
       {activeTab === 'subscribers' && (
         <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="font-bold text-sm text-slate-800">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-white">
                 สถานะการผูก LINE ของนักเรียนและผู้ปกครอง ({connectedCount}/{students.length} คน)
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
                 รายชื่อนักเรียนที่มีการจับคู่บัญชี LINE Official Account เพื่อรับการแจ้งเตือนแบบตัวต่อตัว (1-on-1 Flex Message)
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 ผูกแล้ว {connectedPct}%
               </span>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="px-4 py-3">รหัสนักเรียน</th>
                     <th className="px-4 py-3">ชื่อ - นามสกุล</th>
@@ -1206,10 +1206,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     <th className="px-4 py-3">LINE User ID</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {students.slice(subscriberPage * 6, (subscriberPage + 1) * 6).map((stu) => (
-                    <tr key={stu.id} className="hover:bg-slate-50/70 transition">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-700">
+                    <tr key={stu.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-800 dark:text-slate-200">
                         {stu.studentIdNumber}
                       </td>
                       <td className="px-4 py-3">
@@ -1217,33 +1217,33 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                           <img
                             src={stu.avatarUrl}
                             alt=""
-                            className="w-6 h-6 rounded-full object-cover border border-slate-200"
+                            className="w-6 h-6 rounded-full object-cover border border-slate-200 dark:border-slate-700"
                           />
-                          <span className="font-bold text-slate-800">
+                          <span className="font-bold text-slate-900 dark:text-white">
                             {stu.firstNameTh} {stu.lastNameTh}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                         {stu.gradeLevel} {stu.room}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                         <div>{stu.guardianName} ({stu.guardianRelation})</div>
-                        <div className="text-[10px] text-slate-400 font-mono">{stu.guardianPhone}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{stu.guardianPhone}</div>
                       </td>
                       <td className="px-4 py-3">
                         {stu.lineLinked ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                            <Check className="w-3 h-3 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                            <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             ผูก LINE แล้ว
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-semibold">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold">
                             ยังไม่ผูก
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-slate-500">
+                      <td className="px-4 py-3 font-mono text-[11px] text-slate-600 dark:text-slate-300">
                         {stu.lineUserId || '-'}
                       </td>
                     </tr>
@@ -1252,10 +1252,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               </table>
             </div>
             {students.length > 6 && (
-              <div className="flex items-center justify-between p-3 text-xs">
-                <button type="button" onClick={() => setSubscriberPage(page => Math.max(0, page - 1))} disabled={subscriberPage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
+              <div className="flex items-center justify-between p-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                <button type="button" onClick={() => setSubscriberPage(page => Math.max(0, page - 1))} disabled={subscriberPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
                 <span>หน้า {subscriberPage + 1} / {Math.ceil(students.length / 6)} · {students.length} คน</span>
-                <button type="button" onClick={() => setSubscriberPage(page => Math.min(Math.ceil(students.length / 6) - 1, page + 1))} disabled={subscriberPage >= Math.ceil(students.length / 6) - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+                <button type="button" onClick={() => setSubscriberPage(page => Math.min(Math.ceil(students.length / 6) - 1, page + 1))} disabled={subscriberPage >= Math.ceil(students.length / 6) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
               </div>
             )}
           </div>
@@ -1265,67 +1265,67 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* TAB 5: General School Config & Database Backup */}
       {activeTab === 'school_general' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Building2 className="w-5 h-5 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <Building2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <div>
-                <h3 className="font-bold text-sm text-slate-900">ข้อมูลปีการศึกษา & อีเมลแจ้งเตือนสำรอง</h3>
-                <p className="text-[11px] text-slate-500">กำหนดค่าระบบภาพรวมของสถานศึกษา</p>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">ข้อมูลปีการศึกษา & อีเมลแจ้งเตือนสำรอง</h3>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300">กำหนดค่าระบบภาพรวมของสถานศึกษา</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">ปีการศึกษาปัจจุบัน (Academic Year)</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">ปีการศึกษาปัจจุบัน (Academic Year)</label>
                 <input
                   type="text"
                   value={generalConfig.academicYear}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, academicYear: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">ภาคเรียนปัจจุบัน (Current Semester)</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">ภาคเรียนปัจจุบัน (Current Semester)</label>
                 <input
                   type="text"
                   value={generalConfig.currentSemester}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, currentSemester: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">อีเมลแจ้งเตือนสำรอง (Resend Sender Email)</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">อีเมลแจ้งเตือนสำรอง (Resend Sender Email)</label>
                 <input
                   type="email"
                   value={generalConfig.resendFromEmail}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, resendFromEmail: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Cloud Backup Storage Bucket</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Cloud Backup Storage Bucket</label>
                 <input
                   type="text"
                   value={generalConfig.backupBucket}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, backupBucket: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono text-[11px]"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono text-[11px]"
                 />
               </div>
             </div>
 
             {/* Backup Info */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-3">
-                <Database className="w-5 h-5 text-emerald-600" />
+                <Database className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <div>
-                  <div className="font-bold text-xs text-slate-800">การสำรองข้อมูลอัตโนมัติ (Automated Database Backup)</div>
-                  <div className="text-[11px] text-slate-500">สำรองล่าสุด: {systemConfig.lastBackupDate}</div>
+                  <div className="font-bold text-xs text-slate-800 dark:text-white">การสำรองข้อมูลอัตโนมัติ (Automated Database Backup)</div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-300">สำรองล่าสุด: {systemConfig.lastBackupDate}</div>
                 </div>
               </div>
-              <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+              <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold">
                 ✓ เข้ารหัส AES-256
               </span>
             </div>

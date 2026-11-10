@@ -26,7 +26,8 @@ import {
   RaidParty, 
   RaidPartyMember, 
   AppLanguage, 
-  UserRole 
+  UserRole,
+  QuizQuestion 
 } from '../types';
 import { 
   INITIAL_BOSS_RAID_CONFIG, 
@@ -36,6 +37,7 @@ import { PagedList } from './PagedList';
 import { playHeavyImpactSound, playComboStreakSound, playGrandVictoryFanfare } from '../lib/labSoundEffects';
 
 interface CoopBossRaidViewProps {
+  questions?: QuizQuestion[];
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
@@ -43,6 +45,7 @@ interface CoopBossRaidViewProps {
 }
 
 export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
+  questions = [],
   lang = 'th',
   currentRole = 'student',
   currentUserName = 'นักเรียน',
@@ -58,9 +61,38 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const [victoryCelebration, setVictoryCelebration] = useState<boolean>(false);
   const [bossZoom, setBossZoom] = useState<number>(1.0);
   const [raidPanel, setRaidPanel] = useState<'arena' | 'question' | 'parties'>('question');
+  const [examFilter, setExamFilter] = useState<'default' | 'teacher_created' | 'all_bank'>('default');
+  const [questionCursor, setQuestionCursor] = useState<number>(0);
 
   // Teacher Topic Switcher state
   const [isTeacherPanelOpen, setIsTeacherPanelOpen] = useState<boolean>(false);
+
+  const teacherCreatedQuestions = questions.filter(
+    q => q.id.startsWith('q-custom-') || q.id.startsWith('csv-') || q.category === 'exam'
+  );
+  const raidPool =
+    examFilter === 'teacher_created'
+      ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions)
+      : examFilter === 'all_bank'
+      ? questions
+      : [];
+
+  const applyQuizQuestionToBoss = (q: QuizQuestion) => {
+    setSelectedAnswer(null);
+    setLastDamage(null);
+    setBossConfig(prev => ({
+      ...prev,
+      subject: q.subject,
+      activeQuestion: {
+        id: q.id,
+        questionTh: q.questionTh,
+        options: q.options,
+        correctIndex: q.correctIndex,
+        explanationTh: q.explanationTh || 'ตรวจสอบคำอธิบายในคลังข้อสอบ',
+        baseDamage: Math.max(250, q.points * 3),
+      }
+    }));
+  };
 
   // Attack handler when user answers question
   const handleAttackBoss = (optionIdx: number) => {
@@ -125,18 +157,24 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
     setTimeout(() => setActiveHintToast(null), 3500);
   };
 
-  // Reset / Next Question
+  // Reset / Next Question (uses teacher/school bank when selected)
   const handleNextRaidQuestion = () => {
+    if (raidPool.length > 0) {
+      const nextIdx = (questionCursor + 1) % raidPool.length;
+      setQuestionCursor(nextIdx);
+      applyQuizQuestionToBoss(raidPool[nextIdx]);
+      return;
+    }
     setSelectedAnswer(null);
     setLastDamage(null);
     setBossConfig(prev => ({
       ...prev,
       activeQuestion: {
         id: `bq-${Date.now()}`,
-        questionTh: 'ถ้าปล่อยก้อนหินมวล 2 kg ให้ตกอย่างอิสระจากตึกสูง ผ่านไป 3 วินาที ก้อนหินจะมีความเร็วเท่าใด? (กำหนด $g = 10 m/s²$)',
+        questionTh: 'ถ้าปล่อยก้อนหินมวล 2 kg ให้ตกอย่างอิสระจากตึกสูง ผ่านไป 3 วินาที ก้อนหินจะมีความเร็วเท่าใด? (กำหนด g = 10 m/s²)',
         options: ['30 m/s', '20 m/s', '60 m/s', '10 m/s'],
         correctIndex: 0,
-        explanationTh: 'จากสมการ $v = u + gt$ โดย $u = 0$ จะได้ $v = 10 \\times 3 = 30$ m/s',
+        explanationTh: 'จากสมการ v = u + gt โดย u = 0 จะได้ v = 10 × 3 = 30 m/s',
         baseDamage: 300,
       }
     }));
@@ -253,7 +291,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">
+            <span className="text-slate-300">
               {lang === 'th' ? 'ปรับเลือดบอส:' : 'Boss HP:'}
             </span>
             <button
@@ -274,7 +312,54 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
         </div>
       )}
 
-      <div className="shrink-0 flex lg:hidden flex-wrap gap-1.5" role="group" aria-label={lang === 'th' ? 'ส่วนของเกม' : 'Raid panels'}>
+      {/* Exam Source Selector for Boss Raid (Teacher-Created Exams Support) */}
+      {questions.length > 0 && (
+        <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+          <span className="font-bold text-amber-300">ชุดข้อสอบโจมตีบอส:</span>
+          {[
+            { id: 'default' as const, label: 'บอสมาตรฐาน' },
+            {
+              id: 'teacher_created' as const,
+              label: teacherCreatedQuestions.length > 0
+                ? `👨‍🏫 ข้อสอบที่ครูสร้าง (${teacherCreatedQuestions.length} ข้อ)`
+                : `👨‍🏫 ข้อสอบโรงเรียน/ครู (${questions.length} ข้อ)`,
+            },
+            { id: 'all_bank' as const, label: `📚 คลังข้อสอบทั้งหมด (${questions.length} ข้อ)` },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                setExamFilter(opt.id);
+                setQuestionCursor(0);
+                if (opt.id === 'default') {
+                  setBossConfig(prev => ({
+                    ...prev,
+                    subject: INITIAL_BOSS_RAID_CONFIG.subject,
+                    activeQuestion: INITIAL_BOSS_RAID_CONFIG.activeQuestion,
+                  }));
+                  setSelectedAnswer(null);
+                  setLastDamage(null);
+                } else {
+                  const pool = opt.id === 'teacher_created'
+                    ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions)
+                    : questions;
+                  if (pool.length > 0) applyQuizQuestionToBoss(pool[0]);
+                }
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                examFilter === opt.id
+                  ? 'bg-amber-400 text-slate-950'
+                  : 'text-slate-200 hover:text-white underline-offset-4 hover:underline'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="shrink-0 flex lg:hidden flex-wrap gap-1.5 rounded-xl bg-slate-900 border border-slate-800 p-1.5" role="group" aria-label={lang === 'th' ? 'ส่วนของเกม' : 'Raid panels'}>
         {([
           ['arena', lang === 'th' ? 'สนามบอส' : 'Boss Arena'],
           ['question', lang === 'th' ? 'ตอบคำถาม' : 'Answer Question'],
@@ -285,10 +370,10 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             type="button"
             aria-pressed={raidPanel === panel}
             onClick={() => setRaidPanel(panel)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
               raidPanel === panel
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                ? 'bg-amber-400 text-slate-950'
+                : 'text-slate-200 hover:bg-slate-800 hover:text-white'
             }`}
           >
             {label}
@@ -378,7 +463,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
           </div>
 
           {/* Bottom Raid Info */}
-          <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
             <span className="truncate max-w-[150px]">{bossConfig.topicTh}</span>
             <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
               <Flame className="w-3 h-3" />
@@ -389,12 +474,11 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
         {/* Right Column: Active Attack Question & Co-op Party Matrix */}
         <div className={`${raidPanel !== 'arena' ? 'flex' : 'hidden'} lg:flex lg:col-span-7 flex-col min-h-0 space-y-3 pr-1 overflow-y-auto`}>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+          <div className="rounded-lg border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/60 px-3 py-2 text-[11px] font-medium text-amber-900 dark:text-amber-200">
             โหมดสาธิต: รายชื่อทีมและผลการแข่งขันเป็นข้อมูลตัวอย่าง ยังไม่เชื่อมผู้เล่นออนไลน์จริง
           </div>
-          {/* Question Card */}
-          {raidPanel === 'question' && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-xs">
+          {/* Question Card (Always visible on desktop, selectable on mobile) */}
+          <div className={`${raidPanel === 'question' ? 'block' : 'hidden lg:block'} bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs`}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300">
                 {bossConfig.subject}
@@ -453,10 +537,9 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               )}
             </div>
           </div>
-          )}
 
-          {/* Co-op Party Matrix (Peer Tutoring & Combos) */}
-          {raidPanel === 'parties' && <details open className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+          {/* Co-op Party Matrix (Always accessible on desktop, selectable on mobile) */}
+          <details open className={`${raidPanel === 'parties' ? 'block' : 'hidden lg:block'} bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs`}>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -471,7 +554,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
             {/* Squads List */}
             <div className="mt-4 space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {lang === 'th' ? 'หากเพื่อนในทีมยังตอบไม่ได้ กดปุ่ม "ติวเพื่อน" เพื่อส่งแนวทางคิดให้เพื่อน' : 'Peer assist: Send tutoring tips to help teammates answer'}
               </p>
               <PagedList
@@ -480,7 +563,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                 renderItem={(party) => (
                 <div
                   key={party.id}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 space-y-3"
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-slate-900 dark:text-white">
@@ -517,7 +600,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                             <p className="font-bold text-slate-900 dark:text-white truncate text-[11px]">
                               {member.name.split(' ')[1] || member.name}
                             </p>
-                            <p className="text-[10px] text-slate-500 truncate">
+                            <p className="text-[10px] text-slate-600 dark:text-slate-300 truncate">
                               {member.roleTitle}
                             </p>
                           </div>
@@ -525,7 +608,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
                         <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
                           {member.hasAnswered ? (
-                            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
                               <CheckCircle2 className="w-3 h-3" />
                               +{member.damageDealt}
                             </span>
@@ -535,7 +618,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                               onClick={() => handleSendPeerAssist(member)}
                               className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
                             >
-                              <Sparkles className="w-3 h-3 text-yellow-500" />
+                              <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                               <span>{lang === 'th' ? 'ส่งคำใบ้ติว' : 'Assist'}</span>
                             </button>
                           )}
@@ -547,7 +630,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               )}
               />
             </div>
-          </details>}
+          </details>
         </div>
       </div>
 

@@ -216,8 +216,8 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                   <span className="w-3 h-3 rounded-full bg-indigo-500 inline-block" />
                   <span>{lang === 'th' ? 'ผู้เรียน' : 'Student'}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-500">
-                  <span className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-700 inline-block border border-dashed border-slate-400" />
+                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                  <span className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 inline-block border border-dashed border-slate-500 dark:border-slate-400" />
                   <span>{lang === 'th' ? 'เกณฑ์' : 'Benchmark'}</span>
                 </div>
               </div>
@@ -340,7 +340,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                     <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                       {lang === 'th' ? dim.nameTh : dim.nameEn}
                     </p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-slate-600 dark:text-slate-300">
                       {lang === 'th' ? 'เกณฑ์:' : 'Goal:'} {dim.benchmark}%
                     </p>
                   </div>
@@ -377,7 +377,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
               {/* Student Filter */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium">
+                <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
                   {lang === 'th' ? 'เลือกนักเรียน:' : 'Student:'}
                 </span>
                 <select
@@ -400,17 +400,17 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                   key={diag.id}
                   className={`p-4 rounded-xl border transition-all ${
                     diag.isResolved 
-                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
-                      : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-600'
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200">
                           {diag.subject}
                         </span>
-                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                        <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
                           <User className="w-3.5 h-3.5" />
                           {diag.studentName}
                         </span>
@@ -457,7 +457,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
                   {/* Action Button */}
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
                       {lang === 'th' ? `แบบทดสอบ 3 มิติ: ${diag.microQuests.length} ข้อ` : `${diag.microQuests.length} Micro-quest questions`}
                     </span>
 
@@ -466,7 +466,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                       onClick={() => handleStartQuest(diag)}
                       className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                         diag.isResolved
-                          ? 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200'
+                          ? 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100'
                           : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
                       }`}
                     >
@@ -503,7 +503,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
               <button
                 type="button"
                 onClick={() => setActiveQuestDiag(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -514,7 +514,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
               {!showQuestResult ? (
                 <div>
                   {/* Progress Indicator */}
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-medium">
+                  <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 mb-2 font-medium">
                     <span>
                       {lang === 'th' ? `คำถามข้อที่ ${questStep + 1} จาก ${activeQuestDiag.microQuests.length}` : `Question ${questStep + 1} of ${activeQuestDiag.microQuests.length}`}
                     </span>

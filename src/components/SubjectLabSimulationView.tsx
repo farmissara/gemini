@@ -853,7 +853,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           {/* Progress Tracker Pill */}
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-xs shrink-0">
             <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="text-slate-400 text-[11px] hidden xs:inline">ผ่าน:</span>
+            <span className="text-slate-300 text-[11px] hidden xs:inline">ผ่าน:</span>
             <span className="font-bold text-amber-300 font-mono text-xs">{completedQuestIds.length}/{quests.length}</span>
           </div>
 
@@ -862,18 +862,18 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             <button
               type="button"
               onClick={handleZoomOut}
-              className="p-1 rounded hover:bg-slate-700 text-slate-300 hover:text-white text-xs cursor-pointer"
+              className="p-1 rounded hover:bg-slate-700 text-slate-200 hover:text-white text-xs cursor-pointer"
               title="ย่อขนาด"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[10px] font-mono px-1 text-slate-400 font-bold">
+            <span className="text-[10px] font-mono px-1 text-slate-200 font-bold">
               {Math.round(labZoom * 100)}%
             </span>
             <button
               type="button"
               onClick={handleZoomIn}
-              className="p-1 rounded hover:bg-slate-700 text-slate-300 hover:text-white text-xs cursor-pointer"
+              className="p-1 rounded hover:bg-slate-700 text-slate-200 hover:text-white text-xs cursor-pointer"
               title="ขยายขนาด"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -884,10 +884,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           <button
             type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition shrink-0 cursor-pointer"
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition shrink-0 cursor-pointer"
             title={soundEnabled ? 'ปิดเสียง' : 'เปิดเสียง'}
           >
-            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-300" />}
           </button>
 
           {/* Teacher Custom Quest Creator */}
@@ -930,7 +930,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               className={`h-7 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-blue-400'
-                  : 'bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 hover:text-white'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:text-white'
               }`}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -966,7 +966,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               {/* Items chips */}
               <div className="min-h-7 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 {beakerItems.length === 0 ? (
-                  <span className="text-[11px] text-slate-400 italic">
+                  <span className="text-[11px] text-slate-300 italic">
                     ยังไม่มีรายการ — แตะเลือกจากคลังด้านล่าง
                   </span>
                 ) : (
@@ -1042,7 +1042,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isStirred 
                         ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs' 
-                        : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                     }`}
                     title={activeConfig.tool1LabelTh}
                   >
@@ -1060,7 +1060,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isBurnerActive 
                         ? 'bg-amber-600 text-white border-amber-400 shadow-xs animate-pulse' 
-                        : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                     }`}
                     title={activeConfig.tool2LabelTh}
                   >
@@ -1072,7 +1072,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   <button
                     type="button"
                     onClick={handleResetLab}
-                    className="h-8 px-2 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0 text-xs"
+                    className="h-8 px-2 rounded-lg bg-slate-800 hover:bg-rose-950/50 text-slate-200 hover:text-rose-200 border border-slate-700 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0 text-xs"
                     title="ล้างแท่นทดลอง"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -1133,7 +1133,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-white text-xs truncate">{activeQuest.titleTh}</span>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
                       {activeQuest.gradeLevel}
                     </span>
                   </div>
@@ -1161,7 +1161,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   <Atom className="w-4 h-4 text-indigo-400 shrink-0" />
                   <span>{activeConfig.shelfLabelTh}</span>
                 </span>
-                <span className="text-[11px] text-slate-400">{activeConfig.trayHintTh}</span>
+                <span className="text-[11px] text-slate-300">{activeConfig.trayHintTh}</span>
               </div>
 
               {/* Items Grid */}
@@ -1177,7 +1177,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
                         isSelected
                           ? 'bg-emerald-950/30 border-emerald-500/60 text-emerald-200'
-                          : 'bg-slate-800 hover:bg-slate-750 hover:border-blue-400 border-slate-700 active:scale-95 shadow-xs'
+                          : 'bg-slate-800 hover:bg-slate-700 hover:border-blue-400 border-slate-700 active:scale-95 shadow-xs'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -1256,7 +1256,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowTeacherBuilder(false)}
-                className="text-slate-400 hover:text-white text-xs p-1 cursor-pointer"
+                className="text-slate-300 hover:text-white text-xs p-1 cursor-pointer"
               >
                 ✕ ปิด
               </button>
@@ -1331,12 +1331,12 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               )}
 
               <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-800">
-                <span className="text-[10px] text-slate-400">ขั้นตอน {builderStep + 1} / 2</span>
+                <span className="text-[10px] text-slate-300">ขั้นตอน {builderStep + 1} / 2</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => builderStep === 1 ? setBuilderStep(0) : setShowTeacherBuilder(false)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs hover:bg-slate-700 cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:text-white text-xs hover:bg-slate-700 cursor-pointer"
                   >
                     {builderStep === 1 ? 'ย้อนกลับ' : 'ยกเลิก'}
                   </button>
@@ -1423,7 +1423,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowQuestModal(false)}
-                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 cursor-pointer"
+                className="text-slate-200 hover:text-white text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 cursor-pointer"
               >
                 ✕ ซ่อน / ปิด
               </button>
@@ -1475,8 +1475,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               </div>
 
               {/* Rewards info */}
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/60 text-[11px]">
-                <span className="text-slate-400">รางวัลเมื่อผ่านการทดลอง:</span>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 text-[11px]">
+                <span className="text-slate-300">รางวัลเมื่อผ่านการทดลอง:</span>
                 <span className="text-amber-300 font-bold flex items-center gap-1">
                   <Trophy className="w-3.5 h-3.5" />
                   <span>+{activeQuest.expReward} EXP • +{activeQuest.gemReward} Gems</span>

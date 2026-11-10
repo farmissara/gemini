@@ -71,10 +71,10 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Classroom Hero */}
-      <div className="shrink-0 rounded-2xl bg-gradient-to-r from-blue-900/80 via-indigo-900/90 to-purple-950 border border-indigo-500/30 p-3.5 sm:p-4 shadow-lg relative overflow-hidden">
+      <div className="shrink-0 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-950 border border-indigo-500/40 p-3.5 sm:p-4 shadow-lg relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 border border-indigo-400/40 text-[11px] font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               {lang === 'th' ? 'ห้องเรียนออนไลน์เสมือนจริง • EduVerse LMS' : 'Virtual Classroom • EduVerse LMS'}
             </span>
@@ -87,8 +87,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs">
-              <span className="text-slate-400 block text-[10px]">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs">
+              <span className="text-slate-300 block text-[10px]">
                 {lang === 'th' ? 'ความคืบหน้าบทเรียน' : 'Course Progress'}
               </span>
               <span className="text-emerald-400 font-bold font-mono text-sm">
@@ -99,7 +99,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         </div>
 
         {submittedAlert && (
-          <div className="mt-2.5 p-2 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-xs flex items-center gap-2">
+          <div className="mt-2.5 p-2 rounded-xl bg-emerald-950 border border-emerald-500/50 text-emerald-200 text-xs flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>{submittedAlert}</span>
           </div>
@@ -107,7 +107,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       </div>
 
       {/* Course Switcher Tabs */}
-      <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800">
+      <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1.5 border-b border-slate-200 dark:border-slate-800">
         {courses.map((c) => (
           <button
             key={c.id}
@@ -119,7 +119,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               selectedCourseId === c.id
                 ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700'
             }`}
           >
             <span className="font-mono mr-1.5">{c.code}</span>
@@ -132,20 +132,20 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       <div className="shrink-0 flex items-center gap-2 text-xs">
         <button
           onClick={() => setActiveTab('lessons')}
-          className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+          className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border ${
             activeTab === 'lessons'
-              ? 'bg-slate-800 text-white border border-indigo-500/40'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 dark:bg-slate-800 text-white border-indigo-500 shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           {lang === 'th' ? '📚 บทเรียนวิดีโอ & สื่อการสอน' : '📚 Video Lessons & Notes'}
         </button>
         <button
           onClick={() => setActiveTab('assignments')}
-          className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+          className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border ${
             activeTab === 'assignments'
-              ? 'bg-slate-800 text-white border border-indigo-500/40'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 dark:bg-slate-800 text-white border-indigo-500 shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           {lang === 'th' ? '📝 การบ้าน & ใบงานออนไลน์' : '📝 Assignments & Tasks'}
@@ -174,7 +174,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                     <div className="text-center p-6 space-y-2">
                       <Video className="w-12 h-12 text-indigo-400 mx-auto" />
                       <p className="text-sm font-semibold text-white">Live Stream &amp; Interactive Lesson</p>
-                      <p className="text-xs text-slate-400">Class meets via EduVerse Cloud Stream</p>
+                      <p className="text-xs text-slate-300">Class meets via EduVerse Cloud Stream</p>
                     </div>
                   )}
                 </div>
@@ -182,7 +182,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                 <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <span className="text-[11px] font-mono font-bold text-indigo-400">
+                      <span className="text-[11px] font-mono font-bold text-indigo-300">
                         {lang === 'th' ? `บทที่ ${activeLesson.chapterNumber}` : `Chapter ${activeLesson.chapterNumber}`} • {activeLesson.durationMinutes} mins
                       </span>
                       <h2 className="text-lg font-bold text-white mt-0.5">
@@ -199,26 +199,26 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                     </button>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+                  <p className="text-xs text-slate-200 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800">
                     {activeLesson.content}
                   </p>
 
                   {/* Lesson Materials */}
                   <div className="space-y-2 pt-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                       {lang === 'th' ? 'เอกสารประกอบการเรียนดาวน์โหลด' : 'Downloadable Lesson Files'}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <PagedList items={activeLesson.materials} pageSize={4} renderItem={(mat, i) => (
                         <div
                           key={i}
-                          className="p-3 rounded-lg bg-slate-800/60 border border-slate-700/60 flex items-center justify-between text-xs hover:border-indigo-500 transition-colors"
+                          className="p-3 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-between text-xs hover:border-indigo-500 transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-indigo-400" />
-                            <span className="text-slate-200 font-medium truncate">{mat.name}</span>
+                            <span className="text-slate-100 font-medium truncate">{mat.name}</span>
                           </div>
-                          <button className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-[11px]">
+                          <button className="text-indigo-300 hover:text-indigo-200 flex items-center gap-1 text-[11px]">
                             <Download className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -228,7 +228,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                 </div>
               </>
             ) : (
-              <p className="text-xs text-slate-400 text-center py-12">
+              <p className="text-xs text-slate-300 text-center py-12">
                 {lang === 'th' ? 'ไม่มีบทเรียนในรายวิชานี้' : 'No lessons available for this course.'}
               </p>
             )}
@@ -252,12 +252,12 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                     className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-slate-800 border-indigo-500 shadow-md shadow-indigo-500/10'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                        : 'bg-slate-950 border-slate-800 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="text-[10px] font-mono text-indigo-400 font-bold block">
+                        <span className="text-[10px] font-mono text-indigo-300 font-bold block">
                           {lang === 'th' ? `บทที่ ${les.chapterNumber}` : `Chapter ${les.chapterNumber}`}
                         </span>
                         <h4 className="text-xs font-semibold text-white mt-0.5 line-clamp-2">
@@ -268,12 +268,12 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                       {isDone ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-1" />
                       ) : (
-                        <Play className="w-4 h-4 text-slate-500 shrink-0 mt-1" />
+                        <Play className="w-4 h-4 text-slate-300 shrink-0 mt-1" />
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-400">
-                      <Clock className="w-3 h-3 text-slate-500" />
+                    <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-300">
+                      <Clock className="w-3 h-3 text-slate-400" />
                       <span>{les.durationMinutes} นาที</span>
                       <span>•</span>
                       <span>{les.materials.length} ไฟล์แนบ</span>

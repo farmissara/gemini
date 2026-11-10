@@ -169,9 +169,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               {lang === 'th' ? 'เสี่ยง มส. / ร. ขั้นวิกฤต' : 'Critical High Risk'}
             </p>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              {highRiskCount} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
+              {highRiskCount} <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{lang === 'th' ? 'คน' : 'students'}</span>
             </h3>
-            <p className="text-[11px] text-rose-600 mt-1 font-semibold">
+            <p className="text-[11px] text-rose-700 dark:text-rose-400 mt-1 font-semibold">
               {lang === 'th' ? 'เกณฑ์เวลาเรียนและงานค้างสะสม' : 'Attendance & pending tasks'}
             </p>
           </div>
@@ -187,9 +187,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               {lang === 'th' ? 'เวลาเรียนต่ำกว่า 80%' : 'Attendance < 80%'}
             </p>
             <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-              {attendanceDangerCount} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
+              {attendanceDangerCount} <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{lang === 'th' ? 'คน' : 'students'}</span>
             </h3>
-            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
               {lang === 'th' ? 'เสี่ยงหมดสิทธิ์สอบ (มส.)' : 'At risk of exam disqualification'}
             </p>
           </div>
@@ -205,9 +205,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               {lang === 'th' ? 'ส่งการบ้านต่ำกว่า 50%' : 'Homework < 50%'}
             </p>
             <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-              {homeworkDangerCount} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
+              {homeworkDangerCount} <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{lang === 'th' ? 'คน' : 'students'}</span>
             </h3>
-            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 font-medium">
               {lang === 'th' ? 'เสี่ยงติดค้างผลการเรียน (ร.)' : 'At risk of incomplete grade'}
             </p>
           </div>
@@ -223,9 +223,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               {lang === 'th' ? 'ปลอดภัยตามเกณฑ์ปกติ' : 'On Track'}
             </p>
             <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-              {lowRiskCount} <span className="text-xs font-medium text-slate-500">{lang === 'th' ? 'คน' : 'students'}</span>
+              {lowRiskCount} <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{lang === 'th' ? 'คน' : 'students'}</span>
             </h3>
-            <p className="text-[11px] text-emerald-600 mt-1 font-semibold">
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 font-semibold">
               {lang === 'th' ? 'ผลการเรียนและเวลาเรียนดีเยี่ยม' : 'Excellent performance'}
             </p>
           </div>
@@ -272,7 +272,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   selectedRiskFilter === 'all'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    : 'text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 {lang === 'th' ? 'ทั้งหมด' : 'All'}
@@ -283,7 +283,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   selectedRiskFilter === 'high'
                     ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-rose-600 dark:text-rose-400 hover:text-rose-700'
+                    : 'text-rose-700 dark:text-rose-300 hover:text-rose-800 dark:hover:text-rose-200'
                 }`}
               >
                 {lang === 'th' ? 'วิกฤต' : 'High'}
@@ -294,7 +294,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   selectedRiskFilter === 'moderate'
                     ? 'bg-amber-600 text-white shadow-xs'
-                    : 'text-amber-600 dark:text-amber-400 hover:text-amber-700'
+                    : 'text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200'
                 }`}
               >
                 {lang === 'th' ? 'ปานกลาง' : 'Mod'}
@@ -305,7 +305,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   selectedRiskFilter === 'low'
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700'
+                    : 'text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-emerald-200'
                 }`}
               >
                 {lang === 'th' ? 'ปกติ' : 'Low'}
@@ -345,7 +345,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                         {forecast.riskLevel} Risk
                       </span>
 
-                      <span className="text-xs font-bold text-slate-500">
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
                         {forecast.studentRoom}
                       </span>
 
@@ -360,10 +360,10 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                   </div>
 
                   {/* 4 Quantitative Risk Metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/60 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                     {/* Attendance */}
                     <div className="text-center">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase block">
                         {lang === 'th' ? 'เวลาเรียน' : 'Attendance'}
                       </span>
                       <span className={`text-base font-black ${forecast.attendanceRate < 80 ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-slate-900 dark:text-white'}`}>
@@ -373,7 +373,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
                     {/* Homework */}
                     <div className="text-center">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase block">
                         {lang === 'th' ? 'ส่งการบ้าน' : 'Homework'}
                       </span>
                       <span className={`text-base font-black ${forecast.homeworkCompletionRate < 50 ? 'text-rose-600 dark:text-rose-400 font-black' : 'text-slate-900 dark:text-white'}`}>
@@ -383,7 +383,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
                     {/* Midterm */}
                     <div className="text-center">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase block">
                         {lang === 'th' ? 'กลางภาค' : 'Midterm'}
                       </span>
                       <span className={`text-base font-black ${forecast.midtermAverageScore < 50 ? 'text-amber-600 dark:text-amber-400 font-black' : 'text-slate-900 dark:text-white'}`}>
@@ -393,10 +393,10 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
                     {/* SDQ status */}
                     <div className="text-center">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase block">
                         SDQ
                       </span>
-                      <span className={`text-xs font-black uppercase inline-block mt-0.5 ${forecast.sdqRiskStatus === 'problem' ? 'text-rose-600 font-black' : forecast.sdqRiskStatus === 'risk' ? 'text-amber-600 font-black' : 'text-emerald-600 font-bold'}`}>
+                      <span className={`text-xs font-black uppercase inline-block mt-0.5 ${forecast.sdqRiskStatus === 'problem' ? 'text-rose-600 dark:text-rose-400 font-black' : forecast.sdqRiskStatus === 'risk' ? 'text-amber-600 dark:text-amber-400 font-black' : 'text-emerald-600 dark:text-emerald-400 font-bold'}`}>
                         {forecast.sdqRiskStatus}
                       </span>
                     </div>
@@ -468,27 +468,27 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
                 {/* Quick Add Custom Action Buttons */}
                 <div className="mt-3 flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-                  <span className="text-slate-500 font-medium">
+                  <span className="text-slate-600 dark:text-slate-300 font-medium">
                     {lang === 'th' ? 'เพิ่มการช่วยเหลือ:' : 'Add action:'}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleQuickAddAction(forecast.studentId, 'line_parent_alert')}
-                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
                   >
                     + {lang === 'th' ? 'เตือน LINE' : 'LINE Alert'}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickAddAction(forecast.studentId, 'counselor_meeting')}
-                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
                   >
                     + {lang === 'th' ? 'นัดแนะแนว' : 'Counseling'}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickAddAction(forecast.studentId, 'remedial_task')}
-                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
                   >
                     + {lang === 'th' ? 'งานซ่อมเสริม' : 'Remedial'}
                   </button>

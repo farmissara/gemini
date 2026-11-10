@@ -57,19 +57,19 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 shadow-md backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-800 shadow-md text-white">
         <div className="flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+          <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
             <CreditCard className="w-5 h-5" />
           </span>
           <div>
             <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               {lang === 'th' ? 'บัตรนักเรียนและบัตรประจำตัวดิจิทัล' : 'Virtual Student & Staff ID Card'}
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-200 border border-cyan-500/30">
                 Smart NFC &amp; QR
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-300">
               {lang === 'th'
                 ? 'บัตรประจำตัวอัจฉริยะเสมือนจริง พร้อม QR Code สแกนเข้าเรียน ยืมหนังสือห้องสมุด และพิมพ์ขนาดมาตรฐาน'
                 : 'Interactive digital ID card with barcodes, NFC simulation, and printable card formats.'}
@@ -85,7 +85,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 cardType === 'student'
                   ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               {lang === 'th' ? 'บัตรนักเรียน' : 'Student Card'}
@@ -95,7 +95,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 cardType === 'staff'
                   ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               {lang === 'th' ? 'บัตรครู/บุคลากร' : 'Staff Card'}
@@ -115,22 +115,22 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
       {/* Main Interactive Showcase */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-y-auto lg:overflow-hidden pb-4">
         {/* Left Column: Student Selector List */}
-        <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-md p-3 flex flex-col min-h-[300px] lg:min-h-0 overflow-hidden">
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-md p-3 flex flex-col min-h-[300px] lg:min-h-0 overflow-hidden text-white">
           <div className="shrink-0 flex items-center justify-between pb-2 border-b border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
               {lang === 'th' ? 'เลือกบัตรนักเรียน' : 'Select Student'}
             </h3>
-            <span className="text-[11px] text-slate-400 font-mono">{filteredStudents.length} รายการ</span>
+            <span className="text-[11px] text-slate-300 font-mono">{filteredStudents.length} รายการ</span>
           </div>
 
           <div className="shrink-0 relative my-2">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-300" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={lang === 'th' ? 'ค้นหารหัส / ชื่อ...' : 'Search student...'}
-              className="w-full bg-slate-800 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-800 text-white placeholder-slate-400 text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500"
             />
           </div>
 
@@ -138,7 +138,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
             <PagedList
               items={filteredStudents}
               pageSize={5}
-              emptyState={<p className="py-2 text-xs text-slate-400">{lang === 'th' ? 'ไม่พบนักเรียน' : 'No students found.'}</p>}
+              emptyState={<p className="py-2 text-xs text-slate-300">{lang === 'th' ? 'ไม่พบนักเรียน' : 'No students found.'}</p>}
               renderItem={(stu) => {
               const isSelected = stu.id === selectedStudent?.id;
               return (
@@ -151,7 +151,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition cursor-pointer ${
                     isSelected
                       ? 'bg-cyan-500/20 border border-cyan-500/40 text-white shadow-xs'
-                      : 'hover:bg-slate-800/40 text-slate-300 border border-transparent'
+                      : 'hover:bg-slate-800 text-slate-200 border border-transparent'
                   }`}
                 >
                   <img
@@ -163,7 +163,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                     <p className="text-xs font-bold truncate">
                       {lang === 'th' ? `${stu.firstNameTh} ${stu.lastNameTh}` : `${stu.firstNameEn} ${stu.lastNameEn}`}
                     </p>
-                    <p className="text-[10px] text-slate-400 font-mono">
+                    <p className="text-[10px] text-slate-300 font-mono">
                       {stu.studentIdNumber} • {stu.room}
                     </p>
                   </div>
@@ -175,7 +175,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
         </div>
 
         {/* Center & Right: 3D Flip Card View */}
-        <div className="lg:col-span-2 flex flex-col items-center justify-center p-2 sm:p-4 bg-slate-900/60 rounded-2xl border border-slate-800 shadow-md space-y-3 overflow-hidden">
+        <div className="lg:col-span-2 flex flex-col items-center justify-center p-2 sm:p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-md space-y-3 overflow-hidden text-white">
           <div className="flex items-center justify-between w-full max-w-md">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -294,13 +294,13 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
               <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-5 shadow-2xl overflow-hidden border border-slate-700 flex flex-col justify-between bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
                 {/* Magnetic Stripe */}
                 <div className="-mx-5 -mt-2 h-9 bg-slate-950 border-y border-slate-800 flex items-center px-4">
-                  <span className="text-[9px] font-mono tracking-widest text-slate-600">MAGNETIC STRIPE / NFC CHIP 13.56MHz</span>
+                  <span className="text-[9px] font-mono tracking-widest text-slate-400">MAGNETIC STRIPE / NFC CHIP 13.56MHz</span>
                 </div>
 
                 {/* Rules & Info */}
-                <div className="space-y-1.5 text-[9px] text-slate-300 pt-1">
-                  <p className="font-bold text-cyan-400">ข้อกำหนดการใช้บัตรประจำตัว:</p>
-                  <ul className="list-disc list-inside space-y-0.5 text-slate-400 text-[8.5px]">
+                <div className="space-y-1.5 text-[9px] text-slate-200 pt-1">
+                  <p className="font-bold text-cyan-300">ข้อกำหนดการใช้บัตรประจำตัว:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[8.5px]">
                     <li>บัตรนี้เป็นกรรมสิทธิ์ของโรงเรียน ต้องพกติดตัวตลอดเวลาในสถานศึกษา</li>
                     <li>ใช้สำหรับสแกนเข้า-ออกโรงเรียน, ยืมหนังสือห้องสมุด และรับสวัสดิการ</li>
                     <li>หากเก็บบัตรนี้ได้ กรุณาส่งคืน {school.phone} หรือห้องกิจการนักเรียน</li>
@@ -308,27 +308,27 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 </div>
 
                 {/* Library Barcode & Emergency */}
-                <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
                   <div>
-                    <span className="text-[8px] text-slate-400">เบอร์ฉุกเฉินผู้ปกครอง:</span>
+                    <span className="text-[8px] text-slate-300">เบอร์ฉุกเฉินผู้ปกครอง:</span>
                     <p className="text-[10px] font-mono font-bold text-emerald-400">{selectedStudent?.guardianPhone}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[8px] text-slate-400">Library ID:</span>
+                    <span className="text-[8px] text-slate-300">Library ID:</span>
                     <p className="text-[10px] font-mono font-bold text-cyan-300">LIB-{selectedStudent?.studentIdNumber}</p>
                   </div>
                 </div>
 
                 {/* Signature Line */}
-                <div className="flex items-center justify-between text-[8px] text-slate-400 border-t border-slate-800/80 pt-1.5">
+                <div className="flex items-center justify-between text-[8px] text-slate-300 border-t border-slate-800/80 pt-1.5">
                   <span>Authorized Signature: Dr. Thanaporn K.</span>
-                  <span className="font-mono text-cyan-400">SECURE ID: #{selectedStudent?.id?.slice(0, 8)}</span>
+                  <span className="font-mono text-cyan-300">SECURE ID: #{selectedStudent?.id?.slice(0, 8)}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400 text-center flex items-center gap-1.5">
+          <p className="text-[11px] text-slate-300 text-center flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
             <span>คลิกที่หน้าบัตร หรือกดปุ่ม <strong>"พลิกดูอีกด้าน"</strong> เพื่อตรวจสอบข้อมูลหลังบัตร</span>
           </p>

@@ -43,9 +43,9 @@ const PaginatedTableRows = <T,>({
         <tr>
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ก่อนหน้า</button>
-              <span className="text-[11px] text-slate-400">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ถัดไป</button>
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-300">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 cursor-pointer">ถัดไป</button>
             </div>
           </td>
         </tr>
@@ -201,13 +201,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header controls */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="shrink-0 p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white shadow-md">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-400" />
             Student Information System (SIS)
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-300 mt-0.5">
             Manage student registrations, Thai/English identity, guardian contacts, and LINE OA notification status.
           </p>
         </div>
@@ -217,7 +217,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={onOpenImportExport}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
               <span>นำเข้า/ส่งออก (Excel)</span>
@@ -256,14 +256,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       </div>
 
       {/* View Tabs */}
-      <div className="shrink-0 flex items-center gap-2 border-b border-slate-800 pb-1">
+      <div className="shrink-0 flex items-center gap-2 border-b border-slate-300 dark:border-slate-800 pb-1.5">
         <button
           type="button"
           onClick={() => setActiveTab('roster')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'roster'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-slate-800 text-slate-400 hover:text-white'
+              : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
@@ -275,7 +275,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'analytics'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-slate-800 text-slate-400 hover:text-white'
+              : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700'
           }`}
         >
           <Award className="w-3.5 h-3.5" />
@@ -286,27 +286,27 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {activeTab === 'roster' && (
         <>
           {/* Filter and Search Bar */}
-          <div className="shrink-0 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="shrink-0 p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 text-slate-200">
             <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search by ID, English name, or ชื่อภาษาไทย..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <div className="flex items-center gap-1.5 text-xs text-slate-300">
                 <Filter className="w-3.5 h-3.5" />
                 <span>Grade Level:</span>
               </div>
               <select
                 value={gradeFilter}
                 onChange={(e) => setGradeFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-indigo-500"
               >
                 <option value="all">All Grades</option>
                 <option value="10">Grade 10 (M.4)</option>
@@ -314,16 +314,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <option value="12">Grade 12 (M.6)</option>
               </select>
 
-              <span className="text-xs text-slate-400 ml-auto">
+              <span className="text-xs text-slate-300 ml-auto">
                 Showing <strong className="text-white">{filteredStudents.length}</strong> students
               </span>
             </div>
           </div>
 
           {/* Students Table with Sticky Header */}
-          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-800 bg-slate-800/40">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-800 bg-slate-900 text-slate-100">
             <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xs text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <thead className="sticky top-0 z-10 bg-slate-950 text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-800">
                 <tr>
                   <th className="py-3 px-4">Student</th>
                   <th className="py-3 px-4">Thai Name</th>
@@ -387,15 +387,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       onClick={() => onToggleLineSync(student.id)}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
                         student.lineLinked
-                          ? 'bg-[#06C755]/15 text-[#06C755] border border-[#06C755]/30 hover:bg-[#06C755]/25'
-                          : 'bg-slate-700/60 text-slate-400 border border-slate-700 hover:text-slate-200'
+                          ? 'bg-[#06C755]/20 text-emerald-300 border border-[#06C755]/40 hover:bg-[#06C755]/30'
+                          : 'bg-slate-800 text-slate-200 border border-slate-600 hover:bg-slate-700 hover:text-white'
                       }`}
                       title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
                     >
                       <MessageSquare className="w-2.5 h-2.5 fill-current" />
                       {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
                     </button>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-0.5">
+                    <span className="text-[11px] text-slate-300 flex items-center gap-0.5">
                       <Phone className="w-2.5 h-2.5" /> {student.guardianPhone}
                     </span>
                   </div>
@@ -405,7 +405,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   <div className="flex items-center justify-end gap-1.5">
                     <button
                       onClick={() => onOpenReportCard(student)}
-                      className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-medium flex items-center gap-1 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-200 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
                       title="View Thai/English Transcript"
                     >
                       <Award className="w-3.5 h-3.5" />
@@ -414,7 +414,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                     <button
                       onClick={() => onSelectStudent(student)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-medium transition-colors cursor-pointer"
                     >
                       Profile
                     </button>
@@ -422,7 +422,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(student)}
-                      className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-blue-400 hover:text-blue-300 transition-colors"
+                      className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-blue-300 hover:text-blue-200 transition-colors cursor-pointer"
                       title="Edit Student"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
@@ -436,7 +436,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             onDeleteStudent(student.id);
                           }
                         }}
-                        className="p-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-400 hover:text-rose-300 transition-colors"
+                        className="p-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-700/60 text-rose-300 hover:text-rose-200 transition-colors cursor-pointer"
                         title="Delete Student"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -455,40 +455,40 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {activeTab === 'analytics' && (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
-              <span className="text-[11px] text-slate-400 font-bold uppercase">นักเรียนทั้งหมด</span>
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-[11px] text-slate-300 font-bold uppercase">นักเรียนทั้งหมด</span>
               <div className="text-2xl font-black text-white mt-1">{students.length} คน</div>
-              <p className="text-[11px] text-slate-400 mt-0.5">ในโรงเรียนปัจจุบัน</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">ในโรงเรียนปัจจุบัน</p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
-              <span className="text-[11px] text-slate-400 font-bold uppercase">เชื่อมต่อ LINE OA แล้ว</span>
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-[11px] text-slate-300 font-bold uppercase">เชื่อมต่อ LINE OA แล้ว</span>
               <div className="text-2xl font-black text-emerald-400 mt-1">
                 {students.filter(s => s.lineLinked).length} คน
               </div>
-              <p className="text-[11px] text-emerald-400/80 mt-0.5">
+              <p className="text-[11px] text-emerald-300 mt-0.5">
                 {students.length > 0 ? Math.round((students.filter(s => s.lineLinked).length / students.length) * 100) : 0}% อัตราเชื่อมต่อ
               </p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
-              <span className="text-[11px] text-slate-400 font-bold uppercase">เปิดรับแจ้งเตือนอัตโนมัติ</span>
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-[11px] text-slate-300 font-bold uppercase">เปิดรับแจ้งเตือนอัตโนมัติ</span>
               <div className="text-2xl font-black text-blue-400 mt-1">
                 {students.filter(s => s.lineNotifyEnabled).length} คน
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">รับข้อความเช็กชื่อ & ผลการเรียน</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">รับข้อความเช็กชื่อ & ผลการเรียน</p>
             </div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
-              <span className="text-[11px] text-slate-400 font-bold uppercase">เกรดเฉลี่ยรวม (GPAX)</span>
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-[11px] text-slate-300 font-bold uppercase">เกรดเฉลี่ยรวม (GPAX)</span>
               <div className="text-2xl font-black text-amber-400 mt-1">
                 {students.length > 0 
                   ? (students.reduce((acc, s) => acc + (s.gpa || 0), 0) / students.length).toFixed(2)
                   : '0.00'}
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">ระดับผลการเรียนเฉลี่ย</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">ระดับผลการเรียนเฉลี่ย</p>
             </div>
           </div>
 
           {/* Breakdown by Grade and Room */}
-          <div className="rounded-xl bg-slate-800/60 border border-slate-700/80 p-4 space-y-3">
+          <div className="rounded-xl bg-slate-900 border border-slate-800 p-4 space-y-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Users className="w-4 h-4 text-indigo-400" />
               <span>การกระจายตัวของนักเรียนตามระดับชั้นและห้องเรียน</span>
@@ -529,20 +529,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   <Plus className="w-4 h-4 text-indigo-400" />
                   {editingStudent ? 'Edit Student Profile (แก้ไขข้อมูลนักเรียน)' : 'Enroll New Student (เพิ่มนักเรียนใหม่)'}
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300">
                   {editingStudent ? 'Update student records and guardian information.' : 'Register student with bilingual Thai and English credentials.'}
                 </p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold"
+                className="text-slate-300 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ×
               </button>
             </div>
 
             <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
-              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-300">
                 <span className={studentFormStep === 1 ? 'font-bold text-indigo-300' : ''}>1. Student profile</span>
                 <span>→</span>
                 <span className={studentFormStep === 2 ? 'font-bold text-indigo-300' : ''}>2. Guardian</span>

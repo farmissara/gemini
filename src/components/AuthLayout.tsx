@@ -502,9 +502,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </>}
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <button type="button" onClick={() => setPersonaPage(page => Math.max(0, page - 1))} disabled={personaPage === 0} className="px-3 py-1 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'บทบาทก่อนหน้า' : 'Previous roles'}</button>
-                  <span>{personaPage + 1} / 2</span>
-                  <button type="button" onClick={() => setPersonaPage(page => Math.min(1, page + 1))} disabled={personaPage === 1} className="px-3 py-1 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'บทบาทถัดไป' : 'Next roles'}</button>
+                  <button type="button" onClick={() => setPersonaPage(page => Math.max(0, page - 1))} disabled={personaPage === 0} className="px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">{lang === 'th' ? 'บทบาทก่อนหน้า' : 'Previous roles'}</button>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{personaPage + 1} / 2</span>
+                  <button type="button" onClick={() => setPersonaPage(page => Math.min(1, page + 1))} disabled={personaPage === 1} className="px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">{lang === 'th' ? 'บทบาทถัดไป' : 'Next roles'}</button>
                 </div>
 
                 {/* Switch to Official Portal Hint */}
@@ -669,9 +669,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
             </div>
             <div className="flex items-center justify-between text-xs">
-              <button type="button" onClick={() => setFeaturePage(page => Math.max(0, page - 1))} disabled={featurePage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'ก่อนหน้า' : 'Previous'}</button>
-              <span>{featurePage + 1} / 3</span>
-              <button type="button" onClick={() => setFeaturePage(page => Math.min(2, page + 1))} disabled={featurePage === 2} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">{lang === 'th' ? 'ถัดไป' : 'Next'}</button>
+              <button type="button" onClick={() => setFeaturePage(page => Math.max(0, page - 1))} disabled={featurePage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">{lang === 'th' ? 'ก่อนหน้า' : 'Previous'}</button>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{featurePage + 1} / 3</span>
+              <button type="button" onClick={() => setFeaturePage(page => Math.min(2, page + 1))} disabled={featurePage === 2} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">{lang === 'th' ? 'ถัดไป' : 'Next'}</button>
             </div>
           </section>}
 
@@ -786,7 +786,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <button
               type="button"
               onClick={() => setActivePortalTab('showcase')}
-              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-slate-700 text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>{lang === 'th' ? 'สลับไปโหมดสาธิต (Demo Showcase)' : 'Switch to Demo Showcase'}</span>
@@ -835,7 +835,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-600 dark:text-slate-300">
                         {schoolLoadError ? `(ข้อผิดพลาด: ${schoolLoadError})` : 'กำลังโหลดรายชื่อสถานศึกษา...'}
                       </span>
                     )}

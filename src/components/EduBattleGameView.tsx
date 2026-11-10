@@ -87,6 +87,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     }
   }, [initialSubTab]);
 
+  const [examSource, setExamSource] = useState<'all' | 'teacher_created' | 'standard'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [searchBankQuery, setSearchBankQuery] = useState('');
 
@@ -125,12 +126,26 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   // Import State
   const [importNotification, setImportNotification] = useState<string | null>(null);
 
-  // Active Questions for Battle (filtered by subject)
-  const battleQuestions = selectedSubject === 'all' 
-    ? questions 
-    : questions.filter(q => q.subject.includes(selectedSubject));
+  // Separate teacher-created/imported exams vs standard bank
+  const teacherCreatedQuestions = questions.filter(
+    q => q.id.startsWith('q-custom-') || q.id.startsWith('csv-') || q.category === 'exam'
+  );
 
-  const currentQ = battleQuestions[currentQuestionIndex] || questions[0];
+  // Active Questions for Battle (filtered by exam source & subject)
+  const sourceFilteredQuestions =
+    examSource === 'teacher_created'
+      ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions)
+      : examSource === 'standard'
+      ? questions.filter(q => q.category === 'standard_exam' || q.category === 'onet')
+      : questions;
+
+  const subjectFilteredQuestions =
+    selectedSubject === 'all'
+      ? sourceFilteredQuestions
+      : sourceFilteredQuestions.filter(q => q.subject.includes(selectedSubject));
+
+  const battleQuestions = subjectFilteredQuestions.length > 0 ? subjectFilteredQuestions : sourceFilteredQuestions;
+  const currentQ = battleQuestions[currentQuestionIndex % Math.max(1, battleQuestions.length)] || questions[0];
 
   // Synthesized Arcade Sound Effects
   const playArcadeSound = (freq: number, type: OscillatorType = 'sine', duration = 0.15) => {
@@ -508,7 +523,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
                   activeSubTab === id
                     ? 'bg-indigo-600 text-white shadow-md'
-                    : 'bg-slate-800/80 text-slate-400 border border-slate-700/60 hover:text-white'
+                    : 'bg-slate-800 text-slate-200 border border-slate-600 hover:bg-slate-700 hover:text-white'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -521,9 +536,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             <button
               type="button"
               onClick={onExit}
-              className="shrink-0 rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 transition hover:bg-slate-700 hover:text-white"
+              className="shrink-0 px-2 py-1 text-xs font-bold text-slate-200 hover:text-white underline underline-offset-4 cursor-pointer"
             >
-              {lang === 'th' ? 'กลับระบบ' : 'Exit'}
+              {lang === 'th' ? '← กลับหน้าหลัก' : '← Exit'}
             </button>
           )}
 
@@ -614,7 +629,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           {battleState === 'idle' && (
             <div className="w-full flex-1 min-h-0 flex flex-col p-3 sm:p-5 max-w-4xl mx-auto overflow-y-auto space-y-4">
               {/* Left / Main Match Launcher Card */}
-              <div className="space-y-4 w-full rounded-3xl bg-slate-900/60 border border-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
+              <div className="space-y-4 w-full rounded-3xl bg-slate-900 border border-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
                 
                 <div className="space-y-4">
@@ -655,7 +670,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                           alt="You"
                           className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg shadow-emerald-500/20"
                         />
-                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-md bg-emerald-500 text-slate-950 text-[9px] font-black">
+                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-emerald-500 text-slate-950 text-[9px] font-black">
                           YOU
                         </span>
                       </div>
@@ -683,41 +698,90 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                           alt="Rival"
                           className="w-14 h-14 rounded-2xl object-cover border-2 border-rose-400 shadow-lg shadow-rose-500/20"
                         />
-                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-md bg-rose-500 text-white text-[9px] font-black">
+                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-rose-500 text-white text-[9px] font-black">
                           RIVAL
                         </span>
                       </div>
                       <div className="text-xs font-black text-white truncate w-full">
                         กัญญา วงศ์สวัสดิ์
                       </div>
-                      <div className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                      <div className="text-[10px] text-rose-300 font-bold bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
                         100 HP
                       </div>
                     </div>
                   </div>
 
-                  {/* Subject Filter Pills */}
+                  {/* Exam Source Selector (Teacher-Created Exams vs All Banks) */}
                   <div className="space-y-1.5 pt-1">
-                    <label className="text-xs font-bold text-slate-300 block">
-                      {lang === 'th' ? 'เลือกหมวดวิชาที่ต้องการประลอง:' : 'Subject Category:'}
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-amber-300 block">
+                        {lang === 'th' ? 'เลือกชุดข้อสอบที่ใช้เล่น:' : 'Exam Source:'}
+                      </label>
+                      {(currentUser?.role === 'teacher' || currentUser?.role === 'admin') && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveSubTab('bank')}
+                          className="text-[11px] font-bold text-indigo-300 hover:text-indigo-200 underline underline-offset-2 cursor-pointer"
+                        >
+                          {lang === 'th' ? '+ จัดการข้อสอบที่ครูสร้าง' : '+ Manage Teacher Exams'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: 'all' as const, label: `📚 ทั้งหมด (${questions.length} ข้อ)` },
+                        {
+                          id: 'teacher_created' as const,
+                          label: teacherCreatedQuestions.length > 0
+                            ? `👨‍🏫 ข้อสอบที่ครูสร้าง (${teacherCreatedQuestions.length} ข้อ)`
+                            : `👨‍🏫 ข้อสอบโรงเรียน/ครู (${questions.length} ข้อ)`,
+                        },
+                        { id: 'standard' as const, label: '📘 ข้อสอบมาตรฐาน' },
+                      ].map(src => (
+                        <button
+                          key={src.id}
+                          type="button"
+                          onClick={() => {
+                            setExamSource(src.id);
+                            setCurrentQuestionIndex(0);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            examSource === src.id
+                              ? 'bg-amber-400 text-slate-950 shadow-sm'
+                              : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white'
+                          }`}
+                        >
+                          {src.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Subject Filter Links */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-xs font-bold text-slate-200 block">
+                      {lang === 'th' ? `เลือกหมวดวิชา (พบ ${battleQuestions.length} ข้อ):` : `Subject (${battleQuestions.length}):`}
                     </label>
-                    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+                    <div className="flex flex-wrap gap-1.5 pb-1">
                       {[
                         { id: 'all', label: '⭐ ทุกวิชา' },
                         { id: 'คณิตศาสตร์', label: '📐 คณิต' },
                         { id: 'วิทยาศาสตร์', label: '🔬 วิทย์' },
-                        { id: 'วิทยาการคำนวณ', label: '💻 คอมพิวเตอร์' },
+                        { id: 'วิทยาการคำนวณ', label: '💻 คอมฯ' },
                         { id: 'ภาษาอังกฤษ', label: '🇬🇧 อังกฤษ' },
-                        { id: 'ภาษาไทย', label: '🇹🇭 ภาษาไทย' }
+                        { id: 'ภาษาไทย', label: '🇹🇭 ไทย' }
                       ].map(subj => (
                         <button
                           key={subj.id}
                           type="button"
-                          onClick={() => setSelectedSubject(subj.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                          onClick={() => {
+                            setSelectedSubject(subj.id);
+                            setCurrentQuestionIndex(0);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer ${
                             selectedSubject === subj.id
-                              ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-105'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                              ? 'bg-rose-500 text-white shadow-sm'
+                              : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
                           }`}
                         >
                           {subj.label}
@@ -731,13 +795,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     <button
                       type="button"
                       onClick={handleStartBattle}
-                      className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-black text-base shadow-xl shadow-rose-600/40 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-black text-sm shadow-xl shadow-rose-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
-                      <span>{lang === 'th' ? '⚡ เริ่มประลอง 1v1 ทันที' : 'Launch 1v1 Battle Now'}</span>
+                      <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                      <span>{lang === 'th' ? `เริ่มประลอง 1v1 (${battleQuestions.length} ข้อ)` : 'Launch 1v1 Battle Now'}</span>
                     </button>
 
-                    <p className="text-[11px] text-center text-slate-400">
+                    <p className="text-[11px] text-center text-slate-300">
                       ⚡ ตอบถูกทำดาเมจ 25+ HP • สตรีคคอมโบแรงขึ้น • รับ EXP & Gems
                     </p>
                   </div>
@@ -746,8 +810,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               {/* Desktop Rules Side Card (Only on desktop) */}
               {!isMobile && (
-                <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-6 flex flex-col justify-between space-y-4">
-                  <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 text-xs text-indigo-300 space-y-2">
+                <div className="rounded-3xl bg-slate-900 border border-slate-800 p-6 flex flex-col justify-between space-y-4">
+                  <div className="p-4 rounded-2xl bg-indigo-950/60 border border-indigo-700/50 text-xs text-indigo-200 space-y-2">
                     <div className="font-bold flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-amber-300" />
                       <span>กติกาการแข่งขัน</span>
@@ -833,7 +897,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setBattleState('idle')}
-                      className="text-[11px] text-slate-400 hover:text-rose-400 font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer"
+                      className="text-[11px] text-slate-300 hover:text-rose-300 font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer"
                     >
                       ยอมแพ้
                     </button>
@@ -844,14 +908,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               {/* CENTER: HIGH VISIBILITY QUESTION CARD */}
               <div className="py-1 space-y-2 shrink-0">
                 <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/95 border border-slate-800 shadow-xl space-y-1.5 text-center">
-                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-300">
+                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">
                     {currentQ.subject} • ระดับ {currentQ.gradeLevel}
                   </div>
                   <h3 className="text-sm sm:text-base md:text-lg font-black text-white leading-relaxed break-words">
                     {currentQ.questionTh}
                   </h3>
                   {currentQ.questionEn && currentQ.questionEn !== currentQ.questionTh && (
-                    <p className="text-xs text-slate-400 italic break-words">
+                    <p className="text-xs text-slate-300 italic break-words">
                       {currentQ.questionEn}
                     </p>
                   )}
@@ -881,14 +945,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     'bg-purple-500/20 text-purple-300 border-purple-500/40'
                   ];
 
-                  let btnStyle = 'bg-slate-900/90 hover:bg-slate-850 active:bg-slate-800 border-slate-800 text-slate-200';
+                  let btnStyle = 'bg-slate-900 hover:bg-slate-800 active:bg-slate-800 border-slate-700 text-slate-100';
                   if (selectedAnswer !== null) {
                     if (idx === currentQ.correctIndex) {
                       btnStyle = 'bg-emerald-600/50 border-emerald-400 text-emerald-100 font-black shadow-lg shadow-emerald-500/30 scale-[1.01]';
                     } else if (idx === selectedAnswer) {
                       btnStyle = 'bg-rose-600/50 border-rose-400 text-rose-100 font-bold';
                     } else {
-                      btnStyle = 'opacity-30 bg-slate-900/40 border-slate-900';
+                      btnStyle = 'opacity-70 bg-slate-900/80 border-slate-800 text-slate-300';
                     }
                   }
 
@@ -930,7 +994,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <h3 className="text-xl font-black text-white">
                   {playerHp > opponentHp ? '🎉 ได้รับชัยชนะ!' : '⚔️ จบการประลองรอบนี้'}
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300">
                   {playerHp > opponentHp 
                     ? 'ตอบคำถามได้อย่างยอดเยี่ยม ทำดาเมจชนะคู่แข่ง!' 
                     : 'คะแนนดีมากแล้ว ฝึกฝนโจทย์เพิ่มเติมเพื่อคว้าชัยในรอบถัดไป'}
@@ -939,14 +1003,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 w-full">
                 <div className="space-y-0.5 text-center">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">EXP สะสม</span>
+                  <span className="text-[10px] text-slate-300 font-bold uppercase">EXP สะสม</span>
                   <div className="text-lg font-black text-amber-400">
                     +{playerHp > opponentHp ? 250 : 80} EXP
                   </div>
                 </div>
                 <div className="space-y-0.5 text-center">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">เพชร Gems</span>
-                  <div className="text-lg font-black text-cyan-400">
+                  <span className="text-[10px] text-slate-300 font-bold uppercase">เพชร Gems</span>
+                  <div className="text-lg font-black text-cyan-300">
                     +{playerHp > opponentHp ? 30 : 10} Gems
                   </div>
                 </div>
@@ -964,7 +1028,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setBattleState('idle')}
-                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-all cursor-pointer"
                 >
                   กลับสู่ห้องล็อบบี้
                 </button>
@@ -978,11 +1042,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {activeSubTab === 'bank' && (
         <div className="space-y-6">
           {/* Controls Bar: Import / Export / Add */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800">
             {/* Search and Subject Filter */}
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <div className="relative min-w-[200px] flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder={lang === 'th' ? 'ค้นหาโจทย์ หรือวิชา...' : 'Search questions or subject...'}
@@ -1059,22 +1123,22 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             <PagedList items={filteredBank} pageSize={6} renderItem={(q, idx) => (
               <div 
                 key={q.id}
-                className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
+                className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all space-y-3 text-white"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                       {q.subject}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                       {q.gradeLevel}
                     </span>
-                    <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold">
+                    <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
                       {q.category}
                     </span>
                   </div>
 
-                  <div className="text-xs text-amber-400 font-bold">
+                  <div className="text-xs text-amber-300 font-bold">
                     +{q.points} แต้ม
                   </div>
                 </div>
@@ -1089,11 +1153,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       key={oIdx}
                       className={`p-2.5 rounded-xl border flex items-center gap-2 ${
                         oIdx === q.correctIndex
-                          ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-300 font-bold'
-                          : 'bg-slate-800/40 border-slate-800 text-slate-300'
+                          ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-200 font-bold'
+                          : 'bg-slate-800 border-slate-700 text-slate-200'
                       }`}
                     >
-                      <span className="w-5 h-5 rounded bg-black/40 flex items-center justify-center text-[10px] font-bold">
+                      <span className="w-5 h-5 rounded bg-slate-950/70 flex items-center justify-center text-[10px] font-bold text-slate-200">
                         {String.fromCharCode(65 + oIdx)}
                       </span>
                       <span>{opt}</span>
@@ -1104,9 +1168,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   ))}
                 </div>
 
-                <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80 flex items-start gap-1.5">
+                <div className="text-[11px] text-slate-300 pt-1 border-t border-slate-800 flex items-start gap-1.5">
                   <HelpCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                  <span><strong>เฉลยและเหตุผล:</strong> {q.explanationTh}</span>
+                  <span><strong className="text-white">เฉลยและเหตุผล:</strong> {q.explanationTh}</span>
                 </div>
               </div>
             )} />
@@ -1121,15 +1185,15 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             {playerScores.slice(0, 3).map((player, idx) => (
               <div 
                 key={player.userId}
-                className={`relative rounded-3xl p-6 border text-center space-y-3 overflow-hidden ${
+                className={`relative rounded-3xl p-6 border text-center space-y-3 overflow-hidden text-white ${
                   idx === 0 
-                    ? 'bg-gradient-to-b from-amber-500/20 to-slate-900 border-amber-500/40 shadow-xl shadow-amber-500/10'
+                    ? 'bg-gradient-to-b from-amber-950 via-slate-900 to-slate-950 border-amber-500/50 shadow-xl shadow-amber-500/10'
                     : idx === 1
-                    ? 'bg-gradient-to-b from-slate-400/20 to-slate-900 border-slate-400/30'
-                    : 'bg-gradient-to-b from-amber-700/20 to-slate-900 border-amber-700/30'
+                    ? 'bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-500/40'
+                    : 'bg-gradient-to-b from-amber-900/90 via-slate-900 to-slate-950 border-amber-700/40'
                 }`}
               >
-                <div className="absolute top-3 right-3 text-2xl font-black opacity-30">
+                <div className="absolute top-3 right-3 text-2xl font-black text-white/30">
                   #{idx + 1}
                 </div>
 
@@ -1137,9 +1201,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   <img 
                     src={player.avatarUrl} 
                     alt={player.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-white/20 shadow-lg mx-auto"
+                    className="w-20 h-20 rounded-2xl object-cover border-2 border-white/25 shadow-lg mx-auto"
                   />
-                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-md">
+                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-black text-xs shadow-md">
                     {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
                   </div>
                 </div>
@@ -1151,11 +1215,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
                 <div className="pt-2 border-t border-slate-800 flex items-center justify-around text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">EXP รวม</span>
+                    <span className="text-[10px] text-slate-300 block">EXP รวม</span>
                     <span className="font-extrabold text-amber-400">{player.exp.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">ชนะประลอง</span>
+                    <span className="text-[10px] text-slate-300 block">ชนะประลอง</span>
                     <span className="font-extrabold text-white">{player.battleWins} ครั้ง</span>
                   </div>
                 </div>
@@ -1164,15 +1228,15 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           </div>
 
           {/* Full Rank Table */}
-          <div className="rounded-2xl bg-slate-900/60 border border-slate-800 overflow-hidden">
-            <div className="p-4 border-b border-slate-800 font-bold text-xs text-slate-400 uppercase tracking-wider">
+          <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden text-white">
+            <div className="p-4 border-b border-slate-800 font-bold text-xs text-slate-300 uppercase tracking-wider">
               ทำเนียบผู้เรียนและอาจารย์คะแนนสูงสุด (Hall of Fame)
             </div>
             <div>
               <PagedList items={playerScores} pageSize={5} renderItem={(p, rank) => (
-                <div key={p.userId} className="p-4 flex items-center justify-between hover:bg-slate-800/40 transition-colors">
+                <div key={p.userId} className="p-4 flex items-center justify-between hover:bg-slate-800/70 transition-colors">
                   <div className="flex items-center gap-3">
-                    <span className="w-6 font-black text-sm text-slate-400">
+                    <span className="w-6 font-black text-sm text-slate-300">
                       #{rank + 1}
                     </span>
                     <img 
@@ -1183,7 +1247,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white">{p.name}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                           {p.role === 'teacher' ? 'อาจารย์' : 'นักเรียน'}
                         </span>
                       </div>
@@ -1194,11 +1258,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   <div className="flex items-center gap-6 text-xs">
                     <div className="text-right">
                       <span className="font-bold text-amber-400 block">{p.exp.toLocaleString()} EXP</span>
-                      <span className="text-[10px] text-slate-400">{p.gems} Gems</span>
+                      <span className="text-[10px] text-slate-300">{p.gems} Gems</span>
                     </div>
                     <div className="text-right hidden sm:block">
                       <span className="font-bold text-white">{p.battleWins} ชนะ</span>
-                      <span className="text-[10px] text-rose-400">{p.streak} สตรีค</span>
+                      <span className="text-[10px] text-rose-300">{p.streak} สตรีค</span>
                     </div>
                   </div>
                 </div>
@@ -1211,15 +1275,15 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {/* TAB 4: Reward Item Store */}
       {activeSubTab === 'shop' && (
         <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-white">
             <div className="flex items-center gap-3">
               <Coins className="w-6 h-6 text-cyan-400" />
               <div>
                 <h4 className="text-sm font-bold text-white">ยอดเพชรของคุณในกระเป๋า</h4>
-                <p className="text-xs text-slate-400">สะสมได้จากการชนะแบทเทิลและการทำแบบทดสอบความรู้</p>
+                <p className="text-xs text-slate-300">สะสมได้จากการชนะแบทเทิลและการทำแบบทดสอบความรู้</p>
               </div>
             </div>
-            <div className="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-black text-lg flex items-center gap-2">
+            <div className="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 font-black text-lg flex items-center gap-2">
               <Coins className="w-5 h-5 text-cyan-300" />
               <span>{currentPlayerStats.gems} Gems</span>
             </div>
@@ -1231,25 +1295,25 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               return (
                 <div 
                   key={item.id}
-                  className="rounded-3xl bg-slate-900/60 border border-slate-800 p-5 flex flex-col justify-between space-y-4 hover:border-slate-700 transition-all group"
+                  className="rounded-3xl bg-slate-900 border border-slate-800 p-5 flex flex-col justify-between space-y-4 hover:border-slate-700 transition-all group text-white"
                 >
                   <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                      <Medal className="w-6 h-6 text-indigo-400" />
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform">
+                      <Medal className="w-6 h-6 text-indigo-300" />
                     </div>
 
                     <div>
                       <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
                         item.category === 'skin' 
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+                          ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30' 
                           : item.category === 'boost'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-slate-800 text-slate-400'
+                            ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
+                            : 'bg-slate-800 text-slate-200'
                       }`}>
                         {item.category === 'skin' ? '🎮 สกินตัวละคร 3D' : item.category === 'boost' ? '⚡ บูสเตอร์ช่วยเล่น' : item.category}
                       </span>
                       <h4 className="text-sm font-bold text-white mt-1">{item.titleTh}</h4>
-                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
                         {item.descriptionTh}
                       </p>
                     </div>
@@ -1257,7 +1321,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
                   <div className="pt-3 border-t border-slate-800 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">คงเหลือ {item.stock} ชิ้น</span>
+                      <span className="text-slate-300">คงเหลือ {item.stock} ชิ้น</span>
                       <span className="font-extrabold text-cyan-300 flex items-center gap-1">
                         <Coins className="w-3.5 h-3.5" />
                         {item.costGems} Gems
@@ -1270,7 +1334,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
                         canAfford
                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30'
-                          : 'bg-slate-800 text-slate-400 cursor-not-allowed'
+                          : 'bg-slate-800 text-slate-300 cursor-not-allowed'
                       }`}
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
@@ -1298,14 +1362,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   setShowAddModal(false);
                   setQuestionFormStep(0);
                 }}
-                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveNewQuestion} className="space-y-4">
-              <p className="text-[11px] text-slate-400">{questionFormStep + 1} / 2</p>
+              <p className="text-[11px] text-slate-300">{questionFormStep + 1} / 2</p>
               {questionFormStep === 0 && <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>

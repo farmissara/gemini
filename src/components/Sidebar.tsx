@@ -482,7 +482,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
       </button>
-      <span aria-live="polite" className="text-[10px] text-slate-500">{listPage + 1} / {pageCount}</span>
+      <span aria-live="polite" className="text-[10px] text-slate-600 dark:text-slate-300">{listPage + 1} / {pageCount}</span>
       <button
         type="button"
         onClick={() => setListPage(page => Math.min(pageCount - 1, page + 1))}
@@ -500,19 +500,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="shrink-0 p-2.5 pb-2 border-b border-slate-200 dark:border-slate-800 space-y-2">
         {/* Quick Search Input */}
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={lang === 'th' ? 'ค้นหาเมนู (เช่น GPS, เกรด)...' : 'Find menu...'}
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 text-[11px] rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+            className="w-full pl-8 pr-2.5 py-1.5 text-[11px] rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
           {searchFilter && (
             <button
               type="button"
               onClick={() => setSearchFilter('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white"
             >
               ✕
             </button>
@@ -558,7 +558,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`flex flex-col items-center justify-center p-1.5 rounded-lg text-center transition cursor-pointer relative ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-xs font-bold'
-                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-white'
+                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <Icon className="w-4 h-4 shrink-0 mb-0.5" />
@@ -566,7 +566,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {lang === 'th' ? cat.shortLabelTh : cat.shortLabelEn}
                     </span>
                     {cat.badge && (
-                      <span className="absolute -top-1 -right-1 text-[8px] px-1 py-0.2 rounded-full bg-rose-500 text-white font-black leading-none">
+                      <span className="absolute -top-1 -right-1 text-[8px] px-1 py-0.5 rounded-full bg-rose-500 text-white font-black leading-none">
                         {cat.badge}
                       </span>
                     )}
@@ -583,11 +583,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Search Results Mode */}
         {searchFilter.trim() ? (
           <div className="space-y-1">
-            <div className="text-[10px] font-bold text-slate-500 px-2 py-0.5">
+            <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 px-2 py-0.5">
               {lang === 'th' ? `ผลการค้นหา (${searchResults.length})` : `Search Results (${searchResults.length})`}
             </div>
             {searchResults.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400">
+              <div className="p-4 text-center text-xs text-slate-600 dark:text-slate-300">
                 {lang === 'th' ? 'ไม่พบเมนูที่ตรงกับคำค้น' : 'No menus found'}
               </div>
             ) : (
@@ -613,7 +613,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
                     </div>
                     {item.badge && (
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold ${
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
                         isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                       }`}>
                         {item.badge}
@@ -634,7 +634,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <activeCategory.icon className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? activeCategory.labelTh : activeCategory.labelEn}</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">
+              <span className="text-[10px] text-slate-600 dark:text-slate-300 font-mono">
                 {visibleCategoryItems.length} เมนู
               </span>
             </div>
@@ -660,7 +660,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
 
                   {item.badge && (
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold ${
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
                       isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                     }`}>
                       {item.badge}
@@ -691,7 +691,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
                     <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
                   </div>
-                  <span className="ml-1 shrink-0 text-[9px] font-medium text-slate-400">
+                  <span className={`ml-1 shrink-0 text-[9px] font-medium ${isActive ? 'text-blue-100' : 'text-slate-600 dark:text-slate-300'}`}>
                     {lang === 'th' ? category.shortLabelTh : category.shortLabelEn}
                   </span>
                 </button>
@@ -715,11 +715,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
             }`}
           >
-            <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <MapPin className={`w-3.5 h-3.5 shrink-0 ${currentTab === 'school_gps' ? 'text-slate-950' : 'text-amber-700 dark:text-amber-300'}`} />
             <div className="flex-1 min-w-0 text-left">
               <span className="truncate block">{lang === 'th' ? '📍 ตั้งค่าพิกัด GPS โรงเรียน' : 'Configure School GPS'}</span>
             </div>
-            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-200/80 dark:bg-amber-800 text-amber-950 dark:text-amber-100 font-mono">
+            <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200/80 dark:bg-amber-800 text-amber-950 dark:text-amber-100 font-mono">
               ตั้งค่า
             </span>
           </button>
@@ -730,16 +730,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onOpenProfile}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-800 transition text-xs font-semibold text-left cursor-pointer"
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-800 transition text-xs font-semibold text-left cursor-pointer"
           >
-            <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-300 shrink-0" />
             <span className="truncate flex-1 font-bold">
               {lang === 'th' ? 'โปรไฟล์ & ผลงานของฉัน' : 'My Profile'}
             </span>
           </button>
         )}
 
-        <div className="text-[10px] text-slate-400 text-center font-mono">
+        <div className="text-[10px] text-slate-600 dark:text-slate-400 text-center font-mono">
           EduVerse SIS • โหมดแท็บเต็มหน้า
         </div>
       </div>

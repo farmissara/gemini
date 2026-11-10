@@ -85,7 +85,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               <p className="text-xs text-slate-300 font-thai">
                 {student.firstNameTh} {student.lastNameTh} • เลขประจำตัวประชาชน: {student.nationalId || 'N/A'}
               </p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-300 mt-1">
                 {student.gradeLevel} • {student.room}
               </p>
             </div>
@@ -93,7 +93,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -105,12 +105,12 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800">
             <div className="flex items-center gap-3">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Overall GPA</span>
+                <span className="text-[10px] uppercase font-bold text-slate-300 block">Overall GPA</span>
                 <span className="text-xl font-mono font-extrabold text-amber-400">{student.gpa.toFixed(2)}</span>
               </div>
               <div className="border-l border-slate-800 pl-3">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">LINE OA Sync</span>
-                <span className="text-xs text-[#06C755] font-semibold flex items-center gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-300 block">LINE OA Sync</span>
+                <span className="text-xs text-[#34d399] font-semibold flex items-center gap-1">
                   <MessageSquare className="w-3 h-3 fill-current" />
                   {student.lineLinked ? 'Active' : 'Unlinked'}
                 </span>
@@ -120,7 +120,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onToggleLineSync(student.id)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-semibold cursor-pointer"
               >
                 {student.lineLinked ? 'Disconnect LINE' : 'Link LINE OA'}
               </button>
@@ -135,10 +135,10 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setActiveSection('overview')} className={`px-3 py-1.5 rounded-lg font-semibold ${activeSection === 'overview' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+            <button type="button" onClick={() => setActiveSection('overview')} className={`px-3 py-1.5 rounded-lg font-semibold border transition cursor-pointer ${activeSection === 'overview' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'}`}>
               ข้อมูลทั่วไป
             </button>
-            <button type="button" onClick={() => setActiveSection('grades')} className={`px-3 py-1.5 rounded-lg font-semibold ${activeSection === 'grades' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+            <button type="button" onClick={() => setActiveSection('grades')} className={`px-3 py-1.5 rounded-lg font-semibold border transition cursor-pointer ${activeSection === 'grades' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'}`}>
               ผลการเรียน ({studentGrades.length})
             </button>
           </div>
@@ -147,34 +147,34 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           /* Details Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Guardian Info */}
-            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800 space-y-2">
-              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
+            <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 space-y-2">
+              <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">
                 ข้อมูลผู้ปกครอง
               </span>
               <div className="space-y-1">
-                <p className="font-semibold text-slate-200 flex items-center gap-2">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
+                <p className="font-semibold text-slate-100 flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-slate-300" />
                   {student.guardianName} ({student.guardianRelation})
                 </p>
-                <p className="text-slate-400 flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-slate-300 flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-slate-300" />
                   {student.guardianPhone}
                 </p>
-                <p className="text-slate-400 flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-slate-300 flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-slate-300" />
                   {student.guardianEmail}
                 </p>
               </div>
             </div>
 
             {/* Attendance Summary */}
-            <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800 space-y-2">
-              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
+            <div className="p-4 rounded-xl bg-slate-800 border border-slate-700 space-y-2">
+              <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">
                 สถิติการมาเรียนล่าสุด
               </span>
               <div className="space-y-1">
-                <p className="text-slate-300 flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-slate-200 flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-slate-300" />
                   บันทึกการเข้าเรียนทั้งหมด: <span className="font-mono font-bold text-white">{studentAttendance.length}</span> ครั้ง
                 </p>
                 <p className="text-emerald-400 flex items-center gap-2">
@@ -187,26 +187,26 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           ) : (
           /* Enrolled Courses & Grades */
           <div className="space-y-3">
-            <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">
               ผลการเรียนประจำภาคเรียน
             </span>
             <div className="space-y-2 pr-1">
               {studentGrades.length === 0 ? (
-                <p className="text-slate-500 py-3 text-center">ยังไม่มีข้อมูลเกรดในระบบ</p>
+                <p className="text-slate-300 py-3 text-center">ยังไม่มีข้อมูลเกรดในระบบ</p>
               ) : (
                 <PagedList items={studentGrades} pageSize={4} renderItem={(g) => {
                   const course = courses.find((c) => c.id === g.courseId);
                   return (
                     <div
                       key={g.id}
-                      className="p-2.5 rounded-lg bg-slate-800/40 border border-slate-800 flex items-center justify-between"
+                      className="p-2.5 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-between"
                     >
                       <div>
-                        <span className="font-mono text-indigo-400 font-bold mr-2">{course?.code}</span>
-                        <span className="text-slate-200 font-medium">{course?.titleEn}</span>
+                        <span className="font-mono text-indigo-300 font-bold mr-2">{course?.code}</span>
+                        <span className="text-slate-100 font-medium">{course?.titleEn}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-slate-400">{g.totalScore} pts</span>
+                        <span className="font-mono text-slate-300">{g.totalScore} pts</span>
                         <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
                           {g.letterGrade}
                         </span>

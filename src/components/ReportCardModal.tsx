@@ -64,7 +64,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <h3 className="text-sm font-bold">
                 Official Bilingual Transcript (ใบแสดงผลการเรียน ปพ.1)
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-300">
                 Student: {student.firstNameEn} {student.lastNameEn} • {student.studentIdNumber}
               </p>
             </div>
@@ -73,14 +73,14 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all"
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print / Save PDF</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -113,10 +113,10 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 <span className="inline-block px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 font-mono text-xs font-bold rounded">
                   OFFICIAL GRADE TRANSCRIPT
                 </span>
-                <p className="text-[11px] text-slate-500 mt-1 font-mono">
+                <p className="text-[11px] text-slate-600 mt-1 font-mono">
                   AY: {systemConfig.academicYear} | {systemConfig.currentSemester}
                 </p>
-                <p className="text-[10px] text-slate-400 font-mono">
+                <p className="text-[10px] text-slate-600 font-mono">
                   Ref: TR-{student.studentIdNumber}-2026
                 </p>
               </div>
@@ -125,22 +125,22 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             {/* Student Info Box */}
             <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Student Name</span>
+                <span className="text-slate-600 block text-[10px] uppercase font-bold">Student Name</span>
                 <span className="font-bold text-slate-900">{student.firstNameEn} {student.lastNameEn}</span>
                 <span className="text-[11px] text-slate-700 block font-thai">{student.firstNameTh} {student.lastNameTh}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Student ID / National ID</span>
+                <span className="text-slate-600 block text-[10px] uppercase font-bold">Student ID / National ID</span>
                 <span className="font-mono font-bold text-indigo-700">{student.studentIdNumber}</span>
                 <span className="text-[11px] text-slate-600 block font-mono">{student.nationalId || 'N/A'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Grade Level &amp; Room</span>
+                <span className="text-slate-600 block text-[10px] uppercase font-bold">Grade Level &amp; Room</span>
                 <span className="font-semibold text-slate-900">{student.gradeLevel}</span>
                 <span className="text-[11px] text-slate-600 block">{student.room}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Date of Birth &amp; Gender</span>
+                <span className="text-slate-600 block text-[10px] uppercase font-bold">Date of Birth &amp; Gender</span>
                 <span className="font-semibold text-slate-900">{student.dateOfBirth}</span>
                 <span className="text-[11px] text-slate-600 block capitalize">{student.gender}</span>
               </div>
@@ -167,7 +167,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <tbody className="divide-y divide-slate-200">
                 {studentGrades.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-500">
+                    <td colSpan={6} className="py-6 text-center text-slate-600">
                       No grades recorded for this academic term yet.
                     </td>
                   </tr>
@@ -211,25 +211,25 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               </tbody>
             </table>
             {gradePageCount > 1 && (
-              <div className="flex items-center justify-between gap-3 text-xs print:hidden">
-                <button type="button" onClick={() => setGradePage(page => Math.max(0, page - 1))} disabled={gradePage === 0} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ก่อนหน้า</button>
-                <span>หน้า {gradePage + 1} / {gradePageCount} · {studentGrades.length} รายวิชา</span>
-                <button type="button" onClick={() => setGradePage(page => Math.min(gradePageCount - 1, page + 1))} disabled={gradePage >= gradePageCount - 1} className="px-3 py-1.5 rounded-lg border disabled:opacity-40">ถัดไป</button>
+              <div className="flex items-center justify-between gap-3 text-xs text-slate-700 print:hidden">
+                <button type="button" onClick={() => setGradePage(page => Math.max(0, page - 1))} disabled={gradePage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+                <span className="font-medium">หน้า {gradePage + 1} / {gradePageCount} · {studentGrades.length} รายวิชา</span>
+                <button type="button" onClick={() => setGradePage(page => Math.min(gradePageCount - 1, page + 1))} disabled={gradePage >= gradePageCount - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
               </div>
             )}
 
             {/* Summary Statistics */}
             <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 grid grid-cols-3 gap-4 text-center">
               <div>
-                <span className="text-[11px] text-slate-500 block uppercase font-semibold">Total Credits Earned</span>
+                <span className="text-[11px] text-slate-600 block uppercase font-semibold">Total Credits Earned</span>
                 <span className="text-xl font-bold font-mono text-slate-900">{totalCredits.toFixed(1)}</span>
               </div>
               <div className="border-x border-slate-200">
-                <span className="text-[11px] text-slate-500 block uppercase font-semibold">Term Grade Point Average (GPA)</span>
+                <span className="text-[11px] text-slate-600 block uppercase font-semibold">Term Grade Point Average (GPA)</span>
                 <span className="text-xl font-extrabold font-mono text-indigo-700">{termGPA}</span>
               </div>
               <div>
-                <span className="text-[11px] text-slate-500 block uppercase font-semibold">Cumulative GPA (สะสม)</span>
+                <span className="text-[11px] text-slate-600 block uppercase font-semibold">Cumulative GPA (สะสม)</span>
                 <span className="text-xl font-extrabold font-mono text-emerald-700">{student.gpa.toFixed(2)}</span>
               </div>
             </div>
@@ -239,20 +239,20 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <div className="space-y-1">
                 <div className="h-12 border-b border-dashed border-slate-400 mx-6"></div>
                 <p className="font-bold text-slate-800 mt-2">Kru Somkiat Chotipan</p>
-                <p className="text-[11px] text-slate-500">Classroom Advisor (ครูที่ปรึกษา)</p>
+                <p className="text-[11px] text-slate-600">Classroom Advisor (ครูที่ปรึกษา)</p>
               </div>
 
               <div className="flex flex-col items-center justify-center">
                 <div className="w-16 h-16 rounded-full border-2 border-indigo-900/30 flex items-center justify-center text-[10px] text-indigo-950 font-bold text-center leading-tight uppercase p-1">
                   OFFICIAL SCHOOL SEAL
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">Issued: November 4, 2026</p>
+                <p className="text-[10px] text-slate-600 mt-1">Issued: November 4, 2026</p>
               </div>
 
               <div className="space-y-1">
                 <div className="h-12 border-b border-dashed border-slate-400 mx-6"></div>
                 <p className="font-bold text-slate-800 mt-2">Dr. Thanaporn Kittisak</p>
-                <p className="text-[11px] text-slate-500">School Principal (ผู้อำนวยการโรงเรียน)</p>
+                <p className="text-[11px] text-slate-600">School Principal (ผู้อำนวยการโรงเรียน)</p>
               </div>
             </div>
           </div>

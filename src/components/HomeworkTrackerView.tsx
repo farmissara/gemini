@@ -49,9 +49,9 @@ const PaginatedTableRows = <T,>({
         <tr>
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ก่อนหน้า</button>
-              <span className="text-[11px] text-slate-400">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40">ถัดไป</button>
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40">ก่อนหน้า</button>
+              <span className="text-[11px] text-slate-300">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40">ถัดไป</button>
             </div>
           </td>
         </tr>
@@ -167,19 +167,19 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900/80 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md backdrop-blur-md">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-md">
         <div className="flex items-center gap-3">
-          <span className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <span className="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
             <FileCheck2 className="w-5 h-5" />
           </span>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
               {lang === 'th' ? 'ระบบการบ้านและติดตามการส่งงานออนไลน์' : 'Homework & Assignment Submission Tracker'}
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 Online LMS Hub
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-300">
               {lang === 'th'
                 ? 'ส่งไฟล์การบ้าน ตรวจให้คะแนนพร้อม Rubric และติดตามสถานะงานค้างส่งสำหรับผู้ปกครอง'
                 : 'Digital homework submission, grading with teacher feedback, and pending tasks tracker.'}
@@ -193,7 +193,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             <button
               onClick={() => setHwTab('submissions')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                hwTab === 'submissions' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                hwTab === 'submissions' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm' : 'text-slate-300 hover:text-white'
               }`}
             >
               1. รายการส่งงาน ({submissions.length})
@@ -201,7 +201,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             <button
               onClick={() => setHwTab('assignments')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                hwTab === 'assignments' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                hwTab === 'assignments' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm' : 'text-slate-300 hover:text-white'
               }`}
             >
               2. การบ้านที่สั่ง ({assignments.length})
@@ -209,7 +209,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             <button
               onClick={() => setHwTab('pending')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                hwTab === 'pending' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                hwTab === 'pending' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm' : 'text-slate-300 hover:text-white'
               }`}
             >
               3. งานค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
@@ -218,7 +218,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
           <button
             onClick={() => setShowSubmitModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-md shadow-amber-600/30 transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-500/20 transition cursor-pointer"
           >
             <UploadCloud className="w-4 h-4" />
             <span>{lang === 'th' ? 'ส่งการบ้านใหม่' : 'Submit'}</span>
@@ -228,8 +228,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
       {/* TAB 1: SUBMISSIONS LIST */}
       {hwTab === 'submissions' && (
-        <div className="flex-1 min-h-0 bg-slate-900/80 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
-          <div className="shrink-0 p-3 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-slate-900/60">
+        <div className="flex-1 min-h-0 bg-slate-900 rounded-xl border border-slate-800 shadow-md flex flex-col overflow-hidden">
+          <div className="shrink-0 p-3 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-slate-900">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-400" />
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
@@ -239,13 +239,13 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-300" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={lang === 'th' ? 'ค้นหาวิชา / ชื่อนักเรียน...' : 'Search tasks...'}
-                  className="bg-slate-800 text-white text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500 w-44"
+                  className="bg-slate-800 text-white placeholder-slate-400 text-xs pl-7 pr-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500 w-44"
                 />
               </div>
 
@@ -266,7 +266,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           <div className="flex-1 min-h-0 overflow-hidden">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-xs text-[11px] text-slate-400 uppercase">
+                <tr className="border-b border-slate-800 bg-slate-950 text-[11px] text-slate-300 uppercase">
                   <th className="p-2.5">{lang === 'th' ? 'หัวข้อการบ้าน / วิชา' : 'Assignment & Course'}</th>
                   <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
                   <th className="p-2.5 text-center">{lang === 'th' ? 'กำหนดส่ง / ส่งเมื่อ' : 'Due / Submitted'}</th>
@@ -276,54 +276,54 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                   <th className="p-2.5 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-800/80">
                 <PaginatedTableRows items={filteredSubmissions} colSpan={7} renderRow={(sub) => {
                   const status = getStatusBadge(sub.status);
 
                   return (
-                    <tr key={sub.id} className="hover:bg-slate-800/20 transition">
+                    <tr key={sub.id} className="hover:bg-slate-800/60 transition">
                       <td className="p-2.5 max-w-[260px]">
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                             {sub.courseCode}
                           </span>
-                          <span className="text-[10px] text-slate-400 truncate">{sub.courseTitleTh}</span>
+                          <span className="text-[10px] text-slate-300 truncate">{sub.courseTitleTh}</span>
                         </div>
                         <p className="font-bold text-white line-clamp-1">{sub.assignmentTitle}</p>
                       </td>
 
                       <td className="p-2.5">
                         <p className="font-bold text-white">{sub.studentName}</p>
-                        <p className="text-[10px] text-slate-400">{sub.studentRoom}</p>
+                        <p className="text-[10px] text-slate-300">{sub.studentRoom}</p>
                       </td>
 
-                      <td className="p-2.5 text-center font-mono text-slate-300">
-                        <div className="text-amber-400 text-[11px]">Due: {sub.dueDate}</div>
+                      <td className="p-2.5 text-center font-mono text-slate-200">
+                        <div className="text-amber-300 text-[11px]">Due: {sub.dueDate}</div>
                         {sub.submittedAt ? (
-                          <div className="text-[10px] text-slate-400 mt-0.5">ส่ง: {sub.submittedAt}</div>
+                          <div className="text-[10px] text-slate-300 mt-0.5">ส่ง: {sub.submittedAt}</div>
                         ) : (
-                          <div className="text-[10px] text-rose-400 mt-0.5">ยังไม่ได้ส่ง</div>
+                          <div className="text-[10px] text-rose-300 mt-0.5">ยังไม่ได้ส่ง</div>
                         )}
                       </td>
 
                       <td className="p-2.5">
                         {sub.fileAttachment ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 max-w-[180px]">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 max-w-[180px]">
                             <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                             <span className="truncate text-[10px]">{sub.fileAttachment.name}</span>
                           </div>
                         ) : (
-                          <span className="text-slate-500 text-[11px]">- ไม่มีไฟล์ -</span>
+                          <span className="text-slate-400 text-[11px]">- ไม่มีไฟล์ -</span>
                         )}
                       </td>
 
                       <td className="p-2.5 text-center">
                         {sub.score !== undefined ? (
-                          <span className="font-mono font-bold text-xs text-emerald-400">
-                            {sub.score} <span className="text-[10px] text-slate-400">/ {sub.maxScore}</span>
+                          <span className="font-mono font-bold text-xs text-emerald-300">
+                            {sub.score} <span className="text-[10px] text-slate-300">/ {sub.maxScore}</span>
                           </span>
                         ) : (
-                          <span className="text-slate-500 text-xs">-- / {sub.maxScore}</span>
+                          <span className="text-slate-300 text-xs">-- / {sub.maxScore}</span>
                         )}
                       </td>
 
@@ -341,12 +341,12 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                               setGradingScore(sub.score ?? 18);
                               setGradingFeedback(sub.teacherFeedback ?? 'ผลงานดีมาก มีความตั้งใจ');
                             }}
-                            className="px-2 py-1 rounded-md bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white border border-amber-500/30 text-[10px] font-semibold transition cursor-pointer"
+                            className="px-2 py-1 rounded-md bg-amber-500/20 text-amber-300 hover:bg-amber-400 hover:text-slate-950 border border-amber-500/30 text-[10px] font-bold transition cursor-pointer"
                           >
                             {sub.status === 'graded' ? 'แก้ไขคะแนน' : 'ตรวจงาน'}
                           </button>
                         ) : (
-                          <span className="text-slate-500 text-[10px]">ดูรายละเอียด</span>
+                          <span className="text-slate-300 text-[10px]">ดูรายละเอียด</span>
                         )}
                       </td>
                     </tr>
@@ -365,27 +365,27 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           <PagedList items={assignments} pageSize={3} renderItem={(asg) => (
               <div
                 key={asg.id}
-                className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-md space-y-2.5 flex flex-col justify-between"
+                className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 shadow-md space-y-2.5 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-bold">
                       {asg.courseCode || 'GEN-101'}
                     </span>
-                    <span className="text-[10px] text-amber-400 font-mono">
+                    <span className="text-[10px] text-amber-300 font-mono">
                       กำหนดส่ง: {asg.dueDate}
                     </span>
                   </div>
 
                   <h4 className="font-bold text-white text-xs line-clamp-1">{asg.titleTh}</h4>
-                  <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{asg.description}</p>
+                  <p className="text-[11px] text-slate-300 line-clamp-2 mt-1">{asg.description}</p>
                 </div>
 
                 <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">
+                  <span className="text-slate-300">
                     คะแนนเต็ม: <strong className="text-white">{asg.maxScore ?? asg.points ?? 20}</strong> แต้ม
                   </span>
-                  <span className="text-emerald-400 font-semibold">
+                  <span className="text-emerald-300 font-semibold">
                     ส่งแล้ว: {submissions.filter(s => s.assignmentId === asg.id && s.status !== 'pending').length} คน
                   </span>
                 </div>
@@ -400,24 +400,24 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
         <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
-              <span className="text-[11px] text-slate-400">การบ้านทั้งหมด</span>
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-300">การบ้านทั้งหมด</span>
               <p className="text-lg font-bold text-white mt-1">{submissions.length} ชิ้นงาน</p>
             </div>
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
-              <span className="text-[11px] text-slate-400">ส่งแล้ว/ตรวจแล้ว</span>
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-300">ส่งแล้ว/ตรวจแล้ว</span>
               <p className="text-lg font-bold text-emerald-400 mt-1">
                 {submissions.filter(s => s.status === 'submitted' || s.status === 'graded').length} รายการ
               </p>
             </div>
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
-              <span className="text-[11px] text-slate-400">ส่งล่าช้า (Late)</span>
-              <p className="text-lg font-bold text-amber-400 mt-1">
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-300">ส่งล่าช้า (Late)</span>
+              <p className="text-lg font-bold text-amber-300 mt-1">
                 {submissions.filter(s => s.status === 'late').length} รายการ
               </p>
             </div>
-            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 shadow-xs">
-              <span className="text-[11px] text-slate-400">ยังค้างส่ง (Pending)</span>
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 shadow-xs">
+              <span className="text-[11px] text-slate-300">ยังค้างส่ง (Pending)</span>
               <p className="text-lg font-bold text-rose-400 mt-1">
                 {submissions.filter(s => s.status === 'pending').length} รายการ
               </p>
@@ -425,7 +425,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           </div>
 
           {/* Pending Submissions Alert List */}
-          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-rose-500/30 shadow-md">
+          <div className="bg-slate-900 p-3.5 rounded-xl border border-rose-500/40 shadow-md">
             <h3 className="text-xs font-bold text-rose-300 uppercase tracking-wider pb-2 border-b border-slate-800 flex items-center gap-1.5 mb-2.5">
               <AlertCircle className="w-4 h-4 text-rose-400" />
               <span>รายชื่อนักเรียนที่มีงานค้างส่ง (Pending Assignment Watchlist)</span>
@@ -435,16 +435,16 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
               <PagedList items={submissions.filter(s => s.status === 'pending')} pageSize={3} renderItem={(sub) => (
                 <div
                   key={sub.id}
-                  className="p-2.5 rounded-lg bg-slate-800/50 border border-rose-500/20 text-xs flex items-center justify-between"
+                  className="p-2.5 rounded-lg bg-slate-800 border border-rose-500/30 text-xs flex items-center justify-between"
                 >
                   <div>
                     <span className="font-bold text-white">{sub.studentName}</span>
-                    <span className="text-slate-400 ml-2">({sub.studentRoom})</span>
+                    <span className="text-slate-300 ml-2">({sub.studentRoom})</span>
                     <p className="text-[11px] text-rose-300 mt-0.5">
                       ค้างส่ง: {sub.assignmentTitle} ({sub.courseCode})
                     </p>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-200 font-mono">
                     Due: {sub.dueDate}
                   </span>
                 </div>
@@ -463,16 +463,16 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 <Award className="w-5 h-5 text-amber-400" />
                 {lang === 'th' ? 'ตรวจและให้คะแนนการบ้าน' : 'Grade Assignment'}
               </h3>
-              <button onClick={() => setSelectedSubForGrading(null)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setSelectedSubForGrading(null)} className="text-slate-300 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800">✕</button>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-1 text-xs">
+            <div className="p-3 rounded-xl bg-slate-800 border border-slate-700 space-y-1 text-xs">
               <p className="font-bold text-white">{selectedSubForGrading.assignmentTitle}</p>
-              <p className="text-slate-400">
+              <p className="text-slate-300">
                 นักเรียน: <strong className="text-indigo-300">{selectedSubForGrading.studentName}</strong> ({selectedSubForGrading.studentRoom})
               </p>
               {selectedSubForGrading.textSubmission && (
-                <p className="text-[11px] text-slate-300 bg-black/20 p-2 rounded mt-2 italic">
+                <p className="text-[11px] text-slate-200 bg-slate-900 p-2 rounded mt-2 italic">
                   "{selectedSubForGrading.textSubmission}"
                 </p>
               )}
@@ -481,8 +481,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             <form onSubmit={handleSaveGrading} className="space-y-4 text-xs">
               <div>
                 <div className="flex justify-between mb-1">
-                  <label className="text-slate-400 font-semibold">{lang === 'th' ? 'คะแนนที่ได้' : 'Score'}</label>
-                  <span className="font-mono text-amber-400 font-bold text-sm">
+                  <label className="text-slate-300 font-semibold">{lang === 'th' ? 'คะแนนที่ได้' : 'Score'}</label>
+                  <span className="font-mono text-amber-300 font-bold text-sm">
                     {gradingScore} / {selectedSubForGrading.maxScore}
                   </span>
                 </div>
@@ -497,13 +497,13 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'คำแนะนำ / Feedback จากครูผู้สอน' : 'Teacher Feedback'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'คำแนะนำ / Feedback จากครูผู้สอน' : 'Teacher Feedback'}</label>
                 <textarea
                   rows={3}
                   value={gradingFeedback}
                   onChange={(e) => setGradingFeedback(e.target.value)}
                   placeholder="เขียนคำชี้แนะ จุดเด่น และสิ่งที่ควรปรับปรุง..."
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-400"
                 />
               </div>
 
@@ -511,13 +511,13 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedSubForGrading(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-md shadow-amber-600/30"
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold shadow-md shadow-amber-500/20"
                 >
                   {lang === 'th' ? 'บันทึกคะแนนและคำแนะนำ' : 'Save Grade'}
                 </button>
@@ -536,12 +536,12 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 <UploadCloud className="w-5 h-5 text-amber-400" />
                 {lang === 'th' ? 'ส่งการบ้านออนไลน์' : 'Submit Homework'}
               </h3>
-              <button onClick={() => setShowSubmitModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowSubmitModal(false)} className="text-slate-300 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800">✕</button>
             </div>
 
             <form onSubmit={handleSubmitHomework} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียนผู้ส่ง' : 'Student'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียนผู้ส่ง' : 'Student'}</label>
                 <select
                   value={submitStudentId}
                   onChange={(e) => setSubmitStudentId(e.target.value)}
@@ -556,7 +556,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'การบ้านที่ต้องการส่ง' : 'Assignment'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'การบ้านที่ต้องการส่ง' : 'Assignment'}</label>
                 <input
                   type="text"
                   required
@@ -567,25 +567,25 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'ชื่อไฟล์ที่แนบ' : 'Attached File Name'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'ชื่อไฟล์ที่แนบ' : 'Attached File Name'}</label>
                 <input
                   type="text"
                   required
                   value={submitFileName}
                   onChange={(e) => setSubmitFileName(e.target.value)}
                   placeholder="เช่น Report_Assignment.pdf"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">{lang === 'th' ? 'คำอธิบายหรือข้อความถึงอาจารย์' : 'Notes / Submission Text'}</label>
+                <label className="block text-slate-300 mb-1 font-semibold">{lang === 'th' ? 'คำอธิบายหรือข้อความถึงอาจารย์' : 'Notes / Submission Text'}</label>
                 <textarea
                   rows={2}
                   value={submitText}
                   onChange={(e) => setSubmitText(e.target.value)}
                   placeholder="ระบุข้อความหรือลิงก์ส่งงานเพิ่มเติม..."
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-400"
                 />
               </div>
 
@@ -593,13 +593,13 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSubmitModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-md shadow-amber-600/30"
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold shadow-md shadow-amber-500/20"
                 >
                   {lang === 'th' ? 'ยืนยันการส่งการบ้าน' : 'Submit Now'}
                 </button>
