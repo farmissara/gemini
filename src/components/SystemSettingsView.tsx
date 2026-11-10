@@ -28,7 +28,9 @@ import {
   Database,
   Radio,
   Sliders,
-  MapPin
+  MapPin,
+  Mail,
+  KeyRound
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence } from '../types';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
@@ -103,6 +105,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     currentSemester: systemConfig.currentSemester,
     resendFromEmail: systemConfig.resendFromEmail,
     resendApiKeyConfigured: systemConfig.resendApiKeyConfigured,
+    masterEmail: systemConfig.masterEmail || 'farmissara@gmail.com',
+    replyToEmail: systemConfig.replyToEmail || 'farmissara@gmail.com',
     backupBucket: systemConfig.backupBucket,
   });
 
@@ -126,6 +130,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       currentSemester: generalConfig.currentSemester,
       resendFromEmail: generalConfig.resendFromEmail,
       resendApiKeyConfigured: generalConfig.resendApiKeyConfigured,
+      masterEmail: generalConfig.masterEmail,
+      replyToEmail: generalConfig.replyToEmail,
       backupBucket: generalConfig.backupBucket,
       lineChannelId: lineSettings.channelId,
       lineOaAddFriendUrl: lineSettings.addFriendUrl,
@@ -1296,7 +1302,59 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-[var(--color-text-body)]">อีเมลแจ้งเตือนสำรอง (Resend Sender Email)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[var(--color-text-body)] flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>อีเมล Master ระบบ (Master Authority Email)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setGeneralConfig(prev => ({ ...prev, masterEmail: 'farmissara@gmail.com' }))}
+                    className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
+                  >
+                    ตั้งเป็น farmissara@gmail.com
+                  </button>
+                </div>
+                <input
+                  type="email"
+                  value={generalConfig.masterEmail}
+                  onChange={(e) => setGeneralConfig(prev => ({ ...prev, masterEmail: e.target.value }))}
+                  placeholder="farmissara@gmail.com"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+                <span className="text-[10px] text-[var(--color-text-muted)] block">
+                  อีเมลหลักสำหรับรับคำขอรีเซ็ตรหัสผ่าน, ยืนยันการลงทะเบียนโรงเรียน และแจ้งเตือนความปลอดภัยระบบ
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[var(--color-text-body)] flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>อีเมลตอบกลับยืนยัน (Confirmation Reply-To)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setGeneralConfig(prev => ({ ...prev, replyToEmail: 'farmissara@gmail.com' }))}
+                    className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
+                  >
+                    ตั้งเป็น farmissara@gmail.com
+                  </button>
+                </div>
+                <input
+                  type="email"
+                  value={generalConfig.replyToEmail}
+                  onChange={(e) => setGeneralConfig(prev => ({ ...prev, replyToEmail: e.target.value }))}
+                  placeholder="farmissara@gmail.com"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                />
+                <span className="text-[10px] text-[var(--color-text-muted)] block">
+                  กำหนดหัวอีเมล Reply-To เมื่อระบบส่งอีเมลยืนยันหรือแจ้งเตือนอัตโนมัติ
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--color-text-body)]">อีเมลแจ้งเตือนส่งออกจากระบบ (Resend Sender Email)</label>
                 <input
                   type="email"
                   value={generalConfig.resendFromEmail}
@@ -1314,6 +1372,35 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono text-[11px]"
                 />
               </div>
+            </div>
+
+            {/* Master Authority Banner */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800 flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-blue-600 text-white shrink-0 mt-0.5">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-blue-950 dark:text-blue-100 flex items-center gap-2">
+                    <span>Master Authority Email:</span>
+                    <span className="font-mono bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded text-blue-800 dark:text-blue-200 font-bold">
+                      {generalConfig.masterEmail || 'farmissara@gmail.com'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-1 leading-relaxed max-w-2xl">
+                    อีเมลนี้ได้รับสิทธิ์สูงสุดในการเป็นตัวแทนระบบสำหรับ: ตอบกลับยืนยันการลงทะเบียนโรงเรียนใหม่, 
+                    รับคำร้องขอเปลี่ยนรหัสผ่าน (Password Reset Authorization), แจ้งเตือนความปลอดภัยของระบบ Super Admin 
+                    และการสื่อสารทางราชการ/ทะเบียน
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`mailto:${generalConfig.masterEmail || 'farmissara@gmail.com'}`}
+                className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1 self-center bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg shadow-xs"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>เปิดโปรแกรมส่งอีเมล</span>
+              </a>
             </div>
 
             {/* Backup Info */}

@@ -25,12 +25,18 @@ import {
   Award,
   Flame,
   LayoutGrid,
-  FileText
+  FileText,
+  X,
+  KeyRound,
+  AlertCircle,
+  Send
 } from 'lucide-react';
 import {
   authenticateWithSupabase,
   listActiveSchools,
   resendSignupConfirmation,
+  requestPasswordReset,
+  MASTER_SYSTEM_EMAIL,
   registerSchoolWithSupabase,
   registerStudentWithSupabase,
   type AuthContext,
@@ -94,6 +100,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetStatus, setResetStatus] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -188,6 +198,28 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       setError(getAuthErrorMessage(message, lang));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRequestPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = (resetEmail || email).trim().toLowerCase();
+    if (!target) {
+      setError(lang === 'th' ? 'กรุณากรอกอีเมลสำหรับขอรีเซ็ตรหัสผ่าน' : 'Please enter your email.');
+      return;
+    }
+    setError(null);
+    setIsResetting(true);
+    try {
+      await requestPasswordReset(target);
+      setResetStatus(lang === 'th'
+        ? `ระบบได้ส่งคำขอเปลี่ยนรหัสผ่านสำหรับ ${target} แล้ว โดยมี Master System Email: ${MASTER_SYSTEM_EMAIL} เป็นผู้ดูแลยืนยันและตอบกลับ`
+        : `Password reset request submitted for ${target}. Master confirmation and replies are handled by ${MASTER_SYSTEM_EMAIL}.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -1106,14 +1138,25 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     </label>
 
                     {mode === 'login' && (
-                      <div className="flex items-center justify-between text-[11px] pt-1">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetEmail(email);
+                            setResetStatus(null);
+                            setShowForgotPasswordModal(true);
+                          }}
+                          className="text-[var(--color-primary-text)] hover:underline font-semibold transition cursor-pointer"
+                        >
+                          {lang === 'th' ? 'ลืมรหัสผ่าน? (ขอเปลี่ยน Password)' : 'Forgot Password?'}
+                        </button>
                         <button
                           type="button"
                           onClick={handleResendConfirmation}
                           disabled={isLoading || !email.trim()}
-                          className="text-[var(--color-primary-text)] hover:underline font-semibold transition cursor-pointer disabled:opacity-50"
+                          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline font-medium transition cursor-pointer disabled:opacity-50"
                         >
-                          {lang === 'th' ? 'ขอส่งลิงก์ยืนยันอีเมลอีกครั้ง' : 'Resend confirmation link'}
+                          {lang === 'th' ? 'ขอส่งลิงก์ยืนยันอีเมล' : 'Resend confirmation'}
                         </button>
                       </div>
                     )}
@@ -1132,6 +1175,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 : (lang === 'th' ? 'ยืนยันสมัครบัญชีนักเรียน' : 'Create Student Account')))}
                       <ArrowRight className="w-4 h-4" />
                     </button>
+
+                    {/* Master System Authority Contact Card */}
+                    <div className="mt-4 p-3 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-[11px] text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
+                      <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                      <div className="leading-snug min-w-0">
+                        <div className="font-semibold text-blue-950 dark:text-blue-100 flex items-center gap-1.5 flex-wrap">
+                          <span>{lang === 'th' ? 'อีเมล Master ยืนยันระบบ:' : 'Master Authority Email:'}</span>
+                          <a
+                            href={`mailto:${MASTER_SYSTEM_EMAIL}`}
+                            className="font-mono font-bold text-blue-700 dark:text-blue-300 hover:underline"
+                          >
+                            {MASTER_SYSTEM_EMAIL}
+                          </a>
+                        </div>
+                        <div className="text-[10px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
+                          {lang === 'th'
+                            ? 'ใช้สำหรับส่ง/ตอบกลับยืนยันตัวตน, รีเซ็ตรหัสผ่าน และประสานงานผู้ดูแลระบบกลาง'
+                            : 'Used for confirmation replies, password resets, and master administrator support'}
+                        </div>
+                      </div>
+                    </div>
                   </form>
                 </div>
 
@@ -1165,6 +1229,124 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
         </div>
       </footer>
+
+      {/* Modal: Forgot / Reset Password with Master Authority Email */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ขอเปลี่ยนรหัสผ่าน / ลืมรหัสผ่าน' : 'Reset Password Request'}
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'ส่งคำขอไปยังระบบ และมี Master Email เป็นผู้ยืนยัน' : 'Request reset link via master authority'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPasswordModal(false);
+                  setResetStatus(null);
+                }}
+                className="rounded-lg p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Master Contact Notice */}
+            <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
+                <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>{lang === 'th' ? 'อีเมล Master สำหรับยืนยันการเปลี่ยนรหัสผ่าน:' : 'Master Authority Email:'}</span>
+              </div>
+              <div className="font-mono text-xs font-semibold pl-5 text-blue-700 dark:text-blue-300">
+                {MASTER_SYSTEM_EMAIL}
+              </div>
+              <div className="text-[11px] text-blue-800/80 dark:text-blue-300/80 pl-5 leading-relaxed">
+                {lang === 'th'
+                  ? 'ระบบจะส่งคำขอและประสานงานยืนยันผ่าน Master Email นี้ หากไม่ได้รับอีเมลอัตโนมัติสามารถส่งอีเมลตรงเพื่อขอความช่วยเหลือได้ทันที'
+                  : 'All security reset verifications are managed through this master address.'}
+              </div>
+            </div>
+
+            {/* Status alerts */}
+            {resetStatus && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">{resetStatus}</div>
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">{error}</div>
+              </div>
+            )}
+
+            <form onSubmit={handleRequestPasswordReset} className="space-y-3">
+              <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                {lang === 'th' ? 'กรอกอีเมลบัญชีผู้ใช้ของคุณ' : 'Enter your registered email address'}
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                />
+              </label>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPasswordModal(false);
+                    setResetStatus(null);
+                  }}
+                  className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                >
+                  {lang === 'th' ? 'ปิด' : 'Cancel'}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isResetting || !resetEmail.trim()}
+                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-xs font-bold text-white shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isResetting ? (
+                    <span>{lang === 'th' ? 'กำลังส่งคำขอ...' : 'Sending...'}</span>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{lang === 'th' ? 'ส่งคำขอเปลี่ยนรหัสผ่าน' : 'Submit Reset Request'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Direct Mailto Fallback */}
+            <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+              <span>{lang === 'th' ? 'ต้องการความช่วยเหลือด่วน?' : 'Need immediate help?'}</span>
+              <a
+                href={`mailto:${MASTER_SYSTEM_EMAIL}?subject=${encodeURIComponent('ขอเปลี่ยนรหัสผ่าน EduVerse / Password Reset Request')}&body=${encodeURIComponent(`เรียน Master Administrator (${MASTER_SYSTEM_EMAIL}),\n\nต้องการขอรีเซ็ตรหัสผ่านสำหรับอีเมล: ${resetEmail || ''}\nโรงเรียน / หน่วยงาน:\nหมายเหตุ:\n`)}`}
+                className="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ส่งอีเมลตรงหา Master' : 'Email Master Directly'}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

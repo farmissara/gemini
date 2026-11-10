@@ -488,6 +488,8 @@ export interface SystemConfig {
   lineMessagingConfigured: boolean;
   resendApiKeyConfigured: boolean;
   resendFromEmail: string;
+  masterEmail?: string;
+  replyToEmail?: string;
   supabaseConnected: boolean;
   thaiPdfFontEnabled: boolean;
   backupBucket: string;

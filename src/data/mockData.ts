@@ -55,9 +55,9 @@ export const INITIAL_SCHOOLS: School[] = [
 export const DEMO_USERS: AuthUser[] = [
   {
     id: 'usr-super',
-    email: 'superadmin@eduverse.school',
-    fullNameTh: 'ดร.กิตติพงษ์ ศรีสุวรรณ',
-    fullNameEn: 'Dr. Kittipong Srisuwan',
+    email: 'farmissara@gmail.com',
+    fullNameTh: 'ดร.กิตติพงษ์ ศรีสุวรรณ (Super Admin)',
+    fullNameEn: 'Dr. Kittipong Srisuwan (Master Admin)',
     role: 'super_admin',
     schoolId: 'sch-1',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
@@ -1480,7 +1480,9 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   lineChannelId: '2001928431',
   lineMessagingConfigured: true,
   resendApiKeyConfigured: true,
-  resendFromEmail: 'notifications@eduverse.school',
+  resendFromEmail: 'farmissara@gmail.com',
+  masterEmail: 'farmissara@gmail.com',
+  replyToEmail: 'farmissara@gmail.com',
   supabaseConnected: true,
   thaiPdfFontEnabled: true,
   backupBucket: 'eduverse-production-backups-sg',

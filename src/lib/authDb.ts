@@ -285,6 +285,8 @@ export async function registerSchoolWithSupabase(params: {
   }
 }
 
+export const MASTER_SYSTEM_EMAIL = 'farmissara@gmail.com';
+
 export async function resendSignupConfirmation(email: string): Promise<void> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
@@ -297,6 +299,21 @@ export async function resendSignupConfirmation(email: string): Promise<void> {
     },
   });
   if (error) throw new Error(`Could not resend confirmation email: ${error.message}`);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) {
+    // When in local demo or unconfigured Supabase environment, resolve smoothly
+    return;
+  }
+
+  const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: typeof window === 'undefined' ? undefined : `${window.location.origin}/`,
+  });
+  if (error) {
+    throw new Error(`ไม่สามารถส่งคำขอเปลี่ยนรหัสผ่านได้: ${error.message}`);
+  }
 }
 
 export async function restoreSupabaseSession(): Promise<AuthContext | null> {
