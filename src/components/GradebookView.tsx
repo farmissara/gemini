@@ -73,25 +73,25 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           type="button"
           onClick={() => setPage(Math.max(0, page - 1))}
           disabled={page === 0}
-          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 transition ${
+          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 transition cursor-pointer ${
             isLight
               ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
-              : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+              : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
           }`}
         >
           ก่อนหน้า
         </button>
-        <span aria-live="polite" className={`text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-700 dark:text-slate-300'}`}>
+        <span aria-live="polite" className={`text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-[var(--color-text-muted)]'}`}>
           หน้า {page + 1} / {pageCount} · {totalItems} รายการ
         </span>
         <button
           type="button"
           onClick={() => setPage(Math.min(pageCount - 1, page + 1))}
           disabled={page >= pageCount - 1}
-          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 transition ${
+          className={`px-3 py-1.5 rounded-lg border disabled:opacity-40 transition cursor-pointer ${
             isLight
               ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
-              : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+              : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
           }`}
         >
           ถัดไป
@@ -186,11 +186,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       {/* Header */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
+            <Award className="w-5 h-5 text-[var(--color-primary-text)]" />
             ระบบวัดผลและประเมินผลการเรียนรู้ (Academic Gradebook &amp; ปพ.)
           </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             บันทึกคะแนนเก็บ ตัดเกรดมาตรฐาน สพฐ. พิมพ์แบบ ปพ.5 (สมุดประจำวิชา) และ ปพ.6 (รายงานผลการเรียนรายบุคคล)
           </p>
         </div>
@@ -199,9 +199,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <button
             type="button"
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold shadow-xs transition cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
             <span>ส่งออก ปพ.5 (CSV)</span>
           </button>
 
@@ -209,7 +209,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-600/30 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>พิมพ์เอกสารราชการ (Print)</span>
@@ -220,14 +220,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       </div>
 
       {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 */}
-      <div className="shrink-0 flex rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 gap-1 max-w-lg shadow-xs">
+      <div className="shrink-0 flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 max-w-lg shadow-xs">
         <button
           type="button"
           onClick={() => setActiveTab('gradebook')}
           className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
             activeTab === 'gradebook'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
           สมุดบันทึกคะแนน (Gradebook)
@@ -238,8 +238,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           onClick={() => setActiveTab('pp5')}
           className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
             activeTab === 'pp5'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
           เอกสาร ปพ.5 (ประจำวิชา)
@@ -250,8 +250,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           onClick={() => setActiveTab('pp6')}
           className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
             activeTab === 'pp6'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
           เอกสาร ปพ.6 (รายบุคคล)
@@ -260,10 +260,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
       {/* Course selector tabs (shown in Gradebook and ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800">
+        <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-[var(--color-border)]">
           {courses.map((course) => (
             <button
               key={course.id}
+              type="button"
               onClick={() => {
                 setSelectedCourseId(course.id);
                 setGradePage(0);
@@ -271,8 +272,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
                 selectedCourseId === course.id
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
               }`}
             >
               <span className="font-mono">{course.code}</span>
@@ -283,26 +284,26 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       )}
 
       {/* Tab Panels Scroll Container */}
-      <div className="flex-1 min-h-0 overflow-hidden pr-1 space-y-4 print:overflow-visible">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 print:overflow-visible">
         {/* ========================================================
             TAB 1: Gradebook Score Entry Table
             ======================================================== */}
         {activeTab === 'gradebook' && selectedCourse && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden print:overflow-visible shadow-xl space-y-4 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible shadow-sm space-y-4 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-indigo-400">{selectedCourse.code}</span>
-                <span className="text-white font-bold text-base">{selectedCourse.titleEn}</span>
-                <span className="text-xs text-slate-300 font-thai">({selectedCourse.titleTh})</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
+                <span className="text-[var(--color-text-title)] font-bold text-base">{selectedCourse.titleEn}</span>
+                <span className="text-xs text-[var(--color-text-muted)] font-thai">({selectedCourse.titleTh})</span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 Instructor: {selectedCourse.teacherName} • Credits: {selectedCourse.credits} • Academic Year {selectedCourse.academicYear}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400"></span>
               <span>Grading Scale: A (80+), B+ (75), B (70), C+ (65), C (60), D+ (55), D (50), F (&lt;50)</span>
             </div>
           </div>
@@ -310,7 +311,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-300 font-semibold border-b border-slate-800">
+              <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                 <tr>
                   <th className="py-3 px-3">Student</th>
                   <th className="py-3 px-3">Room</th>
@@ -318,15 +319,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-3 px-3 text-center">Final (40)</th>
                   <th className="py-3 px-3 text-center">Homework (20)</th>
                   <th className="py-3 px-3 text-center">Quiz (10)</th>
-                  <th className="py-3 px-3 text-center font-bold text-white">Total (100)</th>
-                  <th className="py-3 px-3 text-center font-bold text-indigo-300">Grade</th>
+                  <th className="py-3 px-3 text-center font-bold text-[var(--color-text-title)]">Total (100)</th>
+                  <th className="py-3 px-3 text-center font-bold text-[var(--color-primary-text)]">Grade</th>
                   <th className="py-3 px-3 text-right">Transcript</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {courseGrades.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-300">
+                    <td colSpan={9} className="py-8 text-center text-[var(--color-text-muted)]">
                       No grades entered for this course yet.
                     </td>
                   </tr>
@@ -336,26 +337,26 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     if (!student) return null;
                     const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
                     return (
-                      <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-slate-800/60 transition-colors`}>
+                      <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-[var(--color-card-subtle)] transition-colors`}>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2.5">
                             <img
                               src={student.avatarUrl}
                               alt={student.firstNameEn}
-                              className="w-7 h-7 rounded-full object-cover border border-slate-700"
+                              className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)]"
                             />
                             <div>
-                              <div className="font-semibold text-white">
+                              <div className="font-semibold text-[var(--color-text-title)]">
                                 {student.firstNameEn} {student.lastNameEn}
                               </div>
-                              <div className="text-[10px] text-slate-300 font-thai">
+                              <div className="text-[10px] text-[var(--color-text-muted)] font-thai">
                                 {student.firstNameTh} ({student.studentIdNumber})
                               </div>
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-slate-200">
+                        <td className="py-3 px-3 text-[var(--color-text-body)]">
                           {student.room}
                         </td>
 
@@ -368,7 +369,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'midtermScore', Number(e.target.value))
                             }
-                            className="w-14 px-1.5 py-1 text-center rounded bg-slate-800 border border-slate-700 text-slate-100 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -381,7 +382,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'finalScore', Number(e.target.value))
                             }
-                            className="w-14 px-1.5 py-1 text-center rounded bg-slate-800 border border-slate-700 text-slate-100 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -394,7 +395,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'assignmentScore', Number(e.target.value))
                             }
-                            className="w-14 px-1.5 py-1 text-center rounded bg-slate-800 border border-slate-700 text-slate-100 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -407,22 +408,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'quizScore', Number(e.target.value))
                             }
-                            className="w-14 px-1.5 py-1 text-center rounded bg-slate-800 border border-slate-700 text-slate-100 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
-                        <td className="py-3 px-3 text-center font-mono font-bold text-sm text-white">
+                        <td className="py-3 px-3 text-center font-mono font-bold text-sm text-[var(--color-text-title)]">
                           {grade.totalScore}
                         </td>
 
                         <td className="py-3 px-3 text-center">
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs ${
+                            className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
                               grade.letterGrade === 'A'
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                                 : grade.letterGrade.startsWith('B')
-                                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                                : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                             }`}
                           >
                             {grade.letterGrade} ({grade.gradePoint.toFixed(1)})
@@ -432,7 +433,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         <td className="py-3 px-3 text-right">
                           <button
                             onClick={() => onOpenReportCard(student)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-200 text-xs font-medium inline-flex items-center gap-1 transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <FileText className="w-3.5 h-3.5" />
                             <span>Transcript</span>
@@ -449,7 +450,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {/* MOBILE VIEW (< 768px): Card List View for Easy Touch Interaction */}
           <div className="md:hidden space-y-3">
             {courseGrades.length === 0 ? (
-              <p className="text-xs text-slate-300 py-6 text-center">ไม่มีข้อมูลผลการเรียนในรายวิชานี้</p>
+              <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">ไม่มีข้อมูลผลการเรียนในรายวิชานี้</p>
             ) : (
               courseGrades.map((grade, index) => {
                 const student = students.find((s) => s.id === grade.studentId);
@@ -458,20 +459,20 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 if (!isVisible) return null;
 
                 return (
-                  <div key={grade.id} className="p-3.5 rounded-2xl bg-slate-800 border border-slate-700 shadow-md space-y-3">
+                  <div key={grade.id} className="p-3.5 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-3">
                     {/* Student Info Top */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
                           src={student.avatarUrl}
                           alt={student.firstNameEn}
-                          className="w-9 h-9 rounded-full object-cover border border-slate-600 shrink-0"
+                          className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                         />
                         <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-white truncate">
+                          <h4 className="text-xs font-bold text-[var(--color-text-title)] truncate">
                             {student.firstNameTh} {student.lastNameTh}
                           </h4>
-                          <p className="text-[10px] text-slate-300 font-mono">
+                          <p className="text-[10px] text-[var(--color-text-muted)] font-mono">
                             {student.studentIdNumber} • ห้อง {student.room}
                           </p>
                         </div>
@@ -479,16 +480,16 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                       {/* Total Score & Grade Badge */}
                       <div className="text-right shrink-0">
-                        <div className="text-base font-black font-mono text-white">
-                          {grade.totalScore} <span className="text-[10px] font-normal text-slate-300">/ 100</span>
+                        <div className="text-base font-black font-mono text-[var(--color-text-title)]">
+                          {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100</span>
                         </div>
                         <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
                             grade.letterGrade === 'A'
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                               : grade.letterGrade.startsWith('B')
-                              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                              : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                           }`}
                         >
                           เกรด {grade.letterGrade}
@@ -498,56 +499,56 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                     {/* Touch Friendly Score Inputs Grid */}
                     <div className="grid grid-cols-4 gap-1.5 pt-1">
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
-                        <span className="block text-[9px] text-slate-300 font-medium">กลางภาค</span>
+                      <div className="p-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-center">
+                        <span className="block text-[9px] text-[var(--color-text-muted)] font-medium">กลางภาค</span>
                         <input
                           type="number"
                           min="0"
                           max="30"
                           value={grade.midtermScore}
                           onChange={(e) => handleScoreChange(grade, 'midtermScore', Number(e.target.value))}
-                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 30)</span>
+                        <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 30)</span>
                       </div>
 
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
-                        <span className="block text-[9px] text-slate-300 font-medium">ปลายภาค</span>
+                      <div className="p-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-center">
+                        <span className="block text-[9px] text-[var(--color-text-muted)] font-medium">ปลายภาค</span>
                         <input
                           type="number"
                           min="0"
                           max="40"
                           value={grade.finalScore}
                           onChange={(e) => handleScoreChange(grade, 'finalScore', Number(e.target.value))}
-                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 40)</span>
+                        <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 40)</span>
                       </div>
 
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
-                        <span className="block text-[9px] text-slate-300 font-medium">การบ้าน</span>
+                      <div className="p-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-center">
+                        <span className="block text-[9px] text-[var(--color-text-muted)] font-medium">การบ้าน</span>
                         <input
                           type="number"
                           min="0"
                           max="20"
                           value={grade.assignmentScore}
                           onChange={(e) => handleScoreChange(grade, 'assignmentScore', Number(e.target.value))}
-                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 20)</span>
+                        <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 20)</span>
                       </div>
 
-                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700 text-center">
-                        <span className="block text-[9px] text-slate-300 font-medium">ควิซ</span>
+                      <div className="p-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-center">
+                        <span className="block text-[9px] text-[var(--color-text-muted)] font-medium">ควิซ</span>
                         <input
                           type="number"
                           min="0"
                           max="10"
                           value={grade.quizScore}
                           onChange={(e) => handleScoreChange(grade, 'quizScore', Number(e.target.value))}
-                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
-                        <span className="block text-[8px] text-slate-300 font-mono">(เต็ม 10)</span>
+                        <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 10)</span>
                       </div>
                     </div>
 
@@ -556,7 +557,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenReportCard(student)}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         <span>เปิด ปพ.1 / ปพ.6</span>
@@ -660,7 +661,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       <td className="border border-slate-300 py-2 font-mono">{idx + 1}</td>
                       <td className="border border-slate-300 py-2 px-2 text-left">
                         <span className="font-bold">{student.firstNameTh} {student.lastNameTh}</span>
-                        <span className="block text-[10px] text-slate-500 font-mono">{student.studentIdNumber}</span>
+                        <span className="block text-[10px] text-slate-600 font-mono">{student.studentIdNumber}</span>
                       </td>
                       <td className="border border-slate-300 py-2">{student.room}</td>
                       <td className="border border-slate-300 py-2 font-mono">{attendedPeriods}</td>
@@ -725,8 +726,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       {activeTab === 'pp6' && (
         <div className="space-y-5">
           {/* Student Selector for P.P. 6 */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 dark:border-slate-800 print:hidden">
-            <span className="text-xs text-slate-700 dark:text-slate-300 shrink-0 font-semibold">เลือกนักเรียน:</span>
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[var(--color-border)] print:hidden">
+            <span className="text-xs text-[var(--color-text-body)] shrink-0 font-semibold">เลือกนักเรียน:</span>
             {students.map((student) => (
               <button
                 key={student.id}
@@ -737,8 +738,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                   selectedStudentIdForPp6 === student.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                    ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
                 }`}
               >
                 {student.firstNameTh} {student.lastNameTh} ({student.room})

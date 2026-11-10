@@ -173,11 +173,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-hidden">
-      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Toast Alert */}
         {toastMessage && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
             <CheckCircle2 className="w-4 h-4" />
             <span>{toastMessage}</span>
           </div>
@@ -194,22 +194,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <img
                 src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                 alt={formData.fullNameTh}
-                className="w-12 h-12 rounded-2xl object-cover border-2 border-white/40 shadow-md group-hover:ring-2 group-hover:ring-blue-400 transition"
+                className="w-12 h-12 rounded-2xl object-cover border-2 border-white/50 shadow-md group-hover:ring-2 group-hover:ring-blue-400 transition"
               />
-              <span className="absolute -bottom-1 -right-1 p-1 bg-blue-600 group-hover:bg-blue-500 rounded-full text-white shadow transition">
+              <span className="absolute -bottom-1 -right-1 p-1 bg-blue-700 group-hover:bg-blue-600 rounded-full text-white shadow transition">
                 <Camera className="w-3 h-3" />
               </span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-extrabold text-base sm:text-lg tracking-tight">
+                <h2 className="font-extrabold text-base sm:text-lg tracking-tight text-white">
                   {formData.fullNameTh || formData.fullNameEn}
                 </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/25 text-blue-200 border border-blue-400/40 uppercase font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900 text-blue-100 border border-blue-600 uppercase font-bold">
                   {currentUser.role === 'admin' ? 'School Admin' : currentUser.role === 'teacher' ? 'ครูผู้สอน' : currentUser.role === 'student' ? 'นักเรียน' : currentUser.role}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 font-mono mt-0.5">
+              <p className="text-xs text-slate-200 font-mono mt-0.5">
                 {formData.email} • {currentUser.role === 'student' ? formData.studentIdNumber || 'STU-6901' : currentUser.role === 'teacher' ? formData.teacherIdNumber || 'TCH-2026' : 'ADMIN-REF'}
               </p>
             </div>
@@ -218,21 +218,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/15 transition cursor-pointer"
+            className="p-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/15 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="px-6 pt-2 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <div className="px-6 pt-2 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('personal')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'personal'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
-                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <User className="w-4 h-4" />
@@ -244,8 +244,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('academic')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'academic'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
-                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             {currentUser.role === 'student' ? <GraduationCap className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
@@ -259,8 +259,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('portfolio')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'portfolio'
-                ? 'border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
-                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <Award className="w-4 h-4" />
@@ -272,50 +272,50 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('preview_book')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'preview_book'
-                ? 'border-indigo-600 dark:border-indigo-400 text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-900 rounded-t-xl shadow-xs'
-                : 'border-transparent text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 dark:hover:text-white'
+                ? 'border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 bg-[var(--color-card)] rounded-t-xl shadow-xs'
+                : 'border-transparent text-indigo-800 dark:text-indigo-300 hover:text-[var(--color-text-title)]'
             }`}
           >
-            <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <BookOpen className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
             <span>พรีวิวเล่ม Portfolio ดิจิทัล</span>
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-[var(--color-card)] text-[var(--color-text-body)]">
           
           {/* TAB 1: ข้อมูลส่วนตัว & การติดต่อ */}
           {activeTab === 'personal' && (
             <form onSubmit={handleSubmitProfile} className="space-y-6">
-              <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-                <button type="button" onClick={() => setPersonalStep('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${personalStep === 'identity' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}>ข้อมูลประจำตัว</button>
-                <button type="button" onClick={() => setPersonalStep('contact')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${personalStep === 'contact' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}>ติดต่อและฉุกเฉิน</button>
+              <div className="flex gap-2 border-b border-[var(--color-border)] pb-2">
+                <button type="button" onClick={() => setPersonalStep('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${personalStep === 'identity' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'}`}>ข้อมูลประจำตัว</button>
+                <button type="button" onClick={() => setPersonalStep('contact')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${personalStep === 'contact' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'}`}>ติดต่อและฉุกเฉิน</button>
               </div>
               {personalStep === 'identity' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
                 {/* Full Name Thai */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ชื่อ - นามสกุล (ภาษาไทย) *</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ชื่อ - นามสกุล (ภาษาไทย) *</label>
                   <input
                     type="text"
                     required
                     value={formData.fullNameTh || ''}
                     onChange={e => handleChange('fullNameTh', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                     placeholder="เช่น นายธนาธร สมชาย"
                   />
                 </div>
 
                 {/* Full Name English */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">Full Name (English) *</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">Full Name (English) *</label>
                   <input
                     type="text"
                     required
                     value={formData.fullNameEn || ''}
                     onChange={e => handleChange('fullNameEn', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-sans placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden font-sans"
                     placeholder="e.g. Thanatorn Somchai"
                   />
                 </div>
@@ -323,21 +323,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {/* Nickname & Gender */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ชื่อเล่น (Nickname)</label>
+                    <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ชื่อเล่น (Nickname)</label>
                     <input
                       type="text"
                       value={formData.nickname || ''}
                       onChange={e => handleChange('nickname', e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden placeholder:text-slate-400"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                       placeholder="เช่น ธันวา"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เพศ (Gender)</label>
+                    <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เพศ (Gender)</label>
                     <select
                       value={formData.gender || 'male'}
                       onChange={e => handleChange('gender', e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                     >
                       <option value="male">ชาย (Male)</option>
                       <option value="female">หญิง (Female)</option>
@@ -348,12 +348,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                 {/* National ID / Citizen Card */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เลขประจำตัวประชาชน (National ID)</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เลขประจำตัวประชาชน (National ID)</label>
                   <input
                     type="text"
                     value={formData.nationalId || ''}
                     onChange={e => handleChange('nationalId', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden font-mono"
                     placeholder="1-1002-00345-67-1"
                   />
                 </div>
@@ -361,20 +361,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {/* Date of Birth & Blood Type */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">วัน/เดือน/ปีเกิด</label>
+                    <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">วัน/เดือน/ปีเกิด</label>
                     <input
                       type="date"
                       value={formData.dateOfBirth || '2008-05-14'}
                       onChange={e => handleChange('dateOfBirth', e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">กรุ๊ปเลือด (Blood Type)</label>
+                    <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">กรุ๊ปเลือด (Blood Type)</label>
                     <select
                       value={formData.bloodType || 'O'}
                       onChange={e => handleChange('bloodType', e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-bold"
                     >
                       <option value="A">A</option>
                       <option value="B">B</option>
@@ -387,22 +387,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {/* Phone & Email */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เบอร์โทรศัพท์มือถือ</label>
+                    <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เบอร์โทรศัพท์มือถือ</label>
                     <input
                       type="tel"
                       value={formData.phone || ''}
                       onChange={e => handleChange('phone', e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono placeholder:text-slate-400"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden font-mono"
                       placeholder="081-456-7890"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">อีเมลติดต่อ</label>
+                    <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">อีเมลติดต่อ</label>
                     <input
                       type="email"
                       value={formData.email || ''}
                       onChange={e => handleChange('email', e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono placeholder:text-slate-400"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden font-mono"
                       placeholder="student@eduverse.school"
                     />
                   </div>
@@ -410,19 +410,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                 {/* Avatar URL & Camera Snap */}
                 <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">รูปถ่ายโปรไฟล์ (ถ่ายรูปสด / อัปโหลด / ใส่ลิงก์ URL)</label>
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">รูปถ่ายโปรไฟล์ (ถ่ายรูปสด / อัปโหลด / ใส่ลิงก์ URL)</label>
+                  <div className="flex items-center gap-3 p-3 bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-2xl">
                     <img
                       src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
                       alt="Avatar Preview"
-                      className="w-12 h-12 rounded-xl object-cover border-2 border-indigo-400 shadow-sm"
+                      className="w-12 h-12 rounded-xl object-cover border-2 border-[var(--color-primary)] shadow-sm"
                     />
                     <div className="flex-1 space-y-1.5">
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => setShowImageModal(true)}
-                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
                         >
                           <Camera className="w-3.5 h-3.5" />
                           <span>ถ่ายรูปจากกล้อง / อัปโหลดรูปใหม่</span>
@@ -432,7 +432,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         type="url"
                         value={formData.avatarUrl || ''}
                         onChange={e => handleChange('avatarUrl', e.target.value)}
-                        className="w-full px-2.5 py-1 text-[11px] rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-blue-500 font-mono placeholder:text-slate-400"
+                        className="w-full px-2.5 py-1 text-[11px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] focus:ring-1 focus:ring-[var(--color-primary)] font-mono"
                         placeholder="หรือระบุ URL รูปภาพโดยตรง..."
                       />
                     </div>
@@ -445,48 +445,48 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Emergency Contact */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ผู้ติดต่อฉุกเฉิน (ชื่อ & ความสัมพันธ์)</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ผู้ติดต่อฉุกเฉิน (ชื่อ & ความสัมพันธ์)</label>
                   <input
                     type="text"
                     value={formData.emergencyContact || ''}
                     onChange={e => handleChange('emergencyContact', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                     placeholder="เช่น นายประภาส สมชาย (บิดา)"
                   />
                 </div>
 
                 {/* Emergency Phone */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เบอร์โทรติดต่อฉุกเฉิน</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เบอร์โทรติดต่อฉุกเฉิน</label>
                   <input
                     type="tel"
                     value={formData.emergencyPhone || ''}
                     onChange={e => handleChange('emergencyPhone', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden font-mono"
                     placeholder="086-554-3322"
                   />
                 </div>
 
                 {/* Address */}
                 <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ที่อยู่ปัจจุบันตามทะเบียนบ้าน / ติดต่อได้</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ที่อยู่ปัจจุบันตามทะเบียนบ้าน / ติดต่อได้</label>
                   <textarea
                     rows={2}
                     value={formData.address || ''}
                     onChange={e => handleChange('address', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden resize-none placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden resize-none"
                     placeholder="บ้านเลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์"
                   />
                 </div>
 
                 {/* Bio / About Me */}
                 <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ประวัติโดยย่อ / คติพจน์ประจำใจ (Bio)</label>
+                  <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ประวัติโดยย่อ / คติพจน์ประจำใจ (Bio)</label>
                   <textarea
                     rows={3}
                     value={formData.bio || ''}
                     onChange={e => handleChange('bio', e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden resize-none placeholder:text-slate-400"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden resize-none"
                     placeholder="อธิบายตัวเอง ความมุ่งมั่น และเป้าหมายของคุณ..."
                   />
                 </div>
@@ -494,17 +494,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               )}
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] border border-[var(--color-border)] text-xs font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>บันทึกข้อมูลส่วนตัว</span>
@@ -520,8 +520,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               {/* STUDENT ACADEMIC PROFILE */}
               {currentUser.role === 'student' && (
                 <div className="space-y-5">
-                  <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-700/60 text-indigo-950 dark:text-indigo-100 flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-300 shrink-0 mt-0.5" />
+                  <div className="p-4 rounded-2xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-indigo-700 dark:text-indigo-300 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="font-extrabold text-xs sm:text-sm">ข้อมูลสำหรับจัดทำแฟ้มสะสมผลงาน TCAS รอบที่ 1</h4>
                       <p className="text-[11px] text-indigo-800 dark:text-indigo-200 mt-0.5">
@@ -533,63 +533,63 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Student ID */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">รหัสประจำตัวนักเรียน</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">รหัสประจำตัวนักเรียน</label>
                       <input
                         type="text"
                         value={formData.studentIdNumber || 'ED-6901'}
                         onChange={e => handleChange('studentIdNumber', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] font-mono"
                       />
                     </div>
 
                     {/* Grade Level & Room */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ระดับชั้น</label>
+                        <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ระดับชั้น</label>
                         <input
                           type="text"
                           value={formData.gradeLevel || 'มัธยมศึกษาปีที่ 4 (M.4)'}
                           onChange={e => handleChange('gradeLevel', e.target.value)}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ห้องเรียน</label>
+                        <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ห้องเรียน</label>
                         <input
                           type="text"
                           value={formData.room || 'ห้อง 401'}
                           onChange={e => handleChange('room', e.target.value)}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         />
                       </div>
                     </div>
 
                     {/* Academic Track */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">แผนการเรียน (Academic Track)</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">แผนการเรียน (Academic Track)</label>
                       <input
                         type="text"
                         value={formData.academicTrack || 'วิทยาศาสตร์ - คณิตศาสตร์ (Gifted STEM)'}
                         onChange={e => handleChange('academicTrack', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         placeholder="เช่น วิทย์-คณิต, ศิลป์-คำนวณ, ศิลป์-ภาษา"
                       />
                     </div>
 
                     {/* Advisor Name */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ครูที่ปรึกษาประจำห้อง</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ครูที่ปรึกษาประจำห้อง</label>
                       <input
                         type="text"
                         value={formData.advisorName || 'อ.ดร.ประเสริฐ ถาวร'}
                         onChange={e => handleChange('advisorName', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                       />
                     </div>
 
                     {/* GPAX */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เกรดเฉลี่ยสะสม (GPAX)</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เกรดเฉลี่ยสะสม (GPAX)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -597,64 +597,64 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         max="4.00"
                         value={formData.gpax ?? 3.92}
                         onChange={e => handleChange('gpax', parseFloat(e.target.value))}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 font-mono font-bold text-blue-700 dark:text-blue-300"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] focus:ring-2 focus:ring-[var(--color-primary)] font-mono font-bold text-[var(--color-primary-text)]"
                       />
                     </div>
 
                     {/* Dream Career */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">อาชีพในฝัน (Career Aspiration)</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">อาชีพในฝัน (Career Aspiration)</label>
                       <input
                         type="text"
                         value={formData.dreamCareer || ''}
                         onChange={e => handleChange('dreamCareer', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         placeholder="เช่น Lead AI Research Scientist"
                       />
                     </div>
 
                     {/* Target University */}
                     <div className="md:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">มหาวิทยาลัยเป้าหมายในฝัน (Target University for TCAS)</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">มหาวิทยาลัยเป้าหมายในฝัน (Target University for TCAS)</label>
                       <input
                         type="text"
                         value={formData.targetUniversity || ''}
                         onChange={e => handleChange('targetUniversity', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย, สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง"
                       />
                     </div>
 
                     {/* Target Faculty */}
                     <div className="md:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">คณะและสาขาวิชาที่ต้องการศึกษาต่อ (Target Faculty / Major)</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">คณะและสาขาวิชาที่ต้องการศึกษาต่อ (Target Faculty / Major)</label>
                       <input
                         type="text"
                         value={formData.targetFaculty || ''}
                         onChange={e => handleChange('targetFaculty', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         placeholder="เช่น คณะวิศวกรรมศาสตร์ สาขาวิศวกรรมคอมพิวเตอร์และปัญญาประดิษฐ์"
                       />
                     </div>
 
                     {/* Special Skills / Competencies Tags */}
                     <div className="md:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ทักษะและความสามารถพิเศษ (Skills & Competencies)</label>
-                      <div className="flex flex-wrap gap-2 mb-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 min-h-12 items-center">
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ทักษะและความสามารถพิเศษ (Skills & Competencies)</label>
+                      <div className="flex flex-wrap gap-2 mb-2 p-2 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)] min-h-12 items-center">
                         {(formData.skills || []).map((skill, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700/60 text-xs font-semibold">
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 text-xs font-semibold">
                             <span>{skill}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveSkill(skill)}
-                              className="text-blue-600 dark:text-blue-300 hover:text-rose-500 cursor-pointer"
+                              className="text-blue-800 dark:text-blue-200 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer"
                             >
                               ✕
                             </button>
                           </span>
                         ))}
                         {(formData.skills || []).length === 0 && (
-                          <span className="text-xs text-slate-500 dark:text-slate-300">ยังไม่มีทักษะที่บันทึก พิมพ์แล้วกดเพิ่มด้านล่าง</span>
+                          <span className="text-xs text-[var(--color-text-muted)]">ยังไม่มีทักษะที่บันทึก พิมพ์แล้วกดเพิ่มด้านล่าง</span>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -664,12 +664,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                           onChange={e => setNewSkillInput(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }}
                           placeholder="พิมพ์ทักษะ เช่น Python, Robotics, IELTS 7.5, UI/UX แล้วกดเพิ่ม"
-                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         />
                         <button
                           type="button"
                           onClick={handleAddSkill}
-                          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs font-bold cursor-pointer"
+                          className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-xl text-xs font-bold cursor-pointer"
                         >
                           + เพิ่มทักษะ
                         </button>
@@ -682,8 +682,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               {/* TEACHER ACADEMIC PROFILE */}
               {currentUser.role === 'teacher' && (
                 <div className="space-y-5">
-                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700/60 text-emerald-950 dark:text-emerald-100 flex items-start gap-3">
-                    <Briefcase className="w-5 h-5 text-emerald-600 dark:text-emerald-300 shrink-0 mt-0.5" />
+                  <div className="p-4 rounded-2xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 flex items-start gap-3">
+                    <Briefcase className="w-5 h-5 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="font-extrabold text-xs sm:text-sm">ข้อมูลวิทยฐานะ & ผลงานทางวิชาการ (ว.PA)</h4>
                       <p className="text-[11px] text-emerald-800 dark:text-emerald-200 mt-0.5">
@@ -695,22 +695,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Teacher ID */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">รหัสประจำตัวครู (Teacher ID)</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">รหัสประจำตัวครู (Teacher ID)</label>
                       <input
                         type="text"
                         value={formData.teacherIdNumber || 'TCH-2024-0012'}
                         onChange={e => handleChange('teacherIdNumber', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono"
                       />
                     </div>
 
                     {/* Academic Standing (วิทยฐานะ) */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">วิทยฐานะปัจจุบัน</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">วิทยฐานะปัจจุบัน</label>
                       <select
                         value={formData.academicStanding || 'ครูชำนาญการพิเศษ (คศ.3)'}
                         onChange={e => handleChange('academicStanding', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-semibold"
                       >
                         <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
                         <option value="ครู (คศ.1)">ครู (คศ.1)</option>
@@ -723,63 +723,63 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                     {/* Highest Degree */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">วุฒิการศึกษาสูงสุด</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">วุฒิการศึกษาสูงสุด</label>
                       <input
                         type="text"
                         value={formData.academicDegree || ''}
                         onChange={e => handleChange('academicDegree', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                         placeholder="เช่น ปริญญาเอก ปร.ด. นวัตกรรมหลักสูตรและการสอน"
                       />
                     </div>
 
                     {/* Major */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">สาขาวิชาเอก / ความเชี่ยวชาญ</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">สาขาวิชาเอก / ความเชี่ยวชาญ</label>
                       <input
                         type="text"
                         value={formData.major || ''}
                         onChange={e => handleChange('major', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                         placeholder="เช่น วิทยาการคำนวณและเทคโนโลยีศึกษา"
                       />
                     </div>
 
                     {/* Department */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">กลุ่มสาระการเรียนรู้</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">กลุ่มสาระการเรียนรู้</label>
                       <input
                         type="text"
                         value={formData.department || ''}
                         onChange={e => handleChange('department', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                         placeholder="เช่น กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี"
                       />
                     </div>
 
                     {/* License No */}
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เลขที่ใบอนุญาตประกอบวิชาชีพครู</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เลขที่ใบอนุญาตประกอบวิชาชีพครู</label>
                       <input
                         type="text"
                         value={formData.teacherLicenseNo || ''}
                         onChange={e => handleChange('teacherLicenseNo', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono placeholder:text-slate-400"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono"
                         placeholder="คส. 6110900045678"
                       />
                     </div>
 
                     {/* Teaching Subjects */}
                     <div className="md:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">รายวิชาที่รับผิดชอบสอน</label>
-                      <div className="flex flex-wrap gap-2 mb-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 min-h-12 items-center">
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">รายวิชาที่รับผิดชอบสอน</label>
+                      <div className="flex flex-wrap gap-2 mb-2 p-2 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)] min-h-12 items-center">
                         {(formData.teachingSubjects || []).map((sub, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700/60 text-xs font-semibold">
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold">
                             <span>{sub}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveSubject(sub)}
-                              className="text-emerald-600 dark:text-emerald-300 hover:text-rose-500 cursor-pointer"
+                              className="text-emerald-800 dark:text-emerald-200 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer"
                             >
                               ✕
                             </button>
@@ -793,12 +793,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                           onChange={e => setNewSubjectInput(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubject(); } }}
                           placeholder="พิมพ์รหัสและชื่อวิชา เช่น ว30101 วิทยาการคำนวณ แล้วกดเพิ่ม"
-                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         />
                         <button
                           type="button"
                           onClick={handleAddSubject}
-                          className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold cursor-pointer"
+                          className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold cursor-pointer"
                         >
                           + เพิ่มวิชาที่สอน
                         </button>
@@ -811,8 +811,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               {/* ADMIN PROFILE */}
               {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
                 <div className="space-y-5">
-                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700/60 text-amber-950 dark:text-amber-100 flex items-start gap-3">
-                    <Building2 className="w-5 h-5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                  <div className="p-4 rounded-2xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-start gap-3">
+                    <Building2 className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="font-extrabold text-xs sm:text-sm">ข้อมูลฝ่ายบริหารและอำนวยการโรงเรียน</h4>
                       <p className="text-[11px] text-amber-800 dark:text-amber-200 mt-0.5">
@@ -823,42 +823,42 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ตำแหน่งการบริหารสถานศึกษา</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ตำแหน่งการบริหารสถานศึกษา</label>
                       <input
                         type="text"
                         value={formData.adminPositionTitle || 'ผู้อำนวยการสถานศึกษา (Director & Principal)'}
                         onChange={e => handleChange('adminPositionTitle', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-semibold"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ฝ่าย / สำนักที่สังกัด</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ฝ่าย / สำนักที่สังกัด</label>
                       <input
                         type="text"
                         value={formData.adminDepartment || 'สำนักงานบริหารและอำนวยการสถานศึกษา'}
                         onChange={e => handleChange('adminDepartment', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">เบอร์โทรศัพท์สายตรงสำนักงาน</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">เบอร์โทรศัพท์สายตรงสำนักงาน</label>
                       <input
                         type="text"
                         value={formData.directOfficePhone || '02-555-1234 ต่อ 101'}
                         onChange={e => handleChange('directOfficePhone', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">ห้องทำงาน / อาคาร</label>
+                      <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ห้องทำงาน / อาคาร</label>
                       <input
                         type="text"
                         value={formData.officeRoom || 'ห้องบริหาร 101 อาคารเฉลิมพระเกียรติ'}
                         onChange={e => handleChange('officeRoom', e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                       />
                     </div>
                   </div>
@@ -866,17 +866,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               )}
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] border border-[var(--color-border)] text-xs font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>บันทึกข้อมูลวิชาการ</span>
@@ -888,12 +888,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* TAB 3: คลังผลงาน PORTFOLIO ของฉัน */}
           {activeTab === 'portfolio' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
                 <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">
+                  <h3 className="font-extrabold text-sm sm:text-base text-[var(--color-text-title)]">
                     ผลงาน โครงงาน และเกียรติบัตรที่บันทึกไว้ ({myPortfolioItems.length} รายการ)
                   </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                  <p className="text-xs text-[var(--color-text-muted)]">
                     รวบรวมเพื่อจัดทำแฟ้มสะสมผลงานดิจิทัล ยื่นเข้าศึกษาต่อ TCAS รอบ 1 หรือประเมิน ว.PA
                   </p>
                 </div>
@@ -902,7 +902,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('preview_book')}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-indigo-100 dark:bg-indigo-950 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     <span>ดูรูปเล่ม Portfolio</span>
@@ -911,7 +911,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAddWorkModal(true)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     <span>เพิ่มผลงานใหม่</span>
@@ -921,16 +921,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
               {/* Add New Work Form Modal */}
               {showAddWorkModal && (
-                <div className="p-5 rounded-2xl bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 space-y-4 animate-in fade-in duration-150">
+                <div className="p-5 rounded-2xl bg-blue-100 dark:bg-slate-800 border border-blue-300 dark:border-slate-700 space-y-4 animate-in fade-in duration-150">
                   <div className="flex items-center justify-between">
                     <h4 className="font-bold text-xs sm:text-sm text-blue-950 dark:text-white flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <Sparkles className="w-4 h-4 text-blue-700 dark:text-blue-300" />
                       <span>กรอกรายละเอียดผลงานใหม่เพื่อบรรจุลง Portfolio</span>
                     </h4>
                     <button
                       type="button"
                       onClick={() => setShowAddWorkModal(false)}
-                      className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold cursor-pointer"
+                      className="text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-xs font-bold cursor-pointer"
                     >
                       ✕ ปิด
                     </button>
@@ -939,24 +939,24 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <form onSubmit={handleCreatePortfolioWork} className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">ชื่อผลงาน / รางวัลที่ได้รับ *</label>
+                        <label className="text-[11px] font-bold text-[var(--color-text-body)] block mb-1">ชื่อผลงาน / รางวัลที่ได้รับ *</label>
                         <input
                           type="text"
                           required
                           value={workTitle}
                           onChange={e => setWorkTitle(e.target.value)}
                           placeholder="เช่น รางวัลเหรียญทอง โอลิมปิกหุ่นยนต์ระดับชาติ"
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">หมวดหมู่</label>
+                          <label className="text-[11px] font-bold text-[var(--color-text-body)] block mb-1">หมวดหมู่</label>
                           <select
                             value={workCategory}
                             onChange={e => setWorkCategory(e.target.value as any)}
-                            className="w-full px-2 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
+                            className="w-full px-2 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold"
                           >
                             <option value="competition">การแข่งขัน / รางวัล</option>
                             <option value="academic">ผลงานทางวิชาการ</option>
@@ -966,47 +966,47 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                           </select>
                         </div>
                         <div>
-                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">ปีการศึกษา / ปีที่ได้</label>
+                          <label className="text-[11px] font-bold text-[var(--color-text-body)] block mb-1">ปีการศึกษา / ปีที่ได้</label>
                           <input
                             type="text"
                             value={workYear}
                             onChange={e => setWorkYear(e.target.value)}
                             placeholder="เช่น 2569"
-                            className="w-full px-2 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
+                            className="w-full px-2 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
                           />
                         </div>
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">รายละเอียดชิ้นงาน และบทสะท้อนการเรียนรู้ (Reflection)</label>
+                        <label className="text-[11px] font-bold text-[var(--color-text-body)] block mb-1">รายละเอียดชิ้นงาน และบทสะท้อนการเรียนรู้ (Reflection)</label>
                         <textarea
                           rows={2}
                           value={workDescription}
                           onChange={e => setWorkDescription(e.target.value)}
                           placeholder="อธิบายว่าผลงานนี้คืออะไร มีบทบาทอย่างไร ได้เรียนรู้อะไร และเชื่อมโยงกับสาขาที่อยากเข้าอย่างไร..."
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">ทักษะที่ใช้ (คั่นด้วยจุลภาค ,)</label>
+                        <label className="text-[11px] font-bold text-[var(--color-text-body)] block mb-1">ทักษะที่ใช้ (คั่นด้วยจุลภาค ,)</label>
                         <input
                           type="text"
                           value={workSkills}
                           onChange={e => setWorkSkills(e.target.value)}
                           placeholder="เช่น Python, Computer Vision, Leadership"
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">ลิงก์รูปภาพผลงาน / รูปเกียรติบัตร</label>
+                        <label className="text-[11px] font-bold text-[var(--color-text-body)] block mb-1">ลิงก์รูปภาพผลงาน / รูปเกียรติบัตร</label>
                         <input
                           type="url"
                           value={workImageUrl}
                           onChange={e => setWorkImageUrl(e.target.value)}
                           placeholder="https://images.unsplash.com/..."
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono placeholder:text-slate-400"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] font-mono"
                         />
                       </div>
                     </div>
@@ -1015,13 +1015,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowAddWorkModal(false)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] border border-[var(--color-border)] text-xs font-semibold cursor-pointer"
                       >
                         ยกเลิก
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-sm cursor-pointer"
                       >
                         บันทึกผลงานลงแฟ้ม
                       </button>
@@ -1035,39 +1035,39 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {myPortfolioItems.slice(portfolioPage * 2, (portfolioPage + 1) * 2).map((item) => (
                   <div
                     key={item.id}
-                    className="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-xs hover:shadow-md overflow-hidden flex flex-col"
+                    className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] transition-all shadow-xs hover:shadow-md overflow-hidden flex flex-col"
                   >
-                    <div className="relative h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-950">
+                    <div className="relative h-40 w-full overflow-hidden bg-slate-900">
                       <img
                         src={item.imageUrl || 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600'}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-slate-900/90 text-[10px] text-amber-300 font-bold border border-white/25">
+                      <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-slate-950/90 text-[10px] text-amber-300 font-bold border border-white/30">
                         {item.category === 'competition' ? '🏆 การแข่งขัน' : item.category === 'academic' ? '📚 วิชาการ' : '📜 เกียรติบัตร'}
                       </span>
-                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-mono font-bold">
+                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-blue-700 text-white text-[10px] font-mono font-bold">
                         ปี {item.year}
                       </span>
                     </div>
 
                     <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                       <div>
-                        <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white line-clamp-1">{item.title}</h4>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-1">{item.description}</p>
+                        <h4 className="font-bold text-xs sm:text-sm text-[var(--color-text-title)] line-clamp-1">{item.title}</h4>
+                        <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mt-1">{item.description}</p>
                       </div>
 
                       <div>
                         <div className="flex flex-wrap gap-1 mb-2">
                           {item.skills.map((skill, sIdx) => (
-                            <span key={sIdx} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium">
+                            <span key={sIdx} className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] font-medium">
                               #{skill}
                             </span>
                           ))}
                         </div>
 
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
-                          <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
+                        <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                          <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-semibold">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>รับรองโดยโรงเรียน</span>
                           </span>
@@ -1079,7 +1079,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                                 onDeletePortfolioItem(item.id);
                                 showToast('ลบผลงานออกจากแฟ้มแล้ว');
                               }}
-                              className="text-slate-500 dark:text-slate-300 hover:text-rose-500 p-1 rounded-md cursor-pointer"
+                              className="text-[var(--color-text-muted)] hover:text-rose-600 dark:hover:text-rose-400 p-1 rounded-md cursor-pointer"
                               title="ลบผลงาน"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1092,18 +1092,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 ))}
 
                 {myPortfolioItems.length === 0 && (
-                  <div className="md:col-span-2 p-8 text-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 space-y-2">
-                    <Award className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-300" />
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">ยังไม่มีผลงานในแฟ้มสะสมของคุณ</p>
+                  <div className="md:col-span-2 p-8 text-center rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-muted)] space-y-2">
+                    <Award className="w-10 h-10 mx-auto text-[var(--color-text-muted)]" />
+                    <p className="text-xs font-semibold text-[var(--color-text-title)]">ยังไม่มีผลงานในแฟ้มสะสมของคุณ</p>
                     <p className="text-[11px]">กดปุ่ม "เพิ่มผลงานใหม่" ด้านบนเพื่อรวบรวมเกียรติบัตรและชิ้นงานของคุณได้ทันที</p>
                   </div>
                 )}
               </div>
               {myPortfolioItems.length > 2 && (
-                <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
-                  <button type="button" onClick={() => setPortfolioPage(page => Math.max(0, page - 1))} disabled={portfolioPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+                <div className="flex items-center justify-between text-xs text-[var(--color-text-body)]">
+                  <button type="button" onClick={() => setPortfolioPage(page => Math.max(0, page - 1))} disabled={portfolioPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
                   <span className="font-medium">หน้า {portfolioPage + 1} / {Math.ceil(myPortfolioItems.length / 2)} · {myPortfolioItems.length} ผลงาน</span>
-                  <button type="button" onClick={() => setPortfolioPage(page => Math.min(Math.ceil(myPortfolioItems.length / 2) - 1, page + 1))} disabled={portfolioPage >= Math.ceil(myPortfolioItems.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
+                  <button type="button" onClick={() => setPortfolioPage(page => Math.min(Math.ceil(myPortfolioItems.length / 2) - 1, page + 1))} disabled={portfolioPage >= Math.ceil(myPortfolioItems.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
                 </div>
               )}
             </div>
@@ -1112,13 +1112,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* TAB 4: พรีวิวเล่ม PORTFOLIO ดิจิทัล (DIGITAL PORTFOLIO BOOK PREVIEW) */}
           {activeTab === 'preview_book' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
                 <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-extrabold text-sm sm:text-base text-[var(--color-text-title)] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-300" />
                     <span>พรีวิวรูปเล่มแฟ้มสะสมผลงานดิจิทัล (Digital TCAS & Professional Book)</span>
                   </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                  <p className="text-xs text-[var(--color-text-muted)]">
                     จัดหน้าตามเกณฑ์การคัดเลือก TCAS รอบ 1 แฟ้มสะสมผลงาน และมาตรฐาน ก.ค.ศ. ว.PA
                   </p>
                 </div>
@@ -1126,7 +1126,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>พิมพ์ / บันทึก PDF (Export)</span>
@@ -1134,11 +1134,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
 
               {/* Printable Portfolio Cover & Layout */}
-              <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-800 relative overflow-hidden">
+              <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-700 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
                 {/* Cover Header */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 border-b border-white/15 pb-8">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 border-b border-white/20 pb-8">
                   <img
                     src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'}
                     alt={formData.fullNameTh}
@@ -1146,38 +1146,38 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   />
 
                   <div className="text-center sm:text-left space-y-2 flex-1">
-                    <span className="inline-block px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-black uppercase tracking-wider">
+                    <span className="inline-block px-3 py-1 rounded-full bg-amber-950/80 text-amber-200 border border-amber-400/60 text-xs font-black uppercase tracking-wider">
                       {currentUser.role === 'student' ? 'OFFICIAL TCAS 1 PORTFOLIO' : 'OFFICIAL TEACHER PA PORTFOLIO'}
                     </span>
                     <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                       {formData.fullNameTh}
                     </h1>
-                    <p className="text-sm text-slate-300 font-serif italic">
+                    <p className="text-sm text-slate-200 font-serif italic">
                       {formData.fullNameEn} {formData.nickname && `(${formData.nickname})`}
                     </p>
-                    <p className="text-xs text-cyan-300 font-mono">
+                    <p className="text-xs text-cyan-200 font-mono">
                       {currentUser.role === 'student' ? `${formData.gradeLevel || 'ม.4'} • ${formData.room || 'ห้อง 401'} • ${formData.academicTrack || 'วิทย์-คณิต'}` : `${formData.academicStanding || 'ครูชำนาญการพิเศษ'} • ${formData.department || 'กลุ่มสาระวิทยาศาสตร์'}`}
                     </p>
                   </div>
 
                   {currentUser.role === 'student' && formData.gpax && (
-                    <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center shrink-0">
-                      <div className="text-[10px] uppercase font-bold text-slate-300">GPAX รวม</div>
-                      <div className="text-2xl font-black text-amber-400 font-mono">{formData.gpax.toFixed(2)}</div>
-                      <div className="text-[9px] text-slate-300 mt-0.5">รับรองความถูกต้อง</div>
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/25 text-center shrink-0">
+                      <div className="text-[10px] uppercase font-bold text-slate-200">GPAX รวม</div>
+                      <div className="text-2xl font-black text-amber-300 font-mono">{formData.gpax.toFixed(2)}</div>
+                      <div className="text-[9px] text-slate-200 mt-0.5">รับรองความถูกต้อง</div>
                     </div>
                   )}
                 </div>
 
                 {/* Goals & Aspirations Banner */}
                 {currentUser.role === 'student' && (formData.targetUniversity || formData.targetFaculty) && (
-                  <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="mt-6 p-4 rounded-2xl bg-slate-900/60 border border-white/15 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-amber-400 block mb-0.5">มหาวิทยาลัยเป้าหมาย</span>
+                      <span className="text-[10px] uppercase font-bold text-amber-300 block mb-0.5">มหาวิทยาลัยเป้าหมาย</span>
                       <p className="font-bold text-white text-sm">{formData.targetUniversity || 'จุฬาลงกรณ์มหาวิทยาลัย'}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-cyan-400 block mb-0.5">คณะ / สาขาวิชา</span>
+                      <span className="text-[10px] uppercase font-bold text-cyan-300 block mb-0.5">คณะ / สาขาวิชา</span>
                       <p className="font-bold text-white text-sm">{formData.targetFaculty || 'คณะวิศวกรรมศาสตร์ สาขาวิศวกรรมคอมพิวเตอร์'}</p>
                     </div>
                   </div>
@@ -1186,8 +1186,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {/* Bio & Personal Statement */}
                 {formData.bio && (
                   <div className="mt-6 space-y-1.5">
-                    <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wide">บทนำและแรงบันดาลใจ (Statement of Purpose)</h4>
-                    <p className="text-xs text-slate-200 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wide">บทนำและแรงบันดาลใจ (Statement of Purpose)</h4>
+                    <p className="text-xs text-slate-100 leading-relaxed bg-slate-900/60 p-4 rounded-2xl border border-white/15">
                       "{formData.bio}"
                     </p>
                   </div>
@@ -1196,10 +1196,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {/* Skills Showcase in Book */}
                 {(formData.skills || []).length > 0 && (
                   <div className="mt-6 space-y-2">
-                    <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wide">ทักษะและความสามารถเฉพาะทาง (Competencies)</h4>
+                    <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wide">ทักษะและความสามารถเฉพาะทาง (Competencies)</h4>
                     <div className="flex flex-wrap gap-2">
                       {(formData.skills || []).map((skill, idx) => (
-                        <span key={idx} className="px-3 py-1 rounded-xl bg-white/10 text-white text-xs font-semibold border border-white/15">
+                        <span key={idx} className="px-3 py-1 rounded-xl bg-slate-900/80 text-white text-xs font-semibold border border-white/25">
                           ✓ {skill}
                         </span>
                       ))}
@@ -1208,41 +1208,41 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 )}
 
                 {/* Showcase Works in Book */}
-                <div className="mt-8 pt-6 border-t border-white/15 space-y-4">
-                  <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-400" />
+                <div className="mt-8 pt-6 border-t border-white/20 space-y-4">
+                  <h4 className="text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                    <Award className="w-4 h-4 text-amber-300" />
                     <span>แกลเลอรีผลงานและเกียรติบัตรดีเด่น ({myPortfolioItems.length} รายการ)</span>
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {myPortfolioItems.slice(previewPortfolioPage * 2, (previewPortfolioPage + 1) * 2).map((item, idx) => (
-                      <div key={idx} className="p-3.5 rounded-2xl bg-white/5 border border-white/15 flex gap-3">
+                      <div key={idx} className="p-3.5 rounded-2xl bg-slate-900/70 border border-white/20 flex gap-3">
                         <img
                           src={item.imageUrl || 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300'}
                           alt={item.title}
-                          className="w-20 h-20 rounded-xl object-cover border border-white/20 shrink-0"
+                          className="w-20 h-20 rounded-xl object-cover border border-white/25 shrink-0"
                         />
                         <div className="min-w-0 flex-1 space-y-1 text-xs">
-                          <span className="text-[10px] font-bold text-cyan-300 font-mono">[{item.year}] {item.category}</span>
+                          <span className="text-[10px] font-bold text-cyan-200 font-mono">[{item.year}] {item.category}</span>
                           <h5 className="font-bold text-white line-clamp-1">{item.title}</h5>
-                          <p className="text-[11px] text-slate-300 line-clamp-2">{item.description}</p>
+                          <p className="text-[11px] text-slate-200 line-clamp-2">{item.description}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                   {myPortfolioItems.length > 2 && (
-                    <div className="flex items-center justify-between text-xs text-slate-200">
-                      <button type="button" onClick={() => setPreviewPortfolioPage(page => Math.max(0, page - 1))} disabled={previewPortfolioPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-white font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+                    <div className="flex items-center justify-between text-xs text-slate-100">
+                      <button type="button" onClick={() => setPreviewPortfolioPage(page => Math.max(0, page - 1))} disabled={previewPortfolioPage === 0} className="px-3 py-1.5 rounded-lg border border-slate-500 bg-slate-800 hover:bg-slate-700 text-white font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
                       <span className="font-medium">หน้า {previewPortfolioPage + 1} / {Math.ceil(myPortfolioItems.length / 2)} · {myPortfolioItems.length} ผลงาน</span>
-                      <button type="button" onClick={() => setPreviewPortfolioPage(page => Math.min(Math.ceil(myPortfolioItems.length / 2) - 1, page + 1))} disabled={previewPortfolioPage >= Math.ceil(myPortfolioItems.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-white font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
+                      <button type="button" onClick={() => setPreviewPortfolioPage(page => Math.min(Math.ceil(myPortfolioItems.length / 2) - 1, page + 1))} disabled={previewPortfolioPage >= Math.ceil(myPortfolioItems.length / 2) - 1} className="px-3 py-1.5 rounded-lg border border-slate-500 bg-slate-800 hover:bg-slate-700 text-white font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
                     </div>
                   )}
                 </div>
 
                 {/* Official Certification Seal */}
-                <div className="mt-10 pt-6 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div className="mt-10 pt-6 border-t border-white/20 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-200">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                    <ShieldCheck className="w-5 h-5 text-emerald-300" />
                     <span>เอกสารแฟ้มสะสมผลงานดิจิทัลรับรองโดยสถานศึกษา EduVerse SIS</span>
                   </div>
                   <div className="font-mono text-[10px]">

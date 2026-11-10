@@ -706,13 +706,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     <div className={embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full'}>
       {/* Top Header - Compact for mobile */}
       {embeddedMobile ? (
-        <div className="shrink-0 flex items-center justify-between px-1 py-1 text-slate-800 dark:text-white">
+        <div className="shrink-0 flex items-center justify-between px-1 py-1 text-[var(--color-text-title)]">
           <div className="flex items-center gap-1.5 min-w-0">
-            <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <Camera className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
             <h1 className="text-xs font-black truncate">
               {lang === 'th' ? 'เช็กชื่อเข้า-ออก' : 'Check in / out'}
             </h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30 shrink-0">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700 shrink-0">
               GPS Geofence
             </span>
           </div>
@@ -720,27 +720,27 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs cursor-pointer"
+              className="p-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] text-xs cursor-pointer"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
-              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500 dark:text-slate-300" />}
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
             </button>
-            <span className="text-[10px] font-mono text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <span className="text-[10px] font-mono text-[var(--color-text-title)] bg-[var(--color-card-subtle)] px-2 py-0.5 rounded-lg border border-[var(--color-border)]">
               {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
             </span>
           </div>
         </div>
       ) : (
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-xl">
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-700 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-xl">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-200 border border-emerald-600 text-xs font-bold">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-300" />
               <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
             </div>
-            <h1 className="text-xl md:text-2xl font-black">
+            <h1 className="text-xl md:text-2xl font-black text-white">
               {lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
             </h1>
-            <p className="text-slate-300 text-xs">
+            <p className="text-slate-200 text-xs">
               {lang === 'th' 
                 ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
                 : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
@@ -751,19 +751,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:text-white transition"
+              className="p-2 rounded-xl bg-slate-800 border border-slate-600 text-slate-100 hover:text-white transition cursor-pointer"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-300" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-300" /> : <VolumeX className="w-4 h-4 text-slate-300" />}
             </button>
 
-            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 shrink-0">
-              <Clock className="w-5 h-5 text-indigo-400" />
+            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800 border border-slate-600 text-slate-100 shrink-0">
+              <Clock className="w-5 h-5 text-indigo-300" />
               <div>
                 <div className="text-xs font-bold text-white">
                   {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
-                <div className="text-[11px] text-emerald-400 font-mono font-semibold">
+                <div className="text-[11px] text-emerald-300 font-mono font-semibold">
                   เวลาทำการ 06:30 - 18:00 น.
                 </div>
               </div>
@@ -773,7 +773,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       )}
 
       {/* Navigation Sub Tabs - Compact Underlined Text Links (Never overflows container edges) */}
-      <nav aria-label="Attendance sub-navigation" className="shrink-0 flex flex-wrap items-center gap-x-3.5 gap-y-1 px-0.5 py-1 border-b border-slate-200 dark:border-slate-800 text-xs">
+      <nav aria-label="Attendance sub-navigation" className="shrink-0 flex flex-wrap items-center gap-x-3.5 gap-y-1 px-0.5 py-1 border-b border-[var(--color-border)] text-xs">
         {[
           { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็กชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
           { id: 'leave_request', icon: FileText, labelTh: 'ใบลา', labelEn: 'Leave', badge: scopedLeaveRequests.filter(r => r.status === 'pending').length, staffOnly: false },
@@ -791,8 +791,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             }}
             className={`flex items-center gap-1 px-1 py-1 border-b-2 font-bold transition text-xs cursor-pointer whitespace-nowrap ${
               subTab === tab.id
-                ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
-                : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-blue-700 dark:hover:text-white hover:underline underline-offset-4'
+                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] hover:underline underline-offset-4'
             }`}
           >
             <tab.icon className="w-3.5 h-3.5 shrink-0" />
@@ -821,7 +821,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               className={`px-2 py-0.5 font-bold transition text-center cursor-pointer border-b-2 whitespace-nowrap ${
                 compactPane === pane
                   ? 'border-amber-400 text-amber-300'
-                  : 'border-transparent text-slate-300 hover:text-white hover:underline underline-offset-4'
+                  : 'border-transparent text-slate-200 hover:text-white hover:underline underline-offset-4'
               }`}
             >
               {label}
@@ -847,11 +847,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     onClick={() => setCheckType('check_in')}
                     className={`flex items-center gap-1 py-1 px-2 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                       checkType === 'check_in'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-300 hover:text-white'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-slate-200 hover:text-white'
                     }`}
                   >
-                    <LogIn className="w-3 h-3 text-emerald-300 shrink-0" />
+                    <LogIn className="w-3 h-3 text-emerald-200 shrink-0" />
                     <span>เข้า (IN)</span>
                   </button>
                   <button
@@ -859,11 +859,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     onClick={() => setCheckType('check_out')}
                     className={`flex items-center gap-1 py-1 px-2 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                       checkType === 'check_out'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'text-slate-300 hover:text-white'
+                        ? 'bg-purple-700 text-white shadow-xs'
+                        : 'text-slate-200 hover:text-white'
                     }`}
                   >
-                    <LogOut className="w-3 h-3 text-purple-300 shrink-0" />
+                    <LogOut className="w-3 h-3 text-purple-200 shrink-0" />
                     <span>ออก (OUT)</span>
                   </button>
                 </div>
@@ -973,9 +973,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         className={`flex-[2] py-2 rounded-xl text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer ${
                           isInGeofence 
                             ? checkType === 'check_in' 
-                              ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' 
-                              : 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30'
-                            : 'bg-slate-700 cursor-not-allowed opacity-60'
+                              ? 'bg-emerald-700 hover:bg-emerald-600 shadow-emerald-900/30' 
+                              : 'bg-purple-700 hover:bg-purple-600 shadow-purple-900/30'
+                            : 'bg-slate-700 cursor-not-allowed opacity-70'
                         }`}
                       >
                         <Check className="w-4 h-4" />
@@ -1034,21 +1034,21 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & Identity */}
           {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'h-full min-h-0 overflow-hidden' : 'lg:col-span-5 space-y-5'}`}>
             {/* User Profile Card: Strictly locked for students/teachers; switchable only for admin */}
-            {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 flex flex-col justify-center' : 'p-5 space-y-4'} rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs`}>
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 flex flex-col justify-center' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs`}>
+              <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Smartphone className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                  <Smartphone className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
                     {isRestrictedViewer ? 'ข้อมูลผู้เช็กชื่อของคุณ' : 'ระบุตัวตนผู้ใช้โทรศัพท์'}
                   </h3>
                 </div>
                 {!isRestrictedViewer && currentUser?.role !== 'teacher' ? (
-                  <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold shrink-0">
+                  <div className="flex rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-xs font-semibold shrink-0">
                     <button
                       type="button"
                       onClick={() => setActiveUserType('student')}
                       className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                        effectiveUserType === 'student' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-xs' : 'text-slate-600 dark:text-slate-300'
+                        effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)]'
                       }`}
                     >
                       นักเรียน
@@ -1057,21 +1057,21 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       type="button"
                       onClick={() => setActiveUserType('teacher')}
                       className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                        effectiveUserType === 'teacher' ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-white shadow-xs' : 'text-slate-600 dark:text-slate-300'
+                        effectiveUserType === 'teacher' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)]'
                       }`}
                     >
                       ครู / บุคลากร
                     </button>
                   </div>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0">
                     {currentUser?.role === 'teacher' ? 'บัญชีครู' : 'บัญชีของฉัน'}
                   </span>
                 )}
               </div>
 
               {isStudentOnly || currentUser?.role === 'teacher' ? (
-                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                <p className="text-[11px] text-[var(--color-text-muted)]">
                   {isStudentOnly
                     ? 'แสดงเฉพาะข้อมูลบัญชีนักเรียนของคุณ เพื่อความเป็นส่วนตัวขณะเช็กชื่อ'
                     : 'ผูกข้อมูลการเช็กชื่อกับบัญชีครูผู้ใช้งานปัจจุบัน'}
@@ -1079,13 +1079,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               ) : effectiveUserType === 'student' ? (
                 scopedStudents.length > 1 ? (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <label className="text-xs font-bold text-[var(--color-text-title)]">
                       {currentUser?.role === 'parent' ? 'เลือกบุตรหลานในความดูแล:' : 'เลือกรายชื่อนักเรียน:'}
                     </label>
                     <select
                       value={selectedStudentId}
                       onChange={(e) => setSelectedStudentId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
                     >
                       {scopedStudents.map((st) => (
                         <option key={st.id} value={st.id}>
@@ -1097,11 +1097,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 ) : null
               ) : (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-200">เลือกรายชื่อครู:</label>
+                  <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกรายชื่อครู:</label>
                   <select
                     value={selectedTeacherId}
                     onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
                   >
                     {teachers.map((tc) => (
                       <option key={tc.id} value={tc.id}>
@@ -1112,31 +1112,31 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
               )}
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center gap-3">
                 <img
                   src={activePersonDefaultAvatar}
                   alt={activePersonName}
-                  className="w-12 h-12 rounded-xl object-cover border border-slate-300 dark:border-slate-600 shrink-0"
+                  className="w-12 h-12 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
                 />
                 <div className="min-w-0 flex-1 space-y-0.5 text-xs">
-                  <p className="font-bold text-slate-900 dark:text-white truncate">{activePersonName}</p>
-                  <p className="text-slate-600 dark:text-slate-300 truncate text-[11px]">{activePersonRole}</p>
-                  <p className="font-mono text-slate-600 dark:text-slate-300 text-[10px]">รหัสประจำตัว: {activePersonId}</p>
+                  <p className="font-bold text-[var(--color-text-title)] truncate">{activePersonName}</p>
+                  <p className="text-[var(--color-text-body)] truncate text-[11px]">{activePersonRole}</p>
+                  <p className="font-mono text-[var(--color-text-muted)] text-[10px]">รหัสประจำตัว: {activePersonId}</p>
                 </div>
               </div>
             </div>}
 
             {/* Multi-Gate Geofence Radar */}
-            {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 overflow-hidden' : 'p-5 space-y-4'} rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs text-slate-900 dark:text-slate-100`}>
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 overflow-hidden' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs text-[var(--color-text-body)]`}>
+              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">จุดเช็กชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
+                  <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็กชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
                 </div>
                 <button
                   type="button"
                   onClick={handleRefreshGps}
-                  className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
                   <span>ตรวจพิกัด</span>
@@ -1145,7 +1145,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Multi-gate Selector List */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-200">เลือกประตูหรือจุดเช็กชื่อ:</label>
+                <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกประตูหรือจุดเช็กชื่อ:</label>
                 <div className="grid grid-cols-1 gap-2">
                   <PagedList items={campusGates} pageSize={3} renderItem={(gate) => {
                     const isSelected = gate.id === selectedGateId;
@@ -1156,23 +1156,23 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         onClick={() => setSelectedGateId(gate.id)}
                         className={`p-3 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
                           isSelected 
-                            ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-400 dark:border-blue-500 text-blue-950 dark:text-blue-100 shadow-2xs ring-1 ring-blue-400' 
-                            : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-text-title)] shadow-2xs ring-1 ring-[var(--color-primary)]' 
+                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
+                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
                             <MapPin className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="font-bold text-xs">{gate.nameTh}</p>
-                            <p className="text-[10px] text-slate-600 dark:text-slate-300 font-mono">
+                            <p className="font-bold text-xs text-[var(--color-text-title)]">{gate.nameTh}</p>
+                            <p className="text-[10px] text-[var(--color-text-muted)] font-mono">
                               รัศมี {gate.radiusMeters} ม. • พิกัด {gate.lat.toFixed(4)}, {gate.lng.toFixed(4)}
                             </p>
                           </div>
                         </div>
                         {isSelected && (
-                          <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-[var(--color-primary)] text-white text-[10px] font-bold">
                             จุดปัจจุบัน
                           </span>
                         )}
@@ -1185,13 +1185,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {/* Status Badge */}
               <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
                 isInGeofence 
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200' 
-                  : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-700 text-rose-900 dark:text-rose-200'
+                  ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100' 
+                  : 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
               }`}>
                 {isInGeofence ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-rose-700 dark:text-rose-300 shrink-0 mt-0.5" />
                 )}
                 <div className="space-y-1 text-xs">
                   <p className="font-bold">
@@ -1207,7 +1207,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Testing Presets for Location - Compact Text Links */}
               <div className="space-y-1.5 pt-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block">จำลองระยะห่าง:</label>
+                <label className="text-xs font-bold text-[var(--color-text-title)] block">จำลองระยะห่าง:</label>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   {[
                     { dist: 15, label: '15 ม. (ในเขต)', inZone: true },
@@ -1222,7 +1222,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       className={`font-semibold underline underline-offset-4 cursor-pointer transition ${
                         currentGpsDistance === preset.dist
                           ? preset.inZone ? 'text-emerald-700 dark:text-emerald-300 font-black' : 'text-rose-700 dark:text-rose-300 font-black'
-                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
                       {preset.label}
@@ -1241,51 +1241,51 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {subTab === 'leave_request' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Form */}
-          <div className="lg:col-span-7 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5 text-slate-900 dark:text-slate-100">
-            <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+          <div className="lg:col-span-7 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-5 text-[var(--color-text-body)]">
+            <div className="flex items-center gap-2.5 border-b border-[var(--color-border)] pb-4">
+              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">ยื่นใบลาออนไลน์ผ่านโทรศัพท์</h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
+                <h3 className="text-base font-bold text-[var(--color-text-title)]">ยื่นใบลาออนไลน์ผ่านโทรศัพท์</h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
                   สำหรับนักเรียน, ผู้ปกครอง และครู ยื่นขอลาป่วย/ลากิจพร้อมแนบหลักฐาน
                 </p>
               </div>
             </div>
 
             {leaveSuccessNotice && (
-              <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300 shrink-0" />
                 <span>{leaveSuccessNotice}</span>
               </div>
             )}
 
             {leaveErrorNotice && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
                 <span>{leaveErrorNotice}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmitLeave} className="space-y-4 text-xs">
-              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-                <span className={leaveFormStep === 1 ? 'font-bold text-emerald-700 dark:text-emerald-400' : ''}>1. Leave details</span>
+              <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
+                <span className={leaveFormStep === 1 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>1. Leave details</span>
                 <span>→</span>
-                <span className={leaveFormStep === 2 ? 'font-bold text-emerald-700 dark:text-emerald-400' : ''}>2. Reason & evidence</span>
+                <span className={leaveFormStep === 2 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>2. Reason & evidence</span>
               </div>
               {leaveFormStep === 1 && (
                 <div className="space-y-4">
               {/* Person Summary / Switcher (Admin only; Student & Teacher locked to own profile) */}
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
-                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block">ผู้ขอยื่นใบลา:</span>
+              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
+                <span className="text-[11px] font-bold text-[var(--color-text-title)] block">ผู้ขอยื่นใบลา:</span>
                 {!isRestrictedViewer && currentUser?.role !== 'teacher' ? (
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setActiveUserType('student')}
                       className={`px-2.5 py-1 rounded-lg font-bold text-xs transition max-w-full truncate cursor-pointer ${
-                        effectiveUserType === 'student' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                        effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                       }`}
                     >
                       นักเรียน: {selectedStudent?.firstNameTh} ({selectedStudent?.room})
@@ -1294,15 +1294,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       type="button"
                       onClick={() => setActiveUserType('teacher')}
                       className={`px-2.5 py-1 rounded-lg font-bold text-xs transition max-w-full truncate cursor-pointer ${
-                        effectiveUserType === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                        effectiveUserType === 'teacher' ? 'bg-indigo-700 text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                       }`}
                     >
                       ครู: {selectedTeacher?.fullNameTh}
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
-                    <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white truncate">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
+                    <span className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white truncate">
                       {activePersonName} ({activePersonId})
                     </span>
                   </div>
@@ -1311,15 +1311,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Leave Type */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-200">ประเภทการลา:</label>
+                <label className="font-bold text-[var(--color-text-title)]">ประเภทการลา:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setLeaveType('sick')}
                     className={`p-2 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
                       leaveType === 'sick' 
-                        ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-600 text-rose-800 dark:text-rose-200 shadow-2xs' 
-                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        ? 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 shadow-2xs' 
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
                     }`}
                   >
                     🤒 ลาป่วย
@@ -1329,8 +1329,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     onClick={() => setLeaveType('personal')}
                     className={`p-2 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
                       leaveType === 'personal' 
-                        ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-200 shadow-2xs' 
-                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        ? 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 shadow-2xs' 
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
                     }`}
                   >
                     🚗 ลากิจ
@@ -1340,8 +1340,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     onClick={() => setLeaveType('official')}
                     className={`p-2 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
                       leaveType === 'official' 
-                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-600 text-blue-800 dark:text-blue-200 shadow-2xs' 
-                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        ? 'bg-blue-100 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200 shadow-2xs' 
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
                     }`}
                   >
                     🏛️ ไปราชการ
@@ -1352,22 +1352,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {/* Date Range */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-200">ตั้งแต่วันที่:</label>
+                  <label className="font-bold text-[var(--color-text-title)]">ตั้งแต่วันที่:</label>
                   <input
                     type="date"
                     value={leaveStartDate}
                     onChange={(e) => setLeaveStartDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-200">ถึงวันที่:</label>
+                  <label className="font-bold text-[var(--color-text-title)]">ถึงวันที่:</label>
                   <input
                     type="date"
                     value={leaveEndDate}
                     onChange={(e) => setLeaveEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                     required
                   />
                 </div>
@@ -1377,7 +1377,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     onClick={() => {
                       if (leaveStartDate && leaveEndDate) setLeaveFormStep(2);
                     }}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
                   >
                     Continue to reason and evidence
                   </button>
@@ -1388,20 +1388,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <div className="space-y-4">
               {/* Reason */}
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-200">เหตุผลประกอบการลา:</label>
+                <label className="font-bold text-[var(--color-text-title)]">เหตุผลประกอบการลา:</label>
                 <textarea
                   rows={3}
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
                   placeholder="ระบุอาการเจ็บป่วย หรือภารกิจจำเป็น..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
                   required
                 />
               </div>
 
               {/* Medical certificate / Document attachment */}
               <div className="space-y-2">
-                <label className="font-bold text-slate-700 dark:text-slate-200">แนบรูปใบรับรองแพทย์ / เอกสารหลักฐาน (ถ้ามี):</label>
+                <label className="font-bold text-[var(--color-text-title)]">แนบรูปใบรับรองแพทย์ / เอกสารหลักฐาน (ถ้ามี):</label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1409,13 +1409,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       const sampleCert = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500';
                       setLeaveAttachmentUrl(sampleCert);
                     }}
-                    className="text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold flex items-center gap-1.5 underline underline-offset-4 cursor-pointer"
+                    className="text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1.5 underline underline-offset-4 cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>แนบรูปใบรับรองแพทย์ตัวอย่าง</span>
                   </button>
                   {leaveAttachmentUrl && (
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" />
                       <span>แนบเอกสารแล้ว</span>
                     </span>
@@ -1423,12 +1423,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 {leaveAttachmentUrl && (
-                  <div className="relative w-36 h-24 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 mt-2">
+                  <div className="relative w-36 h-24 rounded-xl overflow-hidden border border-[var(--color-border)] mt-2">
                     <img src={leaveAttachmentUrl} alt="Medical Certificate" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setLeaveAttachmentUrl('')}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-black/70 text-white hover:bg-black"
+                      className="absolute top-1 right-1 p-1 rounded-full bg-black/80 text-white hover:bg-black"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1438,7 +1438,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>ส่งคำขอใบลาให้อาจารย์ประจำชั้น</span>
@@ -1446,7 +1446,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setLeaveFormStep(1)}
-                    className="w-full py-1 text-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-bold text-xs underline underline-offset-4 cursor-pointer"
+                    className="w-full py-1 text-center text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-bold text-xs underline underline-offset-4 cursor-pointer"
                   >
                     ← ย้อนกลับแก้ไขรายละเอียดวันลา
                   </button>
@@ -1456,9 +1456,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
 
           {/* Right: History of Leave Requests (Scoped for students/parents) */}
-          <div className="lg:col-span-5 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 text-slate-900 dark:text-slate-100">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <FileCheck2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <div className="lg:col-span-5 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
+            <h4 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+              <FileCheck2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
               <span>
                 {isRestrictedViewer
                   ? `ประวัติใบลาของคุณ (${scopedLeaveRequests.length})`
@@ -1467,59 +1467,59 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </h4>
 
             <div className="space-y-3">
-              <PagedList items={scopedLeaveRequests} pageSize={2} emptyState={<p className="text-xs text-slate-600 dark:text-slate-300 py-4 text-center">ยังไม่มีประวัติใบลาของคุณ</p>} renderItem={(req) => (
-                <div key={req.id} className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 space-y-2 text-xs">
+              <PagedList items={scopedLeaveRequests} pageSize={2} emptyState={<p className="text-xs text-[var(--color-text-muted)] py-4 text-center">ยังไม่มีประวัติใบลาของคุณ</p>} renderItem={(req) => (
+                <div key={req.id} className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-200' :
-                      req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200' : 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-200'
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' :
+                      req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700'
                     }`}>
                       {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
                     </span>
 
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200' :
-                      req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200' : 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200'
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
+                      req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                     }`}>
                       {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
                     </span>
                   </div>
 
                   <div>
-                    <p className="font-bold text-slate-900 dark:text-white">{req.userName}</p>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300">{req.gradeLevelOrDepartment} • วันที่ {req.startDate} ถึง {req.endDate}</p>
+                    <p className="font-bold text-[var(--color-text-title)]">{req.userName}</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">{req.gradeLevelOrDepartment} • วันที่ {req.startDate} ถึง {req.endDate}</p>
                   </div>
 
-                  <p className="text-slate-700 dark:text-slate-200 text-[11px] bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <p className="text-[var(--color-text-body)] text-[11px] bg-[var(--color-card)] p-2 rounded-lg border border-[var(--color-border)]">
                     "{req.reason}"
                   </p>
 
                   {req.attachmentUrl && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-blue-700 dark:text-blue-400 font-semibold">
+                    <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-primary-text)] font-semibold">
                       <FileText className="w-3 h-3" />
                       <span>มีรูปใบรับรองแพทย์แนบ</span>
                     </div>
                   )}
 
                   {req.approvalRemarks && (
-                    <div className="text-[10px] text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-[10px] text-[var(--color-text-muted)] pt-1 border-t border-[var(--color-border)]">
                       ผู้อนุมัติ: {req.approvedBy} ({req.approvalRemarks})
                     </div>
                   )}
 
                   {req.status === 'pending' && onUpdateLeaveStatus && (currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                       <button
                         type="button"
                         onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ')}
-                        className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer"
+                        className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer"
                       >
                         ✓ อนุมัติใบลา
                       </button>
                       <button
                         type="button"
                         onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ')}
-                        className="py-1.5 px-3 rounded-lg bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-200 font-semibold text-xs transition cursor-pointer"
+                        className="py-1.5 px-3 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-xs transition cursor-pointer"
                       >
                         ✕ ปฏิเสธ
                       </button>
@@ -1537,54 +1537,54 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* ========================================================================= */}
       {subTab === 'teacher_proxy' && isStaffUser && (
         <div className="space-y-4">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-amber-600" />
+                <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>ครูเช็กชื่อให้นักเรียน (กรอกรหัสนักเรียนก่อนเช็กชื่อ)</span>
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
+                <p className="text-xs text-[var(--color-text-muted)]">
                   กรุณาระบุรหัสนักเรียนเพื่อตรวจสอบตัวตนก่อนบันทึกเวลาเข้า-ออกแทนนักเรียน
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setProxyShowRosterHint(!proxyShowRosterHint)}
-                className="text-xs font-bold text-blue-700 dark:text-blue-400 underline underline-offset-4 cursor-pointer self-start sm:self-auto"
+                className="text-xs font-bold text-[var(--color-primary-text)] underline underline-offset-4 cursor-pointer self-start sm:self-auto"
               >
                 {proxyShowRosterHint ? 'ซ่อนตารางรหัสนักเรียน' : 'ดูรายชื่อและรหัสนักเรียน'}
               </button>
             </div>
 
             {proxySavedNotification && (
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
                 <span>{proxySavedNotification}</span>
               </div>
             )}
 
             {/* Step 1: Required Student ID Input */}
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+            <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-3 text-xs">
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-800 dark:text-slate-100 block">
-                  1. กรอกรหัสนักเรียน (Student ID) <span className="text-rose-600">*จำเป็น</span>
+                <label className="font-bold text-[var(--color-text-title)] block">
+                  1. กรอกรหัสนักเรียน (Student ID) <span className="text-rose-700 dark:text-rose-300">*จำเป็น</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                    <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
                     <input
                       type="text"
                       value={proxyStudentIdInput}
                       onChange={(e) => setProxyStudentIdInput(e.target.value)}
                       placeholder={`เช่น ${students[0]?.studentIdNumber || 'ED-6901'}`}
-                      className="w-full pl-8 pr-8 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-8 pr-8 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
                     />
                     {proxyStudentIdInput && (
                       <button
                         type="button"
                         onClick={() => setProxyStudentIdInput('')}
-                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+                        className="absolute right-2.5 top-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
                         aria-label="ล้างรหัสนักเรียน"
                       >
                         <X className="w-4 h-4" />
@@ -1593,7 +1593,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 </div>
                 {students.length > 0 && (
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
                     ตัวอย่างรหัสในระบบ: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
                   </p>
                 )}
@@ -1601,33 +1601,33 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Verification Feedback & Check-in Controls */}
               {!trimmedProxyStudentId ? (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
                   <span>กรุณาใส่รหัสนักเรียนด้านบนก่อนจึงจะสามารถเช็กชื่อให้นักเรียนได้</span>
                 </div>
               ) : !matchedProxyStudent ? (
-                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
                   <span>ไม่พบนักเรียนรหัส "{trimmedProxyStudentId}" กรุณาตรวจสอบรหัสนักเรียนให้ถูกต้อง</span>
                 </div>
               ) : (
-                <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 space-y-3">
+                <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 space-y-3">
                   <div className="flex items-center gap-3">
                     <img
                       src={matchedProxyStudent.avatarUrl}
                       alt={matchedProxyStudent.firstNameTh}
-                      className="w-11 h-11 rounded-xl object-cover border border-emerald-300 shrink-0"
+                      className="w-11 h-11 rounded-xl object-cover border border-emerald-400 dark:border-emerald-700 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-slate-900 dark:text-white text-sm">
+                        <span className="font-bold text-emerald-950 dark:text-emerald-100 text-sm">
                           {matchedProxyStudent.firstNameTh} {matchedProxyStudent.lastNameTh}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold">
                           ยืนยันรหัสถูกต้อง ✓
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono">
+                      <p className="text-[11px] text-emerald-900 dark:text-emerald-200 font-mono">
                         รหัส: {matchedProxyStudent.studentIdNumber} • {matchedProxyStudent.gradeLevel} {matchedProxyStudent.room}
                       </p>
                     </div>
@@ -1636,15 +1636,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   {/* Step 2: Check-in / Check-out & Status */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block">ประเภทบันทึก:</span>
+                      <span className="text-[11px] font-bold text-emerald-950 dark:text-emerald-100 block">ประเภทบันทึก:</span>
                       <div className="flex gap-1.5">
                         <button
                           type="button"
                           onClick={() => setProxyCheckType('check_in')}
                           className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
                             proxyCheckType === 'check_in'
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                           }`}
                         >
                           เข้าโรงเรียน (IN)
@@ -1654,8 +1654,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                           onClick={() => setProxyCheckType('check_out')}
                           className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
                             proxyCheckType === 'check_out'
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                              ? 'bg-purple-700 text-white'
+                              : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                           }`}
                         >
                           ออกโรงเรียน (OUT)
@@ -1664,7 +1664,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block">สถานะการเข้าเรียน:</span>
+                      <span className="text-[11px] font-bold text-emerald-950 dark:text-emerald-100 block">สถานะการเข้าเรียน:</span>
                       <div className="flex flex-wrap gap-1">
                         {(['present', 'late', 'sick', 'absent'] as AttendanceStatus[]).map((stt) => (
                           <button
@@ -1673,10 +1673,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                             onClick={() => setProxySingleStatus(stt)}
                             className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
                               proxySingleStatus === stt
-                                ? stt === 'present' ? 'bg-emerald-600 text-white' :
+                                ? stt === 'present' ? 'bg-emerald-700 text-white' :
                                   stt === 'late' ? 'bg-amber-500 text-slate-950' :
-                                  stt === 'sick' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
-                                : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                                  stt === 'sick' ? 'bg-[var(--color-primary)] text-white' : 'bg-rose-700 text-white'
+                                : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                             }`}
                           >
                             {stt === 'present' ? 'มา' : stt === 'late' ? 'สาย' : stt === 'sick' ? 'ลา' : 'ขาด'}
@@ -1701,15 +1701,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
           {/* Optional Reference Roster (Read-only ID lookup so teachers always verify ID above before check-in) */}
           {proxyShowRosterHint && (
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-800 dark:text-white">
+                <span className="text-xs font-bold text-[var(--color-text-title)]">
                   รายชื่ออ้างอิงสำหรับตรวจสอบรหัสนักเรียน ({filteredProxyStudents.length} คน)
                 </span>
                 <select
                   value={proxyGradeFilter}
                   onChange={(e) => setProxyGradeFilter(e.target.value)}
-                  className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
                 >
                   <option value="all">ทุกระดับชั้น</option>
                   <option value="มัธยมศึกษาปีที่ 4 (M.4)">ม.4</option>
@@ -1717,17 +1717,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <option value="มัธยมศึกษาปีที่ 6 (M.6)">ม.6</option>
                 </select>
               </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="divide-y divide-[var(--color-border)]">
                 <PagedList items={filteredProxyStudents} pageSize={4} renderItem={(st) => (
                   <div key={st.id} className="py-2 flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <img src={st.avatarUrl} alt={st.firstNameTh} className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0" />
+                      <img src={st.avatarUrl} alt={st.firstNameTh} className="w-8 h-8 rounded-lg object-cover border border-[var(--color-border)] shrink-0" />
                       <div className="min-w-0">
-                        <p className="font-bold text-slate-900 dark:text-white truncate">{st.firstNameTh} {st.lastNameTh}</p>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{st.gradeLevel} {st.room}</p>
+                        <p className="font-bold text-[var(--color-text-title)] truncate">{st.firstNameTh} {st.lastNameTh}</p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] truncate">{st.gradeLevel} {st.room}</p>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200 shrink-0">
+                    <span className="px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-mono text-[11px] font-bold text-[var(--color-text-title)] shrink-0">
                       {st.studentIdNumber}
                     </span>
                   </div>
@@ -1743,14 +1743,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* ========================================================================= */}
       {subTab === 'period_checkin' && (
         <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-2.5 p-0.5' : 'space-y-4'}`}>
-          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="p-3.5 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <QrCode className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <QrCode className="w-4 h-4 text-purple-700 dark:text-purple-400" />
                   <span>เช็กชื่อเข้าเรียนรายคาบ (QR Code &amp; Link)</span>
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
+                <p className="text-xs text-[var(--color-text-muted)]">
                   {isRestrictedViewer
                     ? 'สแกน QR Code หรือเปิดลิงก์จากอาจารย์เพื่อเช็กชื่อเข้าคาบเรียนของตนเอง'
                     : `สร้าง QR Code และลิงก์ให้นักเรียนสแกนเช็กชื่อเข้าคาบ (${periodStudentIds.length} นักเรียน)`}
@@ -1760,7 +1760,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <button
                   type="button"
                   onClick={handleSavePeriodAttendance}
-                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
                 >
                   บันทึกรายชื่อทั้งคาบ
                 </button>
@@ -1769,11 +1769,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เลือกรายวิชา:</label>
+                <label className="text-[11px] font-bold text-[var(--color-text-muted)]">เลือกรายวิชา:</label>
                 <select
                   value={selectedCourse.id}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
                 >
                   {(courses.length > 0 ? courses : [fallbackCourse]).map(c => (
                     <option key={c.id} value={c.id}>{c.code} {c.titleTh}</option>
@@ -1782,11 +1782,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เลือกคาบเรียน:</label>
+                <label className="text-[11px] font-bold text-[var(--color-text-muted)]">เลือกคาบเรียน:</label>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
                 >
                   {periodsList.map(p => (
                     <option key={p.period} value={p.period}>{p.label} ({p.time})</option>
@@ -1795,26 +1795,26 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">วันที่:</label>
+                <label className="text-[11px] font-bold text-[var(--color-text-muted)]">วันที่:</label>
                 <input
                   type="date"
                   value={periodDate}
                   onChange={(e) => setPeriodDate(e.target.value)}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
                 />
               </div>
             </div>
 
             {periodSavedNotification && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
                 <span>{periodSavedNotification}</span>
               </div>
             )}
           </div>
 
           {/* QR CODE & SHAREABLE CHECK-IN LINK CARD (Available for teachers to share AND accessible for QR check-in) */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40 border border-indigo-200 dark:border-indigo-800/70 shadow-xs">
+          <div className="p-4 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-border)] shadow-xs">
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <QrCodeMatrix
@@ -1822,43 +1822,43 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   size={embeddedMobile ? 132 : 148}
                   label={`QR Code เช็กชื่อคาบเรียน ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
                 />
-                <span className="text-[10px] font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-mono font-bold text-indigo-900 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-950 border border-indigo-300 dark:border-indigo-700 px-2 py-0.5 rounded-md">
                   {expectedPeriodCode}
                 </span>
               </div>
 
               <div className="flex-1 min-w-0 w-full space-y-2.5 text-xs">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm">
-                    <Link2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <h4 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5 text-sm">
+                    <Link2 className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
                     <span>QR Code &amp; ลิงก์เช็กชื่อรายคาบ</span>
                   </h4>
                   <button
                     type="button"
                     onClick={() => setShowPeriodQrModal(true)}
-                    className="text-xs font-bold text-indigo-700 dark:text-indigo-300 underline underline-offset-4 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-[var(--color-primary-text)] underline underline-offset-4 flex items-center gap-1 cursor-pointer"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
                     <span>ขยาย QR เต็มจอ</span>
                   </button>
                 </div>
 
-                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                <p className="text-[11px] text-[var(--color-text-body)]">
                   วิชา <strong>{selectedCourse.code} {selectedCourse.titleTh}</strong> • คาบที่ {selectedPeriod} • วันที่ {periodDate}
                 </p>
 
-                <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
                     value={periodCheckinUrl}
                     aria-label="ลิงก์เช็กชื่อรายคาบ"
-                    className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-slate-700 dark:text-slate-200 focus:outline-hidden truncate"
+                    className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-[var(--color-text-title)] focus:outline-hidden truncate"
                   />
                   <button
                     type="button"
                     onClick={handleCopyPeriodLink}
-                    className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
                   >
                     {periodQrCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{periodQrCopied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}</span>
@@ -1874,13 +1874,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         handleStudentSelfPeriodCheckin(periodCheckinUrl);
                       }
                     }}
-                    className="font-bold text-blue-700 dark:text-blue-400 underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
+                    className="font-bold text-[var(--color-primary-text)] underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>{isRestrictedViewer ? 'กดลิงก์เช็กชื่อเข้าคาบนี้ทันที' : 'เปิดลิงก์เช็กชื่อรายคาบ'}</span>
                   </a>
                   {isStaffUser && (
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
                       สแกน/เช็กชื่อแล้ว: {
                         periodAttendance.filter(
                           (p) => p.courseId === selectedCourse.id && p.periodNumber === selectedPeriod && p.date === periodDate && (p.status === 'present' || p.status === 'late')
@@ -1896,47 +1896,47 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           {/* STUDENT VIEW: SELF CHECK-IN VIA QR/CODE + OWN RECORD ONLY (NEVER SHOW OTHER STUDENTS) */}
           {isRestrictedViewer ? (
             <div className="space-y-3">
-              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 text-xs">
+              <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3 text-xs">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
                       src={selectedStudent?.avatarUrl}
                       alt={selectedStudent?.firstNameTh}
-                      className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0"
+                      className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
                     />
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-900 dark:text-white truncate">
+                      <p className="font-bold text-[var(--color-text-title)] truncate">
                         {selectedStudent?.firstNameTh} {selectedStudent?.lastNameTh}
                       </p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono">
+                      <p className="text-[11px] text-[var(--color-text-muted)] font-mono">
                         รหัส {selectedStudent?.studentIdNumber} • {selectedStudent?.room}
                       </p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 text-[10px] font-bold">
                     เห็นเฉพาะข้อมูลของฉัน
                   </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block">
+                  <label className="text-[11px] font-bold text-[var(--color-text-title)] block">
                     วางลิงก์เช็กชื่อ หรือกรอกรหัสจากการสแกน QR คาบเรียน:
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
-                      <ScanLine className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <ScanLine className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
                       <input
                         type="text"
                         value={studentPeriodCodeInput}
                         onChange={(e) => setStudentPeriodCodeInput(e.target.value)}
                         placeholder={`วางลิงก์หรือรหัส เช่น ${expectedPeriodCode}`}
-                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs font-mono"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => handleStudentSelfPeriodCheckin()}
-                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                     >
                       <QrCode className="w-4 h-4" />
                       <span>ยืนยันเช็กชื่อเข้าคาบ</span>
@@ -1945,27 +1945,27 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 {studentPeriodCheckinMsg && (
-                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
                     <span>{studentPeriodCheckinMsg}</span>
                   </div>
                 )}
 
                 {studentPeriodCheckinError && (
-                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-700 text-rose-800 dark:text-rose-200 font-semibold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
                     <span>{studentPeriodCheckinError}</span>
                   </div>
                 )}
               </div>
 
               {/* Only this student's own period check-in history */}
-              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5 text-xs">
-                <h4 className="font-bold text-slate-900 dark:text-white">
+              <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
+                <h4 className="font-bold text-[var(--color-text-title)]">
                   ประวัติเช็กชื่อรายคาบของคุณ ({scopedPeriodAttendance.length})
                 </h4>
                 {scopedPeriodAttendance.length === 0 ? (
-                  <p className="text-slate-600 dark:text-slate-300 text-center py-4">
+                  <p className="text-[var(--color-text-muted)] text-center py-4">
                     ยังไม่มีบันทึกเช็กชื่อรายคาบของคุณ
                   </p>
                 ) : (
@@ -1973,19 +1973,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     items={scopedPeriodAttendance}
                     pageSize={4}
                     renderItem={(rec) => (
-                      <div key={rec.id} className="py-2 flex items-center justify-between gap-2 border-b last:border-b-0 border-slate-100 dark:border-slate-800">
+                      <div key={rec.id} className="py-2 flex items-center justify-between gap-2 border-b last:border-b-0 border-[var(--color-border)]">
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-900 dark:text-white truncate">
+                          <p className="font-bold text-[var(--color-text-title)] truncate">
                             {rec.courseCode} • คาบที่ {rec.periodNumber}
                           </p>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+                          <p className="text-[11px] text-[var(--color-text-muted)] truncate">
                             {rec.date} ({rec.timeSlot}) • {rec.checkMethod === 'qr_code' ? 'สแกน QR/ลิงก์' : 'อาจารย์เช็กชื่อ'}
                           </p>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                          rec.status === 'present' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' :
-                          rec.status === 'late' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200' :
-                          rec.status === 'excused' ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300' : 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                          rec.status === 'present' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
+                          rec.status === 'late' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' :
+                          rec.status === 'excused' ? 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                         }`}>
                           {rec.status === 'present' ? 'เข้าเรียน' : rec.status === 'late' ? 'สาย' : rec.status === 'excused' ? 'ลา' : 'ขาด'}
                         </span>
@@ -1996,12 +1996,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
             </div>
           ) : periodStudentIds.length === 0 ? (
-            <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs">
+            <div className="p-6 text-center bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] text-[var(--color-text-muted)] text-xs">
               ยังไม่มีรายชื่อนักเรียนในโรงเรียนนี้
             </div>
           ) : (
-            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden shadow-xs">
+              <div className="divide-y divide-[var(--color-border)]">
                 <PagedList items={periodStudentIds} pageSize={4} renderItem={(stuId) => {
                   const st = students.find(s => s.id === stuId);
                   if (!st) return null;
@@ -2016,11 +2016,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         <img
                           src={st.avatarUrl}
                           alt={st.firstNameEn}
-                          className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                          className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
                         />
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-900 dark:text-white truncate">{st.firstNameTh} {st.lastNameTh}</p>
-                          <p className="text-slate-600 dark:text-slate-300 text-[11px] font-mono truncate">
+                          <p className="font-bold text-[var(--color-text-title)] truncate">{st.firstNameTh} {st.lastNameTh}</p>
+                          <p className="text-[var(--color-text-muted)] text-[11px] font-mono truncate">
                             ID: {st.studentIdNumber} • ชั้น {st.gradeLevel} {st.room}
                             {savedRecord?.checkMethod === 'qr_code' ? ' • สแกน QR แล้ว' : ''}
                           </p>
@@ -2035,10 +2035,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                             onClick={() => setPeriodStatuses(prev => ({ ...prev, [st.id]: pst }))}
                             className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
                               status === pst
-                                ? pst === 'present' ? 'bg-emerald-600 text-white' :
+                                ? pst === 'present' ? 'bg-emerald-700 text-white' :
                                   pst === 'late' ? 'bg-amber-500 text-slate-950' :
-                                  pst === 'excused' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                  pst === 'excused' ? 'bg-[var(--color-primary)] text-white' : 'bg-rose-700 text-white'
+                                : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
                             }`}
                           >
                             {pst === 'present' ? 'เข้าเรียน' : pst === 'late' ? 'สาย' : pst === 'excused' ? 'ลา' : 'ขาด'}
@@ -2055,15 +2055,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           {/* Fullscreen QR Code Modal for classroom display */}
           {showPeriodQrModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 border border-slate-200 dark:border-slate-700 shadow-2xl">
+              <div className="bg-[var(--color-card)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 border border-[var(--color-border)] shadow-2xl">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <span className="text-xs font-bold text-[var(--color-primary-text)]">
                     QR Code เช็กชื่อเข้าคาบเรียน
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowPeriodQrModal(false)}
-                    className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                    className="p-1.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] cursor-pointer"
                     aria-label="ปิดหน้าต่าง QR"
                   >
                     <X className="w-4 h-4" />
@@ -2077,20 +2077,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   />
                 </div>
                 <div className="space-y-1 text-xs">
-                  <p className="font-bold text-slate-900 dark:text-white text-sm">
+                  <p className="font-bold text-[var(--color-text-title)] text-sm">
                     {selectedCourse.code} {selectedCourse.titleTh}
                   </p>
-                  <p className="text-slate-600 dark:text-slate-300">
+                  <p className="text-[var(--color-text-muted)]">
                     คาบที่ {selectedPeriod} • วันที่ {periodDate}
                   </p>
-                  <p className="font-mono font-bold text-indigo-700 dark:text-indigo-300">
+                  <p className="font-mono font-bold text-[var(--color-primary-text)]">
                     รหัสคาบ: {expectedPeriodCode}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleCopyPeriodLink}
-                  className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {periodQrCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   <span>{periodQrCopied ? 'คัดลอกลิงก์เช็กชื่อแล้ว ✓' : 'คัดลอกลิงก์ส่งให้นักเรียน'}</span>
@@ -2105,34 +2105,34 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* SUCCESS CONFIRMATION MODAL & LINE FLEX MESSAGE PREVIEW POPUP */}
       {/* ========================================================================= */}
       {checkinSuccessFeedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white text-slate-900 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center shadow-inner">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[var(--color-card)] text-[var(--color-text-title)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-[var(--color-border)] text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 mx-auto flex items-center justify-center shadow-inner">
               <Check className="w-8 h-8 stroke-[3]" />
             </div>
 
             <div className="space-y-1">
-              <span className={`inline-block px-3 py-0.5 rounded-full text-xs font-bold ${
+              <span className={`inline-block px-3 py-0.5 rounded-full text-xs font-bold border ${
                 checkinSuccessFeedback.checkType === 'check_in' 
-                  ? 'bg-emerald-100 text-emerald-800' 
-                  : 'bg-purple-100 text-purple-800'
+                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' 
+                  : 'bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700'
               }`}>
                 {checkinSuccessFeedback.checkType === 'check_in' ? 'เช็กชื่อเข้าโรงเรียนสำเร็จ' : 'เช็กชื่อออกจากโรงเรียนสำเร็จ'}
               </span>
-              <h3 className="text-base font-extrabold text-slate-900 pt-1">
+              <h3 className="text-base font-extrabold text-[var(--color-text-title)] pt-1">
                 {checkinSuccessFeedback.userName}
               </h3>
-              <p className="text-xs text-slate-600">{checkinSuccessFeedback.userRole}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">{checkinSuccessFeedback.userRole}</p>
             </div>
 
             {/* Captured Selfie Snapshot preview */}
-            <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-48 mx-auto border-2 border-slate-200 bg-slate-100 shadow-sm">
+            <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-48 mx-auto border-2 border-[var(--color-border)] bg-[var(--color-card-subtle)] shadow-sm">
               <img
                 src={checkinSuccessFeedback.photoUrl}
                 alt="Verified snapshot"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute bottom-1.5 left-1.5 right-1.5 p-1 rounded-lg bg-black/75 text-white text-[9px] font-mono flex items-center justify-between">
+              <div className="absolute bottom-1.5 left-1.5 right-1.5 p-1 rounded-lg bg-black/80 text-white text-[9px] font-mono flex items-center justify-between">
                 <span>{checkinSuccessFeedback.gateName}</span>
                 <span>{checkinSuccessFeedback.time} น.</span>
               </div>
@@ -2142,16 +2142,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setShowLineFlexPreview(!showLineFlexPreview)}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+              className="w-full py-2 px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
-              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              <MessageCircle className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
               <span>{showLineFlexPreview ? 'ซ่อนการ์ดจำลอง LINE' : 'ดูการ์ด LINE Flex Message ที่ส่งหาผู้ปกครอง'}</span>
             </button>
 
             {/* REALISTIC LINE FLEX MESSAGE CHAT CARD SIMULATOR */}
             {showLineFlexPreview && (
-              <div className="p-4 rounded-2xl bg-[#7289DA]/10 border border-[#06C755]/30 text-left space-y-2 animate-fade-in">
-                {/* LINE Chat Bubble */}
+              <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-emerald-400 dark:border-emerald-700 text-left space-y-2 animate-fade-in">
+                {/* LINE Chat Bubble (Preserved authentic white chat bubble) */}
                 <div className="rounded-2xl overflow-hidden bg-white shadow-md border border-slate-200 text-slate-900">
                   {/* Green Top Header */}
                   <div className="bg-[#06C755] text-slate-950 p-3 flex items-center justify-between">
@@ -2165,7 +2165,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   {/* Bubble Image */}
                   <div className="relative aspect-16/9 bg-slate-900 overflow-hidden">
                     <img src={checkinSuccessFeedback.photoUrl} alt="LINE Flex Preview" className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow">
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold shadow">
                       VERIFIED
                     </div>
                   </div>
@@ -2198,8 +2198,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
 
                   {/* Bubble Action Button */}
-                  <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
-                    <span className="text-[11px] font-bold text-[#06C755] flex items-center justify-center gap-1">
+                  <div className="p-2 bg-slate-50 border-t border-slate-200 text-center">
+                    <span className="text-[11px] font-bold text-emerald-700 flex items-center justify-center gap-1">
                       <span>เปิดดูประวัติย้อนหลังใน Parent Portal</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </span>
@@ -2214,7 +2214,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 setCheckinSuccessFeedback(null);
                 setShowLineFlexPreview(false);
               }}
-              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition"
+              className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs shadow-md transition cursor-pointer"
             >
               ตกลงและปิดหน้าต่าง
             </button>

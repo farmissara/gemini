@@ -151,35 +151,35 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-semibold">
-              <BrainCircuit className="w-4 h-4 text-cyan-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/70 border border-indigo-400/40 text-indigo-100 text-xs font-semibold">
+              <BrainCircuit className="w-4 h-4 text-cyan-300" />
               <span>{lang === 'th' ? 'ระบบ AI วิเคราะห์สมรรถนะรายบุคคล & ภารกิจซ่อมเสริม' : 'AI Adaptive Competency & Remedial Engine'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               {lang === 'th' ? 'AI Diagnostic & Adaptive Learning 8 มิติ' : '8-Dimension AI Competency Radar'}
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-200 text-sm leading-relaxed">
               {lang === 'th' 
                 ? 'ระบบประเมินสมรรถนะผู้เรียนรอบด้าน ตรวจจับจุดอ่อนที่ทำคะแนนตกต่ำ วิเคราะห์สาเหตุความเข้าใจคลาดเคลื่อน (Misconceptions) พร้อมจ่ายแบบฝึกหัดซ่อมเสริมอัตโนมัติรายบุคคล'
                 : 'Comprehensive competency assessment across 8 dimensions. Detects learning weaknesses, identifies cognitive misconceptions, and dispenses adaptive remedial quests.'}
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl flex items-center gap-4 shrink-0">
+          <div className="bg-slate-950/45 backdrop-blur-md border border-white/25 p-4 rounded-xl flex items-center gap-4 shrink-0">
             <div className="text-right">
-              <p className="text-xs text-indigo-200 font-medium">
+              <p className="text-xs text-indigo-100 font-medium">
                 {lang === 'th' ? 'คะแนนสมรรถนะเฉลี่ย' : 'Average Competency'}
               </p>
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-black text-cyan-300">{avgScore}</span>
-                <span className="text-xs text-slate-300">/ 100</span>
+                <span className="text-xs text-slate-200">/ 100</span>
               </div>
-              <p className="text-[11px] text-emerald-400 font-semibold flex items-center justify-end gap-1 mt-0.5">
+              <p className="text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5">
                 <TrendingUp className="w-3 h-3" />
                 {lang === 'th' ? `สูงกว่าเกณฑ์ +${avgScore - avgBenchmark} คะแนน` : `+${avgScore - avgBenchmark} above benchmark`}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300">
+            <div className="w-12 h-12 rounded-xl bg-cyan-900/60 border border-cyan-400/50 flex items-center justify-center text-cyan-300">
               <Zap className="w-6 h-6" />
             </div>
           </div>
@@ -187,10 +187,10 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
       </div>
 
       <div className="flex gap-2">
-        <button type="button" onClick={() => setActivePanel('competencies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activePanel === 'competencies' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+        <button type="button" onClick={() => setActivePanel('competencies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'competencies' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
           {lang === 'th' ? 'สมรรถนะ 8 มิติ' : 'Competency Radar'}
         </button>
-        <button type="button" onClick={() => setActivePanel('diagnostics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activePanel === 'diagnostics' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+        <button type="button" onClick={() => setActivePanel('diagnostics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'diagnostics' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
           {lang === 'th' ? `จุดอ่อน (${filteredDiagnostics.length})` : `Diagnostics (${filteredDiagnostics.length})`}
         </button>
       </div>
@@ -198,26 +198,26 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
       {/* Main panel: competency radar or paged diagnostic records */}
       <div className="grid grid-cols-1 gap-6">
         {/* Left Column: 8-Dimension SVG Radar Chart */}
-        {activePanel === 'competencies' && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        {activePanel === 'competencies' && <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
                   {lang === 'th' ? 'เรดาร์สมรรถนะ 8 มิติ (Competency Radar)' : '8-Dimension Competency Radar'}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[var(--color-text-muted)]">
                   {lang === 'th' ? 'เปรียบเทียบคะแนนผู้เรียนกับเกณฑ์มาตรฐานโรงเรียน' : 'Comparing student performance with institutional benchmark'}
                 </p>
               </div>
 
               <div className="flex items-center gap-3 text-xs font-semibold">
-                <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                  <span className="w-3 h-3 rounded-full bg-indigo-500 inline-block" />
+                <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300">
+                  <span className="w-3 h-3 rounded-full bg-indigo-600 inline-block" />
                   <span>{lang === 'th' ? 'ผู้เรียน' : 'Student'}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                  <span className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 inline-block border border-dashed border-slate-500 dark:border-slate-400" />
+                <div className="flex items-center gap-1.5 text-[var(--color-text-body)]">
+                  <span className="w-3 h-3 rounded-full bg-slate-400 dark:bg-slate-500 inline-block border border-dashed border-slate-600 dark:border-slate-300" />
                   <span>{lang === 'th' ? 'เกณฑ์' : 'Benchmark'}</span>
                 </div>
               </div>
@@ -238,7 +238,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                     r={radarRadius * ratio}
                     fill="none"
                     stroke="currentColor"
-                    className="text-slate-200 dark:text-slate-800"
+                    className="text-slate-300 dark:text-slate-700"
                     strokeWidth="1"
                     strokeDasharray={ratio === 1 ? undefined : '3,3'}
                   />
@@ -257,7 +257,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                       x2={x}
                       y2={y}
                       stroke="currentColor"
-                      className="text-slate-200 dark:text-slate-800"
+                      className="text-slate-300 dark:text-slate-700"
                       strokeWidth="1"
                     />
                   );
@@ -317,7 +317,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                       y={y}
                       textAnchor={textAnchor}
                       dominantBaseline="central"
-                      className="text-[10px] font-bold fill-slate-700 dark:fill-slate-300"
+                      className="text-[10px] font-bold fill-[var(--color-text-title)]"
                     >
                       {lang === 'th' ? dim.nameTh.split('&')[0].trim() : dim.nameEn.split('&')[0].trim()}
                     </text>
@@ -328,27 +328,27 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
           </div>
 
           {/* Dimension Details Strip */}
-          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2 text-xs">
+          <div className="mt-4 pt-4 border-t border-[var(--color-border)] grid grid-cols-2 gap-2 text-xs">
             {dimensions.map((dim) => {
               const diff = dim.score - dim.benchmark;
               return (
                 <div 
                   key={dim.id} 
-                  className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between"
+                  className="p-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between"
                 >
                   <div className="truncate pr-1">
-                    <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    <p className="font-semibold text-[var(--color-text-title)] truncate">
                       {lang === 'th' ? dim.nameTh : dim.nameEn}
                     </p>
-                    <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                    <p className="text-[10px] text-[var(--color-text-muted)]">
                       {lang === 'th' ? 'เกณฑ์:' : 'Goal:'} {dim.benchmark}%
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-black text-slate-900 dark:text-white">
+                    <span className="font-black text-[var(--color-text-title)]">
                       {dim.score}%
                     </span>
-                    <span className={`block text-[10px] font-bold ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                    <span className={`block text-[10px] font-bold ${diff >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
                       {diff >= 0 ? `+${diff}` : `${diff}`}
                     </span>
                   </div>
@@ -361,14 +361,14 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
         {/* Right Column: AI Weakness Diagnostic & Adaptive Micro-Quests */}
         {activePanel === 'diagnostics' && <div className="space-y-6">
           {/* Filter Bar & Header */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                <h2 className="text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                   {lang === 'th' ? 'การวินิจฉัยจุดอ่อน & ภารกิจซ่อมเสริมเฉพาะจุด' : 'Weakness Diagnostics & Micro-Quests'}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                   {lang === 'th' 
                     ? 'AI เจาะลึกหัวข้อที่นักเรียนทำคะแนนผิดบ่อย พร้อมแบบทดสอบแก้จุดบกพร่อง' 
                     : 'Pinpoints specific misconceptions with instant adaptive remediation tasks'}
@@ -377,13 +377,13 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
               {/* Student Filter */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                <span className="text-xs text-[var(--color-text-body)] font-medium">
                   {lang === 'th' ? 'เลือกนักเรียน:' : 'Student:'}
                 </span>
                 <select
                   value={selectedStudentFilter}
                   onChange={(e) => setSelectedStudentFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="all">{lang === 'th' ? 'ทุกคน (ทั้งหมด)' : 'All Students'}</option>
                   {studentNames.map(name => (
@@ -400,55 +400,55 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                   key={diag.id}
                   className={`p-4 rounded-xl border transition-all ${
                     diag.isResolved 
-                      ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700'
+                      : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700">
                           {diag.subject}
                         </span>
-                        <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
+                        <span className="text-xs text-[var(--color-text-body)] flex items-center gap-1 font-medium">
                           <User className="w-3.5 h-3.5" />
                           {diag.studentName}
                         </span>
                         {diag.isResolved && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" />
                             {lang === 'th' ? 'ซ่อมเสริมผ่านแล้ว' : 'Remediated'}
                           </span>
                         )}
                       </div>
 
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white pt-1">
+                      <h4 className="text-sm font-bold text-[var(--color-text-title)] pt-1">
                         {diag.topicTh}
                       </h4>
                     </div>
 
                     {/* Accuracy rate pill */}
                     <div className="text-right shrink-0">
-                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <div className="text-xs font-semibold text-[var(--color-text-muted)]">
                         {lang === 'th' ? 'ความแม่นยำเดิม' : 'Original Accuracy'}
                       </div>
-                      <div className={`text-xl font-black ${diag.accuracyRate < 60 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <div className={`text-xl font-black ${diag.accuracyRate < 60 ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
                         {diag.accuracyRate}%
                       </div>
                     </div>
                   </div>
 
                   {/* Root cause and recommendation */}
-                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs space-y-2">
-                    <div className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
-                      <span className="font-bold text-amber-600 dark:text-amber-400 shrink-0">
+                  <div className="mt-3 pt-3 border-t border-[var(--color-border)] text-xs space-y-2">
+                    <div className="flex items-start gap-2 text-[var(--color-text-body)]">
+                      <span className="font-bold text-amber-800 dark:text-amber-300 shrink-0">
                         {lang === 'th' ? 'สาเหตุที่เข้าใจผิด:' : 'Root Cause:'}
                       </span>
                       <span>{diag.rootCauseTh}</span>
                     </div>
 
-                    <div className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
-                      <span className="font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <div className="flex items-start gap-2 text-[var(--color-text-body)]">
+                      <span className="font-bold text-indigo-800 dark:text-indigo-300 shrink-0">
                         {lang === 'th' ? 'แผนแก้จุดอ่อน:' : 'Action Plan:'}
                       </span>
                       <span>{diag.recommendedActionTh}</span>
@@ -457,7 +457,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
                   {/* Action Button */}
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                    <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
                       {lang === 'th' ? `แบบทดสอบ 3 มิติ: ${diag.microQuests.length} ข้อ` : `${diag.microQuests.length} Micro-quest questions`}
                     </span>
 
@@ -466,8 +466,8 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                       onClick={() => handleStartQuest(diag)}
                       className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                         diag.isResolved
-                          ? 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                          ? 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90'
+                          : 'bg-indigo-700 hover:bg-indigo-800 text-white shadow-xs'
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
@@ -488,22 +488,22 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
       {/* Adaptive Micro-Quest Modal */}
       {activeQuestDiag && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
               <div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700">
                   {activeQuestDiag.subject}
                 </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                <h3 className="text-base font-bold text-[var(--color-text-title)] mt-1">
                   {lang === 'th' ? 'ภารกิจซ่อมเสริมเฉพาะจุด (Remedial Micro-Quest)' : 'Remedial Micro-Quest'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveQuestDiag(null)}
-                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -514,7 +514,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
               {!showQuestResult ? (
                 <div>
                   {/* Progress Indicator */}
-                  <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 mb-2 font-medium">
+                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-2 font-medium">
                     <span>
                       {lang === 'th' ? `คำถามข้อที่ ${questStep + 1} จาก ${activeQuestDiag.microQuests.length}` : `Question ${questStep + 1} of ${activeQuestDiag.microQuests.length}`}
                     </span>
@@ -523,15 +523,15 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                     </span>
                   </div>
 
-                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4">
+                  <div className="w-full h-1.5 bg-[var(--color-card-subtle)] rounded-full overflow-hidden mb-4">
                     <div 
-                      className="h-full bg-indigo-600 transition-all duration-300"
+                      className="h-full bg-indigo-700 transition-all duration-300"
                       style={{ width: `${((questStep + 1) / activeQuestDiag.microQuests.length) * 100}%` }}
                     />
                   </div>
 
                   {/* Question Box */}
-                  <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-slate-900 dark:text-white font-bold text-sm leading-relaxed mb-4">
+                  <div className="p-4 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-primary)] text-[var(--color-text-title)] font-bold text-sm leading-relaxed mb-4">
                     {activeQuestDiag.microQuests[questStep].questionTh}
                   </div>
 
@@ -542,10 +542,10 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                         key={optIdx}
                         type="button"
                         onClick={() => handleSelectAnswer(optIdx)}
-                        className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:border-indigo-400 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 transition flex items-center justify-between cursor-pointer"
+                        className="w-full text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-xs sm:text-sm font-medium text-[var(--color-text-title)] transition flex items-center justify-between cursor-pointer"
                       >
                         <span>{opt}</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
                       </button>
                     ))}
                   </div>
@@ -553,13 +553,13 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
               ) : (
                 /* Result Screen */
                 <div className="text-center py-4 space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center">
                     <Award className="w-8 h-8" />
                   </div>
-                  <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                  <h4 className="text-lg font-black text-[var(--color-text-title)]">
                     {lang === 'th' ? 'ผลการทำภารกิจซ่อมเสริม' : 'Remedial Quest Result'}
                   </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
+                  <p className="text-sm text-[var(--color-text-body)] max-w-sm mx-auto">
                     {questFeedback}
                   </p>
 
@@ -567,7 +567,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                     <button
                       type="button"
                       onClick={() => setActiveQuestDiag(null)}
-                      className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                      className="px-6 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs shadow-md transition cursor-pointer"
                     >
                       {lang === 'th' ? 'ปิดและบันทึกคะแนน' : 'Save & Close'}
                     </button>

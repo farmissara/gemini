@@ -54,9 +54,9 @@ const PaginatedTableRows = <T,>({
         <tr>
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-              <span className="text-[11px] text-slate-600 dark:text-slate-300">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer">ถัดไป</button>
+              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+              <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
+              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
             </div>
           </td>
         </tr>
@@ -347,11 +347,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* Header and Controls */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-blue-600" />
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)]" />
             {lang === 'th' ? 'ทำเนียบคณาจารย์และแฟ้มวิทยฐานะ (PA)' : 'Faculty & Staff Directory (PA Hub)'}
           </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             {lang === 'th'
               ? 'ระบบทะเบียนครูครบวงจร จัดเก็บวิชาเอก-โท แฟ้มผลงานเลื่อนวิทยฐานะ (ว.PA) และวิเคราะห์ศักยภาพการสอน'
               : 'Comprehensive faculty database with major/minor specialties, PA portfolio artifacts, and teaching analytics.'}
@@ -363,7 +363,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <button
               type="button"
               onClick={onOpenImportExport}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
             >
               นำเข้า/ส่งออก Excel
             </button>
@@ -372,7 +372,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
@@ -382,7 +382,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <button
               type="button"
               onClick={handleOpenAdd}
-              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-1.5 transition cursor-pointer"
+              className="px-4 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{lang === 'th' ? 'เพิ่มครู/บุคลากร' : 'Add Teacher'}</span>
@@ -392,16 +392,16 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="shrink-0 bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2 w-full">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={lang === 'th' ? 'ค้นหาชื่อครู, รหัส, วิชาเอก, วิชาโท, ทักษะ, หรือวิชาที่สอน...' : 'Search by name, ID, major, minor, skills, subjects...'}
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
 
@@ -409,7 +409,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <select
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระการเรียนรู้' : 'All Departments'}</option>
               {departments.map((dept) => (
@@ -427,8 +427,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             onClick={() => setViewMode('cards')}
             className={`p-2 rounded-xl text-xs font-semibold cursor-pointer transition ${
               viewMode === 'cards'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
             }`}
           >
             การ์ดโปรไฟล์
@@ -438,8 +438,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             onClick={() => setViewMode('table')}
             className={`p-2 rounded-xl text-xs font-semibold cursor-pointer transition ${
               viewMode === 'table'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
             }`}
           >
             ตารางรายชื่อ
@@ -455,7 +455,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           <PagedList items={filteredTeachers} pageSize={1} renderItem={(teacher) => (
             <div
               key={teacher.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -464,7 +464,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <img
                         src={teacher.avatarUrl}
                         alt={teacher.fullNameTh}
-                        className="w-13 h-13 rounded-2xl object-cover border-2 border-blue-500/30 shadow-sm"
+                        className="w-13 h-13 rounded-2xl object-cover border-2 border-[var(--color-primary)]/40 shadow-sm"
                       />
                       {teacher.isSchoolAdmin && (
                         <span className="absolute -bottom-1 -right-1 p-0.5 bg-amber-400 text-slate-950 rounded-full shadow" title="School Admin">
@@ -473,11 +473,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       )}
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+                      <h3 className="font-extrabold text-sm text-[var(--color-text-title)] tracking-tight">
                         {teacher.fullNameTh}
                       </h3>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{teacher.fullNameEn}</p>
-                      <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
+                      <p className="text-[11px] text-[var(--color-text-muted)]">{teacher.fullNameEn}</p>
+                      <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold border border-[var(--color-border)]">
                         {teacher.academicStanding}
                       </span>
                     </div>
@@ -488,7 +488,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(teacher)}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-700 dark:hover:text-blue-300 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                        className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary-text)] text-[var(--color-text-muted)] transition cursor-pointer"
                         title="แก้ไขข้อมูลครู"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -500,7 +500,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             onDeleteTeacher(teacher.id);
                           }
                         }}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-700 dark:hover:text-rose-300 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                        className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-rose-100 dark:hover:bg-rose-950 hover:text-rose-800 dark:hover:text-rose-200 text-[var(--color-text-muted)] transition cursor-pointer"
                         title="ลบข้อมูลครู"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -510,25 +510,25 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
 
                 <div className="mt-3.5 space-y-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                    <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-[var(--color-text-body)]">
+                    <Building2 className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                     <span className="truncate">{teacher.department.replace('กลุ่มสาระการเรียนรู้', '')}</span>
                   </div>
 
-                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                  <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
                     <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-600 dark:text-slate-300">วิชาเอก:</span>
-                      <span className="font-bold text-slate-900 dark:text-white truncate max-w-[170px]">{teacher.major}</span>
+                      <span className="text-[var(--color-text-muted)]">วิชาเอก:</span>
+                      <span className="font-bold text-[var(--color-text-title)] truncate max-w-[170px]">{teacher.major}</span>
                     </div>
                     {teacher.minor && (
                       <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-600 dark:text-slate-300">วิชาโท:</span>
-                        <span className="font-semibold text-indigo-700 dark:text-indigo-300 truncate max-w-[170px]">{teacher.minor}</span>
+                        <span className="text-[var(--color-text-muted)]">วิชาโท:</span>
+                        <span className="font-semibold text-[var(--color-primary-text)] truncate max-w-[170px]">{teacher.minor}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-600 dark:text-slate-300">ประสบการณ์:</span>
-                      <span className="font-mono text-slate-800 dark:text-slate-200">{teacher.teachingExperienceYears || 1} ปี</span>
+                      <span className="text-[var(--color-text-muted)]">ประสบการณ์:</span>
+                      <span className="font-mono text-[var(--color-text-body)]">{teacher.teachingExperienceYears || 1} ปี</span>
                     </div>
                   </div>
 
@@ -536,22 +536,22 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   {teacher.otherSkills && teacher.otherSkills.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
                       {teacher.otherSkills.slice(0, 3).map((skill, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-medium">
                           ⚡ {skill}
                         </span>
                       ))}
                       {teacher.otherSkills.length > 3 && (
-                        <span className="text-[10px] text-slate-600 dark:text-slate-300 font-semibold">+{teacher.otherSkills.length - 3}</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] font-semibold">+{teacher.otherSkills.length - 3}</span>
                       )}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                  <FileCheck2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>ผลงาน PA: <strong>{teacher.paPortfolio?.length || 0}</strong> ชิ้น</span>
+              <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+                  <FileCheck2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                  <span>ผลงาน PA: <strong className="text-[var(--color-text-title)]">{teacher.paPortfolio?.length || 0}</strong> ชิ้น</span>
                 </div>
 
                 <button
@@ -560,9 +560,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     setSelectedTeacherForDetail(teacher);
                     setDetailTab('profile');
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                 >
-                  <span>ดูแฟ้มประวัติ & ว.PA</span>
+                  <span>ดูแฟ้มประวัติ &amp; ว.PA</span>
                 </button>
               </div>
             </div>
@@ -570,10 +570,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         </div>
       ) : (
         /* Table View */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
+        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800 font-bold uppercase tracking-wider">
+              <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)] font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3">ครูผู้สอน</th>
                   <th className="px-4 py-3">กลุ่มสาระ</th>
@@ -583,35 +583,35 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <th className="px-4 py-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 <PaginatedTableRows items={filteredTeachers} colSpan={7} renderRow={(teacher) => (
-                  <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                  <tr key={teacher.id} className="hover:bg-[var(--color-card-subtle)] transition">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <img
                           src={teacher.avatarUrl}
                           alt={teacher.fullNameTh}
-                          className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
+                          className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)]"
                         />
                         <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{teacher.fullNameTh}</p>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono">{teacher.teacherIdNumber}</p>
+                          <p className="font-bold text-[var(--color-text-title)]">{teacher.fullNameTh}</p>
+                          <p className="text-[11px] text-[var(--color-text-muted)] font-mono">{teacher.teacherIdNumber}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                    <td className="px-4 py-3 text-[var(--color-text-body)]">
                       {teacher.department.replace('กลุ่มสาระการเรียนรู้', '')}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900 dark:text-white">{teacher.major}</div>
-                      {teacher.minor && <div className="text-[10px] text-indigo-600 dark:text-indigo-300">โท: {teacher.minor}</div>}
+                      <div className="font-medium text-[var(--color-text-title)]">{teacher.major}</div>
+                      {teacher.minor && <div className="text-[10px] text-[var(--color-primary-text)] font-medium">โท: {teacher.minor}</div>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200 font-bold text-[10px]">
+                      <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold text-[10px]">
                         {teacher.academicStanding}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">
+                    <td className="px-4 py-3 font-mono text-[var(--color-text-body)]">
                       {teacher.teachingExperienceYears || 1} ปี
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -622,7 +622,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             setSelectedTeacherForDetail(teacher);
                             setDetailTab('profile');
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] border border-[var(--color-border)] text-xs font-semibold cursor-pointer"
                         >
                           รายละเอียด
                         </button>
@@ -631,7 +631,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(teacher)}
-                              className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/60 text-blue-600 dark:text-blue-400 cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] cursor-pointer"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
@@ -642,7 +642,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                                   onDeleteTeacher(teacher.id);
                                 }
                               }}
-                              className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -664,7 +664,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* ======================================================== */}
       {selectedTeacherForDetail && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
+          <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh]">
             
             {/* Modal Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white flex items-center justify-between shrink-0">
@@ -688,14 +688,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-extrabold text-base sm:text-lg tracking-tight">
+                    <h2 className="font-extrabold text-base sm:text-lg tracking-tight text-white">
                       {selectedTeacherForDetail.fullNameTh}
                     </h2>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase font-bold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/40 uppercase font-bold">
                       {selectedTeacherForDetail.academicStanding}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 font-mono mt-0.5">
+                  <p className="text-xs text-slate-200 font-mono mt-0.5">
                     {selectedTeacherForDetail.teacherIdNumber} • {selectedTeacherForDetail.email}
                   </p>
                 </div>
@@ -704,25 +704,25 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedTeacherForDetail(null)}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-6 pt-3 gap-2 text-xs font-bold">
+            <div className="flex border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-6 pt-3 gap-2 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setDetailTab('profile')}
                 className={`pb-2.5 px-3 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
                   detailTab === 'profile'
-                    ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
-                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
-                <span>ประวัติ & คุณวุฒิครู</span>
+                <span>ประวัติ &amp; คุณวุฒิครู</span>
               </button>
 
               <button
@@ -730,13 +730,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 onClick={() => setDetailTab('pa_portfolio')}
                 className={`pb-2.5 px-3 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
                   detailTab === 'pa_portfolio'
-                    ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
-                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <FileCheck2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <FileCheck2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                 <span>แฟ้มผลงานเพิ่มวิทยฐานะ (ว.PA)</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
                   {selectedTeacherForDetail.paPortfolio?.length || 0}
                 </span>
               </button>
@@ -746,12 +746,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 onClick={() => setDetailTab('teaching_analytics')}
                 className={`pb-2.5 px-3 border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
                   detailTab === 'teaching_analytics'
-                    ? 'border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-300'
-                    : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <BrainCircuit className="w-4 h-4 text-indigo-500" />
-                <span>วิเคราะห์การสอน & ID Plan</span>
+                <BrainCircuit className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                <span>วิเคราะห์การสอน &amp; ID Plan</span>
               </button>
             </div>
 
@@ -762,85 +762,85 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 <div className="space-y-6 text-xs">
                   {/* Quick Highlight Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase block">วิชาเอก (Major)</span>
-                      <p className="font-extrabold text-slate-900 dark:text-white mt-1 leading-snug">{selectedTeacherForDetail.major}</p>
+                    <div className="p-3.5 rounded-2xl bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800">
+                      <span className="text-[10px] text-blue-900 dark:text-blue-200 font-bold uppercase block">วิชาเอก (Major)</span>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.major}</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900">
-                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase block">วิชาโท (Minor)</span>
-                      <p className="font-extrabold text-slate-900 dark:text-white mt-1 leading-snug">{selectedTeacherForDetail.minor || 'ทั่วไป/บูรณาการ'}</p>
+                    <div className="p-3.5 rounded-2xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-300 dark:border-indigo-800">
+                      <span className="text-[10px] text-indigo-900 dark:text-indigo-200 font-bold uppercase block">วิชาโท (Minor)</span>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.minor || 'ทั่วไป/บูรณาการ'}</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
-                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase block">ประสบการณ์สอน</span>
-                      <p className="font-extrabold text-slate-900 dark:text-white mt-1 leading-snug">{selectedTeacherForDetail.teachingExperienceYears || 1} ปี</p>
+                    <div className="p-3.5 rounded-2xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800">
+                      <span className="text-[10px] text-amber-900 dark:text-amber-200 font-bold uppercase block">ประสบการณ์สอน</span>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.teachingExperienceYears || 1} ปี</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900">
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase block">คะแนนประเมิน PA</span>
-                      <p className="font-extrabold text-slate-900 dark:text-white mt-1 leading-snug">{selectedTeacherForDetail.paScore || 88.5}/100</p>
+                    <div className="p-3.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800">
+                      <span className="text-[10px] text-emerald-900 dark:text-emerald-200 font-bold uppercase block">คะแนนประเมิน PA</span>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.paScore || 88.5}/100</p>
                     </div>
                   </div>
 
                   {/* General Qualifications Grid */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2">
+                  <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-3">
+                    <h4 className="font-bold text-[var(--color-text-title)] border-b border-[var(--color-border)] pb-2">
                       คุณวุฒิการศึกษาและการรับรองวิชาชีพ
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <span className="text-slate-600 dark:text-slate-300 block">วุฒิการศึกษาสูงสุด:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.academicDegree}</span>
+                        <span className="text-[var(--color-text-muted)] block">วุฒิการศึกษาสูงสุด:</span>
+                        <span className="font-semibold text-[var(--color-text-title)]">{selectedTeacherForDetail.academicDegree}</span>
                       </div>
                       <div>
-                        <span className="text-slate-600 dark:text-slate-300 block">เลขที่ใบอนุญาตประกอบวิชาชีพครู:</span>
-                        <span className="font-mono text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.teacherLicenseNo}</span>
+                        <span className="text-[var(--color-text-muted)] block">เลขที่ใบอนุญาตประกอบวิชาชีพครู:</span>
+                        <span className="font-mono text-[var(--color-text-title)]">{selectedTeacherForDetail.teacherLicenseNo}</span>
                       </div>
                       <div>
-                        <span className="text-slate-600 dark:text-slate-300 block">กลุ่มสาระการเรียนรู้:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.department}</span>
+                        <span className="text-[var(--color-text-muted)] block">กลุ่มสาระการเรียนรู้:</span>
+                        <span className="font-semibold text-[var(--color-text-title)]">{selectedTeacherForDetail.department}</span>
                       </div>
                       <div>
-                        <span className="text-slate-600 dark:text-slate-300 block">เบอร์โทรศัพท์และอีเมล:</span>
-                        <span className="font-mono text-slate-800 dark:text-slate-100">{selectedTeacherForDetail.phone} • {selectedTeacherForDetail.email}</span>
+                        <span className="text-[var(--color-text-muted)] block">เบอร์โทรศัพท์และอีเมล:</span>
+                        <span className="font-mono text-[var(--color-text-title)]">{selectedTeacherForDetail.phone} • {selectedTeacherForDetail.email}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Other Skills & Talents */}
                   <div className="space-y-2">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      <span>ความสามารถพิเศษและทักษะอื่นๆ (Other Competencies & Talents)</span>
+                    <h4 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>ความสามารถพิเศษและทักษะอื่นๆ (Other Competencies &amp; Talents)</span>
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {selectedTeacherForDetail.otherSkills && selectedTeacherForDetail.otherSkills.length > 0 ? (
                         <PagedList items={selectedTeacherForDetail.otherSkills} pageSize={4} renderItem={(skill, idx) => (
                           <span
                             key={idx}
-                            className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-900 font-semibold"
+                            className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-semibold"
                           >
                             ⭐ {skill}
                           </span>
                         )} />
                       ) : (
-                        <p className="text-slate-600 dark:text-slate-300">ยังไม่มีการบันทึกทักษะเพิ่มเติม</p>
+                        <p className="text-[var(--color-text-muted)]">ยังไม่มีการบันทึกทักษะเพิ่มเติม</p>
                       )}
                     </div>
                   </div>
 
                   {/* Teaching Subjects & Homerooms */}
                   <div className="space-y-2">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <BookOpen className="w-4 h-4 text-blue-500" />
+                    <h4 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>ภาระงานสอนและห้องที่ปรึกษา (Teaching Load)</span>
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       <PagedList items={selectedTeacherForDetail.teachingSubjects} pageSize={4} renderItem={(sub, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-900 font-semibold"
+                          className="px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-semibold"
                         >
                           📖 {sub}
                         </span>
@@ -862,7 +862,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                           แฟ้มสะสมผลงานข้อตกลงในการพัฒนางาน (ว.PA / PA Agreement)
                         </h4>
                       </div>
-                      <p className="text-slate-300 mt-1">
+                      <p className="text-slate-200 mt-1">
                         รองรับเกณฑ์ ก.ค.ศ. ว9/2564 สำหรับการประเมินเพื่อขอมีหรือเลื่อนวิทยฐานะ: <strong>{selectedTeacherForDetail.academicStanding}</strong>
                       </p>
                     </div>
@@ -870,7 +870,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowAddPaModal(true)}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/30 shrink-0 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold flex items-center gap-1.5 shadow-md shrink-0 cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       <span>เพิ่มผลงาน ว.PA</span>
@@ -883,34 +883,34 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <PagedList items={selectedTeacherForDetail.paPortfolio} pageSize={2} renderItem={(item) => (
                         <div
                           key={item.id}
-                          className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2 hover:border-emerald-500/50 transition"
+                          className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-2 hover:border-emerald-600 transition"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold">
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold">
                                   {item.paAspect}
                                 </span>
-                                <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">
+                                <span className="text-[var(--color-text-muted)] font-mono text-[11px]">
                                   ปีการศึกษา {item.academicYear}
                                 </span>
                               </div>
-                              <h5 className="font-bold text-slate-900 dark:text-white mt-1 text-sm">
+                              <h5 className="font-bold text-[var(--color-text-title)] mt-1 text-sm">
                                 {item.title}
                               </h5>
                             </div>
 
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
                               <span>รับรองผลงานแล้ว</span>
                             </span>
                           </div>
 
-                          <p className="text-slate-600 dark:text-slate-300 text-xs">
+                          <p className="text-[var(--color-text-body)] text-xs">
                             {item.description}
                           </p>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)]">
                             <span>หมวด: {item.category === 'pa_agreement' ? 'ข้อตกลง PA' : item.category === 'classroom_research' ? 'วิจัยในชั้นเรียน' : item.category === 'lesson_plan' ? 'แผนการสอน Active Learning' : item.category === 'teaching_media' ? 'สื่อนวัตกรรมดิจิทัล' : 'ผลงานรางวัล'}</span>
                             <span className="font-mono">วันที่ส่ง: {item.dateSubmitted}</span>
                           </div>
@@ -918,10 +918,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       )} />
                     </div>
                   ) : (
-                    <div className="p-8 text-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
-                      <FileText className="w-10 h-10 text-slate-500 dark:text-slate-300 mx-auto mb-2" />
-                      <p className="font-bold text-slate-700 dark:text-slate-200">ยังไม่มีการบันทึกผลงาน PA สำหรับอาจารย์ท่านนี้</p>
-                      <p className="text-slate-600 dark:text-slate-300 mt-1">กดปุ่ม "เพิ่มผลงาน ว.PA" เพื่อบันทึกงานวิจัย สื่อนวัตกรรม หรือแผนการสอน</p>
+                    <div className="p-8 text-center border-2 border-dashed border-[var(--color-border)] rounded-2xl">
+                      <FileText className="w-10 h-10 text-[var(--color-text-muted)] mx-auto mb-2" />
+                      <p className="font-bold text-[var(--color-text-title)]">ยังไม่มีการบันทึกผลงาน PA สำหรับอาจารย์ท่านนี้</p>
+                      <p className="text-[var(--color-text-muted)] mt-1">กดปุ่ม "เพิ่มผลงาน ว.PA" เพื่อบันทึกงานวิจัย สื่อนวัตกรรม หรือแผนการสอน</p>
                     </div>
                   )}
                 </div>
@@ -931,19 +931,19 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {detailTab === 'teaching_analytics' && (
                 <div className="space-y-6 text-xs">
                   {/* Analysis Banner */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/30 text-white space-y-2">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/40 text-white space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <BrainCircuit className="w-5 h-5 text-indigo-400" />
-                        <h4 className="font-extrabold text-sm text-indigo-300">
+                        <BrainCircuit className="w-5 h-5 text-indigo-300" />
+                        <h4 className="font-extrabold text-sm text-indigo-200">
                           การวิเคราะห์ศักยภาพและการจัดการเรียนรู้เชิงลึก (Teaching Analytics)
                         </h4>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-800 text-emerald-100 border border-emerald-500/50 text-[10px] font-bold">
                         Alignment Score: 96%
                       </span>
                     </div>
-                    <p className="text-slate-300">
+                    <p className="text-slate-200">
                       ระบบประมวลผลความสอดคล้องของวิชาเอก ({selectedTeacherForDetail.major}) และวิชาโท ({selectedTeacherForDetail.minor || 'ทั่วไป'}) ร่วมกับทักษะพิเศษ เพื่อวิเคราะห์ประสิทธิภาพการสอนตามหลักสูตร
                     </p>
                   </div>
@@ -951,46 +951,46 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   {/* 3 Analytics Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* 1. Alignment */}
-                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
-                      <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
+                    <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-2">
+                      <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold">
                         <Target className="w-4 h-4" />
                         <h5>ความตรงของสายวิชาที่สอน</h5>
                       </div>
-                      <p className="text-slate-600 dark:text-slate-300">
-                        วิชาที่รับผิดชอบสอนตรงตาม <strong>วิชาเอก 100%</strong> ช่วยให้นักเรียนได้รับเนื้อหาที่ลึกซึ้งและถูกต้องตามหลักสูตร
+                      <p className="text-[var(--color-text-body)]">
+                        วิชาที่รับผิดชอบสอนตรงตาม <strong className="text-[var(--color-text-title)]">วิชาเอก 100%</strong> ช่วยให้นักเรียนได้รับเนื้อหาที่ลึกซึ้งและถูกต้องตามหลักสูตร
                       </p>
                     </div>
 
                     {/* 2. Skills Synergy */}
-                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
-                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold">
+                    <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-2">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold">
                         <Sparkles className="w-4 h-4" />
                         <h5>การประยุกต์ทักษะพิเศษ</h5>
                       </div>
-                      <p className="text-slate-600 dark:text-slate-300">
-                        นำความสามารถด้าน <strong>{selectedTeacherForDetail.otherSkills?.slice(0, 2).join(', ') || 'Active Learning'}</strong> มาบูรณาการในวิชาหลัก ส่งผลให้ผู้เรียนมีส่วนร่วมสูง
+                      <p className="text-[var(--color-text-body)]">
+                        นำความสามารถด้าน <strong className="text-[var(--color-text-title)]">{selectedTeacherForDetail.otherSkills?.slice(0, 2).join(', ') || 'Active Learning'}</strong> มาบูรณาการในวิชาหลัก ส่งผลให้ผู้เรียนมีส่วนร่วมสูง
                       </p>
                     </div>
 
                     {/* 3. Next Rank Readiness */}
-                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
+                    <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-2">
+                      <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold">
                         <TrendingUp className="w-4 h-4" />
                         <h5>ความพร้อมเลื่อนวิทยฐานะ</h5>
                       </div>
-                      <p className="text-slate-600 dark:text-slate-300">
-                        มีเอกสารผลงานและคะแนน PA สะสมพร้อมสำหรับการขอรับการประเมินในระดับถัดไป คิดเป็น <strong>92%</strong>
+                      <p className="text-[var(--color-text-body)]">
+                        มีเอกสารผลงานและคะแนน PA สะสมพร้อมสำหรับการขอรับการประเมินในระดับถัดไป คิดเป็น <strong className="text-[var(--color-text-title)]">92%</strong>
                       </p>
                     </div>
                   </div>
 
                   {/* ID Plan Guidance */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-blue-500" />
+                  <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
+                    <h5 className="font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>แผนพัฒนาตนเองรายบุคคล (Individual Development Plan: ID Plan)</span>
                     </h5>
-                    <p className="text-slate-600 dark:text-slate-300">
+                    <p className="text-[var(--color-text-body)]">
                       {selectedTeacherForDetail.selfDevelopmentPlan ||
                         'มุ่งเน้นการจัดทำวิจัยปฏิบัติการในชั้นเรียน การพัฒนาสื่อนวัตกรรมดิจิทัล 3D และการสร้างเครือข่าย PLC เพื่อยกระดับผลสัมฤทธิ์ของผู้เรียน'}
                     </p>
@@ -1000,23 +1000,23 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="px-6 py-3.5 bg-[var(--color-card-subtle)] border-t border-[var(--color-border)] flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => {
                   setPhotoTarget('detail');
                   setShowPhotoModal(true);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                className="px-3.5 py-2 rounded-xl bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
               >
-                <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
                 <span>ถ่ายรูป/เปลี่ยนรูปโปรไฟล์ครู</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSelectedTeacherForDetail(null)}
-                className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:opacity-90 transition cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition cursor-pointer"
               >
                 ปิดหน้าต่าง
               </button>
@@ -1030,13 +1030,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* ======================================================== */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-800 to-indigo-900 text-white flex items-center justify-between">
               <div>
-                <h3 className="font-extrabold text-base">
-                  {editingTeacher ? 'แก้ไขข้อมูลคณาจารย์ & วิทยฐานะ' : 'เพิ่มข้อมูลคณาจารย์ใหม่'}
+                <h3 className="font-extrabold text-base text-white">
+                  {editingTeacher ? 'แก้ไขข้อมูลคณาจารย์ &amp; วิทยฐานะ' : 'เพิ่มข้อมูลคณาจารย์ใหม่'}
                 </h3>
-                <p className="text-xs text-blue-200">ระบุข้อมูลวิชาเอก วิชาโท ประสบการณ์ และถ่ายรูปโปรไฟล์</p>
+                <p className="text-xs text-blue-100">ระบุข้อมูลวิชาเอก วิชาโท ประสบการณ์ และถ่ายรูปโปรไฟล์</p>
               </div>
               <button
                 type="button"
@@ -1047,30 +1047,30 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeacher} className="p-6 space-y-4 flex-1 min-h-0 text-xs">
-              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
-                <span className={teacherFormStep === 1 ? 'font-bold text-blue-600' : ''}>1. Profile</span>
+            <form onSubmit={handleSaveTeacher} className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto text-xs">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
+                <span className={teacherFormStep === 1 ? 'font-bold text-[var(--color-primary-text)]' : ''}>1. Profile</span>
                 <span>→</span>
-                <span className={teacherFormStep === 2 ? 'font-bold text-blue-600' : ''}>2. Teaching details</span>
+                <span className={teacherFormStep === 2 ? 'font-bold text-[var(--color-primary-text)]' : ''}>2. Teaching details</span>
               </div>
               {teacherFormStep === 1 && (
                 <div className="space-y-4">
               {/* Photo Upload / Capture preview */}
-              <div className="flex items-center gap-4 p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-4 p-3.5 bg-[var(--color-card-subtle)] rounded-2xl border border-[var(--color-border)]">
                 <img
                   src={formData.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200'}
                   alt="Teacher Avatar"
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-blue-500 shadow-sm"
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-[var(--color-primary)] shadow-sm"
                 />
                 <div className="flex-1 space-y-1">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block">รูปถ่ายอาจารย์ผู้สอน</span>
+                  <span className="font-bold text-[var(--color-text-title)] block">รูปถ่ายอาจารย์ผู้สอน</span>
                   <button
                     type="button"
                     onClick={() => {
                       setPhotoTarget('form');
                       setShowPhotoModal(true);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <Camera className="w-3.5 h-3.5" />
                     <span>ถ่ายรูปจากกล้อง / อัปโหลดไฟล์</span>
@@ -1081,7 +1081,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Name Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">
                     ชื่อ-สกุล (ภาษาไทย) *
                   </label>
                   <input
@@ -1090,11 +1090,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     value={formData.fullNameTh || ''}
                     onChange={(e) => setFormData({ ...formData, fullNameTh: e.target.value })}
                     placeholder="เช่น ดร.ประเสริฐ ถาวร"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">
                     Full Name (English)
                   </label>
                   <input
@@ -1102,7 +1102,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     value={formData.fullNameEn || ''}
                     onChange={(e) => setFormData({ ...formData, fullNameEn: e.target.value })}
                     placeholder="e.g. Dr. Prasert Thaworn"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
               </div>
@@ -1110,34 +1110,34 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Contact Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">อีเมลติดต่อ *</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">อีเมลติดต่อ *</label>
                   <input
                     type="email"
                     required
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="teacher@eduverse.ac.th"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">เบอร์โทรศัพท์</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">เบอร์โทรศัพท์</label>
                   <input
                     type="tel"
                     value={formData.phone || ''}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="08X-XXX-XXXX"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">ประสบการณ์สอน (ปี)</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ประสบการณ์สอน (ปี)</label>
                   <input
                     type="number"
                     min="0"
                     value={formData.teachingExperienceYears || 1}
                     onChange={(e) => setFormData({ ...formData, teachingExperienceYears: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
               </div>
@@ -1149,24 +1149,24 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Major & Minor Fields (Requirement 2) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">วิชาเอก (Major) *</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">วิชาเอก (Major) *</label>
                   <input
                     type="text"
                     required
                     value={formData.major || ''}
                     onChange={(e) => setFormData({ ...formData, major: e.target.value })}
                     placeholder="เช่น วิทยาการคำนวณและเทคโนโลยีศึกษา"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">วิชาโท (Minor)</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">วิชาโท (Minor)</label>
                   <input
                     type="text"
                     value={formData.minor || ''}
                     onChange={(e) => setFormData({ ...formData, minor: e.target.value })}
                     placeholder="เช่น ปัญญาประดิษฐ์ประยุกต์ / ภาษาอังกฤษ"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
               </div>
@@ -1174,13 +1174,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Academic Standing & Department */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">
                     วิทยฐานะ (มาตรฐาน ว.PA)
                   </label>
                   <select
                     value={formData.academicStanding}
                     onChange={(e) => setFormData({ ...formData, academicStanding: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   >
                     {academicStandings.map((std) => (
                       <option key={std} value={std}>
@@ -1190,11 +1190,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">กลุ่มสาระการเรียนรู้</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">กลุ่มสาระการเรียนรู้</label>
                   <select
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
                     {departments.map((dept) => (
                       <option key={dept} value={dept}>
@@ -1207,7 +1207,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
               {/* Other Skills (Requirement 2) */}
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">
                   ความสามารถพิเศษอื่นๆ (เช่น Python, หุ่นยนต์, ดนตรี, ภาษาอังกฤษ, AI)
                 </label>
                 <div className="flex gap-2">
@@ -1228,7 +1228,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       }
                     }}
                     placeholder="พิมพ์ความสามารถแล้วกด Enter หรือ เพิ่ม..."
-                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                   <button
                     type="button"
@@ -1241,14 +1241,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         setNewSkillInput('');
                       }
                     }}
-                    className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold"
+                    className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer"
                   >
                     เพิ่ม
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   <PagedList items={formData.otherSkills || []} pageSize={4} renderItem={(skill, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                    <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[11px] font-semibold">
                       ⭐ {skill}
                       <button
                         type="button"
@@ -1258,7 +1258,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             otherSkills: (formData.otherSkills || []).filter((_, i) => i !== idx),
                           });
                         }}
-                        className="hover:text-rose-600 font-bold ml-0.5"
+                        className="hover:text-rose-700 dark:hover:text-rose-300 font-bold ml-0.5 cursor-pointer"
                       >
                         ×
                       </button>
@@ -1269,14 +1269,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
               {/* Teaching Subjects */}
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">รายวิชาที่สอน</label>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">รายวิชาที่สอน</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={subjectInput}
                     onChange={(e) => setSubjectInput(e.target.value)}
                     placeholder="เช่น ว30101 วิทยาการคำนวณ"
-                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                   <button
                     type="button"
@@ -1289,14 +1289,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         setSubjectInput('');
                       }
                     }}
-                    className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-semibold cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-semibold cursor-pointer"
                   >
                     เพิ่ม
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   <PagedList items={formData.teachingSubjects || []} pageSize={4} renderItem={(sub, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 text-[11px]">
+                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-[11px] font-medium">
                       {sub}
                       <button
                         type="button"
@@ -1306,7 +1306,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                             teachingSubjects: (formData.teachingSubjects || []).filter((_, i) => i !== idx),
                           });
                         }}
-                        className="hover:text-rose-600 dark:hover:text-rose-300 ml-1"
+                        className="hover:text-rose-700 dark:hover:text-rose-300 ml-1 cursor-pointer"
                       >
                         ×
                       </button>
@@ -1315,24 +1315,24 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setTeacherFormStep(1)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
                 >
                   Back
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/20 cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer"
                 >
                   {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
                 </button>
@@ -1341,13 +1341,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               )}
               {teacherFormStep === 1 && (
                 <div className="flex justify-between gap-2">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer">Cancel</button>
                   <button
                     type="button"
                     onClick={() => {
                       if (formData.fullNameTh && formData.email && formData.major) setTeacherFormStep(2);
                     }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer"
                   >
                     Continue
                   </button>
@@ -1363,16 +1363,16 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* ======================================================== */}
       {showAddPaModal && selectedTeacherForDetail && (
         <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-emerald-500" />
-                <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">เพิ่มชิ้นงานข้อตกลงพัฒนางาน (ว.PA)</h4>
+                <FileCheck2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
+                <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">เพิ่มชิ้นงานข้อตกลงพัฒนางาน (ว.PA)</h4>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddPaModal(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1380,7 +1380,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
             <form onSubmit={handleAddPaItem} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">
                   ชื่อผลงาน / นวัตกรรมการสอน *
                 </label>
                 <input
@@ -1389,17 +1389,17 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   value={paTitle}
                   onChange={(e) => setPaTitle(e.target.value)}
                   placeholder="เช่น การพัฒนาชุดกิจกรรม Active Learning เพื่อยกระดับผลสัมฤทธิ์..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">หมวดผลงาน</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">หมวดผลงาน</label>
                   <select
                     value={paCategory}
                     onChange={(e) => setPaCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
                     <option value="pa_agreement">ข้อตกลง PA ประจำปี</option>
                     <option value="classroom_research">งานวิจัยในชั้นเรียน</option>
@@ -1410,23 +1410,23 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">ปีการศึกษา</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ปีการศึกษา</label>
                   <input
                     type="text"
                     value={paYear}
                     onChange={(e) => setPaYear(e.target.value)}
                     placeholder="2569"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">ด้านตามเกณฑ์ ก.ค.ศ.</label>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">ด้านตามเกณฑ์ ก.ค.ศ.</label>
                 <select
                   value={paAspect}
                   onChange={(e) => setPaAspect(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                 >
                   <option value="ด้านที่ 1 การจัดการเรียนรู้">ด้านที่ 1 การจัดการเรียนรู้</option>
                   <option value="ด้านที่ 2 การส่งเสริมสนับสนุน">ด้านที่ 2 การส่งเสริมสนับสนุน</option>
@@ -1435,13 +1435,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">คำอธิบายรายละเอียดผลลัพธ์</label>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">คำอธิบายรายละเอียดผลลัพธ์</label>
                 <textarea
                   rows={2}
                   value={paDescription}
                   onChange={(e) => setPaDescription(e.target.value)}
                   placeholder="อธิบายกระบวนการพัฒนาและผลการเรียนรู้ของผู้เรียน..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                 />
               </div>
 
@@ -1449,13 +1449,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddPaModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                  className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer"
                 >
                   บันทึกผลงาน PA
                 </button>

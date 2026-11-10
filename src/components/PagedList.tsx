@@ -44,18 +44,18 @@ export function PagedList<T>({
             type="button"
             onClick={() => setPage((currentPage) => Math.max(0, currentPage - 1))}
             disabled={currentPage === 0}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:cursor-not-allowed disabled:opacity-45 transition cursor-pointer"
           >
             {previousLabel}
           </button>
-          <span aria-live="polite" className="text-[11px] font-medium text-slate-500">
+          <span aria-live="polite" className="text-[11px] font-semibold text-[var(--color-text-muted)]">
             {currentPage + 1} / {pageCount}
           </span>
           <button
             type="button"
             onClick={() => setPage((currentPage) => Math.min(pageCount - 1, currentPage + 1))}
             disabled={currentPage === pageCount - 1}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:cursor-not-allowed disabled:opacity-45 transition cursor-pointer"
           >
             {nextLabel}
           </button>

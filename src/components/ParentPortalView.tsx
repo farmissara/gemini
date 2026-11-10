@@ -154,14 +154,14 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   ? `${student?.firstNameTh} ${student?.lastNameTh}`
                   : `${student?.firstNameEn} ${student?.lastNameEn}`}
               </h2>
-              <span className="font-mono text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <span className="font-mono text-xs px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-100 border border-indigo-400/50">
                 {student?.studentIdNumber}
               </span>
             </div>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-slate-200">
               {student?.gradeLevel} • {student?.room}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-300 mt-0.5">
               {lang === 'th' ? 'ผู้ปกครอง:' : 'Guardian:'} {student?.guardianName} ({student?.guardianRelation}) • {student?.guardianPhone}
             </p>
           </div>
@@ -169,13 +169,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
         {/* Student selector */}
         <div className="flex flex-col items-start sm:items-end gap-1.5">
-          <label className="text-[11px] font-semibold text-slate-400">
+          <label className="text-[11px] font-semibold text-slate-200">
             {lang === 'th' ? 'เลือกลูก/นักเรียนในการดูแล:' : 'Select Student:'}
           </label>
           <select
             value={selectedStudentId}
             onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-100 font-medium"
+            className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white font-medium"
           >
             {students.map((s) => (
               <option key={s.id} value={s.id}>
@@ -187,14 +187,14 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Navigation Tabs in Parent Portal */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-3">
         <button
           type="button"
           onClick={() => setActivePortalTab('overview')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activePortalTab === 'overview'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              ? 'bg-indigo-700 text-white shadow-md'
+              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
@@ -206,13 +206,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           onClick={() => setActivePortalTab('selfie_album')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activePortalTab === 'selfie_album'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              ? 'bg-blue-700 text-white shadow-md'
+              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
           <Camera className="w-4 h-4" />
           <span>อัลบั้มภาพถ่ายเข้า-ออกโรงเรียน (Selfie Album)</span>
-          <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-200 font-bold text-[10px]">
+          <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold text-[10px]">
             {studentAttendance.filter(a => !!a.photoUrl).length}
           </span>
         </button>
@@ -222,14 +222,14 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           onClick={() => setActivePortalTab('leave_submission')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activePortalTab === 'leave_submission'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              ? 'bg-emerald-700 text-white shadow-md'
+              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
           <FileText className="w-4 h-4" />
           <span>ผู้ปกครองยื่นใบลาให้ลูก</span>
           {studentLeaveRequests.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 font-bold text-[10px]">
+            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-[10px]">
               {studentLeaveRequests.length}
             </span>
           )}
@@ -237,16 +237,16 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Scrollable Tab Body */}
-      <div className="flex-1 min-h-0 overflow-hidden space-y-3 pr-1">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
       {/* ========================================================================= */}
       {/* TAB 1: OVERVIEW & TODAY'S GATE STATUS */}
       {/* ========================================================================= */}
       {activePortalTab === 'overview' && (
         <div className="space-y-4">
           {/* Today's Gate Status Banner (LINE Connected) */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
+          <div className="p-4 rounded-xl bg-slate-900 border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#06C755]/15 border border-[#06C755]/30 flex items-center justify-center text-[#06C755] shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-900/60 border border-emerald-500/50 flex items-center justify-center text-emerald-300 shrink-0">
                 <MessageSquare className="w-5 h-5 fill-current" />
               </div>
               <div>
@@ -254,15 +254,15 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   <span className="text-xs font-bold text-white">
                     สถานะการเดินทางถึงโรงเรียนวันนี้ ({todayStr})
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-200 border border-emerald-600 font-semibold">
                     {todayRecord ? 'เช็กชื่อแล้ว' : 'รอการเช็กชื่อ'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 mt-0.5">
+                <p className="text-xs text-slate-200 mt-0.5">
                   {todayRecord ? (
                     <>
                       เข้าประตูเวลา <strong className="text-white font-mono">{todayRecord.time} น.</strong> • สถานะ:{' '}
-                      <span className="text-emerald-400 font-semibold uppercase">{todayRecord.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}</span>
+                      <span className="text-emerald-300 font-semibold uppercase">{todayRecord.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}</span>
                       {todayRecord.location?.distanceMeters && ` • ในเขต ${todayRecord.location.distanceMeters} ม.`}
                     </>
                   ) : (
@@ -276,7 +276,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               href={systemConfig.lineOaAddFriendUrl}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-[#06C755]/20 hover:bg-[#06C755]/30 border border-[#06C755]/40 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 border border-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
             >
               <MessageSquare className="w-3.5 h-3.5 fill-current" />
               <span>เปิดแชท LINE OA โรงเรียน</span>
@@ -324,62 +324,62 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-indigo-500/30 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+              <div className="pt-2 border-t border-indigo-500/30 flex items-center justify-between text-[11px] text-slate-200 font-mono">
                 <span>อัตราการมาเรียน: {attRate}%</span>
                 <span>ปีการศึกษา {systemConfig.academicYear}</span>
               </div>
             </div>
 
             {/* Tuition & GPA Card */}
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between text-slate-900 dark:text-slate-100">
+            <div className="p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 flex flex-col justify-between text-[var(--color-text-title)]">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Receipt className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                    <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
                     <span>ค่าธรรมเนียมการศึกษา</span>
                   </h3>
                   {pendingInvoice ? (
-                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[11px] font-bold">
                       มียอดค้างชำระ
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold">
                       ชำระครบถ้วนแล้ว
                     </span>
                   )}
                 </div>
 
                 {pendingInvoice ? (
-                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-700 dark:text-slate-200">
+                      <span className="text-[var(--color-text-body)]">
                         {pendingInvoice.items[0]?.title || `ใบแจ้งหนี้ ${pendingInvoice.invoiceNumber}`}
                       </span>
-                      <span className="font-mono font-bold text-base text-slate-900 dark:text-white">
+                      <span className="font-mono font-bold text-base text-[var(--color-text-title)]">
                         ฿{pendingInvoice.totalAmount.toLocaleString()}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowPayModal(true)}
-                      className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="w-full py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <QrCode className="w-3.5 h-3.5" />
                       <span>ชำระผ่าน PromptPay QR Code</span>
                     </button>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                  <p className="text-xs text-[var(--color-text-body)]">
                     ไม่มีรายการค้างชำระในภาคเรียนปัจจุบัน
                   </p>
                 )}
               </div>
 
               {/* GPA & Report Card Button */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
                 <div>
-                  <span className="text-[11px] text-slate-600 dark:text-slate-300 block">เกรดเฉลี่ยสะสม (GPAX)</span>
-                  <span className="text-xl font-bold font-mono text-blue-700 dark:text-blue-400">
+                  <span className="text-[11px] text-[var(--color-text-muted)] block">เกรดเฉลี่ยสะสม (GPAX)</span>
+                  <span className="text-xl font-bold font-mono text-[var(--color-primary-text)]">
                     {student?.gpa.toFixed(2)}
                   </span>
                 </div>
@@ -387,7 +387,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenReportCard(student)}
-                  className="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Award className="w-4 h-4" />
                   <span>ดูใบเกรด ปพ.1</span>
@@ -402,14 +402,14 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       {/* TAB 2: CHILD'S SELFIE ALBUM & DAILY CHECK-IN HISTORY */}
       {/* ========================================================================= */}
       {activePortalTab === 'selfie_album' && (
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5 text-slate-900 dark:text-slate-100">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-5 text-[var(--color-text-title)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Camera className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Camera className="w-5 h-5 text-[var(--color-primary-text)]" />
                 <span>อัลบั้มภาพถ่ายเช็กชื่อเข้า-ออกของบุตรหลาน ({student?.firstNameTh})</span>
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
+              <p className="text-xs text-[var(--color-text-muted)]">
                 รูปถ่ายยืนยันตัวตนตอนผ่านประตูโรงเรียน พร้อมบันทึกวัน-เวลาและพิกัด GPS
               </p>
             </div>
@@ -420,7 +420,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 type="button"
                 onClick={() => setAlbumSelectedDate(todayStr)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  albumSelectedDate === todayStr ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  albumSelectedDate === todayStr ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
                 }`}
               >
                 วันนี้
@@ -429,7 +429,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 type="button"
                 onClick={() => setAlbumSelectedDate(yesterdayStr)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  albumSelectedDate === yesterdayStr ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  albumSelectedDate === yesterdayStr ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
                 }`}
               >
                 เมื่อวาน
@@ -438,7 +438,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 type="button"
                 onClick={() => setAlbumSelectedDate(twoDaysAgoStr)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  albumSelectedDate === twoDaysAgoStr ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  albumSelectedDate === twoDaysAgoStr ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
                 }`}
               >
                 2 วันก่อน
@@ -447,17 +447,17 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 type="date"
                 value={albumSelectedDate}
                 onChange={(e) => e.target.value && setAlbumSelectedDate(e.target.value)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800"
+                className="px-2.5 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
               />
             </div>
           </div>
 
           {/* Date Record Cards */}
           {dateRecords.length === 0 ? (
-            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-2">
-              <Camera className="w-10 h-10 text-slate-500 dark:text-slate-400 mx-auto" />
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">ไม่พบบันทึกภาพถ่ายในวันที่ {albumSelectedDate}</p>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
+            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
+              <Camera className="w-10 h-10 text-[var(--color-text-muted)] mx-auto" />
+              <p className="text-sm font-semibold text-[var(--color-text-title)]">ไม่พบบันทึกภาพถ่ายในวันที่ {albumSelectedDate}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">
                 ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน
               </p>
             </div>
@@ -471,36 +471,36 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   <div
                     key={rec.id}
                     onClick={() => setSelectedZoomPhoto(rec)}
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer space-y-3 shadow-2xs hover:border-blue-400"
+                    className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)]/50 transition cursor-pointer space-y-3 shadow-2xs hover:border-[var(--color-primary)]"
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        isCheckOut ? 'bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-200' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-200'
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
+                        isCheckOut ? 'bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                       }`}>
                         {isCheckOut ? 'เช็กชื่อออกโรงเรียน (Check-out)' : 'เช็กชื่อเข้าโรงเรียน (Check-in)'}
                       </span>
-                      <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
+                      <span className="font-mono font-bold text-xs text-[var(--color-text-title)]">
                         {rec.time} น.
                       </span>
                     </div>
 
                     <div className="flex gap-3">
-                      <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shrink-0">
+                      <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-slate-900 border border-[var(--color-border)] shrink-0">
                         <img src={photoSrc} alt="Selfie" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/25 hover:opacity-100 flex items-center justify-center text-white">
+                        <div className="absolute inset-0 bg-black/30 hover:opacity-100 flex items-center justify-center text-white">
                           <Eye className="w-5 h-5 drop-shadow" />
                         </div>
                       </div>
 
                       <div className="text-xs space-y-1">
-                        <p className="font-bold text-slate-900 dark:text-white">{student?.firstNameTh} {student?.lastNameTh}</p>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                        <p className="font-bold text-[var(--color-text-title)]">{student?.firstNameTh} {student?.lastNameTh}</p>
+                        <p className="text-[11px] text-[var(--color-text-body)]">
                           จุดบันทึก: {rec.location?.geofenceZoneName || 'ประตูโรงเรียน'}
                         </p>
-                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                        <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold">
                           GPS: ในรัศมี ({rec.location?.distanceMeters || 18} เมตร)
                         </p>
-                        <p className="text-[10px] text-blue-700 dark:text-blue-400 font-bold pt-1">
+                        <p className="text-[10px] text-[var(--color-primary-text)] font-bold pt-1">
                           🔍 กดเพื่อดูภาพใหญ่พร้อมตราประทับ
                         </p>
                       </div>
@@ -519,39 +519,39 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       {activePortalTab === 'leave_submission' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Leave Form */}
-          <div className="lg:col-span-7 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 text-slate-900 dark:text-slate-100">
-            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <div className="lg:col-span-7 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-title)]">
+            <div className="border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <FileText className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
                 <span>ผู้ปกครองส่งใบลาออนไลน์ให้บุตรหลาน</span>
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
+              <p className="text-xs text-[var(--color-text-muted)]">
                 ส่งตรงถึงครูประจำชั้น {student?.room} พร้อมแนบใบรับรองแพทย์หรือหลักฐาน
               </p>
             </div>
 
             {leaveSuccessNotice && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
                 <span>{leaveSuccessNotice}</span>
               </div>
             )}
 
             <form onSubmit={handleParentSubmitLeave} className="space-y-4 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                <span className="text-[11px] text-slate-600 dark:text-slate-300">นักเรียนที่ลา:</span>
-                <p className="font-bold text-slate-900 dark:text-white">{student?.firstNameTh} {student?.lastNameTh} ({student?.room})</p>
-                <span className="text-[10px] text-slate-600 dark:text-slate-300">ผู้ปกครองผู้ยื่น: {student?.guardianName}</span>
+              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <span className="text-[11px] text-[var(--color-text-muted)]">นักเรียนที่ลา:</span>
+                <p className="font-bold text-[var(--color-text-title)]">{student?.firstNameTh} {student?.lastNameTh} ({student?.room})</p>
+                <span className="text-[10px] text-[var(--color-text-body)]">ผู้ปกครองผู้ยื่น: {student?.guardianName}</span>
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-200">ประเภทการลา:</label>
+                <label className="font-bold text-[var(--color-text-title)]">ประเภทการลา:</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setLeaveType('sick')}
                     className={`p-2.5 rounded-xl border text-center font-bold transition cursor-pointer ${
-                      leaveType === 'sick' ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-600 text-rose-700 dark:text-rose-200' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-200' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)]'
                     }`}
                   >
                     🤒 ลาป่วย (Sick Leave)
@@ -560,7 +560,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     type="button"
                     onClick={() => setLeaveType('personal')}
                     className={`p-2.5 rounded-xl border text-center font-bold transition cursor-pointer ${
-                      leaveType === 'personal' ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-200' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)]'
                     }`}
                   >
                     🚗 ลากิจ (Personal Leave)
@@ -570,52 +570,52 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-200">ตั้งแต่วันที่:</label>
+                  <label className="font-bold text-[var(--color-text-title)]">ตั้งแต่วันที่:</label>
                   <input
                     type="date"
                     value={leaveStartDate}
                     onChange={(e) => setLeaveStartDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-200">ถึงวันที่:</label>
+                  <label className="font-bold text-[var(--color-text-title)]">ถึงวันที่:</label>
                   <input
                     type="date"
                     value={leaveEndDate}
                     onChange={(e) => setLeaveEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-200">เหตุผลประกอบการลา:</label>
+                <label className="font-bold text-[var(--color-text-title)]">เหตุผลประกอบการลา:</label>
                 <textarea
                   rows={3}
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
                   placeholder="เช่น ป่วยเป็นไข้หวัด แพทย์สั่งให้พักรักษาตัว หรือ มีธุระจำเป็นกับครอบครัว..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="font-bold text-slate-700 dark:text-slate-200">แนบรูปใบรับรองแพทย์ / รูปถ่ายหลักฐาน:</label>
+                <label className="font-bold text-[var(--color-text-title)]">แนบรูปใบรับรองแพทย์ / รูปถ่ายหลักฐาน:</label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setLeaveAttachmentUrl('https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500')}
-                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] font-semibold flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>แนบรูปใบรับรองแพทย์ตัวอย่าง</span>
                   </button>
                   {leaveAttachmentUrl && (
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" />
                       <span>แนบเรียบร้อย</span>
                     </span>
@@ -625,7 +625,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>ส่งใบลาให้ครูประจำชั้น</span>
@@ -634,33 +634,33 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           </div>
 
           {/* Leave History for this child */}
-          <div className="lg:col-span-5 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 text-slate-900 dark:text-slate-100">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <div className="lg:col-span-5 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-title)]">
+            <h4 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
               <span>ประวัติการลาของ {student?.firstNameTh}</span>
             </h4>
 
             {studentLeaveRequests.length === 0 ? (
-              <p className="text-xs text-slate-600 dark:text-slate-300 py-6 text-center">ไม่มีประวัติการขอยื่นใบลาในภาคเรียนนี้</p>
+              <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">ไม่มีประวัติการขอยื่นใบลาในภาคเรียนนี้</p>
             ) : (
               <div className="space-y-3">
                 {studentLeaveRequests.map((req) => (
-                  <div key={req.id} className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 space-y-2 text-xs">
+                  <div key={req.id} className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 dark:text-white">
+                      <span className="font-bold text-[var(--color-text-title)]">
                         {req.leaveType === 'sick' ? '🤒 ลาป่วย' : '🚗 ลากิจ'}
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200' :
-                        req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200' : 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200'
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
+                        req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                       }`}>
                         {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รอครูอนุมัติ' : 'ไม่อนุมัติ'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                    <p className="text-[11px] text-[var(--color-text-body)]">
                       ช่วงวันที่: {req.startDate} ถึง {req.endDate}
                     </p>
-                    <p className="text-[11px] text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <p className="text-[11px] text-[var(--color-text-body)] bg-[var(--color-card)] p-2 rounded-lg border border-[var(--color-border)]">
                       "{req.reason}"
                     </p>
                   </div>
@@ -675,28 +675,28 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       {/* Lightbox Modal for Zooming Child's Selfie Photo */}
       {selectedZoomPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-title)]">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white">รูปถ่ายเช็กชื่อตอนผ่านประตู</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300">{selectedZoomPhoto.date} • {selectedZoomPhoto.time} น.</p>
+                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็กชื่อตอนผ่านประตู</h4>
+                <p className="text-xs text-[var(--color-text-muted)]">{selectedZoomPhoto.date} • {selectedZoomPhoto.time} น.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedZoomPhoto(null)}
-                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-slate-300 dark:border-slate-700 bg-slate-950 flex items-center justify-center">
+            <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
               <img
                 src={selectedZoomPhoto.photoUrl || selectedZoomPhoto.userAvatar || student?.avatarUrl}
                 alt="Selfie Zoom"
                 className="w-full h-full object-contain"
               />
-              <div className="absolute bottom-2 left-2 right-2 p-2 rounded-xl bg-black/75 backdrop-blur-md text-white text-[10px] space-y-0.5">
+              <div className="absolute bottom-2 left-2 right-2 p-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-[10px] space-y-0.5">
                 <div className="flex justify-between font-bold">
                   <span>{student?.firstNameTh} {student?.lastNameTh}</span>
                   <span>{selectedZoomPhoto.time} น.</span>
@@ -710,7 +710,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             <button
               type="button"
               onClick={() => setSelectedZoomPhoto(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 text-white text-xs font-bold cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
             >
               ปิดหน้าต่าง
             </button>
@@ -723,13 +723,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 block">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 block">
                 Thai PromptPay พร้อมเพย์
               </span>
               <h3 className="text-base font-bold text-white mt-1">
                 {systemConfig.schoolNameTh}
               </h3>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
+              <p className="text-xs text-slate-300 font-mono mt-0.5">
                 Biller: 0105558992019 • {pendingInvoice.invoiceNumber}
               </p>
             </div>
@@ -746,7 +746,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               </div>
             </div>
 
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-slate-200">
               สแกนผ่านแอปธนาคารใดก็ได้ เพื่อชำระค่าธรรมเนียม
             </p>
 
@@ -754,7 +754,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPayModal(false)}
-                className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium"
+                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-medium cursor-pointer"
               >
                 ยกเลิก
               </button>
@@ -764,7 +764,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   onPayInvoice(pendingInvoice.id, 'promptpay');
                   setShowPayModal(false);
                 }}
-                className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                className="flex-1 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer"
               >
                 ยืนยันชำระเงิน
               </button>

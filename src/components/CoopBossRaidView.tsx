@@ -201,17 +201,17 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       )}
 
       {/* Top Banner Header */}
-      <div className="shrink-0 bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-md border border-red-700/30 relative overflow-hidden">
+      <div className="shrink-0 bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-md border border-red-700/40 relative overflow-hidden">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
           <div className="space-y-1 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 border border-red-400/30 text-red-200 text-[11px] font-semibold">
-              <Swords className="w-3.5 h-3.5 text-red-400" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-950/50 border border-white/25 text-red-200 text-[11px] font-semibold">
+              <Swords className="w-3.5 h-3.5 text-red-300" />
               <span>{lang === 'th' ? 'โหมดห้องเรียนร่วมมือสู้บอส (Co-op Boss Raid & Peer Tutoring)' : 'Cooperative Classroom Boss Raid'}</span>
             </div>
             <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
               <span>{bossConfig.bossNameTh}</span>
             </h1>
-            <p className="text-slate-300 text-xs leading-relaxed hidden sm:block">
+            <p className="text-slate-200 text-xs leading-relaxed hidden sm:block">
               {lang === 'th' 
                 ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที'
                 : 'Defeat lesson bosses together through collaborative problem solving and real-time peer tutoring.'}
@@ -223,7 +223,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               <button
                 type="button"
                 onClick={onExit}
-                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition cursor-pointer active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-900/40 transition cursor-pointer active:scale-95"
               >
                 <span>❌ ออกจากเกม</span>
               </button>
@@ -234,7 +234,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsTeacherPanelOpen(!isTeacherPanelOpen)}
-                className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/20 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-slate-950/50 hover:bg-slate-950/70 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/25 transition cursor-pointer"
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 <span>{lang === 'th' ? 'ควบคุมบอส (ครู)' : 'Teacher Controls'}</span>
@@ -244,7 +244,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             <button
               type="button"
               onClick={handleRestartBoss}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              className="p-2 rounded-xl bg-slate-950/50 hover:bg-slate-950/70 border border-white/25 text-white transition cursor-pointer"
               title="Restart Raid"
             >
               <RotateCcw className="w-4 h-4" />
@@ -474,22 +474,22 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
         {/* Right Column: Active Attack Question & Co-op Party Matrix */}
         <div className={`${raidPanel !== 'arena' ? 'flex' : 'hidden'} lg:flex lg:col-span-7 flex-col min-h-0 space-y-3 pr-1 overflow-y-auto`}>
-          <div className="rounded-lg border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/60 px-3 py-2 text-[11px] font-medium text-amber-900 dark:text-amber-200">
+          <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-100 dark:bg-amber-950 px-3 py-2 text-[11px] font-semibold text-amber-950 dark:text-amber-200">
             โหมดสาธิต: รายชื่อทีมและผลการแข่งขันเป็นข้อมูลตัวอย่าง ยังไม่เชื่อมผู้เล่นออนไลน์จริง
           </div>
           {/* Question Card (Always visible on desktop, selectable on mobile) */}
-          <div className={`${raidPanel === 'question' ? 'block' : 'hidden lg:block'} bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs`}>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300">
+          <div className={`${raidPanel === 'question' ? 'block' : 'hidden lg:block'} bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs`}>
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+              <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
                 {bossConfig.subject}
               </span>
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+              <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
                 {lang === 'th' ? `พลังโจมตีพื้นฐาน: ${bossConfig.activeQuestion.baseDamage} DMG` : `Base: ${bossConfig.activeQuestion.baseDamage} DMG`}
               </span>
             </div>
 
             <div className="mt-4">
-              <p className="font-bold text-sm text-slate-900 dark:text-white leading-relaxed mb-4">
+              <p className="font-bold text-sm text-[var(--color-text-title)] leading-relaxed mb-4">
                 {bossConfig.activeQuestion.questionTh}
               </p>
 
@@ -506,15 +506,15 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                       className={`p-3 rounded-xl border text-left text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-between ${
                         isSelected
                           ? optIdx === bossConfig.activeQuestion.correctIndex
-                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-md'
-                            : 'bg-rose-600 text-white border-rose-700 shadow-md'
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-md'
+                            : 'bg-rose-700 text-white border-rose-800 shadow-md'
                           : selectedAnswer !== null && optIdx === bossConfig.activeQuestion.correctIndex
-                          ? 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-400 text-emerald-800 dark:text-emerald-200 font-bold'
-                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-red-400 text-slate-800 dark:text-slate-200'
+                          ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold'
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] hover:border-rose-500 text-[var(--color-text-title)]'
                       }`}
                     >
                       <span>{opt}</span>
-                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <Zap className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-amber-300' : 'text-amber-600 dark:text-amber-400'}`} />
                     </button>
                   );
                 })}
@@ -522,14 +522,14 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
               {/* Question Feedback & Next */}
               {selectedAnswer !== null && (
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-[var(--color-text-body)]">
                     {bossConfig.activeQuestion.explanationTh}
                   </span>
                   <button
                     type="button"
                     onClick={handleNextRaidQuestion}
-                    className="px-4 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold transition cursor-pointer shrink-0 ml-2"
+                    className="px-4 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold transition cursor-pointer shrink-0 ml-2"
                   >
                     {lang === 'th' ? 'โจทย์ข้อถัดไป' : 'Next Question'}
                   </button>
@@ -539,22 +539,22 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
           </div>
 
           {/* Co-op Party Matrix (Always accessible on desktop, selectable on mobile) */}
-          <details open className={`${raidPanel === 'parties' ? 'block' : 'hidden lg:block'} bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs`}>
+          <details open className={`${raidPanel === 'parties' ? 'block' : 'hidden lg:block'} bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 shadow-xs`}>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <div>
-                <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-500" />
+                <h4 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                  <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   {lang === 'th' ? 'ทีมพันธมิตรห้องเรียน & ระบบเพื่อนช่วยติว' : 'Classroom Co-op Squads'}
                 </h4>
               </div>
-              <span className="shrink-0 text-xs font-black text-indigo-600 dark:text-indigo-400">
+              <span className="shrink-0 text-xs font-black text-indigo-700 dark:text-indigo-300">
                 {parties.length} {lang === 'th' ? 'ทีม • รายละเอียด ▾' : 'teams • details ▾'}
               </span>
             </summary>
 
             {/* Squads List */}
-            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="mt-4 space-y-3 border-t border-[var(--color-border)] pt-4">
+              <p className="text-xs text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'หากเพื่อนในทีมยังตอบไม่ได้ กดปุ่ม "ติวเพื่อน" เพื่อส่งแนวทางคิดให้เพื่อน' : 'Peer assist: Send tutoring tips to help teammates answer'}
               </p>
               <PagedList
@@ -563,17 +563,17 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                 renderItem={(party) => (
                 <div
                   key={party.id}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 space-y-3"
+                  className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                    <span className="font-bold text-sm text-[var(--color-text-title)]">
                       {party.partyName}
                     </span>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold">
+                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-bold">
                         Combo x{party.comboMultiplier}
                       </span>
-                      <span className="font-black text-red-600 dark:text-red-400">
+                      <span className="font-black text-rose-700 dark:text-rose-300">
                         {party.totalDamage} DMG
                       </span>
                     </div>
@@ -586,8 +586,8 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                         key={member.id}
                         className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between ${
                           member.hasAnswered
-                            ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                            ? 'bg-emerald-100/70 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700'
+                            : 'bg-[var(--color-card)] border-[var(--color-border)]'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -597,18 +597,18 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                             className="w-7 h-7 rounded-full object-cover shrink-0"
                           />
                           <div className="truncate min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-white truncate text-[11px]">
+                            <p className="font-bold text-[var(--color-text-title)] truncate text-[11px]">
                               {member.name.split(' ')[1] || member.name}
                             </p>
-                            <p className="text-[10px] text-slate-600 dark:text-slate-300 truncate">
+                            <p className="text-[10px] text-[var(--color-text-muted)] truncate">
                               {member.roleTitle}
                             </p>
                           </div>
                         </div>
 
-                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                        <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
                           {member.hasAnswered ? (
-                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                            <span className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-0.5">
                               <CheckCircle2 className="w-3 h-3" />
                               +{member.damageDealt}
                             </span>
@@ -616,9 +616,9 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleSendPeerAssist(member)}
-                              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                              className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 hover:underline flex items-center gap-0.5 cursor-pointer"
                             >
-                              <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                              <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                               <span>{lang === 'th' ? 'ส่งคำใบ้ติว' : 'Assist'}</span>
                             </button>
                           )}
@@ -636,29 +636,29 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
 
       {/* Victory Celebration Modal */}
       {victoryCelebration && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border-4 border-amber-400 rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl relative animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border-4 border-amber-400 rounded-3xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 text-center space-y-4 shadow-2xl relative animate-fade-in">
             <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-400/40">
               <Trophy className="w-10 h-10" />
             </div>
 
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+            <h3 className="text-2xl font-black text-[var(--color-text-title)]">
               🎉 {lang === 'th' ? 'พิชิตบอสประจำบทเรียนสำเร็จ!' : 'BOSS DEFEATED!'}
             </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
+            <p className="text-xs text-[var(--color-text-body)]">
               {lang === 'th' 
                 ? 'พลังแห่งความร่วมมือของทั้งห้องเรียนช่วยให้พิชิตข้อสอบไซบอร์กได้สำเร็จ ทุกคนได้รับโบนัส 200 XP และ 80 เหรียญความรู้!' 
                 : 'Great teamwork! Every participant receives 200 XP and 80 Knowledge Tokens.'}
             </p>
 
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-900 dark:text-amber-200">
+            <div className="p-3 bg-amber-100 dark:bg-amber-950 rounded-xl border border-amber-300 dark:border-amber-700 text-xs font-bold text-amber-950 dark:text-amber-200">
               📦 ปลดล็อกหีบสมบัติ: "การ์ดยกเว้นการบ้านประจำสัปดาห์"
             </div>
 
             <button
               type="button"
               onClick={handleRestartBoss}
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-sm shadow-md transition cursor-pointer"
+              className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-sm shadow-md transition cursor-pointer"
             >
               {lang === 'th' ? 'รับรางวัลและเริ่มรอบใหม่' : 'Claim Loot & Continue'}
             </button>

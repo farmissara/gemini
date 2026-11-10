@@ -1041,7 +1041,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     }}
                     className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isStirred 
-                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs' 
+                        ? 'bg-indigo-700 text-white border-indigo-400 shadow-xs' 
                         : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                     }`}
                     title={activeConfig.tool1LabelTh}
@@ -1059,7 +1059,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     }}
                     className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isBurnerActive 
-                        ? 'bg-amber-600 text-white border-amber-400 shadow-xs animate-pulse' 
+                        ? 'bg-amber-700 text-white border-amber-400 shadow-xs animate-pulse' 
                         : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                     }`}
                     title={activeConfig.tool2LabelTh}
@@ -1085,7 +1085,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   type="button"
                   disabled={reactionState === 'reacting'}
                   onClick={handleAnalyzeReaction}
-                  className="flex-1 min-w-[130px] h-8 px-3 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="flex-1 min-w-[130px] h-8 px-3 rounded-lg bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-700 hover:from-blue-600 hover:to-cyan-600 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
                   <span className="truncate">
@@ -1146,7 +1146,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowQuestModal(true)}
-                className="shrink-0 h-7 px-2.5 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white text-[11px] font-bold border border-blue-400/40 flex items-center gap-1 cursor-pointer transition active:scale-95 whitespace-nowrap shadow-xs"
+                className="shrink-0 h-7 px-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-[11px] font-bold border border-blue-400/40 flex items-center gap-1 cursor-pointer transition active:scale-95 whitespace-nowrap shadow-xs"
                 title="กดดูโจทย์และคำอธิบายฉบับเต็ม"
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -1176,7 +1176,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       onClick={() => handleAddItemToBeaker(item)}
                       className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-950/30 border-emerald-500/60 text-emerald-200'
+                          ? 'bg-emerald-950/60 border-emerald-500/70 text-emerald-200'
                           : 'bg-slate-800 hover:bg-slate-700 hover:border-blue-400 border-slate-700 active:scale-95 shadow-xs'
                       }`}
                     >
@@ -1197,8 +1197,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
 
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap ${
                         isSelected 
-                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' 
-                          : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xs'
+                          ? 'bg-emerald-900/70 text-emerald-200 border border-emerald-500/60' 
+                          : 'bg-blue-700 hover:bg-blue-800 text-white shadow-xs'
                       }`}>
                         {isSelected ? '✓ ในแท่นแล้ว' : '+ เลือก'}
                       </span>
@@ -1212,7 +1212,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             {subjectQuests.length > 1 && (
               <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                  <BookOpen className="w-3.5 h-3.5 text-slate-300" />
                   <span>สลับโจทย์ในหมวดนี้:</span>
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -1246,8 +1246,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       {/* TEACHER CUSTOM LAB BUILDER MODAL */}
       {/* ========================================================= */}
       {showTeacherBuilder && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
               <h3 className="font-bold text-sm text-cyan-300 flex items-center gap-1.5">
                 <Plus className="w-4 h-4 text-cyan-400" />
@@ -1345,7 +1345,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     <button 
                       type="button" 
                       onClick={() => setBuilderStep(1)} 
-                      className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs cursor-pointer"
+                      className="px-4 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs cursor-pointer"
                     >
                       ถัดไป
                     </button>
@@ -1395,7 +1395,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                         setShowTeacherBuilder(false);
                         setBuilderStep(0);
                       }}
-                      className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs cursor-pointer"
+                      className="px-4 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs cursor-pointer"
                     >
                       บันทึกโจทย์
                     </button>
@@ -1411,8 +1411,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       {/* QUEST STORY & OBJECTIVES POP-UP MODAL (กดซ่อน/กดโชว์ ไม่ล้นจอ) */}
       {/* ========================================================= */}
       {showQuestModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-cyan-400" />
@@ -1488,7 +1488,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowQuestModal(false)}
-                className="w-full sm:w-auto px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-md transition cursor-pointer"
               >
                 เข้าใจแล้ว เริ่มทดลองเลย!
               </button>

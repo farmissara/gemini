@@ -81,20 +81,20 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs">
         <div>
-          <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <BellRing className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+            <BellRing className="w-5 h-5 text-[var(--color-primary-text)]" />
             School Announcements &amp; LINE OA Broadcast
           </h1>
-          <p className="text-xs text-slate-300 mt-0.5">
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             Official communications synced with LINE Messaging API and Resend transactional email services.
           </p>
         </div>
 
         <button
           onClick={() => setShowComposeModal(true)}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all self-start sm:self-auto cursor-pointer"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition-all self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Publish Broadcast</span>
@@ -102,23 +102,23 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       </div>
 
       {broadcastToast && (
-        <div className="shrink-0 p-2.5 rounded-xl bg-emerald-950 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-[#06C755] fill-current" />
+        <div className="shrink-0 p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2 font-medium">
+          <MessageSquare className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
           <span>{broadcastToast}</span>
         </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3">
+      <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto">
           {['all', 'students', 'parents', 'teachers'].map((aud) => (
             <button
               key={aud}
               onClick={() => setFilterAudience(aud)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer border ${
                 filterAudience === aud
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700'
+                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-text-title)] border-[var(--color-border)]'
               }`}
             >
               Target: {aud}
@@ -126,71 +126,71 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           ))}
         </div>
 
-        <span className="text-xs text-slate-300 shrink-0">
-          Showing <strong className="text-white">{filteredAnnouncements.length}</strong> items
+        <span className="text-xs text-[var(--color-text-muted)] shrink-0">
+          Showing <strong className="text-[var(--color-text-title)]">{filteredAnnouncements.length}</strong> items
         </span>
       </div>
 
       {/* Announcements List */}
-      <div className="flex-1 min-h-0 overflow-hidden pr-1">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         <PagedList
           items={filteredAnnouncements}
           pageSize={2}
-          emptyState={<p className="text-sm text-slate-700 dark:text-slate-300 font-medium">No announcements match this audience.</p>}
+          emptyState={<p className="text-sm text-[var(--color-text-muted)] font-medium">No announcements match this audience.</p>}
           renderItem={(ann) => (
           <div
             key={ann.id}
             className={`p-5 rounded-2xl border transition-all ${
               ann.pinned
-                ? 'bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
-                : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-sm'
+                : 'bg-[var(--color-card)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {ann.pinned && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
                       <Pin className="w-2.5 h-2.5" /> Pinned
                     </span>
                   )}
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700">
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)]">
                     {ann.category}
                   </span>
-                  <span className="text-[10px] font-semibold text-slate-300 flex items-center gap-1">
-                    <Users className="w-3 h-3 text-indigo-400" />
-                    Target: <strong className="text-slate-100 uppercase">{ann.targetAudience}</strong>
+                  <span className="text-[10px] font-semibold text-[var(--color-text-muted)] flex items-center gap-1">
+                    <Users className="w-3 h-3 text-[var(--color-primary-text)]" />
+                    Target: <strong className="text-[var(--color-text-title)] uppercase">{ann.targetAudience}</strong>
                   </span>
                 </div>
 
-                <h3 className="text-base font-bold text-white mt-1">{ann.title}</h3>
+                <h3 className="text-base font-bold text-[var(--color-text-title)] mt-1">{ann.title}</h3>
               </div>
 
-              <span className="text-xs text-slate-300 font-mono shrink-0 flex items-center gap-1">
+              <span className="text-xs text-[var(--color-text-muted)] font-mono shrink-0 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
                 {ann.publishedAt}
               </span>
             </div>
 
-            <p className="text-xs text-slate-200 mt-3 leading-relaxed whitespace-pre-line">
+            <p className="text-xs text-[var(--color-text-body)] mt-3 leading-relaxed whitespace-pre-line">
               {ann.content}
             </p>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-4 border-t border-slate-800 text-xs">
-              <div className="text-slate-300">
-                Author: <span className="font-semibold text-white">{ann.author}</span> ({ann.authorRole})
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-4 border-t border-[var(--color-border)] text-xs">
+              <div className="text-[var(--color-text-muted)]">
+                Author: <span className="font-semibold text-[var(--color-text-title)]">{ann.author}</span> ({ann.authorRole})
               </div>
 
               <div className="flex items-center gap-2">
                 {ann.lineBroadcastSent ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-[#34d399] font-semibold bg-[#06C755]/15 px-2 py-1 rounded border border-[#06C755]/40">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold bg-emerald-100 dark:bg-emerald-950 px-2.5 py-1 rounded border border-emerald-300 dark:border-emerald-700">
                     <MessageSquare className="w-3 h-3 fill-current" />
                     LINE OA Broadcast Active
                   </span>
                 ) : (
                   <button
                     onClick={() => handleManualLineBroadcast(ann.id, ann.title)}
-                    className="px-2.5 py-1 rounded bg-[#06C755]/20 hover:bg-[#06C755]/30 text-[#34d399] border border-[#06C755]/40 text-[11px] font-semibold flex items-center gap-1"
+                    className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
                   >
                     <Send className="w-3 h-3" />
                     Send LINE Push
@@ -198,7 +198,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 )}
 
                 {ann.resendEmailSent && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-cyan-400 font-semibold bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/30">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-sky-900 dark:text-sky-200 font-semibold bg-sky-100 dark:bg-sky-950 px-2 py-1 rounded border border-sky-300 dark:border-sky-700">
                     <Mail className="w-3 h-3" />
                     Email Dispatched
                   </span>
@@ -212,16 +212,16 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
       {/* Compose Announcement Modal */}
       {showComposeModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4 text-indigo-400" />
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 text-[var(--color-text-body)]">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
                 Publish School Announcement &amp; LINE Push
               </h3>
               <button
                 onClick={() => setShowComposeModal(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold"
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-lg font-bold px-2 py-0.5 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
                 ×
               </button>
@@ -229,24 +229,24 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
             <form onSubmit={handleCreate} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Title</label>
+                <label className="block text-[var(--color-text-body)] font-semibold mb-1">Title</label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Schedule for Sports Day 2026"
-                  className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Target Audience</label>
+                  <label className="block text-[var(--color-text-body)] font-semibold mb-1">Target Audience</label>
                   <select
                     value={formData.targetAudience}
                     onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100"
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
                     <option value="all">Everyone (All)</option>
                     <option value="parents">Parents / Guardians</option>
@@ -256,11 +256,11 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Category</label>
+                  <label className="block text-[var(--color-text-body)] font-semibold mb-1">Category</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100"
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
                     <option value="academic">Academic / Exam</option>
                     <option value="event">Event / Activity</option>
@@ -271,14 +271,14 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Announcement Body</label>
+                <label className="block text-[var(--color-text-body)] font-semibold mb-1">Announcement Body</label>
                 <textarea
                   rows={4}
                   required
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   placeholder="Write announcement text here..."
-                  className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
                 ></textarea>
               </div>
 
@@ -288,24 +288,24 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                   id="pinCheck"
                   checked={formData.pinned}
                   onChange={(e) => setFormData({ ...formData, pinned: e.target.checked })}
-                  className="rounded bg-slate-800 border-slate-700 text-indigo-600"
+                  className="rounded accent-blue-700"
                 />
-                <label htmlFor="pinCheck" className="text-slate-300 font-medium">
+                <label htmlFor="pinCheck" className="text-[var(--color-text-body)] font-semibold cursor-pointer">
                   Pin to top of school board
                 </label>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+              <div className="pt-3 border-t border-[var(--color-border)] flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowComposeModal(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-medium"
+                  className="px-4 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                   Publish &amp; Broadcast

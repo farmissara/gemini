@@ -141,30 +141,30 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
   const getSubjectBadge = (subj: string) => {
     switch (subj) {
-      case 'biology': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">ชีววิทยา</span>;
-      case 'math': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">คณิตศาสตร์</span>;
-      case 'physics': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">ฟิสิกส์</span>;
-      case 'english': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">ภาษาอังกฤษ</span>;
-      default: return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">ทั่วไป</span>;
+      case 'biology': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">ชีววิทยา</span>;
+      case 'math': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-300 dark:border-blue-700">คณิตศาสตร์</span>;
+      case 'physics': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border border-purple-300 dark:border-purple-700">ฟิสิกส์</span>;
+      case 'english': return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700">ภาษาอังกฤษ</span>;
+      default: return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border border-[var(--color-border)]">ทั่วไป</span>;
     }
   };
 
   return (
     <div className="space-y-6 pb-12">
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-emerald-600/30 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-emerald-600/40 relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-semibold">
-              <Camera className="w-4 h-4 text-emerald-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/70 border border-emerald-400/40 text-emerald-100 text-xs font-semibold">
+              <Camera className="w-4 h-4 text-emerald-300" />
               <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • โหมดตัวอย่าง' : 'Real-World Quest Demo'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
               <span>{lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}</span>
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-200 text-sm leading-relaxed">
               {lang === 'th' 
                 ? 'ลองเชื่อมบทเรียนกับสิ่งรอบตัวด้วยภาพตัวอย่าง ผลที่แสดงเป็นข้อมูลจำลอง ยังไม่มี AI ตรวจภาพจริงและไม่มีการยืนยันคะแนน'
                 : 'Try sample images to connect lessons to daily life. Results are simulated; no real AI verification or rewards are issued.'}
@@ -177,7 +177,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowTeacherAddQuest(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>{lang === 'th' ? '+ ครูสั่งเควสต์ใหม่' : '+ Teacher Add Quest'}</span>
@@ -188,9 +188,9 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[var(--color-card)] p-4 rounded-xl border border-[var(--color-border)] shadow-xs">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+          <span className="text-xs font-bold text-[var(--color-text-title)]">
             {lang === 'th' ? 'หมวดหมู่วิชา:' : 'Category:'}
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -205,10 +205,10 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedSubjectFilter(tab.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
                   selectedSubjectFilter === tab.id
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-950 dark:hover:text-white'
+                    ? 'bg-emerald-700 border-emerald-700 text-white shadow-xs'
+                    : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
                 }`}
               >
                 {tab.label}
@@ -217,7 +217,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
           </div>
         </div>
 
-        <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+        <span className="text-xs text-[var(--color-text-muted)] font-medium">
           {quests.filter(q => q.status === 'verified').length} {lang === 'th' ? 'ภารกิจยืนยันโดยครู' : 'teacher-verified quests'} • {quests.filter(q => q.status === 'submitted').length} {lang === 'th' ? 'ผลตัวอย่าง' : 'demo results'}
         </span>
       </div>
@@ -232,43 +232,43 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               key={quest.id}
               className={`p-6 rounded-2xl border transition-all flex flex-col justify-between ${
                 isVerified 
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 shadow-xs' 
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-400 shadow-xs'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-700 shadow-xs' 
+                  : 'bg-[var(--color-card)] border-[var(--color-border)] hover:border-emerald-500 shadow-xs'
               }`}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   {getSubjectBadge(quest.subject)}
-                  <div className="flex items-center gap-2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-amber-800 dark:text-amber-300">
                     <span>{lang === 'th' ? `รางวัลเมื่อครูยืนยัน: ${quest.rewardXp} XP` : `After teacher review: ${quest.rewardXp} XP`}</span>
                   </div>
                 </div>
 
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-[var(--color-text-title)]">
                   {quest.titleTh}
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
                   {quest.scenarioTh}
                 </p>
 
                 {/* Example Objects Pill */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs">
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs">
+                  <span className="font-bold text-[var(--color-text-title)]">
                     {lang === 'th' ? 'ตัวอย่างสิ่งของที่ใช้ส่งได้:' : 'Examples:'}
                   </span>{' '}
-                  <span className="text-slate-600 dark:text-slate-400">
+                  <span className="text-[var(--color-text-body)]">
                     {quest.exampleObjectTh}
                   </span>
                 </div>
 
                 {/* If verified, show result summary */}
                 {quest.aiVerificationResult && (
-                  <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 text-xs text-emerald-900 dark:text-emerald-100 space-y-1">
+                  <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-xs text-emerald-950 dark:text-emerald-100 space-y-1">
                     <p className="font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
                       <span>{quest.aiVerificationResult.identifiedObject}</span>
                     </p>
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-200">
+                    <p className="text-[11px] text-emerald-900 dark:text-emerald-200">
                       {quest.aiVerificationResult.feedbackTh}
                     </p>
                   </div>
@@ -276,8 +276,8 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </div>
 
               {/* Action Toolbar */}
-              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-600 dark:text-slate-300">
+              <div className="mt-5 pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
                   {isVerified
                     ? (lang === 'th' ? 'ครูยืนยันแล้ว' : 'Teacher verified')
                     : hasDemoResult
@@ -290,8 +290,8 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                   onClick={() => handleStartUpload(quest)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                     hasDemoResult
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700' 
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs'
+                      ? 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90' 
+                      : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
                   }`}
                 >
                   <Camera className="w-4 h-4" />
@@ -305,29 +305,29 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
       {/* Simulated Camera & AI Upload Modal */}
       {activeQuestForUpload && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
                   <span>{lang === 'th' ? 'ทดลองผลตรวจจากภาพตัวอย่าง' : 'Sample image demo'}</span>
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-xs">
+                <p className="text-xs text-[var(--color-text-muted)] truncate max-w-xs">
                   {activeQuestForUpload.titleTh}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveQuestForUpload(null)}
-                className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Photo Viewport Simulation */}
-            <div className="w-full h-56 rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden flex items-center justify-center">
+            <div className="w-full h-56 rounded-2xl bg-slate-900 border border-slate-700 relative overflow-hidden flex items-center justify-center">
               {selectedSamplePhoto ? (
                 <img
                   src={selectedSamplePhoto}
@@ -335,14 +335,14 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="text-center text-slate-500 text-xs">
-                  <Camera className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                <div className="text-center text-slate-300 text-xs">
+                  <Camera className="w-8 h-8 mx-auto mb-1 opacity-70" />
                   <p>{lang === 'th' ? 'เลือกภาพตัวอย่างด้านล่างเพื่อจำลองถ่ายภาพ' : 'Select sample below'}</p>
                 </div>
               )}
 
               {isAiAnalyzing && (
-                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-2 animate-fade-in">
+                <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-2 animate-fade-in">
                   <RotateCw className="w-8 h-8 text-emerald-400 animate-spin" />
                   <p className="text-xs font-bold text-emerald-300">
                     {lang === 'th' ? 'กำลังจำลองผลตรวจจากภาพตัวอย่าง...' : 'Simulating a sample result...'}
@@ -356,7 +356,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
             {/* Quick Sample Selector */}
             <div className="space-y-1.5 text-xs">
-              <label className="font-bold text-slate-700 dark:text-slate-300 block">
+              <label className="font-bold text-[var(--color-text-title)] block">
                 {lang === 'th' ? 'เลือกภาพจำลองการถ่ายส่งตรวจ:' : 'Select sample photograph:'}
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -367,8 +367,8 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                     onClick={() => setSelectedSamplePhoto(sample.url)}
                     className={`p-2 rounded-xl border text-left truncate text-xs transition cursor-pointer ${
                       selectedSamplePhoto === sample.url
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 font-bold'
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        ? 'border-emerald-600 bg-emerald-100 dark:bg-emerald-950 text-emerald-950 dark:text-emerald-100 font-bold'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
                     }`}
                   >
                     {sample.label}
@@ -379,7 +379,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
             {/* Note Input */}
             <div className="text-xs">
-              <label className="font-bold text-slate-700 dark:text-slate-300 mb-1 block">
+              <label className="font-bold text-[var(--color-text-title)] mb-1 block">
                 {lang === 'th' ? 'คำอธิบายเพิ่มเติมหรือการคำนวณของนักเรียน:' : 'Student notes & calculations:'}
               </label>
               <input
@@ -387,7 +387,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 placeholder={lang === 'th' ? 'เช่น พบใบกล้วยหน้าอาคาร 3 มีเส้นใบขนาน' : 'e.g. Found banana leaf with parallel venation'}
                 value={studentNote}
                 onChange={(e) => setStudentNote(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
               />
             </div>
 
@@ -396,7 +396,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveQuestForUpload(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs"
+                className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold text-xs cursor-pointer"
               >
                 {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
               </button>
@@ -404,7 +404,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 type="button"
                 disabled={isAiAnalyzing}
                 onClick={handleSimulateAiVerification}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-yellow-300" />
                 <span>{lang === 'th' ? 'แสดงผลตัวอย่าง' : 'Show demo result'}</span>
@@ -416,16 +416,16 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
       {/* Teacher Custom Quest Modal */}
       {showTeacherAddQuest && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative text-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+              <h3 className="text-base font-bold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'ครูสร้างเควสต์สำรวจชีวิตจริงใหม่' : 'Create Real-World Quest'}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowTeacherAddQuest(false)}
-                className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -433,13 +433,13 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
             <form onSubmit={handleCreateQuestByTeacher} className="space-y-3">
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-bold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'วิชา' : 'Subject'}
                 </label>
                 <select
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                 >
                   <option value="biology">ชีววิทยา</option>
                   <option value="math">คณิตศาสตร์</option>
@@ -449,7 +449,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-bold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'ชื่อภารกิจ' : 'Quest Title'}
                 </label>
                 <input
@@ -458,12 +458,12 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                   placeholder={lang === 'th' ? 'เช่น ถ่ายรูปทรงเรขาคณิต 3 มิติรอบตัว' : 'Title...'}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-bold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'โจทย์และสถานการณ์' : 'Scenario & Instructions'}
                 </label>
                 <textarea
@@ -471,12 +471,12 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                   placeholder={lang === 'th' ? 'ให้นักเรียนมองหาอะไร และคำนวณอย่างไร...' : 'Instructions...'}
                   value={newScenario}
                   onChange={(e) => setNewScenario(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-bold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'ตัวอย่างสิ่งของที่ส่งได้' : 'Example Objects'}
                 </label>
                 <input
@@ -484,7 +484,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                   placeholder={lang === 'th' ? 'เช่น กล่องกระดาษ, กระป๋องน้ำอัดลม' : 'Examples...'}
                   value={newExample}
                   onChange={(e) => setNewExample(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)]"
                 />
               </div>
 
@@ -492,13 +492,13 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowTeacherAddQuest(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold cursor-pointer"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
                 >
                   {lang === 'th' ? 'ปล่อยภารกิจทันที' : 'Publish Quest'}
                 </button>

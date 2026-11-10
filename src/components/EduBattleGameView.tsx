@@ -455,14 +455,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-xl shadow-rose-950/20 border border-white/10">
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/45 border border-white/25 backdrop-blur-md text-xs font-semibold">
                   <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
                   <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                   {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
                 </h1>
-                <p className="text-white/80 text-sm max-w-2xl">
+                <p className="text-slate-100 text-sm max-w-2xl">
                   {lang === 'th'
                     ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
                     : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
@@ -470,7 +470,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* User Score Summary Card */}
-              <div className="bg-black/30 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center gap-4 shrink-0">
+              <div className="bg-slate-950/55 backdrop-blur-md border border-white/25 rounded-2xl p-4 flex items-center gap-4 shrink-0">
                 <img 
                   src={currentPlayerStats.avatarUrl} 
                   alt={currentPlayerStats.name} 
@@ -479,7 +479,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm">{currentPlayerStats.name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/40 font-semibold">
                       {currentPlayerStats.rankTitle}
                     </span>
                   </div>
@@ -493,7 +493,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       <span>{currentPlayerStats.gems} Gems</span>
                     </div>
                   </div>
-                  <div className="text-[11px] text-white/70">
+                  <div className="text-[11px] text-slate-200">
                     สถิติชนะ {currentPlayerStats.battleWins} ครั้ง • สตรีค {currentPlayerStats.streak} ติดต่อกัน
                   </div>
                 </div>
@@ -522,7 +522,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 aria-pressed={activeSubTab === id}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
                   activeSubTab === id
-                    ? 'bg-indigo-600 text-white shadow-md'
+                    ? 'bg-indigo-700 text-white shadow-md'
                     : 'bg-slate-800 text-slate-200 border border-slate-600 hover:bg-slate-700 hover:text-white'
                 }`}
               >
@@ -550,7 +550,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 ['bank', 'leaderboard', 'shop'].includes(activeSubTab)
                   ? 'bg-slate-700 text-white'
-                  : 'bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:text-white'
+                  : 'bg-slate-800/80 text-slate-200 border border-slate-700 hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -571,7 +571,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       setShowUtilitiesMenu(false);
                     }}
                     className={`w-full px-3 py-2 rounded-lg text-left text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
-                      activeSubTab === id ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      activeSubTab === id ? 'bg-indigo-700 text-white' : 'text-slate-200 hover:bg-slate-800 hover:text-white'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -687,7 +687,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-rose-600/40 animate-pulse">
                         VS
                       </div>
-                      <span className="text-[9px] text-slate-400 font-mono mt-1">15s / ข้อ</span>
+                      <span className="text-[9px] text-slate-300 font-mono mt-1">15s / ข้อ</span>
                     </div>
 
                     {/* Rival Bot */}
@@ -948,11 +948,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   let btnStyle = 'bg-slate-900 hover:bg-slate-800 active:bg-slate-800 border-slate-700 text-slate-100';
                   if (selectedAnswer !== null) {
                     if (idx === currentQ.correctIndex) {
-                      btnStyle = 'bg-emerald-600/50 border-emerald-400 text-emerald-100 font-black shadow-lg shadow-emerald-500/30 scale-[1.01]';
+                      btnStyle = 'bg-emerald-800/80 border-emerald-400 text-white font-black shadow-lg shadow-emerald-500/30 scale-[1.01]';
                     } else if (idx === selectedAnswer) {
-                      btnStyle = 'bg-rose-600/50 border-rose-400 text-rose-100 font-bold';
+                      btnStyle = 'bg-rose-800/80 border-rose-400 text-white font-bold';
                     } else {
-                      btnStyle = 'opacity-70 bg-slate-900/80 border-slate-800 text-slate-300';
+                      btnStyle = 'bg-slate-900/90 border-slate-700 text-slate-300';
                     }
                   }
 
@@ -1110,7 +1110,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   setQuestionFormStep(0);
                   setShowAddModal(true);
                 }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all"
+                className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-indigo-900/40 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>{lang === 'th' ? 'เพิ่มข้อสอบใหม่' : 'Add Question'}</span>
@@ -1193,7 +1193,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     : 'bg-gradient-to-b from-amber-900/90 via-slate-900 to-slate-950 border-amber-700/40'
                 }`}
               >
-                <div className="absolute top-3 right-3 text-2xl font-black text-white/30">
+                <div className="absolute top-3 right-3 text-2xl font-black text-white/50">
                   #{idx + 1}
                 </div>
 
@@ -1333,7 +1333,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       onClick={() => onRedeemReward(item.id, item.costGems)}
                       className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
                         canAfford
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30'
+                          ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-900/40 cursor-pointer'
                           : 'bg-slate-800 text-slate-300 cursor-not-allowed'
                       }`}
                     >
@@ -1350,8 +1350,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
       {/* Add New Question Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 max-w-2xl w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-4 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-400" />
@@ -1436,7 +1436,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       onChange={() => setNewCorrectIndex(idx)}
                       className="text-emerald-500 focus:ring-emerald-500 h-4 w-4"
                     />
-                    <span className="w-6 text-xs font-bold text-slate-400 text-center">
+                    <span className="w-6 text-xs font-bold text-slate-300 text-center">
                       {String.fromCharCode(65 + idx)}.
                     </span>
                     <input
@@ -1478,17 +1478,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       setQuestionFormStep(0);
                     }
                   }}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 cursor-pointer"
                 >
                   {questionFormStep === 1 ? 'ย้อนกลับ' : 'ยกเลิก'}
                 </button>
                 {questionFormStep === 0 ? (
-                  <button type="button" onClick={() => setQuestionFormStep(1)} className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30">
+                  <button type="button" onClick={() => setQuestionFormStep(1)} className="px-6 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white shadow-md shadow-indigo-900/40 cursor-pointer">
                     ถัดไป
                   </button>
                 ) : <button
                   type="submit"
-                  className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-md shadow-indigo-600/30"
+                  className="px-6 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white shadow-md shadow-indigo-900/40 cursor-pointer"
                 >
                   บันทึกข้อสอบเข้าคลัง
                 </button>}

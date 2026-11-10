@@ -2066,7 +2066,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             <button
               type="button"
               onClick={onExit}
-              className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 flex items-center gap-1 cursor-pointer active:scale-95 border border-rose-500/50"
+              className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-black shadow-lg shadow-rose-900/40 flex items-center gap-1 cursor-pointer active:scale-95 border border-rose-500/50"
               title="ออกจากเกม กลับสู่หน้าหลัก"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -2095,7 +2095,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               <Package className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               <span>{openedChestsCount}/{totalChests}</span>
             </span>
-            <span className="text-slate-400">·</span>
+            <span className="text-slate-300">·</span>
             <span className="text-amber-400 font-bold flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>{timerSeconds}s</span>
@@ -2176,7 +2176,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       onClick={() => triggerInteraction()}
                       className={`p-4 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center gap-2 ${
                         isOpened
-                          ? 'bg-emerald-950/60 border-emerald-600/60 text-emerald-200 opacity-85 cursor-default'
+                          ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-200 cursor-default'
                           : 'bg-slate-800/90 hover:bg-amber-500/20 border-amber-400/50 text-white shadow-lg hover:scale-[1.02]'
                       }`}
                     >
@@ -2196,7 +2196,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         {/* Storm Warning Red Vignette when outside safe zone */}
         {isOutsideStorm && (
           <div className="absolute top-14 inset-x-3 z-20 pointer-events-none flex items-center justify-center">
-            <div className="px-3.5 py-1.5 bg-rose-600/95 text-white font-black text-xs rounded-xl shadow-2xl flex items-center gap-1.5 animate-bounce border border-rose-300">
+            <div className="px-3.5 py-1.5 bg-rose-700 text-white font-black text-xs rounded-xl shadow-2xl flex items-center gap-1.5 animate-bounce border border-rose-300">
               <AlertTriangle className="w-4 h-4 text-yellow-300 shrink-0" />
               <span>อยู่นอก Safe Zone! รีบวิ่งเข้าวง</span>
             </div>
@@ -2438,7 +2438,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </div>
 
             {/* Drawer Body */}
-            <div className="flex-1 p-4 overflow-hidden space-y-4 text-xs">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
               {/* TAB 1: LEADERBOARD */}
               {drawerTab === 'leaderboard' && (
                 <div className="space-y-3">
@@ -2452,7 +2452,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     </span>
                   </div>
 
-                  <h4 className="font-bold text-slate-300">ตารางคะแนนสดในห้องเรียน (Real-time Leaderboard)</h4>
+                  <h4 className="font-bold text-slate-200">ตารางคะแนนสดในห้องเรียน (Real-time Leaderboard)</h4>
                   <div className="space-y-1.5">
                     {/* Player Row */}
                     <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/40 font-bold text-white">
@@ -2472,7 +2472,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     <PagedList items={classmates} pageSize={4} renderItem={(cm, idx) => (
                       <div key={cm.id} className="flex items-center justify-between p-2 rounded-xl bg-slate-800/80 border border-slate-700/80 text-slate-200">
                         <div className="flex items-center gap-2">
-                          <span className="w-5 text-center text-slate-400 font-mono">#{idx + 2}</span>
+                          <span className="w-5 text-center text-slate-300 font-mono">#{idx + 2}</span>
                           <img src={cm.avatarUrl} alt={cm.name} className="w-6 h-6 rounded-lg object-cover" />
                           <span className="truncate">{cm.name}</span>
                         </div>
@@ -2486,11 +2486,11 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
                   {/* Live Feed */}
                   <div className="pt-2">
-                    <h5 className="font-bold text-slate-300 text-[11px] mb-1.5">บันทึกเหตุการณ์สด (Live Events):</h5>
+                    <h5 className="font-bold text-slate-200 text-[11px] mb-1.5">บันทึกเหตุการณ์สด (Live Events):</h5>
                     <div className="space-y-1 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-200">
                       <PagedList items={liveBattleEvents} pageSize={4} renderItem={(ev) => (
                         <div key={ev.id} className="flex items-start gap-1.5">
-                          <span className="text-slate-400 font-mono shrink-0">[{ev.time}]</span>
+                          <span className="text-slate-300 font-mono shrink-0">[{ev.time}]</span>
                           <span>{ev.text}</span>
                         </div>
                       )} />
@@ -2507,7 +2507,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       <span className="text-[10px] text-rose-300 font-bold block">รัศมีวงพายุ Safe Zone</span>
                       <strong className="text-sm font-mono text-white">{Math.round(stormRadius)} เมตร</strong>
                     </div>
-                    <span className="text-xs px-2.5 py-1 rounded-xl bg-rose-600 text-white font-bold">
+                    <span className="text-xs px-2.5 py-1 rounded-xl bg-rose-700 text-white font-bold">
                       {isOutsideStorm ? '⚠️ นอกวง' : '✓ ปลอดภัย'}
                     </span>
                   </div>
@@ -2584,7 +2584,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                           setShowGameMenuDrawer(false);
                         }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
-                          freezeCooldown === 0 ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 cursor-not-allowed'
+                          freezeCooldown === 0 ? 'bg-indigo-700 hover:bg-indigo-800 text-white' : 'bg-slate-700 text-slate-300 cursor-not-allowed'
                         }`}
                       >
                         {freezeCooldown > 0 ? `${freezeCooldown}s` : 'กดแช่แข็ง'}
@@ -2710,7 +2710,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                         setGamePhase('lobby');
                         setShowGameMenuDrawer(false);
                       }}
-                      className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg"
+                      className="w-full py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg"
                     >
                       <RotateCcw className="w-4 h-4" />
                       <span>กลับสู่หน้าล็อบบี้ (เลือกหมวดข้อสอบใหม่)</span>
@@ -2790,11 +2790,11 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 let btnStyle = 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-100';
                 if (selectedAnswerIndex !== null) {
                   if (idx === activeQuestion.correctIndex) {
-                    btnStyle = 'bg-emerald-500/20 border-emerald-500 text-emerald-200 font-bold';
+                    btnStyle = 'bg-emerald-800/80 border-emerald-400 text-white font-bold';
                   } else if (selectedAnswerIndex === idx) {
-                    btnStyle = 'bg-rose-500/20 border-rose-500 text-rose-200 font-semibold';
+                    btnStyle = 'bg-rose-800/80 border-rose-400 text-white font-semibold';
                   } else {
-                    btnStyle = 'opacity-75 bg-slate-800/70 border-slate-700 text-slate-300';
+                    btnStyle = 'bg-slate-800/80 border-slate-700 text-slate-300';
                   }
                 }
 
@@ -2806,7 +2806,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     className={`w-full min-h-[46px] p-2.5 rounded-xl border text-left text-xs transition-all flex items-center justify-between gap-2 cursor-pointer ${btnStyle}`}
                   >
                     <span className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="w-5 h-5 rounded-md bg-slate-700/60 flex items-center justify-center font-mono font-bold text-[11px] text-slate-300 shrink-0">
+                      <span className="w-5 h-5 rounded-md bg-slate-700/80 flex items-center justify-center font-mono font-bold text-[11px] text-slate-200 shrink-0">
                         {String.fromCharCode(65 + idx)}
                       </span>
                       <span className="break-words leading-tight">{option}</span>
@@ -2825,11 +2825,11 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             {/* Explanation Feedback */}
             {questionFeedback && (
               <div className="mt-4 p-3 rounded-xl bg-slate-800/90 border border-slate-700 text-xs">
-                <div className={`font-bold flex items-center gap-1.5 ${questionFeedback === 'correct' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <div className={`font-bold flex items-center gap-1.5 ${questionFeedback === 'correct' ? 'text-emerald-300' : 'text-rose-300'}`}>
                   {questionFeedback === 'correct' ? '🎉 ถูกต้องยอดเยี่ยม!' : '❌ คำตอบยังไม่ถูกต้อง'}
                 </div>
-                <div className="mt-1 text-slate-300">
-                  <span className="text-slate-400 font-semibold">เฉลย: </span>
+                <div className="mt-1 text-slate-200">
+                  <span className="text-slate-300 font-semibold">เฉลย: </span>
                   {activeQuestion.explanationTh}
                 </div>
               </div>
@@ -2842,8 +2842,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 5. QUESTION BANK & EXAM SELECTOR MODAL (Multi-Subject Question Banks) */}
       {/* ======================================================== */}
       {showBankModal && (
-        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-          <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl p-4 sm:p-5 shadow-2xl text-white">
+        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-3xl p-4 sm:p-5 shadow-2xl text-white">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -2966,8 +2966,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 6. VICTORY SCREEN (ล่าสมบัติ 3D) */}
       {/* ======================================================== */}
       {gameWon && (
-        <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-400 rounded-3xl p-6 text-center shadow-2xl shadow-amber-500/30">
+        <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-400 rounded-3xl p-6 text-center shadow-2xl shadow-amber-500/30">
             <div className="w-20 h-20 mx-auto rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300">
               <Trophy className="w-10 h-10 animate-bounce" />
             </div>
@@ -3005,7 +3005,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     c.beaconMesh.visible = true;
                   });
                 }}
-                className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-sm text-white shadow-lg cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-cyan-700 hover:bg-cyan-800 font-bold text-sm text-white shadow-lg cursor-pointer"
               >
                 เล่นใหม่อีกครั้ง
               </button>
@@ -3028,8 +3028,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 7. CHARACTER SKINS & LOCKER */}
       {/* ======================================================== */}
       {showSkinShop && (
-        <div className="absolute inset-0 z-40 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+        <div className="absolute inset-0 z-40 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-indigo-400" />
@@ -3078,8 +3078,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 8. HOW TO PLAY MODAL */}
       {/* ======================================================== */}
       {showHowToPlay && (
-        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl text-white">
+        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-md max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl text-white">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-base flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-cyan-400" />
@@ -3103,7 +3103,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             <button
               type="button"
               onClick={() => setShowHowToPlay(false)}
-              className="mt-5 w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold text-xs cursor-pointer"
+              className="mt-5 w-full py-2 bg-cyan-700 hover:bg-cyan-800 text-white rounded-xl font-bold text-xs cursor-pointer"
             >
               เข้าใจแล้ว เริ่มผจญภัยเลย!
             </button>

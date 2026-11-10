@@ -284,17 +284,17 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       <div className="shrink-0 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
-              <MapPin className="w-4 h-4 text-emerald-400" />
+            <span className="p-1 rounded-md bg-blue-950 text-emerald-300 border border-blue-700">
+              <MapPin className="w-4 h-4" />
             </span>
             <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
               <span>{lang === 'th' ? 'กำหนดพิกัด GPS ประจำโรงเรียน' : 'School GPS & Geofence Settings'}</span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-800/80 text-blue-200 border border-blue-600/40">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-100 border border-blue-700">
                 {activeSchool.nameTh}
               </span>
             </h2>
           </div>
-          <p className="text-xs text-blue-200/90 leading-relaxed">
+          <p className="text-xs text-blue-100 leading-relaxed">
             {lang === 'th' 
               ? 'ผู้ดูแลระบบสามารถกำหนดละติจูด ลองจิจูด รัศมีเขตโรงเรียน และประตูสแกนเข้าเรียนได้โดยตรง'
               : 'School admins can configure latitude, longitude, allowable check-in radius, and gate geofences.'}
@@ -305,7 +305,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           <button
             type="button"
             onClick={handleSaveAll}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
           >
             <Save className="w-3.5 h-3.5 text-slate-950" />
             <span>{lang === 'th' ? 'บันทึกพิกัดโรงเรียน' : 'Save GPS Settings'}</span>
@@ -315,12 +315,12 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
       {/* Save Success Banner */}
       {saveSuccess && (
-        <div className="shrink-0 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between animate-in fade-in duration-200">
+        <div className="shrink-0 p-2.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between animate-in fade-in duration-200">
           <span className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
             <span>{lang === 'th' ? `บันทึกพิกัด GPS (${schoolLat}, ${schoolLng}) และ ${gatesList.length} ประตูของ ${activeSchool.nameTh} สำเร็จแล้ว!` : `Saved GPS settings (${schoolLat}, ${schoolLng}) successfully!`}</span>
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-100 border border-emerald-400 dark:border-emerald-700">
             {activeSchool.code}
           </span>
         </div>
@@ -330,27 +330,27 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       {locateStatus && (
         <div className={`shrink-0 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
           locateStatus.type === 'success' 
-            ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-800'
-            : 'bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-800'
+            ? 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700'
+            : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
         }`}>
           {locateStatus.type === 'success' ? (
-            <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+            <Sparkles className="w-4 h-4 text-blue-700 dark:text-blue-300 shrink-0" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
           )}
           <span>{locateStatus.message}</span>
         </div>
       )}
 
       {/* Subtabs Selector Header */}
-      <div className="shrink-0 flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-1.5">
+      <div className="shrink-0 flex flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] pb-1.5">
         <button
           type="button"
           onClick={() => setActiveTab('center_geofence')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === 'center_geofence'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              ? 'bg-[var(--color-primary)] text-white shadow-sm'
+              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
           <Compass className="w-3.5 h-3.5" />
@@ -362,8 +362,8 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           onClick={() => setActiveTab('campus_gates')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === 'campus_gates'
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              ? 'bg-indigo-700 text-white shadow-sm'
+              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
@@ -375,14 +375,14 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           onClick={() => setActiveTab('radar_test')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === 'radar_test'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              ? 'bg-emerald-700 text-white shadow-sm'
+              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
           <Activity className="w-3.5 h-3.5" />
           <span>3. เรดาร์จำลอง &amp; ทดสอบระยะ</span>
           {testResult && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] ${testResult.isInside ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] ${testResult.isInside ? 'bg-emerald-200 text-emerald-950' : 'bg-amber-200 text-amber-950'}`}>
               {testResult.isInside ? 'อยู่ในเขต' : 'นอกเขต'}
             </span>
           )}
@@ -396,11 +396,11 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               {/* Coordinates Inputs Card */}
-              <div className="lg:col-span-7 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="lg:col-span-7 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
                   <div className="flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    <Compass className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
                       ช่องกรอกพิกัด GPS ละติจูด / ลองจิจูด
                     </h3>
                   </div>
@@ -409,7 +409,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     type="button"
                     disabled={isLocating}
                     onClick={() => handleDetectCurrentLocation()}
-                    className="px-2.5 py-1 rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 border border-blue-200 dark:border-blue-800 transition cursor-pointer disabled:opacity-50"
+                    className="px-2.5 py-1 rounded-md bg-[var(--color-primary-light)] hover:opacity-90 text-[var(--color-primary-text)] text-xs font-bold flex items-center gap-1.5 border border-[var(--color-border)] transition cursor-pointer disabled:opacity-50"
                   >
                     <LocateFixed className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
                     <span>{isLocating ? 'กำลังดึงพิกัด...' : 'ดึงพิกัดจากตำแหน่งปัจจุบัน'}</span>
@@ -419,8 +419,8 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Latitude */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      ละติจูด (Latitude - N/S) <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-bold text-[var(--color-text-body)] mb-1">
+                      ละติจูด (Latitude - N/S) <span className="text-rose-600 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="number"
@@ -428,17 +428,17 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       value={schoolLat}
                       onChange={(e) => setSchoolLat(parseFloat(e.target.value) || 0)}
                       placeholder="เช่น 13.736717"
-                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                     />
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                    <span className="text-[10px] text-[var(--color-text-muted)] mt-0.5 block">
                       ตัวเลขทศนิยม เช่น 13.736717
                     </span>
                   </div>
 
                   {/* Longitude */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      ลองจิจูด (Longitude - E/W) <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-bold text-[var(--color-text-body)] mb-1">
+                      ลองจิจูด (Longitude - E/W) <span className="text-rose-600 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="number"
@@ -446,22 +446,22 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       value={schoolLng}
                       onChange={(e) => setSchoolLng(parseFloat(e.target.value) || 0)}
                       placeholder="เช่น 100.523186"
-                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                     />
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                    <span className="text-[10px] text-[var(--color-text-muted)] mt-0.5 block">
                       ตัวเลขทศนิยม เช่น 100.523186
                     </span>
                   </div>
                 </div>
 
                 {/* Geofence Radius Slider */}
-                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between text-xs font-bold text-[var(--color-text-body)]">
                     <span className="flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5 text-indigo-500" />
+                      <Radio className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
                       <span>รัศมีขอบเขตที่อนุญาต (Geofence Radius):</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-xs">
+                    <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-mono font-bold text-xs">
                       {schoolRadius} เมตร
                     </span>
                   </div>
@@ -473,7 +473,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     step="10"
                     value={schoolRadius}
                     onChange={(e) => setSchoolRadius(parseInt(e.target.value, 10))}
-                    className="w-full accent-indigo-600 cursor-pointer"
+                    className="w-full accent-indigo-700 cursor-pointer"
                   />
 
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -484,25 +484,25 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         onClick={() => setSchoolRadius(preset)}
                         className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
                           schoolRadius === preset
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            ? 'bg-indigo-700 text-white'
+                            : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
                         }`}
                       >
                         {preset} ม.
                       </button>
                     ))}
-                    <span className="text-[10px] text-slate-600 dark:text-slate-300 ml-auto">
+                    <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">
                       {schoolRadius <= 100 ? '🟢 เขตประตูหน้า' : schoolRadius <= 300 ? '🔵 ครอบคลุมรั้วโรงเรียน' : '🟠 รวมสนามกีฬา/อาคารรอบนอก'}
                     </span>
                   </div>
                 </div>
 
                 {/* Action Links & Copy */}
-                <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)]">
                   <button
                     type="button"
                     onClick={handleCopyCoords}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] text-xs font-semibold cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>{copiedCoords ? 'คัดลอกแล้ว!' : 'คัดลอกพิกัด'}</span>
@@ -512,7 +512,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     href={`https://www.google.com/maps?q=${schoolLat},${schoolLng}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/60"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold hover:opacity-90"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>เปิดพิกัดบน Google Maps</span>
@@ -521,12 +521,12 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
               </div>
 
               {/* Thailand Landmark Presets & Map Visual */}
-              <div className="lg:col-span-5 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 flex flex-col justify-between">
+              <div className="lg:col-span-5 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider pb-2 border-b border-[var(--color-border)]">
                     พิกัดตัวอย่างโรงเรียน / วิทยาเขตในไทย
                   </h3>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 mb-2">
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1 mb-2">
                     คลิกเพื่อเลือกพิกัดตัวอย่างสำหรับทดลองระบบเช็กชื่อ Geofence
                   </p>
 
@@ -542,15 +542,15 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         }}
                         className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition border cursor-pointer ${
                           Math.abs(schoolLat - item.lat) < 0.001 && Math.abs(schoolLng - item.lng) < 0.001
-                            ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-300 dark:border-blue-600 text-blue-900 dark:text-blue-100 font-bold'
-                            : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-primary-text)] font-bold'
+                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
                         }`}
                       >
                         <span className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                           <span>{item.label}</span>
                         </span>
-                        <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300">
+                        <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
                           {item.lat.toFixed(4)}, {item.lng.toFixed(4)}
                         </span>
                       </button>
@@ -560,18 +560,18 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
                 {/* Mini Visual Radar Box */}
                 <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-white flex items-center gap-3">
-                  <div className="relative w-12 h-12 rounded-full border border-emerald-500/50 flex items-center justify-center shrink-0 bg-emerald-950/40">
+                  <div className="relative w-12 h-12 rounded-full border border-emerald-500/60 flex items-center justify-center shrink-0 bg-emerald-950">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute" />
-                    <MapPin className="w-5 h-5 text-amber-400 relative z-10" />
+                    <MapPin className="w-5 h-5 text-amber-300 relative z-10" />
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
                       <span>ศูนย์กลางพิกัด: {activeSchool.nameTh}</span>
                     </div>
-                    <div className="font-mono text-[11px] text-emerald-400 truncate">
+                    <div className="font-mono text-[11px] text-emerald-300 truncate">
                       Lat: {schoolLat.toFixed(5)} • Lng: {schoolLng.toFixed(5)}
                     </div>
-                    <div className="text-[10px] text-slate-300">
+                    <div className="text-[10px] text-slate-200">
                       รัศมีตรวจจับ: {schoolRadius} ม. • จุดตรวจย่อย: {gatesList.length} จุด
                     </div>
                   </div>
@@ -584,13 +584,13 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         {/* TAB 2: CAMPUS GATES LIST */}
         {activeTab === 'campus_gates' && (
           <div className="h-full flex flex-col min-h-0 space-y-2">
-            <div className="shrink-0 flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+            <div className="shrink-0 flex items-center justify-between pb-1 border-b border-[var(--color-border)]">
               <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
                   <span>จุดตรวจสแกนเข้าเรียนและประตูวิทยาเขต ({gatesList.length} จุด)</span>
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] text-[var(--color-text-muted)]">
                   ครูและนักเรียนสามารถสแกนบัตรหรือถ่ายรูปเช็กชื่อผ่านรัศมีของจุดตรวจใดก็ได้ที่ใกล้ที่สุด
                 </p>
               </div>
@@ -598,7 +598,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
               <button
                 type="button"
                 onClick={handleAddNewGate}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold shadow-sm transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ เพิ่มจุดตรวจใหม่</span>
@@ -612,14 +612,14 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                   key={gate.id}
                   className={`p-3 rounded-xl border transition ${
                     gate.isPrimary
-                      ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                      ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-xs'
+                      : 'border-[var(--color-border)] bg-[var(--color-card)]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                       <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${
-                        gate.isPrimary ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        gate.isPrimary ? 'bg-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                       }`}>
                         {index + 1}
                       </span>
@@ -631,7 +631,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                             const val = e.target.value;
                             setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, nameTh: val } : g));
                           }}
-                          className="text-xs font-bold text-slate-900 dark:text-white bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-hidden px-1"
+                          className="text-xs font-bold text-[var(--color-text-title)] bg-transparent border-b border-transparent hover:border-[var(--color-border)] focus:border-indigo-600 focus:outline-hidden px-1"
                           placeholder="ชื่อจุดเช็กชื่อ (ไทย)"
                         />
                       </div>
@@ -643,8 +643,8 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         onClick={() => handleSetPrimary(gate.id)}
                         className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                           gate.isPrimary
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            ? 'bg-indigo-700 text-white'
+                            : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
                         }`}
                       >
                         {gate.isPrimary ? '★ จุดหลัก' : 'ตั้งเป็นหลัก'}
@@ -654,7 +654,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveGate(gate.id)}
-                          className="p-1 rounded text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                          className="p-1 rounded text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950 transition cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -665,7 +665,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                   {/* Lat / Lng / Radius Inputs */}
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">ละติจูด (Lat)</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-medium">ละติจูด (Lat)</span>
                       <input
                         type="number"
                         step="any"
@@ -674,12 +674,12 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                           const val = parseFloat(e.target.value) || 0;
                           setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, lat: val } : g));
                         }}
-                        className="w-full px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px]"
+                        className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
                       />
                     </div>
 
                     <div>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">ลองจิจูด (Lng)</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-medium">ลองจิจูด (Lng)</span>
                       <input
                         type="number"
                         step="any"
@@ -688,12 +688,12 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                           const val = parseFloat(e.target.value) || 0;
                           setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, lng: val } : g));
                         }}
-                        className="w-full px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px]"
+                        className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
                       />
                     </div>
 
                     <div>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">รัศมี (ม.)</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] font-medium">รัศมี (ม.)</span>
                       <input
                         type="number"
                         value={gate.radiusMeters}
@@ -701,20 +701,20 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                           const val = parseInt(e.target.value, 10) || 50;
                           setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, radiusMeters: val } : g));
                         }}
-                        className="w-full px-2 py-1 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-[11px]"
+                        className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
                       />
                     </div>
                   </div>
 
                   {/* Quick locate button for this gate */}
-                  <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-600 dark:text-slate-300 capitalize">
+                  <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+                    <span className="text-[10px] text-[var(--color-text-muted)] capitalize">
                       ประเภท: {gate.type.replace('_', ' ')}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleDetectCurrentLocation(gate.id)}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                     >
                       <LocateFixed className="w-3 h-3" />
                       <span>ดึงพิกัดจุดนี้จาก GPS</span>
@@ -731,11 +731,11 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               {/* Distance Calibrator */}
-              <div className="lg:col-span-7 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="lg:col-span-7 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
                   <div className="flex items-center gap-2">
-                    <Navigation className="w-4 h-4 text-emerald-600" />
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    <Navigation className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                    <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
                       ทดสอบวัดระยะจากตำแหน่งจริงของอุปกรณ์
                     </h3>
                   </div>
@@ -744,29 +744,29 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     type="button"
                     disabled={isTestingDistance}
                     onClick={handleTestDistance}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isTestingDistance ? 'animate-spin' : ''}`} />
                     <span>{isTestingDistance ? 'กำลังคำนวณ...' : 'คำนวณระยะห่างเดี๋ยวนี้'}</span>
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
                   ระบบจะอ่านพิกัดดาวเทียมของอุปกรณ์ปัจจุบัน และคำนวณระยะทางถึงศูนย์กลางโรงเรียน ({schoolLat.toFixed(5)}, {schoolLng.toFixed(5)}) โดยใช้สูตร Haversine
                 </p>
 
                 {testResult ? (
                   <div className={`p-4 rounded-xl border ${
                     testResult.isInside
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
-                      : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                      ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
+                      : 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
                   }`}>
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm flex items-center gap-2">
                         {testResult.isInside ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
                         ) : (
-                          <AlertCircle className="w-5 h-5 text-amber-600" />
+                          <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-300" />
                         )}
                         <span>{testResult.isInside ? 'อยู่ในขอบเขตรั้วโรงเรียน (สามารถเช็กชื่อได้)' : 'อยู่นอกขอบเขตรั้วโรงเรียน (เช็กชื่อไม่ได้)'}</span>
                       </span>
@@ -775,19 +775,19 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       </span>
                     </div>
 
-                    <div className="text-xs mt-2 pt-2 border-t border-current/20 flex items-center justify-between">
+                    <div className="text-xs mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
                       <span>ระยะห่างจริง: <strong>{testResult.distance} ม.</strong></span>
                       <span>รัศมีที่อนุญาต: <strong>{schoolRadius} ม.</strong></span>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-600 dark:text-slate-300">
+                  <div className="p-4 rounded-xl border border-dashed border-[var(--color-border)] text-center text-xs text-[var(--color-text-muted)]">
                     กดปุ่ม "คำนวณระยะห่างเดี๋ยวนี้" เพื่อทดสอบตำแหน่งปัจจุบันของคุณเทียบกับพิกัดโรงเรียน
                   </div>
                 )}
 
                 {currentDeviceCoords && (
-                  <div className="text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="text-xs text-[var(--color-text-body)] font-mono bg-[var(--color-card-subtle)] p-2.5 rounded-lg border border-[var(--color-border)]">
                     ตำแหน่งอุปกรณ์ปัจจุบัน: Lat {currentDeviceCoords.lat.toFixed(6)}, Lng {currentDeviceCoords.lng.toFixed(6)}
                   </div>
                 )}
@@ -795,22 +795,22 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
               {/* Animated Radar Visual */}
               <div className="lg:col-span-5 p-4 rounded-xl bg-slate-950 border border-slate-800 text-white flex flex-col items-center justify-center text-center space-y-3">
-                <div className="relative w-36 h-36 rounded-full border-2 border-emerald-500/30 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border border-emerald-500/20 scale-75" />
-                  <div className="absolute inset-0 rounded-full border border-emerald-500/10 scale-50" />
+                <div className="relative w-36 h-36 rounded-full border-2 border-emerald-500/40 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border border-emerald-500/30 scale-75" />
+                  <div className="absolute inset-0 rounded-full border border-emerald-500/20 scale-50" />
                   <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 absolute z-10" />
-                  <div className="absolute top-2 text-[9px] text-emerald-400/80 font-mono">N 0°</div>
-                  <div className="absolute bottom-2 text-[9px] text-emerald-400/80 font-mono">S 180°</div>
-                  <div className="absolute left-2 text-[9px] text-emerald-400/80 font-mono">W 270°</div>
-                  <div className="absolute right-2 text-[9px] text-emerald-400/80 font-mono">E 90°</div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute z-10" />
+                  <div className="absolute top-2 text-[9px] text-emerald-300 font-mono">N 0°</div>
+                  <div className="absolute bottom-2 text-[9px] text-emerald-300 font-mono">S 180°</div>
+                  <div className="absolute left-2 text-[9px] text-emerald-300 font-mono">W 270°</div>
+                  <div className="absolute right-2 text-[9px] text-emerald-300 font-mono">E 90°</div>
                 </div>
 
                 <div className="space-y-1">
                   <span className="text-xs font-bold text-emerald-300">
                     EduVerse Geofence Radar
                   </span>
-                  <p className="text-[11px] text-slate-300">
+                  <p className="text-[11px] text-slate-200">
                     ตรวจจับตำแหน่งอัตโนมัติสำหรับการสแกนบัตรนักเรียนผ่านแอปพลิเคชัน
                   </p>
                 </div>

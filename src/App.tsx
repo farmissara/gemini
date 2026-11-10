@@ -1037,14 +1037,18 @@ export const App: React.FC = () => {
 
   if (!isDataReady || loadedSchoolId !== activeSchool.id) {
     return (
-      <main className="h-dvh overflow-hidden flex items-center justify-center bg-slate-950 p-6 text-white">
-        <div className="max-w-lg space-y-4 text-center">
-          <h1 className="text-xl font-bold">
+      <main className="h-dvh overflow-hidden flex items-center justify-center bg-[var(--color-canvas)] p-6 text-[var(--color-text-body)]">
+        <div className="max-w-lg space-y-4 text-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-sm">
+          <h1 className="text-xl font-bold text-[var(--color-text-title)]">
             {dataLoadError ? 'โหลดข้อมูลโรงเรียนไม่สำเร็จ' : 'กำลังโหลดข้อมูลโรงเรียน...'}
           </h1>
-          {dataLoadError && <p role="alert" className="text-sm text-rose-300">{dataLoadError}</p>}
           {dataLoadError && (
-            <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold">
+            <p role="alert" className="text-sm font-medium text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 rounded-lg px-3 py-2">
+              {dataLoadError}
+            </p>
+          )}
+          {dataLoadError && (
+            <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-4 py-2 text-sm font-semibold transition cursor-pointer">
               ลองใหม่
             </button>
           )}
@@ -1053,12 +1057,10 @@ export const App: React.FC = () => {
     );
   }
 
-  const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
-
   // Responsive: If on mobile screen (or user opted into mobile view), render the clean, uncluttered MobileAppShell
   if (shouldShowMobileView) {
     return (
-      <div className={`h-dvh overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} font-sans`}>
+      <div className="h-dvh overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] font-sans">
         <MobileAppShell
           currentUser={currentUser}
           activeSchool={activeSchool}
@@ -1162,7 +1164,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`h-dvh max-h-dvh overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-100'} flex flex-col font-sans transition-colors duration-200`}>
+    <div className="h-dvh max-h-dvh overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200">
       {/* Top Navbar */}
       {!useImmersiveGameLayout && <Navbar
         currentUser={currentUser}
@@ -1210,13 +1212,13 @@ export const App: React.FC = () => {
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
             onClick={() => setIsMobileMenuOpen(false)} 
           />
-          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-slate-200 dark:border-slate-800">
-            <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <span className="font-bold text-xs text-slate-800 dark:text-slate-100">เมนูระบบโรงเรียน (EduVerse)</span>
+          <div className="relative w-72 max-w-[85vw] bg-[var(--color-card)] text-[var(--color-text-body)] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-[var(--color-border)]">
+            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+              <span className="font-bold text-xs text-[var(--color-text-title)]">เมนูระบบโรงเรียน (EduVerse)</span>
               <button 
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1 rounded-md text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1290,7 +1292,7 @@ export const App: React.FC = () => {
                 {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
                 {currentTab !== 'super_admin_console' && !useImmersiveGameLayout && (
                   <div className="shrink-0 mb-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-0.5">
-                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 min-w-0 max-w-full">
+                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] min-w-0 max-w-full shadow-2xs">
                       {[
                         { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
                         { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
@@ -1310,8 +1312,8 @@ export const App: React.FC = () => {
                             }}
                             className={`min-w-0 px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                               isCatActive
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'text-slate-700 dark:text-slate-200 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900 dark:hover:text-white'
+                                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                                : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                             }`}
                           >
                             <span>{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
@@ -1327,12 +1329,12 @@ export const App: React.FC = () => {
                         onClick={() => navigateToAppTab('school_gps')}
                         className={`self-start sm:self-auto px-3 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                           currentTab === 'school_gps'
-                            ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
-                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60'
+                            ? 'bg-amber-400 text-slate-950 border-amber-600 shadow-xs'
+                            : 'bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900'
                         }`}
                         title="กำหนดพิกัด GPS ละติจูด ลองจิจูด รัศมี และประตูโรงเรียน"
                       >
-                        <span className="text-amber-600 dark:text-amber-400">📍</span>
+                        <span className="text-amber-700 dark:text-amber-300">📍</span>
                         <span className="hidden sm:inline font-bold">
                           {lang === 'th' ? 'ตั้งค่าพิกัด GPS โรงเรียน' : 'School GPS'}
                         </span>
@@ -1706,17 +1708,17 @@ export const App: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar - Clean, Subtle & Ergonomic */}
       {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && !useImmersiveGameLayout && (
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around shadow-sm">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)] border-t border-[var(--color-border)] px-2 py-1.5 flex items-center justify-around shadow-sm">
         <button
           type="button"
           onClick={() => {
             setProgramMode('school_erp');
             setCurrentTab('dashboard');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'dashboard'
-              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
@@ -1729,10 +1731,10 @@ export const App: React.FC = () => {
             setProgramMode('school_erp');
             setCurrentTab('attendance');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'attendance'
-              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <QrCode className="w-5 h-5" />
@@ -1745,10 +1747,10 @@ export const App: React.FC = () => {
             setProgramMode('school_erp');
             setCurrentTab('games');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'games'
-              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <Gamepad2 className="w-5 h-5" />
@@ -1761,10 +1763,10 @@ export const App: React.FC = () => {
             setProgramMode('school_erp');
             setCurrentTab('portfolio');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'portfolio'
-              ? 'text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <Briefcase className="w-5 h-5" />
@@ -1774,9 +1776,9 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowProfileModal(true)}
-          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
         >
-          <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <User className="w-5 h-5 text-[var(--color-primary-text)]" />
           <span>โปรไฟล์</span>
         </button>
       </nav>

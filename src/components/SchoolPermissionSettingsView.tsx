@@ -191,16 +191,16 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       )}
 
       {/* Header Banner */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold border border-[var(--color-border)]">
             <Building2 className="w-3.5 h-3.5" />
             <span>การบริหารจัดการสิทธิ์เฉพาะสถาบัน • School Administrator Console</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-title)] tracking-tight">
             กำหนดสิทธิ์ผู้ใช้งานภายในโรงเรียน
           </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
+          <p className="text-xs text-[var(--color-text-body)]">
             {activeSchool.nameTh} ({activeSchool.code}) — ผู้อำนวยการและผู้บริหารโรงเรียนเป็นผู้กำหนดสิทธิ์การเข้าถึงข้อมูลของครู นักเรียน และผู้ปกครองในโรงเรียนนี้
           </p>
         </div>
@@ -208,7 +208,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
         <button
           type="button"
           onClick={savePolicies}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition shrink-0"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs shadow-xs transition shrink-0 cursor-pointer"
         >
           <Save className="w-4 h-4" />
           <span>บันทึกการกำหนดสิทธิ์ (Save)</span>
@@ -216,14 +216,14 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       </div>
 
       {/* Role Selection Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex items-center gap-2 border-b border-[var(--color-border)] overflow-x-auto no-scrollbar pb-1">
         <button
           type="button"
           onClick={() => setSelectedRole('teacher')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
             selectedRole === 'teacher'
-              ? 'border-blue-700 dark:border-blue-400 text-blue-700 dark:text-blue-300'
-              : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <User className="w-4 h-4" />
@@ -233,10 +233,10 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
         <button
           type="button"
           onClick={() => setSelectedRole('student')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
             selectedRole === 'student'
-              ? 'border-blue-700 dark:border-blue-400 text-blue-700 dark:text-blue-300'
-              : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <GraduationCap className="w-4 h-4" />
@@ -246,10 +246,10 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
         <button
           type="button"
           onClick={() => setSelectedRole('parent')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
             selectedRole === 'parent'
-              ? 'border-blue-700 dark:border-blue-400 text-blue-700 dark:text-blue-300'
-              : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -258,20 +258,20 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       </div>
 
       {/* Policy Switches Grid */}
-      <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-3">
+      <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 shadow-xs space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            <h3 className="text-sm font-bold text-[var(--color-text-title)]">
               {selectedRole === 'teacher' && 'สิทธิ์การทำงานของคณะครูและอาจารย์'}
               {selectedRole === 'student' && 'สิทธิ์การเข้าถึงข้อมูลของนักเรียน'}
               {selectedRole === 'parent' && 'สิทธิ์และการแจ้งเตือนของผู้ปกครอง'}
             </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
+            <p className="text-xs text-[var(--color-text-body)]">
               เปิดหรือปิดสิทธิ์การใช้งานของบทบาทนี้ในโรงเรียนของคุณ
             </p>
           </div>
 
-          <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+          <span className="text-[11px] font-semibold text-[var(--color-primary-text)] bg-[var(--color-primary-light)] px-2.5 py-1 rounded-full border border-[var(--color-border)]">
             {currentRolePolicies.filter(p => p.enabled).length} / {currentRolePolicies.length} สิทธิ์ที่เปิดใช้งาน
           </span>
         </div>
@@ -282,27 +282,27 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
               key={pol.id}
               className={`p-4 rounded-xl border transition flex items-center justify-between gap-3 ${
                 pol.enabled
-                  ? 'bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-700/70 shadow-xs'
-                  : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 opacity-85'
+                  ? 'bg-[var(--color-card)] border-[var(--color-primary)] shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
               }`}
             >
               <div className="min-w-0">
-                <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                <div className="font-bold text-[var(--color-text-title)] text-xs flex items-center gap-1.5">
                   {pol.enabled ? (
-                    <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <Check className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
                   ) : (
-                    <X className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <X className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                   )}
                   <span className="truncate">{pol.titleTh}</span>
                 </div>
-                <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">{pol.descTh}</div>
+                <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">{pol.descTh}</div>
               </div>
 
               <button
                 type="button"
                 onClick={() => togglePolicy(pol.id)}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  pol.enabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+                  pol.enabled ? 'bg-blue-700' : 'bg-slate-400 dark:bg-slate-600'
                 }`}
               >
                 <span

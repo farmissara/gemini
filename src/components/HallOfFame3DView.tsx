@@ -356,19 +356,19 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   return (
     <div className="space-y-6 pb-12">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-amber-600/30 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-amber-600/40 relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-amber-500/10 to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-900/70 border border-amber-400/40 text-amber-100 text-xs font-semibold">
               <Trophy className="w-4 h-4 text-amber-300" />
               <span>{lang === 'th' ? '3D Interactive Hall of Fame & Digital Certificates' : '3D Hall of Fame & Verifiable Certificates'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               {lang === 'th' ? 'หอเกียรติยศ 3 มิติ & เกียรติบัตรดิจิทัลตรวจสอบได้' : '3D Trophy Hall of Fame'}
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-200 text-sm leading-relaxed">
               {lang === 'th' 
                 ? 'เชิดชูเกียรตินักเรียนผู้มีความเป็นเลิศทางวิชาการและทักษะรอบด้าน จัดแสดงถ้วยรางวัลสามมิติหมุนได้ 360 องศา พร้อมออกเกียรติบัตรดิจิทัลมี QR Code และรหัส Serial Number ยืนยันความถูกต้อง'
                 : 'Celebrate exceptional student achievements with interactive 3D trophies, 360-degree rotation, and cryptographically verifiable digital certificates.'}
@@ -380,27 +380,27 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               <button
                 type="button"
                 onClick={onExit}
-                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition cursor-pointer active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-900/40 transition cursor-pointer active:scale-95"
               >
                 <span>❌ ออกจากเกม</span>
               </button>
             )}
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl flex items-center gap-4">
+            <div className="bg-slate-950/45 backdrop-blur-md border border-white/25 p-4 rounded-xl flex items-center gap-4">
               <div className="text-right">
-                <p className="text-xs text-amber-200 font-medium">
+                <p className="text-xs text-amber-100 font-medium">
                   {lang === 'th' ? 'ถ้วยเกียรติยศทั้งหมด' : 'Total Trophies'}
                 </p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-black text-amber-300">{trophies.length}</span>
-                  <span className="text-xs text-slate-300">{lang === 'th' ? 'รางวัล' : 'awards'}</span>
+                  <span className="text-xs text-slate-200">{lang === 'th' ? 'รางวัล' : 'awards'}</span>
                 </div>
-                <p className="text-[11px] text-emerald-400 font-semibold flex items-center justify-end gap-1 mt-0.5">
+                <p className="text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5">
                   <CheckCircle2 className="w-3 h-3" />
                   {lang === 'th' ? 'ตรวจสอบได้ทุกใบ' : '100% Verifiable'}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+              <div className="w-12 h-12 rounded-xl bg-amber-900/60 border border-amber-400/50 flex items-center justify-center text-amber-300">
                 <Award className="w-6 h-6" />
               </div>
             </div>
@@ -411,22 +411,22 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
       {/* Main Grid: Left 3D Trophy Showcase, Right Trophy Directory */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: 3D Trophy Showcase */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <h3 className="text-base font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'แท่นจัดแสดงถ้วยเกียรติยศ 3 มิติ' : '3D Trophy Showcase'}
                 </h3>
               </div>
               <div className="flex items-center gap-2">
                 {/* 3D Trophy Zoom Controls */}
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-1.5 py-0.5 text-xs">
+                <div className="flex items-center gap-1 bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-lg px-1.5 py-0.5 text-xs">
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(prev => Math.max(0.5, Number((prev - 0.15).toFixed(2))))}
-                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 active:scale-90 transition cursor-pointer"
+                    className="p-1 text-[var(--color-text-body)] hover:text-amber-700 dark:hover:text-amber-300 active:scale-90 transition cursor-pointer"
                     title="ซูมออก (-)"
                   >
                     <ZoomOut className="w-3 h-3" />
@@ -434,7 +434,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(1.0)}
-                    className="text-[10px] font-mono text-amber-700 dark:text-amber-400 font-bold px-1 hover:underline cursor-pointer"
+                    className="text-[10px] font-mono text-amber-800 dark:text-amber-300 font-bold px-1 hover:underline cursor-pointer"
                     title="รีเซ็ต 1.0x"
                   >
                     {trophyZoom}x
@@ -442,15 +442,15 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setTrophyZoom(prev => Math.min(2.0, Number((prev + 0.15).toFixed(2))))}
-                    className="p-1 text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 active:scale-90 transition cursor-pointer"
+                    className="p-1 text-[var(--color-text-body)] hover:text-amber-700 dark:hover:text-amber-300 active:scale-90 transition cursor-pointer"
                     title="ซูมเข้า (+)"
                   >
                     <ZoomIn className="w-3 h-3" />
                   </button>
                 </div>
 
-                <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
-                  <RotateCw className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
+                <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1 font-medium">
+                  <RotateCw className="w-3 h-3 text-indigo-700 dark:text-indigo-400" />
                   {lang === 'th' ? 'หมุน 360°' : '360°'}
                 </span>
               </div>
@@ -461,7 +461,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               ref={mountRef}
               className="w-full h-80 rounded-xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-800 relative cursor-grab active:cursor-grabbing overflow-hidden flex items-center justify-center shadow-inner"
             >
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-white text-[10px] font-bold z-10">
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold z-10">
                 {selectedTrophy.materialName}
               </div>
               {webGlError && (
@@ -470,8 +470,8 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                     <Trophy className="w-10 h-10 text-amber-300" />
                   </div>
                   <p className="text-sm font-bold text-amber-200">{selectedTrophy.titleTh}</p>
-                  <p className="text-xs text-slate-300">{selectedTrophy.recipientName}</p>
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                  <p className="text-xs text-slate-200">{selectedTrophy.recipientName}</p>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-600">
                     {lang === 'th' ? 'แสดงผลโหมดภาพถ้วยรางวัล 2D (อุปกรณ์ไม่รองรับ WebGL)' : '2D Showcase Mode'}
                   </span>
                 </div>
@@ -479,36 +479,36 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             </div>
 
             {/* Selected Trophy Info */}
-            <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2">
+            <div className="mt-4 p-4 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h4 className="text-sm font-bold text-[var(--color-text-title)]">
                     {lang === 'th' ? selectedTrophy.titleTh : selectedTrophy.titleEn}
                   </h4>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+                  <p className="text-xs text-indigo-800 dark:text-indigo-300 font-semibold mt-0.5">
                     {selectedTrophy.recipientName} ({selectedTrophy.studentRoom})
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
                     +{selectedTrophy.pointsEarned} EXP
                   </span>
                 </div>
               </div>
 
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
                 {selectedTrophy.descriptionTh}
               </p>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
+              <div className="pt-2 flex items-center justify-between border-t border-[var(--color-border)]">
+                <span className="text-[10px] font-mono font-bold text-[var(--color-text-muted)]">
                   {selectedTrophy.certificateCode}
                 </span>
 
                 <button
                   type="button"
                   onClick={() => setSelectedCertForModal(selectedTrophy)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-700 hover:bg-amber-800 text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Award className="w-3.5 h-3.5" />
                   <span>{lang === 'th' ? 'เปิดเกียรติบัตรทางการ' : 'View Certificate'}</span>
@@ -520,15 +520,15 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
 
         {/* Right Column: Trophy Category & Winners Directory */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
+          <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-6 shadow-xs">
             {/* Filter and Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Medal className="w-5 h-5 text-amber-500" />
+                <h3 className="text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                  <Medal className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                   {lang === 'th' ? 'ทำเนียบผู้ได้รับถ้วยรางวัลเกียรติยศ' : 'Hall of Fame Honorees'}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[var(--color-text-muted)]">
                   {lang === 'th' ? 'คลิกที่การ์ดเพื่อสลับดูโมเดล 3 มิติ และตรวจเกียรติบัตร' : 'Click any card to load its 3D model and verifiable credentials'}
                 </p>
               </div>
@@ -538,7 +538,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <option value="all">{lang === 'th' ? 'ทุกประเภทถ้วยรางวัล' : 'All Trophies'}</option>
                   <option value="grand_champion">{lang === 'th' ? 'Grand Champion' : 'Grand Champion'}</option>
@@ -559,38 +559,38 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                     onClick={() => setSelectedTrophy(trophy)}
                     className={`p-4 rounded-xl border transition-all cursor-pointer text-left ${
                       isSelected
-                        ? 'border-amber-500 bg-amber-50/40 dark:bg-amber-950/20 shadow-sm ring-2 ring-amber-400/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 shadow-sm ring-2 ring-amber-400/20'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-amber-400'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <img
                         src={trophy.avatarUrl}
                         alt={trophy.recipientName}
-                        className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                        className="w-12 h-12 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 truncate">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] truncate">
                             {trophy.studentRoom}
                           </span>
-                          <span className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1 shrink-0">
                             <Calendar className="w-3 h-3" />
                             {trophy.achievedDate.slice(0, 11)}
                           </span>
                         </div>
 
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate">
+                        <h4 className="text-sm font-bold text-[var(--color-text-title)] mt-1 truncate">
                           {trophy.recipientName}
                         </h4>
-                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 truncate">
+                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 truncate">
                           {trophy.titleTh}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                      <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300 font-semibold truncate">
+                    <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
+                      <span className="font-mono text-[10px] text-[var(--color-text-muted)] font-semibold truncate">
                         {trophy.certificateCode}
                       </span>
                       <button
@@ -599,7 +599,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                           e.stopPropagation();
                           setSelectedCertForModal(trophy);
                         }}
-                        className="text-amber-700 dark:text-amber-400 hover:underline font-bold text-xs flex items-center gap-1"
+                        className="text-amber-800 dark:text-amber-300 hover:underline font-bold text-xs flex items-center gap-1 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>{lang === 'th' ? 'ดูเกียรติบัตร' : 'Certificate'}</span>
@@ -615,13 +615,13 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
 
       {/* Verifiable Digital Certificate Modal */}
       {selectedCertForModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2">
-          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full p-3 sm:p-4 shadow-2xl relative border-4 border-amber-400/40">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 overflow-y-auto">
+          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-3 sm:p-4 shadow-2xl relative border-4 border-amber-400/40">
             {/* Close Button */}
             <button
               type="button"
               onClick={() => setSelectedCertForModal(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-950 transition cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 hover:text-slate-950 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -634,33 +634,33 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-serif tracking-widest text-amber-800 font-bold uppercase">
+                <p className="text-xs font-serif tracking-widest text-amber-900 font-bold uppercase">
                   {school?.nameTh || 'โรงเรียนสาธิตนวัตกรรมเอดูเวิร์ส'}
                 </p>
                 <h3 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight">
                   {lang === 'th' ? 'เกียรติบัตรเชิดชูเกียรติ' : 'CERTIFICATE OF EXCELLENCE'}
                 </h3>
-                <p className="text-xs text-slate-600 italic">
+                <p className="text-xs text-slate-700 italic">
                   This official credential certifies that
                 </p>
               </div>
 
               {/* Recipient Name */}
               <div className="py-1">
-                <h4 className="text-xl sm:text-2xl font-serif font-black text-amber-900 underline decoration-amber-500/50 underline-offset-8">
+                <h4 className="text-xl sm:text-2xl font-serif font-black text-amber-950 underline decoration-amber-500/50 underline-offset-8">
                   {selectedCertForModal.recipientName}
                 </h4>
-                <p className="text-xs text-slate-600 mt-2 font-medium">
+                <p className="text-xs text-slate-700 mt-2 font-medium">
                   {lang === 'th' ? `ชั้นมัธยมศึกษา (${selectedCertForModal.studentRoom})` : `Class: ${selectedCertForModal.studentRoom}`}
                 </p>
               </div>
 
               {/* Achievement Description */}
               <div className="max-w-md mx-auto space-y-1">
-                <p className="text-sm font-bold text-slate-800">
+                <p className="text-sm font-bold text-slate-900">
                   {selectedCertForModal.titleTh}
                 </p>
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-xs text-slate-700 leading-relaxed">
                   {selectedCertForModal.descriptionTh}
                 </p>
               </div>
@@ -670,16 +670,16 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                 {/* QR Code Verification */}
                 <div className="flex items-center gap-3 text-left">
                   <div className="p-1.5 bg-white border border-slate-300 rounded shadow-xs">
-                    <QrCode className="w-12 h-12 text-slate-800" />
+                    <QrCode className="w-12 h-12 text-slate-900" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                    <p className="text-[10px] text-slate-700 font-bold uppercase tracking-wider">
                       Verification Code
                     </p>
                     <p className="text-xs font-mono font-black text-indigo-900">
                       {selectedCertForModal.certificateCode}
                     </p>
-                    <p className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
+                    <p className="text-[10px] text-emerald-800 font-bold flex items-center gap-1 mt-0.5">
                       <CheckCircle2 className="w-3 h-3" />
                       Digital Authenticated
                     </p>
@@ -688,13 +688,13 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
 
                 {/* Date & Signature */}
                 <div className="text-center sm:text-right">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-700">
                     {lang === 'th' ? 'ให้ไว้ ณ วันที่' : 'Issued on'} {selectedCertForModal.achievedDate}
                   </p>
                   <p className="font-serif font-bold text-sm text-slate-900 mt-1">
                     ผู้อำนวยการสถานศึกษา
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-slate-700">
                     Director of Educational Innovation
                   </p>
                 </div>
@@ -716,14 +716,14 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleShareCertificate(selectedCertForModal.certificateCode)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-slate-300"
                   >
-                    <Share2 className="w-4 h-4 text-indigo-600" />
+                    <Share2 className="w-4 h-4 text-indigo-700" />
                     <span>{isCopiedShare ? (lang === 'th' ? 'คัดลอกลิงก์แล้ว!' : 'Copied!') : (lang === 'th' ? 'แชร์ลิงก์ตรวจสอบ' : 'Share Link')}</span>
                   </button>
                 </div>
 
-                <span className="text-[11px] text-slate-500 font-medium">
+                <span className="text-[11px] text-slate-700 font-medium">
                   {lang === 'th' ? 'เกียรติบัตรเข้ารหัส SHA-256 ป้องกันการปลอมแปลง' : 'Cryptographically signed SHA-256'}
                 </span>
               </div>

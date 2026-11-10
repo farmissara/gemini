@@ -27,37 +27,9 @@
    ======================================================== */
 
 :root {
-  --color-canvas: #f8fafc;
+  --color-canvas: #f1f5f9;
   --color-card: #ffffff;
-  --color-border: #cbd5e1;
-  --color-text-title: #0f172a;
-  --color-text-body: #1e293b;
-  --color-text-muted: #475569;
-  --color-primary: #1e40af;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #eff6ff;
-}
-
-/* Light Eye-Care Warm Paper (โทนกระดาษนวลตา คอนทราสต์คมชัด อ่านง่าย) */
-.theme-light_warm,
-.theme-light {
-  --color-canvas: #faf8f5;
-  --color-card: #ffffff;
-  --color-border: #e2dbce;
-  --color-text-title: #1c1917;
-  --color-text-body: #292524;
-  --color-text-muted: #57534e;
-  --color-primary: #1e3a8a;
-  --color-primary-hover: #172554;
-  --color-primary-light: #f5f1ea;
-  background-color: var(--color-canvas);
-  color: var(--color-text-body);
-}
-
-/* Light Soft Sky (ฟ้าครามสุภาพ คมชัดสบายตา) */
-.theme-light_sky {
-  --color-canvas: #f8fafc;
-  --color-card: #ffffff;
+  --color-card-subtle: #f8fafc;
   --color-border: #cbd5e1;
   --color-text-title: #0f172a;
   --color-text-body: #1e293b;
@@ -65,6 +37,40 @@
   --color-primary: #1d4ed8;
   --color-primary-hover: #1e40af;
   --color-primary-light: #eff6ff;
+  --color-primary-text: #1e40af;
+}
+
+/* Light Eye-Care Warm Paper (โทนกระดาษนวลตา คอนทราสต์คมชัด อ่านง่าย) */
+.theme-light_warm,
+.theme-light {
+  --color-canvas: #f5f1ea;
+  --color-card: #ffffff;
+  --color-card-subtle: #faf8f5;
+  --color-border: #d6cfc2;
+  --color-text-title: #1c1917;
+  --color-text-body: #292524;
+  --color-text-muted: #57534e;
+  --color-primary: #1e3a8a;
+  --color-primary-hover: #172554;
+  --color-primary-light: #ede8de;
+  --color-primary-text: #1e3a8a;
+  background-color: var(--color-canvas);
+  color: var(--color-text-body);
+}
+
+/* Light Soft Sky (ฟ้าครามสุภาพ คมชัดสบายตา) */
+.theme-light_sky {
+  --color-canvas: #f1f5f9;
+  --color-card: #ffffff;
+  --color-card-subtle: #f8fafc;
+  --color-border: #cbd5e1;
+  --color-text-title: #0f172a;
+  --color-text-body: #1e293b;
+  --color-text-muted: #475569;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-primary-light: #eff6ff;
+  --color-primary-text: #1e40af;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
@@ -74,15 +80,23 @@
 .theme-dark {
   --color-canvas: #0b1120;
   --color-card: #151f32;
+  --color-card-subtle: #1e293b;
   --color-border: #334155;
   --color-text-title: #f8fafc;
   --color-text-body: #e2e8f0;
-  --color-text-muted: #94a3b8;
-  --color-primary: #3b82f6;
-  --color-primary-hover: #60a5fa;
+  --color-text-muted: #cbd5e1;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
   --color-primary-light: #1e293b;
+  --color-primary-text: #93c5fd;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.85;
 }
 
 /* Utility to hide scrollbars on mobile swipe rows */

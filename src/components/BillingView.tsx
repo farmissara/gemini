@@ -53,34 +53,34 @@ export const BillingView: React.FC<BillingViewProps> = ({
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-[var(--color-primary-text)]" />
             Tuition Fees &amp; Payment Invoicing
           </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+          <p className="text-xs text-[var(--color-text-body)] mt-0.5">
             Manage school fee schedules, Thai PromptPay QR reconciliation, and automated LINE OA guardian reminders.
           </p>
         </div>
 
         {reminderToast && (
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
-            <MessageSquare className="w-4 h-4 text-[#06C755] fill-current" />
+          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-600 text-emerald-100 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
+            <MessageSquare className="w-4 h-4 text-emerald-300 fill-current" />
             <span>{reminderToast}</span>
           </div>
         )}
       </div>
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {['all', 'paid', 'pending', 'overdue'].map((st) => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
               className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                 filterStatus === st
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700'
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
               }`}
             >
               {st}
@@ -88,15 +88,15 @@ export const BillingView: React.FC<BillingViewProps> = ({
           ))}
         </div>
 
-        <span className="text-xs text-slate-300">
-          Showing <strong className="text-white">{filteredInvoices.length}</strong> invoices
+        <span className="text-xs text-[var(--color-text-body)]">
+          Showing <strong className="text-[var(--color-text-title)]">{filteredInvoices.length}</strong> invoices
         </span>
       </div>
 
       {/* Invoices Split View */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Invoice list */}
-        <div className="lg:col-span-7 h-full min-h-0 overflow-hidden pr-1">
+        <div className="lg:col-span-7 h-full min-h-0 overflow-y-auto pr-1">
           <PagedList items={filteredInvoices} pageSize={3} renderItem={(inv) => {
             const student = students.find((s) => s.id === inv.studentId);
             const isSelected = activeInvoice?.id === inv.id;
@@ -106,49 +106,49 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 onClick={() => setActiveInvoice(inv)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-slate-800 border-indigo-500 shadow-md shadow-indigo-500/10'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                    ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-xs'
+                    : 'bg-[var(--color-card)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-indigo-300 bg-indigo-500/15 px-2 py-0.5 rounded border border-indigo-500/30">
+                      <span className="font-mono font-bold text-xs text-[var(--color-primary-text)] bg-[var(--color-card-subtle)] px-2 py-0.5 rounded border border-[var(--color-border)]">
                         {inv.invoiceNumber}
                       </span>
                       <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
                           inv.status === 'paid'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                             : inv.status === 'pending'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                            : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                         }`}
                       >
                         {inv.status}
                       </span>
                     </div>
 
-                    <h3 className="font-bold text-white text-sm mt-2">
+                    <h3 className="font-bold text-[var(--color-text-title)] text-sm mt-2">
                       {student?.firstNameEn} {student?.lastNameEn}
                     </h3>
-                    <p className="text-xs text-slate-300 font-thai">
+                    <p className="text-xs text-[var(--color-text-body)] font-thai">
                       {student?.firstNameTh} ({student?.studentIdNumber}) • {inv.semester}
                     </p>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-base font-extrabold text-white font-mono block">
+                    <span className="text-base font-extrabold text-[var(--color-text-title)] font-mono block">
                       ฿{inv.totalAmount.toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-slate-300 font-mono">
+                    <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
                       Due: {inv.dueDate}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-700 text-xs">
-                  <span className="text-slate-300">
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-[var(--color-border)] text-xs gap-2 flex-wrap">
+                  <span className="text-[var(--color-text-body)]">
                     Guardian: {student?.guardianName} ({student?.guardianPhone})
                   </span>
 
@@ -159,7 +159,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                           e.stopPropagation();
                           handleTriggerReminder(inv);
                         }}
-                        className="px-2.5 py-1 rounded bg-[#06C755]/20 hover:bg-[#06C755]/30 text-[#34d399] border border-[#06C755]/40 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <MessageSquare className="w-3 h-3 fill-current" />
                         LINE Reminder
@@ -173,52 +173,52 @@ export const BillingView: React.FC<BillingViewProps> = ({
         </div>
 
         {/* Right: Invoice Receipt & PromptPay Details */}
-        <div className="lg:col-span-5 h-full min-h-0 overflow-hidden pr-1 rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl">
+        <div className="lg:col-span-5 h-full min-h-0 overflow-y-auto pr-1 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4 shadow-xs">
           {activeInvoice && activeStudent ? (
             <>
-              <div className="border-b border-slate-800 pb-4">
+              <div className="border-b border-[var(--color-border)] pb-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-indigo-300">
+                  <span className="text-xs font-mono font-bold text-[var(--color-primary-text)]">
                     {activeInvoice.invoiceNumber}
                   </span>
                   <span
-                    className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                    className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
                       activeInvoice.status === 'paid'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                         : activeInvoice.status === 'pending'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                        : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                     }`}
                   >
                     {activeInvoice.status}
                   </span>
                 </div>
 
-                <h3 className="text-base font-bold text-white mt-2">
+                <h3 className="text-base font-bold text-[var(--color-text-title)] mt-2">
                   Tuition Fee Statement
                 </h3>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-[var(--color-text-body)]">
                   Student: {activeStudent.firstNameEn} {activeStudent.lastNameEn} ({activeStudent.studentIdNumber})
                 </p>
               </div>
 
               {/* Fee Items */}
               <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                   Breakdown of School Services
                 </p>
-                <div className="space-y-1.5 rounded-lg bg-slate-950 p-3 border border-slate-800 text-xs">
+                <div className="space-y-1.5 rounded-lg bg-[var(--color-card-subtle)] p-3 border border-[var(--color-border)] text-xs">
                   <PagedList items={activeInvoice.items} pageSize={4} renderItem={(item) => (
-                    <div key={item.id} className="flex justify-between py-1 border-b border-slate-800 last:border-0">
-                      <span className="text-slate-200">{item.title}</span>
-                      <span className="font-mono font-medium text-white">
+                    <div key={item.id} className="flex justify-between py-1 border-b border-[var(--color-border)] last:border-0">
+                      <span className="text-[var(--color-text-body)]">{item.title}</span>
+                      <span className="font-mono font-medium text-[var(--color-text-title)]">
                         ฿{item.amount.toLocaleString()}
                       </span>
                     </div>
                   )} />
-                  <div className="flex justify-between pt-2 border-t border-slate-700 font-bold text-sm">
-                    <span className="text-white">Total Amount Due</span>
-                    <span className="text-emerald-400 font-mono">
+                  <div className="flex justify-between pt-2 border-t border-[var(--color-border)] font-bold text-sm">
+                    <span className="text-[var(--color-text-title)]">Total Amount Due</span>
+                    <span className="text-emerald-800 dark:text-emerald-300 font-mono">
                       ฿{activeInvoice.totalAmount.toLocaleString()}
                     </span>
                   </div>
@@ -227,26 +227,26 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
               {/* Payment or Paid Status */}
               {activeInvoice.status === 'paid' ? (
-                <div className="p-3.5 rounded-xl bg-emerald-950 border border-emerald-500/40 space-y-1.5 text-xs text-emerald-200">
-                  <div className="flex items-center gap-1.5 font-bold text-emerald-300">
+                <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 space-y-1.5 text-xs text-emerald-900 dark:text-emerald-200">
+                  <div className="flex items-center gap-1.5 font-bold">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Payment Received &amp; Verified</span>
                   </div>
-                  <p className="text-[11px] text-slate-200">
+                  <p className="text-[11px]">
                     Method: <span className="uppercase font-mono font-semibold">{activeInvoice.paymentMethod}</span>
                   </p>
-                  <p className="text-[11px] text-slate-300">
+                  <p className="text-[11px]">
                     Paid at: <span className="font-mono">{activeInvoice.paidAt}</span>
                   </p>
-                  <p className="text-[11px] text-slate-300">
-                    Receipt No: <span className="font-mono font-bold text-emerald-400">{activeInvoice.receiptNumber}</span>
+                  <p className="text-[11px]">
+                    Receipt No: <span className="font-mono font-bold">{activeInvoice.receiptNumber}</span>
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3 pt-2">
                   <button
                     onClick={() => setShowPromptPayModal(true)}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
+                    className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <QrCode className="w-4 h-4" />
                     <span>Pay with Thai PromptPay QR / Bank Transfer</span>
@@ -254,7 +254,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
                   <button
                     onClick={() => handleTriggerReminder(activeInvoice)}
-                    className="w-full py-2 rounded-xl bg-[#06C755]/15 hover:bg-[#06C755]/25 border border-[#06C755]/30 text-[#06C755] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all"
+                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <MessageSquare className="w-3.5 h-3.5 fill-current" />
                     <span>Send LINE OA Push Alert to Guardian</span>
@@ -263,7 +263,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
               )}
             </>
           ) : (
-            <p className="text-xs text-slate-400 text-center py-8">Select an invoice to inspect</p>
+            <p className="text-xs text-[var(--color-text-muted)] text-center py-8">Select an invoice to inspect</p>
           )}
         </div>
       </div>
@@ -273,13 +273,13 @@ export const BillingView: React.FC<BillingViewProps> = ({
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 block">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 block">
                 Thai PromptPay QR Payment
               </span>
               <h3 className="text-base font-bold text-white mt-1">
                 {systemConfig.schoolNameEn}
               </h3>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
+              <p className="text-xs text-slate-300 font-mono mt-0.5">
                 Biller ID: 0105558992019 • Ref: {activeInvoice.invoiceNumber}
               </p>
             </div>
@@ -297,14 +297,14 @@ export const BillingView: React.FC<BillingViewProps> = ({
               </div>
             </div>
 
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-slate-200">
               Scan with any Thai mobile banking app (SCB Easy, K PLUS, Krungthai NEXT, Bangkok Bank)
             </p>
 
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setShowPromptPayModal(false)}
-                className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium"
+                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -313,9 +313,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   onPayInvoice(activeInvoice.id, 'promptpay');
                   setShowPromptPayModal(false);
                 }}
-                className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                className="flex-1 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer"
               >
-                Payment unavailable
+                Confirm Payment
               </button>
             </div>
           </div>

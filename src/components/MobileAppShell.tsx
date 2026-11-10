@@ -218,25 +218,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
 
   return (
-    <div className={`h-full min-h-0 flex flex-col overflow-hidden ${isLight ? 'bg-slate-50 text-slate-800' : 'bg-slate-950 text-slate-100'} pb-16 select-none`}>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] pb-16 select-none">
       {/* ======================================================== */}
       {/* 1. TOP MOBILE HEADER */}
       {/* ======================================================== */}
-      <header className={`sticky top-0 z-40 border-b px-3.5 py-2.5 backdrop-blur-md flex items-center justify-between gap-2 shadow-xs transition-colors ${
-        isLight ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-800'
-      }`}>
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-xs transition-colors">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shadow-xs shrink-0">
             <GraduationCap className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm tracking-tight truncate">EduVerse</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 shrink-0">
+              <span className="font-extrabold text-sm text-[var(--color-text-title)] tracking-tight truncate">EduVerse</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
                 {lang === 'th' ? 'โหมดมือถือ' : 'Mobile'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-[170px]">
+            <p className="text-[11px] text-[var(--color-text-muted)] truncate max-w-[170px]">
               {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
             </p>
           </div>
@@ -248,7 +246,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <button
             type="button"
             onClick={onSwitchToDesktopMode}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-blue-500/30 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 text-[11px] font-bold transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)] hover:opacity-90 text-[var(--color-primary-text)] text-[11px] font-bold transition shadow-xs cursor-pointer"
             title="สลับเป็นมุมมองคอมพิวเตอร์ (Desktop ERP)"
           >
             <Laptop className="w-3.5 h-3.5" />
@@ -259,7 +257,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <button
             type="button"
             onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-            className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+            className="p-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-body)] cursor-pointer"
             title="เปลี่ยนภาษา (TH/EN)"
           >
             {lang.toUpperCase()}
@@ -269,7 +267,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className="w-8 h-8 rounded-full overflow-hidden border-2 border-blue-600 shadow-xs shrink-0 cursor-pointer"
+            className="w-8 h-8 rounded-full overflow-hidden border-2 border-[var(--color-primary)] shadow-xs shrink-0 cursor-pointer"
           >
             <img 
               src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
@@ -290,17 +288,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {homePage === 0 && (
               <>
             {/* Welcome & Persona Card */}
-            <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-900 text-white shadow-xl shadow-blue-950/20">
+            <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-800 to-indigo-950 text-white shadow-xl shadow-blue-950/20">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
-                  <span className="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
+                  <span className="text-[11px] text-blue-100 font-semibold flex items-center gap-1.5">
                     <Calendar className="w-3 h-3 text-amber-300" />
                     <span>{todayStr} • โรงเรียนเปิดทำการ</span>
                   </span>
                   <h1 className="text-lg font-black mt-1">
                     สวัสดี {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
                   </h1>
-                  <p className="text-xs text-white/80 mt-0.5">
+                  <p className="text-xs text-slate-100 mt-0.5">
                     {currentRole === 'teacher' ? '👨‍🏫 อาจารย์ประจำวิชา' :
                      currentRole === 'student' ? '🎒 นักเรียนชั้น ม.6/1' :
                      currentRole === 'admin' ? '🏛️ ผู้บริหารโรงเรียน' : '🛡️ สมาชิก EduVerse'}
@@ -308,7 +306,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-bold text-amber-300">
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/50 backdrop-blur-md border border-white/25 text-xs font-bold text-amber-300">
                     <Flame className="w-3.5 h-3.5 fill-current" />
                     <span>{currentScore.exp} EXP</span>
                   </div>
@@ -322,41 +320,37 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('checkin')}
-                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group ${
-                  isLight ? 'bg-white border-slate-200 hover:border-blue-400' : 'bg-slate-900 border-slate-800 hover:border-blue-500'
-                }`}
+                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
               >
-                <div className="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">เช็คชื่อเข้า-ออก (Check-in)</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">GPS Geofence & สแกนใบหน้า</p>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition-colors">เช็คชื่อเข้า-ออก (Check-in)</h2>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">GPS Geofence &amp; สแกนใบหน้า</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-text)] shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 2: Leave Request */}
               <button
                 type="button"
                 onClick={() => setActiveTab('leave')}
-                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group relative ${
-                  isLight ? 'bg-white border-slate-200 hover:border-emerald-400' : 'bg-slate-900 border-slate-800 hover:border-emerald-500'
-                }`}
+                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-emerald-500 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group relative"
               >
                 {pendingLeavesCount > 0 && (
-                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black shadow-xs">
+                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black shadow-xs">
                     {pendingLeavesCount}
                   </span>
                 )}
-                <div className="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">ใบลาออนไลน์</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">ลาป่วย / ลากิจ & ติดตามสถานะ</p>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">ใบลาออนไลน์</h2>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ลาป่วย / ลากิจ &amp; ติดตามสถานะ</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-emerald-600 dark:group-hover:text-emerald-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 3: Games Hub */}
@@ -367,36 +361,32 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   setActiveGameView('hub');
                   setGameHubPage(0);
                 }}
-                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group ${
-                  isLight ? 'bg-white border-slate-200 hover:border-amber-400' : 'bg-slate-900 border-slate-800 hover:border-amber-500'
-                }`}
+                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-amber-500 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
               >
-                <div className="w-11 h-11 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center font-bold shrink-0">
                   <Gamepad2 className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">เกมส์ความรู้ & เวิร์กช็อป 6 มิติ</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">เกมส์ความรู้ &amp; เวิร์กช็อป 6 มิติ</h2>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-amber-600 dark:group-hover:text-amber-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 4: Virtual ID / Profile */}
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
-                className={`p-3.5 sm:p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group ${
-                  isLight ? 'bg-white border-slate-200 hover:border-purple-400' : 'bg-slate-900 border-slate-800 hover:border-purple-500'
-                }`}
+                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-purple-500 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
               >
-                <div className="w-11 h-11 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">บัตรดิจิทัล & โปรไฟล์</h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Virtual ID Card & ผลการเรียน</p>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">บัตรดิจิทัล &amp; โปรไฟล์</h2>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Virtual ID Card &amp; ผลการเรียน</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 dark:group-hover:text-purple-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-purple-600 dark:group-hover:text-purple-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
               </>
@@ -405,15 +395,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {homePage === 1 && (
               <>
             {/* Today's Daily Status Strip */}
-            <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center justify-between">
+            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] flex items-center justify-between">
                 <span>สรุปสถานะประจำวัน</span>
-                <span className="text-slate-600 dark:text-slate-300 font-mono text-[10px]">{todayStr}</span>
+                <span className="text-[var(--color-text-muted)] font-mono text-[10px]">{todayStr}</span>
               </h2>
 
               <div className="space-y-2 text-xs">
                 {/* Attendance Status */}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                   <div className="flex items-center gap-2.5">
                     {todayCheckin ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -421,8 +411,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                     )}
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white">การเช็คชื่อเข้าโรงเรียน</p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      <p className="font-bold text-[var(--color-text-title)]">การเช็คชื่อเข้าโรงเรียน</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
                         {todayCheckin 
                           ? `เช็คอินแล้วเวลา ${todayCheckin.time} น.` 
                           : 'ยังไม่พบข้อมูลเช็คชื่อวันนี้'}
@@ -432,19 +422,19 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('checkin')}
-                    className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:underline"
+                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                   >
                     {todayCheckin ? 'ดูรายละเอียด' : 'เช็คอินเลย'}
                   </button>
                 </div>
 
                 {/* Homework Count */}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                   <div className="flex items-center gap-2.5">
                     <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white">การบ้านและงานค้าง</p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      <p className="font-bold text-[var(--color-text-title)]">การบ้านและงานค้าง</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
                         {pendingHomeworkCount > 0 
                           ? `มีงานที่ยังไม่ส่ง ${pendingHomeworkCount} ชิ้น` 
                           : 'ไม่มีการบ้านค้าง ส่งครบทุกวิชาแล้ว!'}
@@ -454,7 +444,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('homework')}
-                    className="text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline"
+                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                   >
                     ตรวจงาน
                   </button>
@@ -464,25 +454,25 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
             {/* School Announcements Section */}
             {announcements.length > 0 && (
-              <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-2.5`}>
+              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Bell className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <h2 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                    <Bell className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                     <span>ข่าวสารและประกาศโรงเรียน</span>
                   </h2>
                   <button
                     type="button"
                     onClick={() => setActiveTab('announcements')}
-                    className="text-[11px] text-blue-700 dark:text-blue-300 font-semibold hover:underline"
+                    className="text-[11px] text-[var(--color-primary-text)] font-semibold hover:underline cursor-pointer"
                   >
                     ดูทั้งหมด
                   </button>
                 </div>
                 <div className="space-y-2">
                   {announcements.slice(0, 2).map((a) => (
-                    <div key={a.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
-                      <p className="font-bold text-slate-900 dark:text-white line-clamp-1">{a.title}</p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">{a.content}</p>
+                    <div key={a.id} className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs">
+                      <p className="font-bold text-[var(--color-text-title)] line-clamp-1">{a.title}</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">{a.content}</p>
                     </div>
                   ))}
                 </div>
@@ -497,23 +487,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 onClick={() => setHomePage(0)}
                 className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
                   homePage === 0
-                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
                 ภาพรวม (หน้า 1)
               </button>
               <div aria-live="polite" className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 0 ? 'bg-blue-600 scale-125' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 1 ? 'bg-blue-600 scale-125' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 0 ? 'bg-[var(--color-primary)] scale-125' : 'bg-[var(--color-border)]'}`} />
+                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 1 ? 'bg-[var(--color-primary)] scale-125' : 'bg-[var(--color-border)]'}`} />
               </div>
               <button
                 type="button"
                 onClick={() => setHomePage(1)}
                 className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
                   homePage === 1
-                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
                 สรุปวันนี้ (หน้า 2)
@@ -577,13 +567,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         {/* TAB D: GAMES HUB (เมนูรวมเกมส์) */}
         {activeTab === 'games' && (
           <div className="animate-in fade-in duration-200 space-y-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-lg space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold text-amber-200">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-700 via-rose-700 to-indigo-800 text-white shadow-lg space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold text-amber-100">
                 <span>🎮 ศูนย์รวมเกมส์ & สนามประลอง</span>
                 <span>EXP: {currentScore.exp}</span>
               </div>
               <h2 className="text-base font-black">เลือกเกมเพื่อเริ่มเล่น (โหมดอาร์เคดเต็มจอ)</h2>
-              <p className="text-[11px] text-white/80">สนามประลองปัญญาและแล็บจำลอง โหมดเกมตอบสด หน้าจออาร์เคดกระชับ ไร้ความรก</p>
+              <p className="text-[11px] text-slate-100">สนามประลองปัญญาและแล็บจำลอง โหมดเกมตอบสด หน้าจออาร์เคดกระชับ ไร้ความรก</p>
             </div>
 
             <div className="space-y-2.5">
@@ -593,46 +583,42 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveGameView('battle_royale_3d')}
-                    className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer ${
-                      isLight ? 'bg-white border-amber-300 hover:border-amber-500' : 'bg-slate-900 border-amber-500/40 hover:border-amber-400'
-                    }`}
+                    className="w-full p-4 rounded-2xl border border-amber-400/60 bg-[var(--color-card)] hover:border-amber-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold shrink-0">
                         <Gamepad2 className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">3D EduArena Battle Royale</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black animate-pulse">3D HOT</span>
+                          <h3 className="font-black text-sm text-[var(--color-text-title)]">3D EduArena Battle Royale</h3>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black animate-pulse">3D HOT</span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">วิ่งล่าหีบสมบัติ ตอบคำถามชิงคะแนน มีปุ่มซูม 3D</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">วิ่งล่าหีบสมบัติ ตอบคำถามชิงคะแนน มีปุ่มซูม 3D</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
                   </button>
 
                   {/* Game 2: 1v1 Battle Arena */}
                   <button
                     type="button"
                     onClick={() => setActiveGameView('1v1_arena')}
-                    className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer ${
-                      isLight ? 'bg-white border-rose-300 hover:border-rose-500' : 'bg-slate-900 border-rose-500/40 hover:border-rose-400'
-                    }`}
+                    className="w-full p-4 rounded-2xl border border-rose-400/60 bg-[var(--color-card)] hover:border-rose-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center font-bold shrink-0">
                         <Swords className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">1v1 แบทเทิลดวลความเร็ว</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200 font-bold">1v1</span>
+                          <h3 className="font-black text-sm text-[var(--color-text-title)]">1v1 แบทเทิลดวลความเร็ว</h3>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-700 text-white font-bold">1v1</span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">สู้กับบอทหรือเพื่อน ตอบโจทย์ไว ชิง HP หน้าเดียวกระชับ</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">สู้กับบอทหรือเพื่อน ตอบโจทย์ไว ชิง HP หน้าเดียวกระชับ</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
                   </button>
                 </>
               )}
@@ -643,54 +629,50 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveGameView('boss_raid')}
-                    className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer ${
-                      isLight ? 'bg-white border-red-300 hover:border-red-500' : 'bg-slate-900 border-red-500/40 hover:border-red-400'
-                    }`}
+                    className="w-full p-4 rounded-2xl border border-red-400/60 bg-[var(--color-card)] hover:border-red-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 flex items-center justify-center font-bold shrink-0">
                         <Flame className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">Co-op Boss Raid (ตีบอส)</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-600 text-white font-bold">CO-OP</span>
+                          <h3 className="font-black text-sm text-[var(--color-text-title)]">Co-op Boss Raid (ตีบอส)</h3>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-700 text-white font-bold">CO-OP</span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">รวมพลังตีบอสประจำวิชา มีปุ่มซูมตัวบอส ไม่ต้องเลื่อนหน้า</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">รวมพลังตีบอสประจำวิชา มีปุ่มซูมตัวบอส ไม่ต้องเลื่อนหน้า</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
                   </button>
 
                   {/* Game 4: Subject Labs & Chemistry */}
                   <button
                     type="button"
                     onClick={() => setActiveGameView('subject_labs')}
-                    className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer ${
-                      isLight ? 'bg-white border-blue-300 hover:border-blue-500' : 'bg-slate-900 border-blue-500/40 hover:border-blue-400'
-                    }`}
+                    className="w-full p-4 rounded-2xl border border-blue-400/60 bg-[var(--color-card)] hover:border-blue-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
                         <FlaskConical className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">เวิร์กช็อปจำลอง 6 สาระ</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-600 text-white font-bold">SIM</span>
+                          <h3 className="font-black text-sm text-[var(--color-text-title)]">เวิร์กช็อปจำลอง 6 สาระ</h3>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-700 text-white font-bold">SIM</span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">จำลองการทดลองเคมี จรวดฟิสิกส์ ครัวไวยากรณ์ โค้ดดิ้ง และแผนที่โลก</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">จำลองการทดลองเคมี จรวดฟิสิกส์ ครัวไวยากรณ์ โค้ดดิ้ง และแผนที่โลก</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
                   </button>
                 </>
               )}
 
               {gameHubPage === 2 && (
                 <>
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
                       รางวัลและผลงาน • ไม่ใช่โหมดเกม
                     </h3>
                   </div>
@@ -699,23 +681,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveGameView('hall_of_fame')}
-                    className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer ${
-                      isLight ? 'bg-white border-indigo-300 hover:border-indigo-500' : 'bg-slate-900 border-indigo-500/40 hover:border-indigo-400'
-                    }`}
+                    className="w-full p-4 rounded-2xl border border-indigo-400/60 bg-[var(--color-card)] hover:border-indigo-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold shrink-0">
                         <Trophy className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">ถ้วยรางวัลและเกียรติบัตร</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold">รางวัล</span>
+                          <h3 className="font-black text-sm text-[var(--color-text-title)]">ถ้วยรางวัลและเกียรติบัตร</h3>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-700 text-white font-bold">รางวัล</span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">ดูถ้วยรางวัล 3 มิติและเกียรติบัตรที่ได้รับ</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">ดูถ้วยรางวัล 3 มิติและเกียรติบัตรที่ได้รับ</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
                   </button>
                     </>
                   )}
@@ -726,16 +706,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     type="button"
                     onClick={() => setGameHubPage((page) => Math.max(0, page - 1))}
                     disabled={gameHubPage === 0}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
                   >
                     ก่อนหน้า
                   </button>
-                  <span aria-live="polite" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{gameHubPage + 1} / 3</span>
+                  <span aria-live="polite" className="text-[11px] font-semibold text-[var(--color-text-muted)]">{gameHubPage + 1} / 3</span>
                   <button
                     type="button"
                     onClick={() => setGameHubPage((page) => Math.min(2, page + 1))}
                     disabled={gameHubPage === 2}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
                   >
                     ถัดไป
                   </button>
@@ -757,45 +737,45 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             )}
 
             {/* Quick Profile Actions & Settings */}
-            {profilePage === 1 && <div className={`p-4 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} shadow-xs space-y-3`}>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">การตั้งค่าและบัญชีผู้ใช้</h3>
+            {profilePage === 1 && <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">การตั้งค่าและบัญชีผู้ใช้</h3>
               
               <div className="space-y-2 text-xs">
                 {/* Full Profile & Portfolio Modal trigger */}
                 <button
                   type="button"
                   onClick={onOpenProfileModal}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-left cursor-pointer"
+                  className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
-                    <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span className="font-bold">แก้ไขข้อมูลส่วนตัว & พอร์ตฟอลิโอ</span>
+                    <User className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <span className="font-bold">แก้ไขข้อมูลส่วนตัว &amp; พอร์ตฟอลิโอ</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
                 </button>
 
                 {/* Theme Palette Switcher */}
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="font-bold">โหมดสีถนอมสายตา</span>
+                <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
+                  <span className="font-bold text-[var(--color-text-title)]">โหมดสีถนอมสายตา</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setThemePalette('light_warm')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_warm' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_warm' ? 'bg-amber-400 text-slate-950 font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
                       อบอุ่น
                     </button>
                     <button
                       type="button"
                       onClick={() => setThemePalette('light_sky')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_sky' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_sky' ? 'bg-[var(--color-primary)] text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
                       ฟ้าคราม
                     </button>
                     <button
                       type="button"
                       onClick={() => setThemePalette('sapphire')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'sapphire' ? 'bg-indigo-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'sapphire' ? 'bg-indigo-700 text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
                       มืดคราม
                     </button>
@@ -803,20 +783,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
 
                 {/* Language Switcher */}
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="font-bold">ภาษาของระบบ</span>
+                <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
+                  <span className="font-bold text-[var(--color-text-title)]">ภาษาของระบบ</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setLang('th')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'th' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'th' ? 'bg-[var(--color-primary)] text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
                       ไทย (TH)
                     </button>
                     <button
                       type="button"
                       onClick={() => setLang('en')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'en' ? 'bg-blue-600 text-white font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'en' ? 'bg-[var(--color-primary)] text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
                       English (EN)
                     </button>
@@ -827,20 +807,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <button
                   type="button"
                   onClick={onSwitchToDesktopMode}
-                  className="w-full p-3 rounded-xl border border-blue-500/30 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-200 font-bold flex items-center justify-between text-left cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                  className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold flex items-center justify-between text-left cursor-pointer hover:opacity-90"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Laptop className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <Laptop className="w-4 h-4" />
                     <span>สลับเป็นมุมมองคอมพิวเตอร์เต็มจอ (Desktop View)</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-blue-500 dark:text-blue-300" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
 
                 {/* Logout Button */}
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="w-full p-3 rounded-xl border border-rose-300 dark:border-rose-800/80 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-200 font-bold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
+                  className="w-full p-3 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>ออกจากระบบ</span>
@@ -853,16 +833,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 type="button"
                 onClick={() => setProfilePage(0)}
                 disabled={profilePage === 0}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
               >
                 บัตรดิจิทัล
               </button>
-              <span aria-live="polite" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{profilePage + 1} / 2</span>
+              <span aria-live="polite" className="text-[11px] font-semibold text-[var(--color-text-muted)]">{profilePage + 1} / 2</span>
               <button
                 type="button"
                 onClick={() => setProfilePage(1)}
                 disabled={profilePage === 1}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200"
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
               >
                 ตั้งค่า
               </button>
@@ -877,12 +857,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('home')}
-                className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>กลับหน้าหลัก</span>
               </button>
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">รายการการบ้านและงานค้าง</h2>
+              <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">รายการการบ้านและงานค้าง</h2>
             </div>
 
             <PagedList
@@ -891,7 +871,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
               nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
               paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าการบ้าน' : 'Homework pages'}
-              emptyState={<div className="text-center py-12 text-slate-600 dark:text-slate-300 text-xs">ไม่มีการบ้านในระบบ</div>}
+              emptyState={<div className="text-center py-12 text-[var(--color-text-muted)] text-xs">ไม่มีการบ้านในระบบ</div>}
               renderItem={(asg) => {
                 const isDone = myCompletedSubmissions.has(asg.id);
                 return (
@@ -899,26 +879,26 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     key={asg.id}
                     className={`p-3.5 rounded-2xl border ${
                       isDone
-                        ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800'
+                        : 'bg-[var(--color-card)] border-[var(--color-border)]'
                     } shadow-xs space-y-2 text-xs`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                      <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
                         {courses.find(c => c.id === asg.courseId)?.code || courses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isDone ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
+                        isDone ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200' : 'bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200'
                       }`}>
                         {isDone ? '✓ ส่งแล้ว' : 'รอส่ง'}
                       </span>
                     </div>
 
-                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">
                       {lang === 'th' ? (asg.titleTh || asg.titleEn) : (asg.titleEn || asg.titleTh)}
                     </h4>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
+                    <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
                       <span>กำหนดส่ง: {asg.dueDate}</span>
                       <span className="font-bold text-amber-700 dark:text-amber-300">{asg.points} คะแนน</span>
                     </div>
@@ -938,16 +918,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedAnnouncement(null)}
-                    className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>กลับสู่รายการ</span>
                   </button>
-                  <span className="text-[10px] text-slate-600 dark:text-slate-300">{selectedAnnouncement.publishedAt}</span>
+                  <span className="text-[10px] text-[var(--color-text-muted)]">{selectedAnnouncement.publishedAt}</span>
                 </div>
-                <article className={`p-3 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
-                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">{selectedAnnouncement.title}</h2>
-                  <p className="mt-1 text-[10px] text-slate-600 dark:text-slate-300">
+                <article className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                  <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">{selectedAnnouncement.title}</h2>
+                  <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
                     {selectedAnnouncement.author} ({selectedAnnouncement.authorRole})
                   </p>
                   <PagedList
@@ -957,7 +937,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
                     paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
                     renderItem={(pageText, pageIndex) => (
-                      <p key={pageIndex} className="mt-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700 dark:text-slate-200">
+                      <p key={pageIndex} className="mt-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-text-body)]">
                         {pageText}
                       </p>
                     )}
@@ -970,12 +950,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('home')}
-                    className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>กลับหน้าหลัก</span>
                   </button>
-                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">ประกาศและข่าวสารโรงเรียน</h2>
+                  <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">ประกาศและข่าวสารโรงเรียน</h2>
                 </div>
 
                 <PagedList
@@ -984,34 +964,34 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
                   nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
                   paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
-                  emptyState={<p className="py-8 text-center text-xs text-slate-600 dark:text-slate-300">ไม่มีประกาศ</p>}
+                  emptyState={<p className="py-8 text-center text-xs text-[var(--color-text-muted)]">ไม่มีประกาศ</p>}
                   renderItem={(a) => (
                 <div 
                   key={a.id} 
                   className={`p-4 rounded-2xl border ${
                     a.pinned 
-                      ? 'border-amber-400/80 bg-amber-50/30 dark:bg-amber-950/20' 
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40' 
+                      : 'bg-[var(--color-card)] border-[var(--color-border)]'
                   } shadow-xs space-y-2 text-xs`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
                       {a.category}
                     </span>
-                    <span className="text-[10px] text-slate-600 dark:text-slate-300">{a.publishedAt}</span>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">{a.publishedAt}</span>
                   </div>
 
-                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{a.title}</h4>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs whitespace-pre-line line-clamp-2">{a.content}</p>
+                  <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">{a.title}</h4>
+                  <p className="text-[var(--color-text-body)] leading-relaxed text-xs whitespace-pre-line line-clamp-2">{a.content}</p>
 
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-slate-600 dark:text-slate-300">
+                  <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-[var(--color-text-muted)]">
                       ผู้ประกาศ: {a.author} ({a.authorRole})
                     </span>
                     <button
                       type="button"
                       onClick={() => setSelectedAnnouncement(a)}
-                      className="shrink-0 text-[11px] font-bold text-blue-600 dark:text-blue-400"
+                      className="shrink-0 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                     >
                       อ่านทั้งหมด
                     </button>
@@ -1028,9 +1008,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       {/* 3. SLEEK MOBILE BOTTOM NAVIGATION BAR */}
       {/* ======================================================== */}
-      <nav className={`fixed bottom-0 inset-x-0 z-40 border-t ${
-        isLight ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-800'
-      } backdrop-blur-md px-2 py-1.5 shadow-2xl safe-area-bottom`}>
+      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 shadow-2xl safe-area-bottom">
         <div className="max-w-md mx-auto grid grid-cols-5 gap-1">
           {/* 1. Home */}
           <button
@@ -1038,8 +1016,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onClick={() => setActiveTab('home')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'home'
-                ? 'text-blue-600 dark:text-blue-400 font-black'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                ? 'text-[var(--color-primary-text)] font-black'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <Home className="w-5 h-5 mb-0.5" />
@@ -1052,8 +1030,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onClick={() => setActiveTab('checkin')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'checkin'
-                ? 'text-blue-600 dark:text-blue-400 font-black'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                ? 'text-[var(--color-primary-text)] font-black'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             {!todayCheckin && (
@@ -1069,12 +1047,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onClick={() => setActiveTab('leave')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'leave'
-                ? 'text-emerald-600 dark:text-emerald-400 font-black'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                ? 'text-emerald-700 dark:text-emerald-300 font-black'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             {pendingLeavesCount > 0 && (
-              <span className="absolute top-1 right-4 px-1 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
+              <span className="absolute top-1 right-4 px-1 py-0.5 rounded-full bg-rose-700 text-white text-[9px] font-black">
                 {pendingLeavesCount}
               </span>
             )}
@@ -1091,8 +1069,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             }}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'games'
-                ? 'text-amber-600 dark:text-amber-400 font-black'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                ? 'text-amber-700 dark:text-amber-300 font-black'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <Gamepad2 className="w-5 h-5 mb-0.5" />
@@ -1105,8 +1083,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onClick={() => setActiveTab('profile')}
             className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'text-purple-600 dark:text-purple-400 font-black'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                ? 'text-purple-700 dark:text-purple-300 font-black'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <User className="w-5 h-5 mb-0.5" />

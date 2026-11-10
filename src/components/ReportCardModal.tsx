@@ -54,8 +54,8 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Action Toolbar */}
         <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white">
@@ -73,7 +73,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-700/30 transition-all cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print / Save PDF</span>
@@ -88,7 +88,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
         </div>
 
         {/* Printable Document Body */}
-        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 bg-white text-slate-900 font-sans print:p-0 print:m-0" ref={printRef}>
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white text-slate-900 font-sans print:p-0 print:m-0" ref={printRef}>
           {/* Header */}
           <div className="border-b-2 border-slate-900 pb-4 mb-4">
             <div className="flex items-start justify-between gap-4">

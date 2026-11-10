@@ -13,8 +13,8 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({ lang = 'th' 
   if (isOnline) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-xl bg-amber-600 text-white px-3.5 py-2 text-xs font-semibold shadow-lg shadow-amber-900/20 animate-pulse">
-      <WifiOff className="w-4 h-4 shrink-0" />
+    <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-xl bg-amber-900 text-amber-50 border border-amber-500 px-3.5 py-2 text-xs font-semibold shadow-lg animate-pulse">
+      <WifiOff className="w-4 h-4 shrink-0 text-amber-300" />
       <span>
         {lang === 'th'
           ? 'โหมดออฟไลน์ — สามารถเช็กชื่อและดูข้อมูลแคชในเครื่องได้'
