@@ -70,6 +70,25 @@
    ON CONFLICT DO NOTHING;
    ```
 
+#### ตั้ง Gmail เป็นผู้ส่งอีเมล Supabase Auth
+
+อีเมลยืนยันสมาชิกและลิงก์รีเซ็ตรหัสผ่านส่งผ่าน SMTP ของ Supabase ไม่ได้กำหนดผู้ส่งจากโค้ดหน้าเว็บ หากต้องการใช้ `farmissara@gmail.com`:
+
+1. เปิดการยืนยันแบบ 2 ขั้นตอนในบัญชี Google แล้วสร้าง **Google App Password** สำหรับใช้กับ Supabase
+2. ใน Supabase ไปที่ **Authentication → Emails → SMTP Settings** (ตำแหน่งเมนูอาจต่างกันตาม Dashboard) แล้วเปิดใช้งาน Custom SMTP
+3. กรอกค่าเหล่านี้:
+   - Host: `smtp.gmail.com`
+   - Port: `465` (SSL) หรือ `587` (STARTTLS)
+   - Username: `farmissara@gmail.com`
+   - Sender email: `farmissara@gmail.com`
+   - Sender name: ชื่อระบบที่ต้องการให้ผู้รับเห็น เช่น `EduVerse`
+   - Password: Google App Password
+4. บันทึกการตั้งค่าแล้วทดสอบสมัครบัญชีและส่งลิงก์ยืนยันใหม่ โดยใช้กล่องเมลที่ควบคุมได้ ตรวจโฟลเดอร์ Spam หากไม่พบอีเมล
+
+ใส่ App Password ใน Supabase Dashboard โดยตรงเท่านั้น ห้ามใช้รหัสผ่าน Google ปกติ ห้ามส่ง App Password ในแชต และห้ามเก็บไว้ในโค้ด, Git หรือ environment variable ฝั่ง `VITE_*` Gmail ส่วนบุคคลมีข้อจำกัดการส่งและอาจไม่เหมาะกับอีเมลปริมาณมาก
+
+การตั้งค่านี้ครอบคลุมอีเมล Supabase Auth เช่น ยืนยันสมาชิกและรีเซ็ตรหัสผ่านเท่านั้น ปัจจุบันอีเมลแจ้งเตือนทั่วไป/ประกาศในแอปยังไม่ได้เชื่อมกับบริการส่งจริง และค่า Resend Sender ในหน้า System Settings ยังไม่ใช่การตั้งค่า SMTP หรือการส่งอีเมลจริง
+
 ### 1.4 ดึงค่าการเชื่อมต่อ (API Credentials)
 1. ไปที่ **Project Settings** (ไอคอนฟันเฟืองด้านล่างซ้าย) → เลือกแท็บ **API**
 2. คัดลอกค่า 2 ตัวต่อไปนี้:
