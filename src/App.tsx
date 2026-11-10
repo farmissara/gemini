@@ -1244,7 +1244,7 @@ export const App: React.FC = () => {
                 {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
                 {currentTab !== 'super_admin_console' && !useImmersiveGameLayout && (
                   <div className="shrink-0 mb-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-0.5">
-                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 min-w-0">
+                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700/80 min-w-0 max-w-full">
                       {[
                         { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
                         { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
@@ -1262,7 +1262,7 @@ export const App: React.FC = () => {
                                 navigateToAppTab(cat.defaultTab);
                               }
                             }}
-                            className={`min-w-0 px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            className={`min-w-0 px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                               isCatActive
                                 ? 'bg-blue-600 text-white shadow-xs'
                                 : 'text-slate-700 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700/70 hover:text-slate-900'

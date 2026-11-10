@@ -1114,7 +1114,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {activeGameView === 'boss_raid' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950 p-2 sm:p-4">
+            <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-1 sm:p-3">
               <CoopBossRaidView
                 lang={lang}
                 currentRole={currentRole}
@@ -1137,7 +1137,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {activeGameView === 'hall_of_fame' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950 p-2 sm:p-4">
+            <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-1 sm:p-3">
               <HallOfFame3DView
                 lang={lang}
                 school={activeSchool}

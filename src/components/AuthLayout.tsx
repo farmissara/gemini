@@ -329,10 +329,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       {/* TAB 1: CAPABILITY SHOWCASE & INTERACTIVE DEMO (จัดแสดงความสามารถ & DEMO) */}
       {/* ========================================================================= */}
       {activePortalTab === 'showcase' && (
-        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 overflow-hidden">
+        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 overflow-y-auto">
           
           {/* Hero Section: Value Proposition & High-Fidelity Educational Graphic */}
-          {showcasePage === 0 && <section className="grid h-full min-h-0 items-center gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
+          {showcasePage === 0 && <section className="grid min-h-0 items-center gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 pb-6">
             
             {/* Left Content */}
             <div className="space-y-3">
@@ -763,10 +763,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       {/* TAB 2: OFFICIAL PRODUCTION SCHOOL LOGIN (เข้าสู่ระบบใช้งานจริงสำหรับโรงเรียน) */}
       {/* ========================================================================= */}
       {activePortalTab === 'live_login' && (
-        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col gap-3 overflow-hidden">
+        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col gap-3 overflow-y-auto pb-8">
           
           {/* Header Distinction Banner */}
-          <div className="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0">
                 <Lock className="w-5 h-5" />
@@ -799,10 +799,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
 
           {/* Form & Security Columns */}
-          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-3 lg:gap-8 items-start overflow-hidden">
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-3 lg:gap-8 items-start">
             
             {/* Left Column: Security Architecture & School Directory Info */}
-            <div className={`${loginMobilePage === 'information' ? 'block' : 'hidden'} lg:block min-h-0 space-y-3 overflow-hidden`}>
+            <div className={`${loginMobilePage === 'information' ? 'block' : 'hidden'} lg:block min-h-0 space-y-3`}>
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2.5 text-blue-600 dark:text-blue-400 font-bold text-sm">
                   <ShieldCheck className="w-5 h-5" />

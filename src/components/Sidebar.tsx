@@ -579,7 +579,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation Sub-Items List: Fits 100% On Screen */}
-      <div className="flex-1 min-h-0 overflow-hidden p-2.5 space-y-1">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-1">
         {/* Search Results Mode */}
         {searchFilter.trim() ? (
           <div className="space-y-1">

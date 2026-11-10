@@ -1683,25 +1683,22 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 1. PRE-GAME MATCH SETUP & LOBBY SCREEN (โหมดเลือกล่วงหน้า) */}
       {/* ======================================================== */}
       {gamePhase === 'lobby' && (
-        <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-hidden p-3 sm:p-5 text-white animate-in fade-in">
+        <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-y-auto p-3 sm:p-5 text-white animate-in fade-in">
           {/* Lobby Top Navigation */}
           <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
                 <Gamepad2 className="w-6 h-6 fill-slate-950 text-slate-950" />
               </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                  <span>EduBattle 3D • ตั้งค่าการแข่งขันก่อนเข้าเล่น</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-bold">
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base md:text-lg font-black tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span>EduBattle 3D • ตั้งค่าการแข่งขัน</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-bold shrink-0">
                     PRE-MATCH LOBBY
                   </span>
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 truncate">
                   เลือกโหมดเล่นเดี่ยว หรือให้ครูตั้งค่ากิจกรรมในเครื่องนี้
-                </p>
-                <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                  โหมดนี้เป็นตัวอย่างในเครื่อง ยังไม่เชื่อมผู้เล่นออนไลน์หรือห้องแข่งขันจริง
                 </p>
               </div>
             </div>
@@ -1709,17 +1706,21 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             <button
               type="button"
               onClick={onExit}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer border border-slate-700 flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer border border-slate-700 flex items-center gap-1.5 shrink-0 ml-2"
             >
-              <span>✕ กลับหน้าเลือกเกม</span>
+              <span>✕ กลับ</span>
             </button>
           </div>
 
+          <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 shrink-0">
+            โหมดนี้เป็นตัวอย่างในเครื่อง ยังไม่เชื่อมผู้เล่นออนไลน์หรือห้องแข่งขันจริง
+          </p>
+
           {/* Lobby Configuration Grid */}
-          <div className="flex-1 min-h-0 py-3 max-w-4xl mx-auto w-full flex flex-col justify-between">
-            <nav aria-label="Lobby setup steps" className="flex items-center gap-2 pb-3">
+          <div className="flex-1 min-h-0 py-3 max-w-4xl mx-auto w-full flex flex-col justify-start space-y-4">
+            <nav aria-label="Lobby setup steps" className="flex items-center gap-2 pb-1 shrink-0 overflow-x-auto no-scrollbar">
               {(['คลังข้อสอบ', 'โหมดเล่น', 'ตัวละคร'] as const).map((label, index) => (
-                <button key={label} type="button" onClick={() => setLobbyStep(index as 0 | 1 | 2)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${lobbyStep === index ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
+                <button key={label} type="button" onClick={() => setLobbyStep(index as 0 | 1 | 2)} className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 ${lobbyStep === index ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
                   {index + 1}. {label}
                 </button>
               ))}
@@ -2016,56 +2017,50 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 2. MINIMALIST MOBILE-FIRST FLOATING TOP BAR (เมื่อเล่นเกม) */}
       {/* ======================================================== */}
       {gamePhase === 'playing' && (
-        <div className="absolute top-3 inset-x-3 z-30 flex items-center justify-between pointer-events-none gap-2">
+        <div className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-3 z-30 flex items-center justify-between pointer-events-none gap-1 sm:gap-2">
           {/* Left: Prominent Exit Button + Mini Player Status Badge */}
-          <div className="flex items-center gap-1.5 pointer-events-auto">
+          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
             <button
               type="button"
               onClick={onExit}
-              className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 flex items-center gap-1 cursor-pointer active:scale-95 border border-rose-500/50"
+              className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg shadow-rose-600/30 flex items-center gap-1 cursor-pointer active:scale-95 border border-rose-500/50"
               title="ออกจากเกม กลับสู่หน้าหลัก"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">❌ ออกจากเกม</span>
+              <span className="hidden md:inline">ออกจากเกม</span>
             </button>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl text-xs">
               <span className="text-rose-400 font-bold flex items-center gap-1 text-xs">
                 ❤️ <span className="font-mono">{Math.round(playerHp)}</span>
               </span>
-              <div className="w-12 sm:w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="w-10 sm:w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div 
                   className={`h-full transition-all duration-300 ${playerHp > 50 ? 'bg-emerald-500' : playerHp > 20 ? 'bg-amber-500' : 'bg-rose-500 animate-pulse'}`}
                   style={{ width: `${playerHp}%` }}
                 />
               </div>
-              <span className="text-amber-300 font-extrabold font-mono text-xs pl-1 border-l border-slate-700">
+              <span className="text-amber-300 font-extrabold font-mono text-[11px] sm:text-xs pl-1 border-l border-slate-700 hidden xs:inline">
                 🏆 {totalExp}
               </span>
-              {playerStreak > 0 && (
-                <span className="text-amber-400 font-bold font-mono text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/40 hidden sm:inline">
-                  🔥 {playerStreak}x
-                </span>
-              )}
             </div>
           </div>
 
           {/* Center: Minimal Objective Badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl text-xs font-mono pointer-events-auto">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl text-[11px] sm:text-xs font-mono pointer-events-auto shrink min-w-0">
             <span className="text-cyan-300 font-bold flex items-center gap-1">
-              <Package className="w-3.5 h-3.5 text-cyan-400" />
+              <Package className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               <span>{openedChestsCount}/{totalChests}</span>
             </span>
-            <span className="text-slate-600">•</span>
+            <span className="text-slate-600">·</span>
             <span className="text-amber-400 font-bold flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>{timerSeconds}s</span>
             </span>
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">จำลอง</span>
           </div>
 
           {/* Right: Sound, Fullscreen, and on-demand game menu */}
-          <div className="flex items-center gap-1.5 pointer-events-auto">
+          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
             {/* Sound Toggle */}
             <button
               type="button"
@@ -2078,17 +2073,17 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   battleAudio.startAmbientMusic();
                 }
               }}
-              className="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 border border-slate-700/80 shadow-xl cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 border border-slate-700/80 shadow-xl cursor-pointer"
               title={isMuted ? 'เปิดเสียง' : 'ปิดเสียง'}
             >
-              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
             </button>
 
             {/* Fullscreen Toggle */}
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 border border-slate-700/80 shadow-xl cursor-pointer"
+              className="hidden sm:flex p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 border border-slate-700/80 shadow-xl cursor-pointer"
               title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มหน้าจอ'}
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -2101,10 +2096,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 battleAudio.playClick();
                 setShowGameMenuDrawer(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer border border-yellow-200"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer border border-yellow-200"
             >
-              <Menu className="w-4 h-4" />
-              <span className="hidden sm:inline">เมนูเกม</span>
+              <Menu className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">เมนู</span>
             </button>
           </div>
         </div>
@@ -2119,19 +2114,19 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
         {/* Storm Warning Red Vignette when outside safe zone */}
         {isOutsideStorm && (
-          <div className="absolute inset-0 z-10 pointer-events-none border-8 border-rose-600/70 bg-rose-950/20 animate-pulse flex items-center justify-center">
-            <div className="px-4 py-2 bg-rose-600 text-white font-black text-sm rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
-              <AlertTriangle className="w-5 h-5 text-yellow-300" />
-              <span>⚠️ คุณอยู่นอกวงพายุหมอก Safe Zone! รีบวิ่งเข้าสู่ Safe Zone</span>
+          <div className="absolute top-14 inset-x-3 z-20 pointer-events-none flex items-center justify-center">
+            <div className="px-3.5 py-1.5 bg-rose-600/95 text-white font-black text-xs rounded-xl shadow-2xl flex items-center gap-1.5 animate-bounce border border-rose-300">
+              <AlertTriangle className="w-4 h-4 text-yellow-300 shrink-0" />
+              <span>อยู่นอก Safe Zone! รีบวิ่งเข้าวง</span>
             </div>
           </div>
         )}
 
         {/* HUD Alert Banner */}
         {hudAlert && (
-          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-none px-4 py-2 bg-slate-900/90 border border-amber-500/50 rounded-2xl shadow-2xl text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-2 backdrop-blur-md animate-in fade-in slide-in-from-top-3">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>{hudAlert}</span>
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 pointer-events-none px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-900/90 border border-amber-500/50 rounded-2xl shadow-2xl text-[11px] sm:text-xs font-bold text-amber-300 flex items-center gap-1.5 sm:gap-2 backdrop-blur-md animate-in fade-in slide-in-from-top-3 max-w-[92vw] text-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="truncate">{hudAlert}</span>
           </div>
         )}
 
@@ -2140,16 +2135,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
             <button
               onClick={triggerInteraction}
-              className={`px-6 py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider shadow-2xl flex items-center gap-2 transform hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 ${
+              className={`px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl flex items-center gap-2 transform hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 ${
                 nearAirdrop 
                   ? 'bg-gradient-to-r from-rose-600 to-red-500 text-white border-red-300 shadow-red-500/60 animate-bounce' 
                   : 'bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 border-amber-200 shadow-amber-500/60'
               }`}
             >
-              <Sparkles className="w-5 h-5 fill-current" />
-              <span>{nearAirdrop ? '[แตะ] เปิดแอร์ดรอปพิเศษ (2x EXP)' : '[แตะ] เปิดหีบสมบัติความรู้'}</span>
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 fill-current shrink-0" />
+              <span>{nearAirdrop ? '[แตะ] เปิดแอร์ดรอป (2x EXP)' : '[แตะ] เปิดหีบความรู้'}</span>
             </button>
-            <div className="mt-2 text-xs text-amber-200 font-semibold drop-shadow-md">
+            <div className="mt-1.5 text-[11px] text-amber-200 font-semibold drop-shadow-md hidden sm:block">
               (หรือกดปุ่ม [E] บนคีย์บอร์ด)
             </div>
           </div>

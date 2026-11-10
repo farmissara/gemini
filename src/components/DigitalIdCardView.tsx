@@ -113,9 +113,9 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
       </div>
 
       {/* Main Interactive Showcase */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-y-auto lg:overflow-hidden pb-4">
         {/* Left Column: Student Selector List */}
-        <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-md p-3 flex flex-col min-h-0 overflow-hidden">
+        <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-md p-3 flex flex-col min-h-[300px] lg:min-h-0 overflow-hidden">
           <div className="shrink-0 flex items-center justify-between pb-2 border-b border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
               {lang === 'th' ? 'เลือกบัตรนักเรียน' : 'Select Student'}

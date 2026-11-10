@@ -611,15 +611,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
       {/* TAB 1: 1v1 Battle Arena */}
       {activeSubTab === 'arena' && (
-        <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'space-y-6'}`}>
+        <div className="w-full flex-1 min-h-0 flex flex-col overflow-y-auto">
           {/* LOBBY / PRE-BATTLE MATCHUP SCREEN */}
           {battleState === 'idle' && (
-            <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col p-3 sm:p-4 max-w-xl mx-auto overflow-y-auto space-y-4' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
+            <div className="w-full flex-1 min-h-0 flex flex-col p-3 sm:p-5 max-w-4xl mx-auto overflow-y-auto space-y-4">
               {/* Left / Main Match Launcher Card */}
-              <div className={`${isMobile ? 'space-y-4 w-full' : 'md:col-span-2 rounded-3xl bg-slate-900/60 border border-slate-800 p-8 flex flex-col justify-between relative overflow-hidden'}`}>
-                {!isMobile && (
-                  <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
-                )}
+              <div className="space-y-4 w-full rounded-3xl bg-slate-900/60 border border-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -810,21 +808,21 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   </div>
 
                   {/* Center Pulse Countdown Badge */}
-                  <div className={`flex items-center gap-1 font-mono font-black text-xs px-2.5 py-0.5 rounded-full ${
+                  <div className={`flex items-center gap-1 font-mono font-black text-xs px-2.5 py-0.5 rounded-full shrink-0 ${
                     timer <= 5 
-                      ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-ping' 
+                      ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse' 
                       : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                   }`}>
-                    <Clock className="w-3.5 h-3.5" />
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
                     <span>00:{timer < 10 ? `0${timer}` : timer}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <span className="font-bold text-amber-300 text-xs font-mono">{roundScore} pts</span>
                     <button
                       type="button"
                       onClick={() => setBattleState('idle')}
-                      className="text-[11px] text-slate-400 hover:text-rose-400 font-semibold px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer"
+                      className="text-[11px] text-slate-400 hover:text-rose-400 font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer"
                     >
                       ยอมแพ้
                     </button>
@@ -1047,7 +1045,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
           {/* Question List Cards */}
           <div>
-            <PagedList items={filteredBank} pageSize={1} renderItem={(q, idx) => (
+            <PagedList items={filteredBank} pageSize={6} renderItem={(q, idx) => (
               <div 
                 key={q.id}
                 className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all space-y-3"

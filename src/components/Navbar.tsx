@@ -187,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition ${
+            className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border text-[11px] font-bold transition ${
               isLight ? 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50' : 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700'
             }`}
             title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
@@ -201,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onSwitchToMobileMode}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+              className={`hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
                 isLight
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
                   : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60'
@@ -209,19 +209,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               title={lang === 'th' ? 'สลับไปยังมุมมองมือถือแบบกระชับ' : 'Switch to Compact Mobile View'}
             >
               <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
+              <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
             </button>
           )}
 
           {/* PWA Install Button (Prompt to install app on home screen) */}
-          <PWAInstallButton lang={lang} variant="nav" />
+          <div className="hidden sm:flex">
+            <PWAInstallButton lang={lang} variant="nav" />
+          </div>
 
           {/* User Guide Modal Trigger */}
           {canAccessSchoolOperations && onOpenGuide && (
             <button
               type="button"
               onClick={onOpenGuide}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+              className={`hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
                 isLight
                   ? 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100'
                   : 'bg-amber-950/40 border-amber-800/60 text-amber-200 hover:bg-amber-900/60'
@@ -229,7 +231,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title={lang === 'th' ? 'คู่มือการใช้งานระบบ' : 'System Guide'}
             >
               <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden md:inline">{lang === 'th' ? 'คู่มือระบบ' : 'Guide'}</span>
+              <span>{lang === 'th' ? 'คู่มือระบบ' : 'Guide'}</span>
             </button>
           )}
 
@@ -238,7 +240,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={onOpenImportExport}
-              className={`hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+              className={`hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
                 isLight
                   ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
                   : 'bg-indigo-950/40 border-indigo-800/60 text-indigo-300 hover:bg-indigo-900/60'

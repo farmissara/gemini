@@ -270,7 +270,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
         </div>
       )}
 
-      <div className="shrink-0 flex flex-wrap gap-2" role="group" aria-label={lang === 'th' ? 'ส่วนของเกม' : 'Raid panels'}>
+      <div className="shrink-0 flex lg:hidden flex-wrap gap-1.5" role="group" aria-label={lang === 'th' ? 'ส่วนของเกม' : 'Raid panels'}>
         {([
           ['arena', lang === 'th' ? 'สนามบอส' : 'Boss Arena'],
           ['question', lang === 'th' ? 'ตอบคำถาม' : 'Answer Question'],
@@ -295,7 +295,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       {/* Main Raid Stage: Left Boss Visual & Health Bar, Right Co-op Question & Party Matrix */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-y-auto pb-1">
         {/* Left Column: Boss Arena Visual */}
-        {raidPanel === 'arena' && <div className="lg:col-span-12 min-h-[220px] lg:min-h-0 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3 sm:p-3.5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
+        <div className={`${raidPanel === 'arena' ? 'flex' : 'hidden'} lg:flex lg:col-span-5 min-h-[220px] bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3 sm:p-3.5 shadow-xl flex-col justify-between text-white relative overflow-hidden`}>
           {/* Boss HP Bar & Zoom Control */}
           <div>
             <div className="flex items-center justify-between text-xs font-bold mb-2">
@@ -381,10 +381,10 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               <span>คอมโบ x2.0</span>
             </span>
           </div>
-        </div>}
+        </div>
 
         {/* Right Column: Active Attack Question & Co-op Party Matrix */}
-        {(raidPanel === 'question' || raidPanel === 'parties') && <div className="lg:col-span-12 flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
+        <div className={`${raidPanel !== 'arena' ? 'flex' : 'hidden'} lg:flex lg:col-span-7 flex-col min-h-0 space-y-3 pr-1 overflow-y-auto`}>
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
             โหมดสาธิต: รายชื่อทีมและผลการแข่งขันเป็นข้อมูลตัวอย่าง ยังไม่เชื่อมผู้เล่นออนไลน์จริง
           </div>
@@ -544,7 +544,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               />
             </div>
           </details>}
-        </div>}
+        </div>
       </div>
 
       {/* Victory Celebration Modal */}
