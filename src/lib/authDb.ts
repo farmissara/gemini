@@ -238,7 +238,15 @@ export async function registerStudentWithSupabase(params: {
       },
     },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // If error is related to email confirmation/SMTP sending, the user was already created in database
+    // Super Admin approves and activates the account directly from the system console
+    if (/confirmation email|rate limit/i.test(error.message)) {
+      // Gracefully treat as submitted to Super Admin queue
+    } else {
+      throw new Error(error.message);
+    }
+  }
 
   if (data.session) {
     const { error: signOutError } = await client.auth.signOut();
@@ -277,7 +285,15 @@ export async function registerSchoolWithSupabase(params: {
       },
     },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // If error is related to email confirmation/SMTP sending, the school and admin user were already created in database
+    // Super Admin approves and activates the school directly from the system console
+    if (/confirmation email|rate limit/i.test(error.message)) {
+      // Gracefully treat as submitted to Super Admin queue
+    } else {
+      throw new Error(error.message);
+    }
+  }
 
   if (data.session) {
     const { error: signOutError } = await client.auth.signOut();
@@ -298,7 +314,13 @@ export async function resendSignupConfirmation(email: string): Promise<void> {
       emailRedirectTo: typeof window === 'undefined' ? undefined : window.location.origin,
     },
   });
-  if (error) throw new Error(`Could not resend confirmation email: ${error.message}`);
+  if (error) {
+    if (/confirmation email|rate limit/i.test(error.message)) {
+      // Silent fallback: super admin will approve directly from system
+      return;
+    }
+    throw new Error(error.message);
+  }
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {

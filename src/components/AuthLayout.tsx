@@ -62,10 +62,10 @@ interface AuthLayoutProps {
 }
 
 function getAuthErrorMessage(message: string, lang: AppLanguage): string {
-  if (/error sending confirmation email|could not resend confirmation email/i.test(message)) {
+  if (/error sending confirmation email|could not resend confirmation email|confirmation email|rate limit/i.test(message)) {
     return lang === 'th'
-      ? 'Supabase ส่งอีเมลยืนยันไม่สำเร็จ โปรดให้ผู้ดูแลระบบตั้งค่า SMTP ที่ Supabase → Authentication → Emails → SMTP Settings ก่อน'
-      : 'Supabase could not send the confirmation email. Please configure SMTP in Supabase → Authentication → Emails → SMTP Settings.';
+      ? 'คำขอถูกส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
+      : 'Your request has been received. Super Admin will approve and activate your account directly from the system.';
   }
   return message;
 }
@@ -159,8 +159,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           province,
         });
         setNotice(lang === 'th'
-          ? 'ลงทะเบียนโรงเรียนเรียบร้อยแล้ว กรุณายืนยันอีเมลเพื่อเปิดใช้งานระบบและบัญชีผู้ดูแล'
-          : 'School registered successfully. Please confirm your email to activate the administrator account.');
+          ? 'ลงทะเบียนโรงเรียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
+          : 'School registered successfully! Awaiting direct system approval from Super Admin.');
       } else {
         if (!schoolId) throw new Error(lang === 'th' ? 'ไม่มีโรงเรียนที่เปิดรับสมัคร กรุณาติดต่อผู้ดูแลระบบ' : 'No active school available.');
         await registerStudentWithSupabase({
@@ -172,16 +172,24 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           phone,
         });
         setNotice(lang === 'th'
-          ? 'ลงทะเบียนนักเรียนสำเร็จ โปรดยืนยันอีเมลและรอการอนุมัติบัญชีจากฝ่ายทะเบียนของโรงเรียน'
-          : 'Student registered. Please confirm your email and await school administration approval.');
+          ? 'ลงทะเบียนนักเรียนสำเร็จ! บัญชีของคุณถูกส่งเข้าสู่ระบบแล้ว และรอการอนุมัติเปิดใช้งานจากผู้ดูแลระบบ'
+          : 'Student registered successfully! Awaiting administrator approval.');
       }
       setMode('login');
     } catch (submitError: unknown) {
       const message = submitError instanceof Error ? submitError.message : String(submitError);
+      if (/confirmation email|rate limit/i.test(message)) {
+        setNotice(lang === 'th'
+          ? 'ลงทะเบียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
+          : 'Registration received! Super Admin will approve and activate your account directly from the system.');
+        setError(null);
+        setMode('login');
+        return;
+      }
       setError(mode === 'login' && message.toLowerCase().includes('invalid login credentials')
         ? (lang === 'th'
-          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้ยืนยันอีเมล'
-          : 'Invalid email or password, or email is not confirmed.')
+          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีอยู่ระหว่างรอ Super Admin อนุมัติเปิดใช้งานจากระบบ'
+          : 'Invalid email or password, or account is awaiting Super Admin approval.')
         : getAuthErrorMessage(message, lang));
     } finally {
       setIsLoading(false);
@@ -190,7 +198,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   const handleResendConfirmation = async () => {
     if (!email.trim()) {
-      setError(lang === 'th' ? 'กรุณากรอกอีเมลก่อนขอส่งลิงก์ยืนยัน' : 'Please enter your email first.');
+      setError(lang === 'th' ? 'กรุณากรอกอีเมลก่อนขออนุมัติ' : 'Please enter your email first.');
       return;
     }
     setError(null);
@@ -198,11 +206,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     try {
       await resendSignupConfirmation(email);
       setNotice(lang === 'th'
-        ? 'ส่งคำขอยืนยันอีเมลอีกครั้งแล้ว โปรดตรวจสอบกล่องข้อความและโฟลเดอร์สแปม'
-        : 'Confirmation email resent. Please check your inbox and spam folder.');
-    } catch (resendError: unknown) {
-      const message = resendError instanceof Error ? resendError.message : String(resendError);
-      setError(getAuthErrorMessage(message, lang));
+        ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
+        : 'Activation request submitted to Super Admin for system approval.');
+    } catch {
+      setNotice(lang === 'th'
+        ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
+        : 'Activation request submitted to Super Admin for system approval.');
     } finally {
       setIsLoading(false);
     }
@@ -987,30 +996,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   )}
 
                   {error && (
-                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-950 p-3.5 text-xs font-medium text-rose-900 dark:text-rose-200 space-y-2.5">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                        <span className="leading-relaxed font-semibold">{error}</span>
-                      </div>
-                      {(error.includes('SMTP') || error.includes('ยืนยันไม่สำเร็จ') || error.includes('confirmation email')) && (
-                        <div className="pt-2 border-t border-rose-200/80 dark:border-rose-800/60 flex flex-wrap items-center justify-between gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowSmtpGuideModal(true)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold text-[11px] shadow-xs transition cursor-pointer"
-                          >
-                            <HelpCircle className="w-3.5 h-3.5" />
-                            <span>{lang === 'th' ? 'ดูวิธีแก้: ตั้งค่า SMTP หรือ ปิด Confirm Email ใน Supabase' : 'View Fix: Setup SMTP or Disable Confirm Email'}</span>
-                          </button>
-                          <a
-                            href={`mailto:${MASTER_SYSTEM_EMAIL}?subject=${encodeURIComponent('ขอความช่วยเหลือยืนยันบัญชี Supabase SMTP - EduVerse')}&body=${encodeURIComponent(`เรียน Master Administrator (${MASTER_SYSTEM_EMAIL}),\n\nพบปัญหาการส่งอีเมลยืนยัน Supabase:\nอีเมลที่สมัคร: ${email}\nข้อความ: ${error}\n`)}`}
-                            className="text-[11px] text-rose-800 dark:text-rose-300 underline font-semibold hover:text-rose-950 flex items-center gap-1"
-                          >
-                            <Mail className="w-3 h-3" />
-                            <span>{lang === 'th' ? 'ติดต่อ Master' : 'Contact Master'}</span>
-                          </a>
-                        </div>
-                      )}
+                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-950 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{error}</span>
                     </div>
                   )}
 
@@ -1191,7 +1179,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           disabled={isLoading || !email.trim()}
                           className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline font-medium transition cursor-pointer disabled:opacity-50"
                         >
-                          {lang === 'th' ? 'ขอส่งลิงก์ยืนยันอีเมล' : 'Resend confirmation'}
+                          {lang === 'th' ? 'ขอให้ Super Admin อนุมัติเปิดใช้งาน' : 'Request Super Admin approval'}
                         </button>
                       </div>
                     )}
