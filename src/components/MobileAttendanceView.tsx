@@ -179,19 +179,42 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [proxyStatuses, setProxyStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [proxySavedNotification, setProxySavedNotification] = useState<string | null>(null);
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || 'crs-1');
+  const fallbackCourse: Course = {
+    id: 'crs-gen',
+    schoolId: _school?.id || 'sch-1',
+    code: 'GEN-101',
+    titleTh: 'วิชาเรียนรวมพื้นฐาน (General Class)',
+    titleEn: 'General Classroom',
+    category: 'core',
+    credits: 1.5,
+    department: 'วิชาการ',
+    semester: '1',
+    academicYear: '2569',
+    room: 'ห้องเรียนรวม',
+    schedule: 'จันทร์-ศุกร์ 08:30 - 15:30',
+    teacherName: currentUser?.fullNameTh || 'อาจารย์ผู้สอน',
+    teacherEmail: currentUser?.email || 'teacher@eduverse.school',
+    description: 'วิชาเรียนรวมพื้นฐานระดับชั้น',
+    enrolledStudentIds: students.map(s => s.id)
+  };
+
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || fallbackCourse.id);
+  const selectedCourse: Course = courses.find(c => c.id === selectedCourseId) || courses[0] || fallbackCourse;
   const [selectedPeriod, setSelectedPeriod] = useState<number>(1);
   const [periodDate, setPeriodDate] = useState<string>(getLocalDateString);
   const [periodStatuses, setPeriodStatuses] = useState<Record<string, 'present' | 'late' | 'absent' | 'excused'>>({});
   const [periodSavedNotification, setPeriodSavedNotification] = useState<string | null>(null);
 
+  const periodStudentIds: string[] = (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0)
+    ? selectedCourse.enrolledStudentIds
+    : students.map(s => s.id);
+
   const selectedStudent = students.find(s => s.id === selectedStudentId) || students[0];
   const selectedTeacher = teachers.find(t => t.id === selectedTeacherId) || teachers[0];
-  const selectedCourse = courses.find(c => c.id === selectedCourseId) || courses[0];
 
   const activePersonName = activeUserType === 'teacher' 
     ? selectedTeacher?.fullNameTh || 'อาจารย์' 
-    : `${selectedStudent?.firstNameTh} ${selectedStudent?.lastNameTh}`;
+    : `${selectedStudent?.firstNameTh || 'นักเรียน'} ${selectedStudent?.lastNameTh || ''}`;
   const activePersonRole = activeUserType === 'teacher' 
     ? selectedTeacher?.academicStanding || 'ครูผู้สอน' 
     : `นักเรียน (${selectedStudent?.gradeLevel || 'ม.4'} ห้อง ${selectedStudent?.room || '401'})`;
@@ -464,27 +487,27 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // Period Attendance Save
   const handleSavePeriodAttendance = () => {
     const currentPeriodInfo = periodsList.find(p => p.period === selectedPeriod);
-    const newRecords: PeriodAttendanceRecord[] = selectedCourse.enrolledStudentIds.map(stuId => {
+    const newRecords: PeriodAttendanceRecord[] = periodStudentIds.map(stuId => {
       const status = periodStatuses[stuId] || 'present';
       return {
         id: `patt-${Date.now()}-${stuId}`,
-        schoolId: selectedCourse.schoolId,
+        schoolId: selectedCourse.schoolId || 'sch-1',
         courseId: selectedCourse.id,
-        courseCode: selectedCourse.code,
+        courseCode: selectedCourse.code || 'GEN-101',
         periodNumber: selectedPeriod,
         timeSlot: currentPeriodInfo?.time || '08:30 - 09:20',
         date: periodDate,
         studentId: stuId,
         status,
         verifiedByTeacherId: currentUser?.id || 'usr-teacher',
-        verifiedByTeacherName: currentUser?.fullNameTh || currentUser?.fullNameEn || selectedCourse.teacherName,
+        verifiedByTeacherName: currentUser?.fullNameTh || currentUser?.fullNameEn || selectedCourse.teacherName || 'อาจารย์',
         checkMethod: 'teacher_proxy',
-        remarks: `เช็คชื่อรายคาบ ${selectedCourse.code} คาบที่ ${selectedPeriod}`
+        remarks: `เช็คชื่อรายคาบ ${selectedCourse.code || 'GEN-101'} คาบที่ ${selectedPeriod}`
       };
     });
 
     onRecordPeriodAttendance(newRecords);
-    setPeriodSavedNotification(`บันทึกการเช็คชื่อเข้าเรียนรายคาบ ${selectedCourse.code} (คาบที่ ${selectedPeriod}) สำเร็จ`);
+    setPeriodSavedNotification(`บันทึกการเช็คชื่อเข้าเรียนรายคาบ ${selectedCourse.code || 'GEN-101'} (คาบที่ ${selectedPeriod}) สำเร็จ (${newRecords.length} คน)`);
     setTimeout(() => setPeriodSavedNotification(null), 5000);
   };
 
@@ -493,129 +516,123 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     : students.filter(s => s.gradeLevel === proxyGradeFilter);
 
   return (
-    <div className={embeddedMobile ? 'h-full min-h-0 flex flex-col gap-2' : 'space-y-6 max-w-5xl mx-auto'}>
-      {/* Top Header */}
-      <div className={`${embeddedMobile ? 'shrink-0 p-2.5 rounded-xl' : 'p-6 rounded-3xl'} bg-slate-900 border border-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-xl`}>
-        <div className={embeddedMobile ? 'flex items-center justify-between gap-2 min-w-0' : 'space-y-1'}>
-          <div className={`${embeddedMobile ? 'hidden' : 'inline-flex'} items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold`}>
-            <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-            <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
+    <div className={embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5' : 'space-y-6 max-w-5xl mx-auto'}>
+      {/* Top Header - Compact for mobile */}
+      {embeddedMobile ? (
+        <div className="shrink-0 flex items-center justify-between px-1 py-1 text-slate-800 dark:text-white">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <h1 className="text-xs font-black truncate">
+              {lang === 'th' ? 'เช็กชื่อเข้า-ออก' : 'Check in / out'}
+            </h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30 shrink-0">
+              GPS Geofence
+            </span>
           </div>
-          <h1 className={`${embeddedMobile ? 'text-sm' : 'text-xl md:text-2xl'} font-black`}>
-            {embeddedMobile
-              ? lang === 'th' ? 'เช็กชื่อเข้า-ออก' : 'Check in / out'
-              : lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
-          </h1>
-          <p className={`text-slate-400 text-xs ${embeddedMobile ? 'hidden' : ''}`}>
-            {lang === 'th' 
-              ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
-              : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
-          </p>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs cursor-pointer"
+              title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+            >
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-500" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+            </button>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
         </div>
+      ) : (
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-xl">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+              <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
+            </div>
+            <h1 className="text-xl md:text-2xl font-black">
+              {lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
+            </h1>
+            <p className="text-slate-400 text-xs">
+              {lang === 'th' 
+                ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
+                : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
+            </p>
+          </div>
 
-        {/* Live Clock & Sound Toggle */}
-        <div className={`flex items-center ${embeddedMobile ? 'gap-1.5' : 'gap-3'}`}>
-          <button
-            type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition"
-            title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition"
+              title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+            </button>
 
-          <div className={`flex items-center ${embeddedMobile ? 'gap-1.5 px-2 py-1' : 'gap-3 px-4 py-2'} rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 shrink-0`}>
-            <Clock className={`${embeddedMobile ? 'w-3.5 h-3.5' : 'w-5 h-5'} text-indigo-400`} />
-            <div>
-              <div className={`${embeddedMobile ? 'text-[10px]' : 'text-xs'} font-bold text-white`}>
-                {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </div>
-              <div className={`text-[11px] text-emerald-400 font-mono font-semibold ${embeddedMobile ? 'hidden' : ''}`}>
-                เวลาทำการ 06:30 - 18:00 น.
+            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 shrink-0">
+              <Clock className="w-5 h-5 text-indigo-400" />
+              <div>
+                <div className="text-xs font-bold text-white">
+                  {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+                <div className="text-[11px] text-emerald-400 font-mono font-semibold">
+                  เวลาทำการ 06:30 - 18:00 น.
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Navigation Sub Tabs - Streamlined Inline Horizontal Pill Bar */}
+      <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 border-b border-slate-200 dark:border-slate-800 text-xs">
+        {[
+          { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็กชื่อมือถือ', labelEn: 'Selfie' },
+          { id: 'leave_request', icon: FileText, labelTh: 'ใบลาออนไลน์', labelEn: 'Leave', badge: leaveRequests.filter(r => r.status === 'pending').length },
+          { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ครูลงชื่อแทน', labelEn: 'Proxy' },
+          { id: 'period_checkin', icon: Users, labelTh: 'เช็กชื่อรายคาบ', labelEn: 'Periods' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => {
+              setSubTab(tab.id as any);
+              if (tab.id === 'leave_request') setLeaveFormStep(1);
+            }}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition text-xs cursor-pointer whitespace-nowrap ${
+              subTab === tab.id
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50'
+            }`}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+            {tab.badge ? (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px]">
+                {tab.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
       </div>
 
-      {/* Navigation Sub Tabs (Now includes Online Leave Tab) */}
-      <div className={`${embeddedMobile ? 'grid grid-cols-2 gap-1.5 pb-2' : 'flex flex-wrap items-center gap-2 pb-3'} border-b border-slate-200 shrink-0`}>
-        <button
-          type="button"
-          onClick={() => setSubTab('selfie_mobile')}
-          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
-            subTab === 'selfie_mobile'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Camera className="w-4 h-4" />
-          <span>{embeddedMobile ? (lang === 'th' ? 'ถ่ายภาพเช็กชื่อ' : 'Selfie check-in') : lang === 'th' ? '1. ถ่ายรูปเช็กชื่อเข้า-ออก (มือถือ)' : '1. Selfie Check-in/out'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setLeaveFormStep(1);
-            setSubTab('leave_request');
-          }}
-          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
-            subTab === 'leave_request'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>{embeddedMobile ? (lang === 'th' ? 'ใบลาออนไลน์' : 'Online leave') : lang === 'th' ? '2. ยื่นใบลาออนไลน์ (Online Leave)' : '2. Online Leave Request'}</span>
-          {leaveRequests.filter(r => r.status === 'pending').length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px]">
-              {leaveRequests.filter(r => r.status === 'pending').length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab('teacher_proxy')}
-          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
-            subTab === 'teacher_proxy'
-              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <UserCheck className="w-4 h-4" />
-          <span>{embeddedMobile ? (lang === 'th' ? 'ครูเช็กชื่อแทน' : 'Teacher proxy') : lang === 'th' ? '3. ครูลงชื่อแทนนักเรียน (Proxy)' : '3. Teacher Proxy'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab('period_checkin')}
-          className={`${embeddedMobile ? 'justify-center px-2 py-1.5 min-h-9' : 'px-4 py-2'} flex items-center gap-2 rounded-xl text-xs font-bold transition-all ${
-            subTab === 'period_checkin'
-              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>{embeddedMobile ? (lang === 'th' ? 'เช็กชื่อรายคาบ' : 'Period attendance') : lang === 'th' ? '4. เช็คชื่อรายคาบ (Period)' : '4. Period Attendance'}</span>
-        </button>
-      </div>
-
+      {/* Pane Switcher for Mobile Selfie */}
       {embeddedMobile && subTab === 'selfie_mobile' && (
-        <div className="grid grid-cols-3 gap-1.5 shrink-0">
+        <div className="shrink-0 flex items-center justify-between gap-1 p-0.5 rounded-xl bg-slate-850 dark:bg-slate-900 border border-slate-700/80 text-[11px]">
           {([
-            ['camera', 'กล้อง (Camera)'],
-            ['identity', 'ผู้ใช้งาน (User)'],
-            ['geofence', 'จุด GPS (Gate)']
+            ['camera', '📷 หน้ากล้อง (Camera)'],
+            ['identity', '👤 ผู้ใช้งาน (User)'],
+            ['geofence', '📍 จุด GPS (Gate)']
           ] as const).map(([pane, label]) => (
             <button
               key={pane}
               type="button"
               onClick={() => setCompactPane(pane)}
-              className={`rounded-xl px-2 py-1.5 text-[11px] font-bold transition border cursor-pointer ${
+              className={`flex-1 py-1 rounded-lg font-bold transition text-center cursor-pointer ${
                 compactPane === pane
-                  ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                  : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-750'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               {label}
@@ -628,220 +645,196 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 1: SELFIE CHECK-IN/OUT (SELF PHONE) FOR STUDENTS & TEACHERS */}
       {/* ========================================================================= */}
       {subTab === 'selfie_mobile' && (
-        <div className={`${embeddedMobile ? 'flex-1 min-h-0 grid grid-cols-1 gap-2' : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'}`}>
-          {/* LEFT COLUMN: Phone Frame with Camera Live Viewfinder */}
-          {(!embeddedMobile || compactPane === 'camera') && <div className={`${embeddedMobile ? 'h-full min-h-0' : 'lg:col-span-7 flex flex-col items-center'}`}>
-            {/* Realistic Mobile Device Mockup Frame */}
-            <div className={`${embeddedMobile ? 'h-full w-full rounded-2xl p-2 border-2' : 'w-full max-w-sm rounded-[40px] p-4 border-4'} bg-slate-900 shadow-2xl border-slate-800 relative flex flex-col min-h-0`}>
-              {/* Dynamic Island */}
-              <div className={`${embeddedMobile ? 'hidden' : 'flex'} w-24 h-4 bg-slate-950 rounded-full mx-auto mb-3 items-center justify-center gap-1.5`}>
-                <div className="w-2 h-2 rounded-full bg-slate-800" />
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-950 border border-blue-900" />
-              </div>
+        <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col gap-1.5' : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'}`}>
+          {/* CAMERA COLUMN: Optimized for mobile screen height without overflow */}
+          {(!embeddedMobile || compactPane === 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col items-center'}`}>
+            <div className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl border' : 'w-full max-w-sm rounded-[40px] p-4 border-4'} bg-slate-900 shadow-xl border-slate-800 relative flex flex-col overflow-hidden`}>
 
-              {/* Screen Inner */}
-              <div className={`${embeddedMobile ? 'flex-1 min-h-0 rounded-xl' : 'rounded-[30px] aspect-9/16 sm:aspect-auto sm:min-h-[580px]'} bg-slate-950 overflow-hidden relative flex flex-col border border-slate-800`}>
-                {/* Status Bar */}
-                <div className={`${embeddedMobile ? 'hidden' : 'flex'} px-4 py-2.5 items-center justify-between text-[11px] text-white/70 font-semibold bg-black/40 backdrop-blur-xs`}>
-                  <span>{new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-emerald-400 font-bold">5G Campus</span>
-                    <div className="w-4 h-2 rounded-xs border border-white/60 p-0.5 flex">
-                      <div className="w-full h-full bg-emerald-400 rounded-2xs" />
-                    </div>
-                  </div>
+              {/* Event Selector: Check-in vs Check-out + Gate Selector (Single sleek row on mobile) */}
+              <div className="p-1.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setCheckType('check_in')}
+                    className={`flex items-center gap-1 py-1 px-2.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      checkType === 'check_in'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>เข้า (IN)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckType('check_out')}
+                    className={`flex items-center gap-1 py-1 px-2.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      checkType === 'check_out'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    <span>ออก (OUT)</span>
+                  </button>
                 </div>
 
-                {/* Event Selector: Check-in vs Check-out with High-Contrast */}
-                <div className={`${embeddedMobile ? 'p-1.5' : 'p-3'} bg-black/50 border-b border-slate-800`}>
-                  <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-900 border border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setCheckType('check_in')}
-                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                        checkType === 'check_in'
-                          ? 'bg-emerald-600 text-white border-emerald-400 shadow-md font-extrabold'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-750'
-                      }`}
-                    >
-                      <LogIn className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>เช็กชื่อเข้า (IN)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCheckType('check_out')}
-                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                        checkType === 'check_out'
-                          ? 'bg-purple-600 text-white border-purple-400 shadow-md font-extrabold'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-750'
-                      }`}
-                    >
-                      <LogOut className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                      <span>เช็กชื่อออก (OUT)</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Gate Location Selector Pill */}
-                <div className={`${embeddedMobile ? 'px-2 py-1' : 'px-3 py-1.5'} bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-300`}>
-                  <span className="flex items-center gap-1 text-slate-400">
-                    <MapPin className="w-3.5 h-3.5 text-blue-400" />
-                    <span>จุดประตู:</span>
-                  </span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
                   <select
                     value={selectedGateId}
                     onChange={(e) => setSelectedGateId(e.target.value)}
-                    className="bg-slate-800 text-white text-[11px] font-semibold rounded-lg px-2 py-0.5 border border-slate-700 focus:outline-hidden"
+                    className="bg-slate-850 text-white text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-700 truncate max-w-[160px]"
                   >
                     {campusGates.map(gate => (
                       <option key={gate.id} value={gate.id}>{gate.nameTh}</option>
                     ))}
                   </select>
                 </div>
+              </div>
 
-                {/* Camera Viewfinder Box with Face Outline Guide */}
-                <div className={`relative flex-1 bg-black flex items-center justify-center overflow-hidden ${embeddedMobile ? 'min-h-[150px]' : 'min-h-[320px]'}`}>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`w-full h-full object-cover transform -scale-x-100 ${
-                      capturedPhotoUrl ? 'hidden' : 'block'
-                    }`}
+              {/* Camera Viewfinder Box with Responsive Centered Face Outline Guide */}
+              <div className={`relative flex-1 bg-black flex items-center justify-center overflow-hidden ${embeddedMobile ? 'min-h-[170px]' : 'min-h-[320px]'}`}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover transform -scale-x-100 ${
+                    capturedPhotoUrl ? 'hidden' : 'block'
+                  }`}
+                />
+
+                {capturedPhotoUrl && (
+                  <img
+                    src={capturedPhotoUrl}
+                    alt="Captured selfie"
+                    className="w-full h-full object-cover"
                   />
+                )}
 
-                  {capturedPhotoUrl && (
-                    <img
-                      src={capturedPhotoUrl}
-                      alt="Captured selfie"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+                {isFlashActive && (
+                  <div className="absolute inset-0 bg-white z-40 animate-out fade-out duration-200" />
+                )}
 
-                  {isFlashActive && (
-                    <div className="absolute inset-0 bg-white z-40 animate-out fade-out duration-200" />
-                  )}
-
-                  {!capturedPhotoUrl && (
-                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
-                      <div className={`${embeddedMobile ? 'w-36 h-44' : 'w-48 h-60'} rounded-[50%] border-2 border-dashed border-cyan-400/70 shadow-lg shadow-cyan-500/20 flex flex-col items-center justify-center relative animate-pulse`}>
-                        <div className="absolute top-2 w-12 h-1 bg-cyan-400/60 rounded-full" />
-                        <div className="text-center px-4 space-y-1">
-                          <p className="text-[11px] font-bold text-cyan-200 drop-shadow">
-                            วางใบหน้าให้อยู่ในกรอบ
-                          </p>
-                          <p className="text-[9px] text-cyan-300/80">
-                            ถ่ายภาพหน้าตัวเองเพื่อยืนยัน
-                          </p>
-                        </div>
+                {!capturedPhotoUrl && (
+                  <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-2">
+                    <div className={`${embeddedMobile ? 'w-28 h-36' : 'w-48 h-60'} rounded-[50%] border-2 border-dashed border-cyan-400/80 shadow-md shadow-cyan-500/20 flex flex-col items-center justify-center relative animate-pulse`}>
+                      <div className="absolute top-1.5 w-8 h-1 bg-cyan-400/70 rounded-full" />
+                      <div className="text-center px-2 space-y-0.5">
+                        <p className="text-[10px] font-bold text-cyan-200 drop-shadow">
+                          วางใบหน้าในกรอบ
+                        </p>
+                        <p className="text-[8px] text-cyan-300/80">
+                          ถ่ายยืนยันตัวตน
+                        </p>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Floating GPS & Time Badge */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                    <div className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-mono flex items-center gap-1.5 border border-white/20">
-                      <Clock className="w-3 h-3 text-cyan-300" />
-                      <span>{new Date().toLocaleTimeString('th-TH')}</span>
-                    </div>
-
-                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border backdrop-blur-md ${
-                      isInGeofence 
-                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' 
-                        : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
-                    }`}>
-                      <MapPin className="w-3 h-3" />
-                      <span>{isInGeofence ? `ในเขต (${currentGpsDistance} ม.)` : `นอกเขต (${currentGpsDistance} ม.)`}</span>
                     </div>
                   </div>
+                )}
 
-                  {cameraError && !capturedPhotoUrl && (
-                    <div className="absolute inset-x-4 bottom-14 p-3 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs backdrop-blur-md text-center space-y-2">
-                      <p>{cameraError}</p>
-                      <button
-                        type="button"
-                        onClick={handleCaptureSnapshot}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
-                      >
-                        กดถ่ายภาพจำลองทันที
-                      </button>
-                    </div>
-                  )}
+                {/* Floating GPS & Time Badge */}
+                <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none text-[10px]">
+                  <div className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white font-mono flex items-center gap-1 border border-white/20">
+                    <Clock className="w-3 h-3 text-cyan-300" />
+                    <span>{new Date().toLocaleTimeString('th-TH')}</span>
+                  </div>
+
+                  <div className={`px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border backdrop-blur-md ${
+                    isInGeofence 
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' 
+                      : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                  }`}>
+                    <MapPin className="w-3 h-3" />
+                    <span>{isInGeofence ? `ในเขต (${currentGpsDistance}ม.)` : `นอกเขต (${currentGpsDistance}ม.)`}</span>
+                  </div>
                 </div>
 
-                {/* Bottom Camera Controls & Shutter */}
-                <div className={`${embeddedMobile ? 'p-2 space-y-1' : 'p-4 space-y-3'} bg-slate-900 border-t border-slate-800`}>
-                  {capturedPhotoUrl ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCapturedPhotoUrl(null)}
-                          className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          <span>ถ่ายใหม่</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!isInGeofence}
-                          onClick={handleConfirmCheckin}
-                          className={`flex-2 py-2.5 rounded-xl text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition ${
-                            isInGeofence 
-                              ? checkType === 'check_in' 
-                                ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' 
-                                : 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30'
-                              : 'bg-slate-700 cursor-not-allowed opacity-60'
-                          }`}
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>ยืนยัน {checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}</span>
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-center text-slate-400">
-                        {isInGeofence ? '✅ ถ่ายรูปเรียบร้อย พร้อมส่ง LINE หาผู้ปกครอง' : '⚠️ ไม่สามารถบันทึกได้เนื่องจากอยู่นอกพื้นที่โรงเรียน'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-4 py-1">
-                      <button
-                        type="button"
-                        onClick={startCamera}
-                        className="p-3 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                        title="เปิด/รีเฟรชกล้อง"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
+                {cameraError && !capturedPhotoUrl && (
+                  <div className="absolute inset-x-3 bottom-3 p-2.5 rounded-xl bg-amber-950/90 border border-amber-500 text-amber-200 text-xs backdrop-blur-md text-center space-y-1.5">
+                    <p className="text-[11px]">{cameraError}</p>
+                    <button
+                      type="button"
+                      onClick={handleCaptureSnapshot}
+                      className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-xs"
+                    >
+                      กดถ่ายภาพจำลองทันที
+                    </button>
+                  </div>
+                )}
+              </div>
 
+              {/* Bottom Camera Controls & Shutter - Compact */}
+              <div className="p-2 bg-slate-950 border-t border-slate-800 shrink-0">
+                {capturedPhotoUrl ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={handleCaptureSnapshot}
-                        disabled={isCapturing}
-                        className="w-16 h-16 rounded-full bg-white p-1 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden"
+                        onClick={() => setCapturedPhotoUrl(null)}
+                        className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition cursor-pointer"
                       >
-                        <div className="w-full h-full rounded-full border-2 border-slate-900 bg-red-600 hover:bg-red-500 flex items-center justify-center transition">
-                          <Camera className="w-6 h-6 text-white" />
-                        </div>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>ถ่ายใหม่</span>
                       </button>
-
                       <button
                         type="button"
-                        onClick={handleRefreshGps}
-                        className="p-3 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                        title="รีเฟรชสัญญาณ GPS"
+                        disabled={!isInGeofence}
+                        onClick={handleConfirmCheckin}
+                        className={`flex-2 py-2 rounded-xl text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer ${
+                          isInGeofence 
+                            ? checkType === 'check_in' 
+                              ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' 
+                              : 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30'
+                            : 'bg-slate-700 cursor-not-allowed opacity-60'
+                        }`}
                       >
-                        <Navigation className={`w-4 h-4 ${isGpsLoading ? 'animate-spin text-blue-400' : ''}`} />
+                        <Check className="w-4 h-4" />
+                        <span>ยืนยัน {checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}</span>
                       </button>
                     </div>
-                  )}
-
-                  <div className="text-center">
-                    <p className={`text-[11px] text-slate-400 ${embeddedMobile ? 'hidden' : ''}`}>
-                      ผู้ใช้งาน: <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
+                    <p className="text-[10px] text-center text-slate-400">
+                      {isInGeofence ? '✅ ถ่ายรูปเรียบร้อย พร้อมส่ง LINE หาผู้ปกครอง' : '⚠️ อยู่นอกพื้นที่โรงเรียน'}
                     </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-5 py-0.5">
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+                      title="เปิด/รีเฟรชกล้อง"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCaptureSnapshot}
+                      disabled={isCapturing}
+                      className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer"
+                    >
+                      <div className="w-full h-full rounded-full border-2 border-slate-900 bg-red-600 hover:bg-red-500 flex items-center justify-center transition">
+                        <Camera className="w-5 h-5 text-white" />
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRefreshGps}
+                      className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+                      title="รีเฟรชสัญญาณ GPS"
+                    >
+                      <Navigation className={`w-4 h-4 ${isGpsLoading ? 'animate-spin text-blue-400' : ''}`} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-center py-1">
+                <p className={`text-[11px] text-slate-400 ${embeddedMobile ? 'hidden' : ''}`}>
+                  ผู้ใช้งาน: <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
+                </p>
               </div>
             </div>
           </div>}
@@ -1422,45 +1415,48 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: PERIOD ATTENDANCE (รายคาบ) */}
+      {/* TAB 4: PERIOD ATTENDANCE (รายคาบ) - Resilient & Mobile Scrollable */}
       {/* ========================================================================= */}
       {subTab === 'period_checkin' && (
-        <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-2.5 p-0.5' : 'space-y-4'}`}>
+          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">เช็คชื่อเข้าเรียนรายวิชา / รายคาบ</h3>
-                <p className="text-xs text-slate-500">บันทึกสถิติการเข้าเรียนในแต่ละคาบสอนตามตารางสอน</p>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span>เช็คชื่อเข้าเรียนรายวิชา / รายคาบ</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">บันทึกสถิติการเข้าเรียนในแต่ละคาบสอน ({periodStudentIds.length} นักเรียน)</p>
               </div>
               <button
                 type="button"
                 onClick={handleSavePeriodAttendance}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs"
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
               >
-                บันทึกการเช็คชื่อรายคาบ
+                บันทึกการเช็คชื่อ
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               <div>
-                <label className="text-[11px] font-bold text-slate-600">เลือกรายวิชา:</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เลือกรายวิชา:</label>
                 <select
-                  value={selectedCourseId}
+                  value={selectedCourse.id}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800"
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
                 >
-                  {courses.map(c => (
+                  {(courses.length > 0 ? courses : [fallbackCourse]).map(c => (
                     <option key={c.id} value={c.id}>{c.code} {c.titleTh}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600">เลือกคาบเรียน:</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เลือกคาบเรียน:</label>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800"
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
                 >
                   {periodsList.map(p => (
                     <option key={p.period} value={p.period}>{p.label} ({p.time})</option>
@@ -1469,70 +1465,76 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-600">วันที่:</label>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">วันที่:</label>
                 <input
                   type="date"
                   value={periodDate}
                   onChange={(e) => setPeriodDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800"
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs"
                 />
               </div>
             </div>
 
             {periodSavedNotification && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-bounce">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-bounce">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>{periodSavedNotification}</span>
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
-            <div className="divide-y divide-slate-100">
-              <PagedList items={selectedCourse.enrolledStudentIds} pageSize={4} renderItem={(stuId) => {
-                const st = students.find(s => s.id === stuId);
-                if (!st) return null;
-                const status = periodStatuses[st.id] || 'present';
+          {periodStudentIds.length === 0 ? (
+            <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs">
+              ยังไม่มีรายชื่อนักเรียนในโรงเรียนนี้
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <PagedList items={periodStudentIds} pageSize={4} renderItem={(stuId) => {
+                  const st = students.find(s => s.id === stuId);
+                  if (!st) return null;
+                  const status = periodStatuses[st.id] || 'present';
 
-                return (
-                  <div key={st.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={st.avatarUrl}
-                        alt={st.firstNameEn}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200"
-                      />
-                      <div>
-                        <p className="font-bold text-slate-900">{st.firstNameTh} {st.lastNameTh}</p>
-                        <p className="text-slate-500 text-[11px] font-mono">
-                          ID: {st.studentIdNumber} • ชั้น {st.gradeLevel} {st.room}
-                        </p>
+                  return (
+                    <div key={st.id} className="p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={st.avatarUrl}
+                          alt={st.firstNameEn}
+                          className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white truncate">{st.firstNameTh} {st.lastNameTh}</p>
+                          <p className="text-slate-500 dark:text-slate-400 text-[11px] font-mono truncate">
+                            ID: {st.studentIdNumber} • ชั้น {st.gradeLevel} {st.room}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 self-end sm:self-auto shrink-0 flex-wrap">
+                        {(['present', 'late', 'absent', 'excused'] as const).map((pst) => (
+                          <button
+                            key={pst}
+                            type="button"
+                            onClick={() => setPeriodStatuses(prev => ({ ...prev, [st.id]: pst }))}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                              status === pst
+                                ? pst === 'present' ? 'bg-emerald-600 text-white' :
+                                  pst === 'late' ? 'bg-amber-500 text-white' :
+                                  pst === 'excused' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            }`}
+                          >
+                            {pst === 'present' ? 'เข้าเรียน' : pst === 'late' ? 'มาสาย' : pst === 'excused' ? 'ลา' : 'ขาด'}
+                          </button>
+                        ))}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                      {(['present', 'late', 'absent', 'excused'] as const).map((pst) => (
-                        <button
-                          key={pst}
-                          type="button"
-                          onClick={() => setPeriodStatuses(prev => ({ ...prev, [st.id]: pst }))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                            status === pst
-                              ? pst === 'present' ? 'bg-emerald-600 text-white' :
-                                pst === 'late' ? 'bg-amber-500 text-white' :
-                                pst === 'excused' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {pst === 'present' ? 'เข้าเรียน' : pst === 'late' ? 'มาสาย' : pst === 'excused' ? 'ลาป่วย/กิจ' : 'ขาดเรียน'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }} />
+                  );
+                }} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

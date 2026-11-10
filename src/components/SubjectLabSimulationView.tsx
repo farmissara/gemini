@@ -241,6 +241,9 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
   // Smooth Zoom state: min 0.7x to max 1.4x
   const [labZoom, setLabZoom] = useState<number>(1.0);
 
+  // Quest Story Pop-up Modal State
+  const [showQuestModal, setShowQuestModal] = useState(false);
+
   // Teacher Custom Lab Creator Modal State
   const [showTeacherBuilder, setShowTeacherBuilder] = useState(false);
   const [builderStep, setBuilderStep] = useState<0 | 1>(0);
@@ -1025,10 +1028,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               </div>
             </div>
 
-            {/* Controls & Action Row */}
+            {/* Controls & Action Row - Slim Inline Controls */}
             <div className="pt-2 border-t border-slate-800 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {/* Tool 1 (Stir / Angle / Blend / Loop / Inscribe / Inspect) */}
                   <button
                     type="button"
@@ -1036,9 +1039,9 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       setIsStirred(!isStirred);
                       triggerSound(playBubbleSound);
                     }}
-                    className={`h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                    className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isStirred 
-                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm shadow-indigo-600/30' 
+                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs' 
                         : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
                     }`}
                     title={activeConfig.tool1LabelTh}
@@ -1054,9 +1057,9 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       setIsBurnerActive(!isBurnerActive);
                       triggerSound(playSparkSound);
                     }}
-                    className={`h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                    className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isBurnerActive 
-                        ? 'bg-amber-600 text-white border-amber-400 shadow-sm shadow-amber-600/30 animate-pulse' 
+                        ? 'bg-amber-600 text-white border-amber-400 shadow-xs animate-pulse' 
                         : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700'
                     }`}
                     title={activeConfig.tool2LabelTh}
@@ -1069,10 +1072,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   <button
                     type="button"
                     onClick={handleResetLab}
-                    className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0"
+                    className="h-8 px-2 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0 text-xs"
                     title="ล้างแท่นทดลอง"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline ml-1">ล้าง</span>
                   </button>
                 </div>
 
@@ -1081,9 +1085,9 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   type="button"
                   disabled={reactionState === 'reacting'}
                   onClick={handleAnalyzeReaction}
-                  className="flex-1 min-w-[150px] h-9 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-600/30 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="flex-1 min-w-[130px] h-8 px-3 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
-                  <Zap className="w-4 h-4 text-amber-300 fill-amber-300 shrink-0" />
+                  <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
                   <span className="truncate">
                     {reactionState === 'reacting'
                       ? 'กำลังประมวลผล...'
@@ -1094,20 +1098,20 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
 
               {/* Reaction Feedback Box */}
               {reactionMessage && (
-                <div className={`p-3 rounded-xl text-xs border leading-relaxed animate-in fade-in duration-200 shadow-md ${
+                <div className={`p-2.5 rounded-xl text-xs border leading-relaxed animate-in fade-in duration-200 shadow-md ${
                   reactionState === 'success'
                     ? 'bg-emerald-950/90 border-emerald-500 text-emerald-100'
                     : reactionState === 'exploded'
                     ? 'bg-rose-950/90 border-rose-500 text-rose-100'
                     : 'bg-slate-800 border-slate-700 text-slate-200'
                 }`}>
-                  <div className="font-bold flex items-center gap-1.5 mb-1 text-sm">
+                  <div className="font-bold flex items-center gap-1.5 mb-0.5 text-xs">
                     {reactionState === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                     {reactionState === 'exploded' && <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
                     <span>{reactionMessage}</span>
                   </div>
                   {(reactionState === 'success' || reactionState === 'exploded') && (
-                    <p className="text-xs text-slate-200 mt-1 pl-5">
+                    <p className="text-[11px] text-slate-200 mt-1 pl-5">
                       💡 <strong className="text-white">สาระองค์ความรู้:</strong> {activeQuest.scientificExplanationTh}
                     </p>
                   )}
@@ -1120,28 +1124,34 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           {/* ========================================================= */}
           {/* ZONE 2: QUEST MISSION & SUBJECT ITEM SHELF (Right 6 cols) */}
           {/* ========================================================= */}
-          <section className="md:col-span-6 flex flex-col gap-3 rounded-2xl bg-slate-900 border border-slate-800 p-3 sm:p-4 shadow-xl">
+          <section className="md:col-span-6 flex flex-col gap-2.5 rounded-2xl bg-slate-900 border border-slate-800 p-3 sm:p-4 shadow-xl">
             
-            {/* Mission Header Card */}
-            <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700 space-y-1.5 shadow-sm">
-              <div className="flex items-center justify-between text-xs gap-2">
-                <span className="font-bold text-cyan-300 flex items-center gap-1.5 text-xs truncate">
-                  <Target className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <span className="truncate">{activeQuest.titleTh}</span>
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
-                  {activeQuest.gradeLevel}
-                </span>
+            {/* Space-Saving Mission HUD with Pop-up Story Modal Trigger */}
+            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-between gap-2 shadow-xs">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Target className="w-4 h-4 text-cyan-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white text-xs truncate">{activeQuest.titleTh}</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
+                      {activeQuest.gradeLevel}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 truncate">
+                    <strong className="text-amber-300">เป้าหมาย:</strong> {activeQuest.targetGoalTh}
+                  </p>
+                </div>
               </div>
 
-              <div className="text-xs leading-normal">
-                <strong className="text-amber-300">🎯 เป้าหมาย:</strong>{' '}
-                <span className="text-white font-semibold">{activeQuest.targetGoalTh}</span>
-              </div>
-
-              <p className="text-xs text-slate-300 leading-relaxed pt-0.5">
-                {activeQuest.scenarioTh}
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowQuestModal(true)}
+                className="shrink-0 h-7 px-2.5 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white text-[11px] font-bold border border-blue-400/40 flex items-center gap-1 cursor-pointer transition active:scale-95 whitespace-nowrap shadow-xs"
+                title="กดดูโจทย์และคำอธิบายฉบับเต็ม"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>ดูโจทย์เต็ม</span>
+              </button>
             </div>
 
             {/* Item Shelf Section */}
@@ -1392,6 +1402,96 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* QUEST STORY & OBJECTIVES POP-UP MODAL (กดซ่อน/กดโชว์ ไม่ล้นจอ) */}
+      {/* ========================================================= */}
+      {showQuestModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-cyan-400" />
+                <h3 className="font-bold text-sm text-cyan-300">
+                  โจทย์ & เป้าหมายภารกิจ
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuestModal(false)}
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 cursor-pointer"
+              >
+                ✕ ซ่อน / ปิด
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed max-h-[65vh] overflow-y-auto pr-1">
+              {/* Title & Grade */}
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+                <div>
+                  <h4 className="font-extrabold text-sm text-white">{activeQuest.titleTh}</h4>
+                  <p className="text-[11px] text-cyan-300 font-mono mt-0.5">{activeQuest.titleEn}</p>
+                </div>
+                <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
+                  {activeQuest.gradeLevel}
+                </span>
+              </div>
+
+              {/* Goal */}
+              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-200 space-y-1">
+                <div className="font-black text-amber-300 flex items-center gap-1.5 text-xs">
+                  <span>🎯</span>
+                  <span>เป้าหมายภารกิจ (Mission Goal)</span>
+                </div>
+                <p className="text-white font-medium text-xs">
+                  {activeQuest.targetGoalTh}
+                </p>
+              </div>
+
+              {/* Story / Scenario */}
+              <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/80 space-y-1.5">
+                <div className="font-bold text-slate-300 flex items-center gap-1.5 text-xs">
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>สถานการณ์จำลอง (Scenario & Lore)</span>
+                </div>
+                <p className="text-slate-200 leading-relaxed text-xs">
+                  {activeQuest.scenarioTh}
+                </p>
+              </div>
+
+              {/* Scientific / Learning Concept */}
+              <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-200 space-y-1">
+                <div className="font-bold text-indigo-300 flex items-center gap-1.5 text-xs">
+                  <span>💡</span>
+                  <span>สาระการเรียนรู้ & เกร็ดความรู้</span>
+                </div>
+                <p className="text-slate-300 leading-relaxed text-xs">
+                  {activeQuest.scientificExplanationTh}
+                </p>
+              </div>
+
+              {/* Rewards info */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/60 text-[11px]">
+                <span className="text-slate-400">รางวัลเมื่อผ่านการทดลอง:</span>
+                <span className="text-amber-300 font-bold flex items-center gap-1">
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span>+{activeQuest.expReward} EXP • +{activeQuest.gemReward} Gems</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowQuestModal(false)}
+                className="w-full sm:w-auto px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition cursor-pointer"
+              >
+                เข้าใจแล้ว เริ่มทดลองเลย!
+              </button>
             </div>
           </div>
         </div>
