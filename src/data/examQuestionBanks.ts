@@ -2,6 +2,7 @@ import { QuizQuestion } from '../types';
 
 export type ExamCategoryFilter = 
   | 'all' 
+  | 'teacher_created'
   | 'onet' 
   | 'midterm_final' 
   | 'stem' 
@@ -31,6 +32,13 @@ export const EXAM_CATEGORIES: ExamCategoryMeta[] = [
     labelEn: 'All Question Banks',
     icon: '🌟',
     descriptionTh: 'รวมโจทย์ทุกวิชา ทุกระดับชั้น และคลังข้อสอบทั่วประเทศ',
+  },
+  {
+    id: 'teacher_created',
+    labelTh: 'ข้อสอบที่ครูสร้างเอง / นำเข้า',
+    labelEn: 'Teacher-Created & Custom Bank',
+    icon: '👨‍🏫',
+    descriptionTh: 'ชุดข้อสอบที่ครูในโรงเรียนสร้างขึ้นเอง หรือนำเข้าจากไฟล์ Excel/JSON',
   },
   {
     id: 'onet',
