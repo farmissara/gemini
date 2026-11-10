@@ -299,7 +299,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
                 <tr>
@@ -435,6 +436,128 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* MOBILE VIEW (< 768px): Card List View for Easy Touch Interaction */}
+          <div className="md:hidden space-y-3">
+            {courseGrades.length === 0 ? (
+              <p className="text-xs text-slate-400 py-6 text-center">ไม่มีข้อมูลผลการเรียนในรายวิชานี้</p>
+            ) : (
+              courseGrades.map((grade, index) => {
+                const student = students.find((s) => s.id === grade.studentId);
+                if (!student) return null;
+                const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
+                if (!isVisible) return null;
+
+                return (
+                  <div key={grade.id} className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-md space-y-3">
+                    {/* Student Info Top */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={student.avatarUrl}
+                          alt={student.firstNameEn}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-600 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-white truncate">
+                            {student.firstNameTh} {student.lastNameTh}
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            {student.studentIdNumber} • ห้อง {student.room}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Total Score & Grade Badge */}
+                      <div className="text-right shrink-0">
+                        <div className="text-base font-black font-mono text-white">
+                          {grade.totalScore} <span className="text-[10px] font-normal text-slate-400">/ 100</span>
+                        </div>
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                            grade.letterGrade === 'A'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : grade.letterGrade.startsWith('B')
+                              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}
+                        >
+                          เกรด {grade.letterGrade}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Touch Friendly Score Inputs Grid */}
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
+                        <span className="block text-[9px] text-slate-400 font-medium">กลางภาค</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="30"
+                          value={grade.midtermScore}
+                          onChange={(e) => handleScoreChange(grade, 'midtermScore', Number(e.target.value))}
+                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                        />
+                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 30)</span>
+                      </div>
+
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
+                        <span className="block text-[9px] text-slate-400 font-medium">ปลายภาค</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="40"
+                          value={grade.finalScore}
+                          onChange={(e) => handleScoreChange(grade, 'finalScore', Number(e.target.value))}
+                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                        />
+                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 40)</span>
+                      </div>
+
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
+                        <span className="block text-[9px] text-slate-400 font-medium">การบ้าน</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={grade.assignmentScore}
+                          onChange={(e) => handleScoreChange(grade, 'assignmentScore', Number(e.target.value))}
+                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                        />
+                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 20)</span>
+                      </div>
+
+                      <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-700/70 text-center">
+                        <span className="block text-[9px] text-slate-400 font-medium">ควิซ</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="10"
+                          value={grade.quizScore}
+                          onChange={(e) => handleScoreChange(grade, 'quizScore', Number(e.target.value))}
+                          className="w-full text-center text-xs font-mono font-bold text-white bg-transparent focus:outline-none focus:text-cyan-300 mt-0.5"
+                        />
+                        <span className="block text-[8px] text-slate-500 font-mono">(เต็ม 10)</span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action */}
+                    <div className="flex items-center justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onOpenReportCard(student)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>เปิด ปพ.1 / ปพ.6</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

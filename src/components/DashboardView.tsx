@@ -280,16 +280,418 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        {/* Quick Action in Header */}
+        {/* Header Action Badges */}
         <div className="flex flex-wrap items-center gap-2 relative z-10 shrink-0">
-          <button
-            type="button"
-            onClick={() => onNavigate('mobile_checkin')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold shadow-md shadow-amber-400/25 transition transform active:scale-95 cursor-pointer"
-          >
-            <Camera className="w-4 h-4 text-slate-950" />
-            <span>{lang === 'th' ? 'ถ่ายรูปเช็กชื่อมือถือ' : 'Mobile Selfie Check-in'}</span>
-          </button>
+          <span className="px-3 py-1.5 rounded-xl bg-white/10 text-white/90 text-xs font-semibold backdrop-blur-md border border-white/15">
+            {currentUser?.role === 'teacher' ? (lang === 'th' ? '👨‍🏫 บัญชีครูผู้สอน' : '👨‍🏫 Teacher Account') :
+             currentUser?.role === 'student' ? (lang === 'th' ? '🎓 บัญชีนักเรียน' : '🎓 Student Account') :
+             currentUser?.role === 'parent' ? (lang === 'th' ? '👨‍👩‍👧 บัญชีผู้ปกครอง' : '👨‍👩‍👧 Parent Account') :
+             (lang === 'th' ? '🛡️ ผู้บริหาร / แอดมิน' : '🛡️ Admin Console')}
+          </span>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* ROLE-BASED QUICK ACTIONS & DAILY WORKFLOW BAR (ภารกิจด่วนประจำวัน) */}
+      {/* ======================================================== */}
+      <div className="shrink-0 p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              {lang === 'th' ? '⚡ ภารกิจด่วนประจำวัน (Quick Actions)' : '⚡ Daily Quick Actions'}
+            </h2>
+            <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+              {lang === 'th' ? 'เข้าถึงงานสำคัญได้ทันทีในคลิกเดียว' : 'Direct access to your high-priority daily tasks'}
+            </span>
+          </div>
+
+          <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+            {todayStr}
+          </span>
+        </div>
+
+        {/* Quick Actions Grid by User Role */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {/* TEACHER ROLE ACTIONS */}
+          {currentUser?.role === 'teacher' && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate('mobile_checkin')}
+                className="p-2.5 rounded-xl border border-blue-500/20 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">เช็คชื่อ</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">เช็คชื่อคาบนี้</div>
+                  <div className="text-[10px] text-slate-500">สแกน GPS / ภาพถ่าย</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('homework')}
+                className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <FileCheck2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">3 รอตรวจ</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ตรวจการบ้าน</div>
+                  <div className="text-[10px] text-slate-500">ตรวจและให้คะแนน</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('gradebook')}
+                className="p-2.5 rounded-xl border border-indigo-500/20 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">ปพ.5</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บันทึกคะแนน</div>
+                  <div className="text-[10px] text-slate-500">กลางภาค / ปลายภาค</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('timetable')}
+                className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">ตารางสอน</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ตารางสอนวันนี้</div>
+                  <div className="text-[10px] text-slate-500">ดูห้องเรียน & คาบ</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('behavior_sdq')}
+                className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <HeartPulse className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">SDQ</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">คัดกรอง SDQ</div>
+                  <div className="text-[10px] text-slate-500">บันทึกพฤติกรรม</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('boss_raid')}
+                className="p-2.5 rounded-xl border border-purple-500/20 bg-purple-50/70 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Swords className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">BOSS</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">เปิดเรดบอสคาบนี้</div>
+                  <div className="text-[10px] text-slate-500">กิจกรรมตอบโจทย์</div>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* STUDENT ROLE ACTIONS */}
+          {currentUser?.role === 'student' && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate('timetable')}
+                className="p-2.5 rounded-xl border border-blue-500/20 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">ตาราง</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ตารางเรียนวันนี้</div>
+                  <div className="text-[10px] text-slate-500">วิชาถัดไป & คาบ</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('homework')}
+                className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <FileCheck2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">ด่วน</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">การบ้านที่ต้องส่ง</div>
+                  <div className="text-[10px] text-slate-500">ส่งการบ้านออนไลน์</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('mobile_checkin')}
+                className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">GPS</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">สแกนเช็คชื่อเข้าเรียน</div>
+                  <div className="text-[10px] text-slate-500">ถ่ายรูปเช็คชื่อ</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('games')}
+                className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">+EXP</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ทำเควสต์สะสมแต้ม</div>
+                  <div className="text-[10px] text-slate-500">1v1, 3D Battle, แล็บ</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('student_id_cards')}
+                className="p-2.5 rounded-xl border border-purple-500/20 bg-purple-50/70 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <QrCode className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">ID</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บัตรนักเรียนดิจิทัล</div>
+                  <div className="text-[10px] text-slate-500">Virtual ID Card</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('gradebook')}
+                className="p-2.5 rounded-xl border border-indigo-500/20 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">เกรด</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ดูผลการเรียน</div>
+                  <div className="text-[10px] text-slate-500">คะแนนสะสม & เกรด</div>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* PARENT ROLE ACTIONS */}
+          {currentUser?.role === 'parent' && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate('attendance')}
+                className="p-2.5 rounded-xl border border-blue-500/20 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-white">มาเรียนแล้ว</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">สถานะเข้าเรียนวันนี้</div>
+                  <div className="text-[10px] text-slate-500">เข้าประตู 07:42 น.</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('attendance')}
+                className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <FileCheck2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">แจ้งลา</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">แจ้งการลาออนไลน์</div>
+                  <div className="text-[10px] text-slate-500">ลาป่วย / ลากิจ</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('billing')}
+                className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">ค่าเทอม</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บิลค่าเทอม & ชำระเงิน</div>
+                  <div className="text-[10px] text-slate-500">QR PromptPay</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('homework')}
+                className="p-2.5 rounded-xl border border-indigo-500/20 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">การบ้าน</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ติดตามการบ้านลูก</div>
+                  <div className="text-[10px] text-slate-500">เช็คงานค้าง</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('infirmary')}
+                className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <HeartPulse className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">สุขภาพ</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ห้องพยาบาล & สุขภาพ</div>
+                  <div className="text-[10px] text-slate-500">ประวัติเข้าห้องพยาบาล</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('announcements')}
+                className="p-2.5 rounded-xl border border-purple-500/20 bg-purple-50/70 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <BellRing className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">ประกาศ</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ข่าวสารจากโรงเรียน</div>
+                  <div className="text-[10px] text-slate-500">จดหมาย & นัดหมาย</div>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* ADMIN / SUPER ADMIN ROLE ACTIONS */}
+          {(!currentUser?.role || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate('mobile_checkin')}
+                className="p-2.5 rounded-xl border border-blue-500/20 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">GPS สด</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">สแกนประตู & GPS</div>
+                  <div className="text-[10px] text-slate-500">สถิติเข้าเรียนเรียลไทม์</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('students')}
+                className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">{totalStudents} คน</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">ทะเบียนนักเรียน</div>
+                  <div className="text-[10px] text-slate-500">จัดการข้อมูล & ปพ.</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('executive_warning')}
+                className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-600 text-white">เตือนภัย</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">Early Warning เสี่ยงหลุด</div>
+                  <div className="text-[10px] text-slate-500">มส. / เสี่ยงเกรดตก</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('billing')}
+                className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500 text-slate-950">การเงิน</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">จัดเก็บค่าเทอม</div>
+                  <div className="text-[10px] text-slate-500">ใบเสร็จ & PromptPay</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('student_id_cards')}
+                className="p-2.5 rounded-xl border border-indigo-500/20 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <QrCode className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-600 text-white">พิมพ์ A4</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">บัตรนักเรียน Virtual ID</div>
+                  <div className="text-[10px] text-slate-500">พิมพ์บัตรบาร์โค้ด</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('timetable')}
+                className="p-2.5 rounded-xl border border-purple-500/20 bg-purple-50/70 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-left transition flex flex-col justify-between group cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white">ตารางสอน</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">จัดตาราง & เช็คชน</div>
+                  <div className="text-[10px] text-slate-500">วิเคราะห์ห้องเรียน</div>
+                </div>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -621,9 +621,22 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-black">
-                      <Swords className="w-3.5 h-3.5" />
-                      <span>1v1 Speed Duel Arena</span>
+                    <div className="flex items-center gap-2">
+                      {onExit && (
+                        <button
+                          type="button"
+                          onClick={onExit}
+                          className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                          title="ออกจากเกม กลับสู่หน้าหลัก"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          <span>กลับหน้าหลัก</span>
+                        </button>
+                      )}
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-black">
+                        <Swords className="w-3.5 h-3.5" />
+                        <span>1v1 Speed Duel Arena</span>
+                      </div>
                     </div>
                     <span className="text-xs font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
                       {battleQuestions.length} ข้อในหมวดนี้
