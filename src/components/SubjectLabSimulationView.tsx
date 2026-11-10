@@ -328,10 +328,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
         </div>
       </header>
 
-      {/* ========================================================= */}
-      {/* MAIN SINGLE-SCREEN WORKSPACE (Zero Scrolling Layout) */}
-      {/* ========================================================= */}
-      <main className="flex-1 min-h-0 w-full p-2.5 sm:p-3 grid grid-cols-1 md:grid-cols-12 gap-2.5 overflow-hidden">
+      {/* MAIN RESPONSIVE WORKSPACE */}
+      <main className="flex-1 min-h-0 w-full p-2.5 sm:p-3 grid grid-cols-1 md:grid-cols-12 gap-2.5 overflow-y-auto">
         
         {/* ========================================================= */}
         {/* ZONE 1: APPARATUS STAGE, CONTROLS & REACTION FEEDBACK (Left 6 cols) */}

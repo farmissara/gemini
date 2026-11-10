@@ -1,5 +1,6 @@
 import { AuthUser, School, UserRole } from '../types';
 import { getSupabaseClient } from './supabase';
+import { INITIAL_SCHOOLS } from '../data/mockData';
 
 export interface AuthContext {
   user: AuthUser;
@@ -152,15 +153,25 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
 
 export async function listActiveSchools(): Promise<School[]> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  if (!client) {
+    return INITIAL_SCHOOLS.filter((s) => s.status === 'active');
+  }
 
-  const { data, error } = await client
-    .from('schools')
-    .select('*')
-    .eq('status', 'active')
-    .order('name_th');
-  if (error) throw new Error(`Could not load active schools: ${error.message}`);
-  return (data as SchoolRow[]).map(mapSchool);
+  try {
+    const { data, error } = await client
+      .from('schools')
+      .select('*')
+      .eq('status', 'active')
+      .order('name_th');
+    if (error) {
+      console.warn('Could not load active schools from Supabase, falling back to local schools:', error.message);
+      return INITIAL_SCHOOLS.filter((s) => s.status === 'active');
+    }
+    return (data as SchoolRow[]).map(mapSchool);
+  } catch (err) {
+    console.warn('Supabase offline or unreachable, falling back to local schools:', err);
+    return INITIAL_SCHOOLS.filter((s) => s.status === 'active');
+  }
 }
 
 export async function updateSchoolStatusInSupabase(

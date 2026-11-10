@@ -614,19 +614,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col overflow-hidden' : 'space-y-6'}`}>
           {/* LOBBY / PRE-BATTLE MATCHUP SCREEN */}
           {battleState === 'idle' && (
-            <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col justify-between p-3.5 max-w-md mx-auto overflow-hidden' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
-              {isMobile && <div className="flex items-center justify-between gap-2">
-                <button type="button" onClick={() => setLobbyStep(0)} disabled={lobbyStep === 0} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-bold disabled:opacity-40">1. {lang === 'th' ? 'เลือกวิชา' : 'Choose Subject'}</button>
-                <span className="text-[11px] text-slate-400">{lobbyStep + 1} / 2</span>
-                <button type="button" onClick={() => setLobbyStep(1)} disabled={lobbyStep === 1} className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-bold disabled:opacity-40">2. {lang === 'th' ? 'เริ่มประลอง' : 'Start Duel'}</button>
-              </div>}
+            <div className={`w-full ${isMobile ? 'flex-1 min-h-0 flex flex-col p-3 sm:p-4 max-w-xl mx-auto overflow-y-auto space-y-4' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}`}>
               {/* Left / Main Match Launcher Card */}
-              <div className={`${isMobile ? 'space-y-3' : 'md:col-span-2 rounded-3xl bg-slate-900/60 border border-slate-800 p-8 flex flex-col justify-between relative overflow-hidden'}`}>
+              <div className={`${isMobile ? 'space-y-4 w-full' : 'md:col-span-2 rounded-3xl bg-slate-900/60 border border-slate-800 p-8 flex flex-col justify-between relative overflow-hidden'}`}>
                 {!isMobile && (
                   <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
                 )}
                 
-                {(!isMobile || lobbyStep === 0) && <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-black">
                       <Swords className="w-3.5 h-3.5" />
@@ -721,23 +716,23 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       ))}
                     </div>
                   </div>
-                </div>}
 
-                {/* Big Glowing Start Duel Button */}
-                {(!isMobile || lobbyStep === 1) && <div className="pt-3 space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleStartBattle}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-black text-base shadow-xl shadow-rose-600/40 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
-                    <span>{lang === 'th' ? '⚡ เริ่มประลอง 1v1 ทันที' : 'Launch 1v1 Battle Now'}</span>
-                  </button>
+                  {/* Big Glowing Start Duel Button */}
+                  <div className="pt-2 space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleStartBattle}
+                      className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-black text-base shadow-xl shadow-rose-600/40 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
+                      <span>{lang === 'th' ? '⚡ เริ่มประลอง 1v1 ทันที' : 'Launch 1v1 Battle Now'}</span>
+                    </button>
 
-                  <p className="text-[11px] text-center text-slate-400">
-                    ⚡ ตอบถูกทำดาเมจ 25+ HP • สตรีคคอมโบแรงขึ้น • รับ EXP & Gems
-                  </p>
-                </div>}
+                    <p className="text-[11px] text-center text-slate-400">
+                      ⚡ ตอบถูกทำดาเมจ 25+ HP • สตรีคคอมโบแรงขึ้น • รับ EXP & Gems
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Desktop Rules Side Card (Only on desktop) */}
@@ -759,9 +754,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </div>
           )}
 
-          {/* ACTIVE BATTLE PLAYING SCREEN - TRUE ARCADE ZERO-SCROLL LAYOUT */}
+          {/* ACTIVE BATTLE PLAYING SCREEN - TRUE ARCADE SCROLLABLE & RESPONSIVE LAYOUT */}
           {battleState === 'playing' && (
-            <div className="flex-1 min-h-0 flex flex-col justify-between p-3 sm:p-5 max-w-xl mx-auto w-full overflow-hidden select-none">
+            <div className="flex-1 min-h-0 flex flex-col justify-start p-3 sm:p-5 max-w-xl mx-auto w-full overflow-y-auto space-y-3 select-none">
               {/* TOP DUAL HP GAUGES */}
               <div className="shrink-0 space-y-1.5">
                 <div className="grid grid-cols-2 gap-2 items-center">
@@ -801,7 +796,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 </div>
 
                 {/* MATCH HUD BAR */}
-                <div className="flex items-center justify-between px-3 py-1 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+                <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-indigo-300 text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30">
                       ข้อ {currentQuestionIndex + 1}/{battleQuestions.length}
@@ -838,16 +833,16 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* CENTER: HIGH VISIBILITY QUESTION CARD */}
-              <div className="my-auto py-2 space-y-2">
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/95 border border-slate-800 shadow-xl space-y-1.5 text-center">
+              <div className="py-1 space-y-2 shrink-0">
+                <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/95 border border-slate-800 shadow-xl space-y-1.5 text-center">
                   <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-300">
                     {currentQ.subject} • ระดับ {currentQ.gradeLevel}
                   </div>
-                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white leading-relaxed">
+                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white leading-relaxed break-words">
                     {currentQ.questionTh}
                   </h3>
                   {currentQ.questionEn && currentQ.questionEn !== currentQ.questionTh && (
-                    <p className="text-xs text-slate-400 italic">
+                    <p className="text-xs text-slate-400 italic break-words">
                       {currentQ.questionEn}
                     </p>
                   )}
@@ -858,7 +853,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs space-y-1 animate-in fade-in slide-in-from-top-1 text-center">
                     <p className="font-black text-xs text-amber-300">{battleFeedback}</p>
                     {currentQ.explanationTh && (
-                      <p className="text-[11px] text-slate-300 leading-tight">
+                      <p className="text-[11px] text-slate-300 leading-tight break-words">
                         💡 {currentQ.explanationTh}
                       </p>
                     )}
@@ -867,7 +862,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* BOTTOM: 4 LARGE ARCADE BUTTONS */}
-              <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2 shrink-0">
                 {currentQ.options.map((opt, idx) => {
                   const letters = ['A', 'B', 'C', 'D'];
                   const letterColors = [
@@ -894,12 +889,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       type="button"
                       disabled={selectedAnswer !== null}
                       onClick={() => handleAnswer(idx)}
-                      className={`min-h-[52px] sm:min-h-[56px] p-3 rounded-2xl border text-left text-xs sm:text-sm font-semibold transition-all flex items-center gap-3 cursor-pointer active:scale-98 ${btnStyle}`}
+                      className={`min-h-[50px] sm:min-h-[56px] p-2.5 sm:p-3 rounded-2xl border text-left text-xs sm:text-sm font-semibold transition-all flex items-center gap-2.5 sm:gap-3 cursor-pointer active:scale-98 ${btnStyle}`}
                     >
                       <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-xs font-black font-mono border ${letterColors[idx % 4]}`}>
                         {letters[idx]}
                       </span>
-                      <span className="flex-1 leading-snug line-clamp-2">{opt}</span>
+                      <span className="flex-1 leading-snug break-words">{opt}</span>
                     </button>
                   );
                 })}

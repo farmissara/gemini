@@ -243,7 +243,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </span>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 uppercase">
@@ -491,7 +491,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       {/* Printable Sheet Modal */}
       {showPrintModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl p-4 sm:p-8 space-y-4 shadow-2xl max-h-[90vh] overflow-hidden">
+          <div className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl p-4 sm:p-8 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">{schoolName}</h2>

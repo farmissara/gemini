@@ -293,7 +293,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       </div>
 
       {/* Main Raid Stage: Left Boss Visual & Health Bar, Right Co-op Question & Party Matrix */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden pb-1">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-y-auto pb-1">
         {/* Left Column: Boss Arena Visual */}
         {raidPanel === 'arena' && <div className="lg:col-span-12 min-h-[220px] lg:min-h-0 bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3 sm:p-3.5 shadow-xl flex flex-col justify-between text-white relative overflow-hidden">
           {/* Boss HP Bar & Zoom Control */}

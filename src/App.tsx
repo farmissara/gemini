@@ -122,7 +122,7 @@ import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lu
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
-  const [schools, setSchools] = useState<School[]>([]);
+  const [schools, setSchools] = useState<School[]>(INITIAL_SCHOOLS);
   const [activeSchool, setActiveSchool] = useState<School>(INITIAL_SCHOOLS[0]);
   const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -156,7 +156,7 @@ export const App: React.FC = () => {
   // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
   const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth <= 1024;
+      return window.innerWidth < 768;
     }
     return false;
   });
@@ -164,7 +164,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileScreen(window.innerWidth <= 1024);
+      setIsMobileScreen(window.innerWidth < 768);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -1159,7 +1159,7 @@ export const App: React.FC = () => {
 
       {/* Mobile Drawer Overlay and Sidebar */}
       {!useImmersiveGameLayout && isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div className="lg:hidden fixed inset-0 z-50 flex">
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
             onClick={() => setIsMobileMenuOpen(false)} 
@@ -1175,7 +1175,7 @@ export const App: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <Sidebar
                 currentTab={currentTab}
                 setCurrentTab={(tab) => {
@@ -1201,7 +1201,7 @@ export const App: React.FC = () => {
       <div className={`flex-1 flex overflow-hidden min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950' : ''}`}>
         {/* Desktop Left Sidebar only shown in School ERP mode */}
         {!useImmersiveGameLayout && programMode === 'school_erp' && (
-          <div className="hidden md:flex shrink-0">
+          <div className="hidden lg:flex shrink-0">
             <Sidebar
               currentTab={currentTab}
               setCurrentTab={navigateToAppTab}
@@ -1217,8 +1217,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-hidden ${useImmersiveGameLayout ? 'p-0' : 'p-2 sm:p-3 lg:p-4'}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none' : 'max-w-7xl mx-auto'} w-full min-w-0 flex-1 min-h-0 flex flex-col overflow-hidden`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-y-auto ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'p-2 sm:p-3 lg:p-4'}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : 'max-w-7xl mx-auto'} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>

@@ -352,7 +352,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Main Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-hidden pr-1 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
         {/* TAB 1: EXECUTIVE OVERVIEW */}
         {dashboardTab === 'overview' && (
           <div className="space-y-4 animate-in fade-in duration-150">

@@ -261,10 +261,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       {/* 2. MAIN ACTIVE VIEW CONTAINER */}
       {/* ======================================================== */}
-      <main className="flex flex-1 flex-col min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-hidden">
+      <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-y-auto">
         {/* TAB A: HOME / MOBILE BRIEFING */}
         {activeTab === 'home' && (
-          <div className="h-full min-h-0 flex flex-col justify-center gap-5 animate-in fade-in duration-200">
+          <div className="flex flex-col gap-4 py-1 animate-in fade-in duration-200">
             {homePage === 0 && (
               <>
             {/* Welcome & Persona Card */}
@@ -1080,7 +1080,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* IMMERSIVE FULLSCREEN GAME TAKEOVER (แสดงเต็มจอ ไม่มีเมนูรก) */}
       {/* ======================================================== */}
       {activeGameView !== 'hub' && (
-        <div className="fixed inset-0 z-50 bg-slate-950 w-screen h-screen flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950 w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
           {activeGameView === 'battle_royale_3d' && (
             <div className="h-full w-full overflow-hidden">
               <EduBattleRoyale3DView

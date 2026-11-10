@@ -448,7 +448,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       </div>
 
       {/* Teachers Scrollable Container */}
-      <div className="flex-1 min-h-0 overflow-hidden pr-1">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {/* Teachers Cards View */}
         {viewMode === 'cards' ? (
         <div>
@@ -571,7 +571,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       ) : (
         /* Table View */
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto overflow-y-hidden">
+          <div className="overflow-x-auto overflow-y-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-bold uppercase tracking-wider">
                 <tr>
@@ -756,7 +756,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-hidden flex-1 space-y-6">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
               {/* TAB 1: PROFILE & QUALIFICATIONS */}
               {detailTab === 'profile' && (
                 <div className="space-y-6 text-xs">

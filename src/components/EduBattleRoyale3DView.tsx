@@ -2675,8 +2675,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 4. QUESTION POPUP MODAL (COMPACT SINGLE-SCREEN NO SCROLL) */}
       {/* ======================================================== */}
       {activeQuestion && (
-        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-          <div className={`relative w-full max-w-lg bg-slate-900 border-2 ${isAirdropQuestion ? 'border-red-500 shadow-red-500/40' : 'border-amber-500/60'} rounded-3xl p-3 sm:p-4 shadow-2xl text-white animate-in fade-in zoom-in-95 flex flex-col justify-between`}>
+        <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className={`relative w-full max-w-lg max-h-[90dvh] overflow-y-auto bg-slate-900 border-2 ${isAirdropQuestion ? 'border-red-500 shadow-red-500/40' : 'border-amber-500/60'} rounded-3xl p-3.5 sm:p-5 shadow-2xl text-white animate-in fade-in zoom-in-95 flex flex-col justify-start space-y-3`}>
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
@@ -2697,12 +2697,12 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             </div>
 
             {/* Question */}
-            <div className="my-3 shrink-0">
-              <h2 className="text-xs sm:text-sm md:text-base font-bold text-slate-100 leading-snug">
+            <div className="py-1 shrink-0">
+              <h2 className="text-xs sm:text-sm md:text-base font-bold text-slate-100 leading-snug break-words">
                 {activeQuestion.questionTh}
               </h2>
               {activeQuestion.questionEn && (
-                <p className="mt-1 text-[11px] text-slate-400 italic">
+                <p className="mt-1 text-[11px] text-slate-400 italic break-words">
                   {activeQuestion.questionEn}
                 </p>
               )}
@@ -2727,13 +2727,13 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                     key={idx}
                     disabled={selectedAnswerIndex !== null}
                     onClick={() => handleAnswer(idx)}
-                    className={`w-full p-2.5 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${btnStyle}`}
+                    className={`w-full min-h-[46px] p-2.5 rounded-xl border text-left text-xs transition-all flex items-center justify-between gap-2 cursor-pointer ${btnStyle}`}
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="w-5 h-5 rounded-md bg-slate-700/60 flex items-center justify-center font-mono font-bold text-[11px] text-slate-300 shrink-0">
                         {String.fromCharCode(65 + idx)}
                       </span>
-                      <span className="line-clamp-2">{option}</span>
+                      <span className="break-words leading-tight">{option}</span>
                     </span>
                     {selectedAnswerIndex !== null && idx === activeQuestion.correctIndex && (
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />

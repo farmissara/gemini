@@ -321,7 +321,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
 
           {/* Students Table with Sticky Header */}
-          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden rounded-xl border border-slate-800 bg-slate-800/40">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-800 bg-slate-800/40">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xs text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                 <tr>
@@ -453,7 +453,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   )}
 
       {activeTab === 'analytics' && (
-        <div className="flex-1 min-h-0 overflow-hidden space-y-4 pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80">
               <span className="text-[11px] text-slate-400 font-bold uppercase">นักเรียนทั้งหมด</span>
