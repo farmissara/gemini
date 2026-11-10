@@ -316,8 +316,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'subject_labs',
-          labelTh: 'แล็บจำลองรายวิชา & เคมีทดลอง',
-          labelEn: 'Subject Labs & Chemistry',
+          labelTh: 'เวิร์กช็อปจำลองรายวิชา 6 มิติ',
+          labelEn: 'Interactive Subject Workshops',
           icon: FlaskConical,
           badge: 'SIM',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],

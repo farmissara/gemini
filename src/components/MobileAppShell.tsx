@@ -637,10 +637,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-slate-900 dark:text-white">Subject Labs แล็บจำลอง</h3>
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-blue-500 text-white font-bold">LAB</span>
+                          <h3 className="font-black text-sm text-slate-900 dark:text-white">เวิร์กช็อปจำลอง 6 สาระ</h3>
+                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-blue-500 text-white font-bold">SIM</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">ผสมสารเคมี ทดลองฟิสิกส์ ซูมขวดทดลองเข้า-ออกได้</p>
+                        <p className="text-xs text-slate-500 mt-0.5">จำลองการทดลองเคมี จรวดฟิสิกส์ ครัวไวยากรณ์ โค้ดดิ้ง และแผนที่โลก</p>
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />

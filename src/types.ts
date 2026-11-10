@@ -723,7 +723,7 @@ export interface HomeworkSubmission {
   gradedBy?: string;
 }
 
-export type LabSubjectCategory = 'chemistry' | 'math' | 'english' | 'computer' | 'thai';
+export type LabSubjectCategory = 'chemistry' | 'math' | 'english' | 'computer' | 'thai' | 'social';
 
 export interface LabChemicalItem {
   id: string;
@@ -764,11 +764,11 @@ export interface LabSimulationQuest {
   successMessageEn?: string;
   successProductColor: string;
   resultingColor?: string;
-  successAnimation: 'bubbling_glow' | 'golden_crystal' | 'rocket_orbit' | 'gourmet_dish' | 'robot_dance' | 'lotus_aura';
+  successAnimation: 'bubbling_glow' | 'golden_crystal' | 'rocket_orbit' | 'gourmet_dish' | 'robot_dance' | 'lotus_aura' | 'world_discovery';
   failTitleTh: string;
   failDescTh: string;
   failDescEn?: string;
-  failAnimation: 'lab_explosion' | 'rocket_crash' | 'burnt_food' | 'short_circuit' | 'banana_slip';
+  failAnimation: 'lab_explosion' | 'rocket_crash' | 'burnt_food' | 'short_circuit' | 'banana_slip' | 'lost_explorer';
   scientificExplanationTh: string;
   expReward: number;
   gemReward: number;

@@ -495,7 +495,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             {[
               { id: 'arena' as const, label: isMobile ? '1v1' : (lang === 'th' ? '1v1 ดวลตอบสด' : '1v1 Arena'), icon: Swords },
               { id: 'battle_royale_3d' as const, label: isMobile ? '3D Arena' : '3D EduArena', icon: Gamepad2 },
-              { id: 'subject_labs' as const, label: isMobile ? 'แล็บ' : (lang === 'th' ? 'แล็บจำลอง' : 'Subject Labs'), icon: FlaskConical },
+              { id: 'subject_labs' as const, label: isMobile ? 'เวิร์กช็อป' : (lang === 'th' ? 'เวิร์กช็อปจำลอง 6 สาระ' : 'Subject Workshops'), icon: FlaskConical },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
