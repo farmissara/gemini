@@ -29,7 +29,11 @@ import {
   X,
   KeyRound,
   AlertCircle,
-  Send
+  Send,
+  HelpCircle,
+  Copy,
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import {
   authenticateWithSupabase,
@@ -104,6 +108,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [showSmtpGuideModal, setShowSmtpGuideModal] = useState(false);
+  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const [smtpTab, setSmtpTab] = useState<'gmail_smtp' | 'disable_confirm' | 'sql_confirm' | 'superadmin'>('gmail_smtp');
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -221,6 +228,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     } finally {
       setIsResetting(false);
     }
+  };
+
+  const handleCopySnippet = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedSnippet(label);
+    setTimeout(() => setCopiedSnippet(null), 2500);
   };
 
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
@@ -974,8 +987,30 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   )}
 
                   {error && (
-                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-950 p-3 text-xs font-medium text-rose-900 dark:text-rose-200">
-                      {error}
+                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-950 p-3.5 text-xs font-medium text-rose-900 dark:text-rose-200 space-y-2.5">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed font-semibold">{error}</span>
+                      </div>
+                      {(error.includes('SMTP') || error.includes('ยืนยันไม่สำเร็จ') || error.includes('confirmation email')) && (
+                        <div className="pt-2 border-t border-rose-200/80 dark:border-rose-800/60 flex flex-wrap items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowSmtpGuideModal(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold text-[11px] shadow-xs transition cursor-pointer"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            <span>{lang === 'th' ? 'ดูวิธีแก้: ตั้งค่า SMTP หรือ ปิด Confirm Email ใน Supabase' : 'View Fix: Setup SMTP or Disable Confirm Email'}</span>
+                          </button>
+                          <a
+                            href={`mailto:${MASTER_SYSTEM_EMAIL}?subject=${encodeURIComponent('ขอความช่วยเหลือยืนยันบัญชี Supabase SMTP - EduVerse')}&body=${encodeURIComponent(`เรียน Master Administrator (${MASTER_SYSTEM_EMAIL}),\n\nพบปัญหาการส่งอีเมลยืนยัน Supabase:\nอีเมลที่สมัคร: ${email}\nข้อความ: ${error}\n`)}`}
+                            className="text-[11px] text-rose-800 dark:text-rose-300 underline font-semibold hover:text-rose-950 flex items-center gap-1"
+                          >
+                            <Mail className="w-3 h-3" />
+                            <span>{lang === 'th' ? 'ติดต่อ Master' : 'Contact Master'}</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1220,7 +1255,16 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <span>·</span>
             <span>© 2026</span>
           </div>
-          <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex items-center gap-3 text-[11px] flex-wrap justify-center">
+            <button
+              type="button"
+              onClick={() => setShowSmtpGuideModal(true)}
+              className="text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'คู่มือตั้งค่า Supabase SMTP' : 'Supabase SMTP Guide'}</span>
+            </button>
+            <span>·</span>
             <span>PDPA Standard</span>
             <span>·</span>
             <span>WCAG 2.1 AA Compliant</span>
@@ -1343,6 +1387,258 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 <Mail className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'ส่งอีเมลตรงหา Master' : 'Email Master Directly'}</span>
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Supabase SMTP & Email Confirmation Setup Guide */}
+      {showSmtpGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] p-4 shrink-0 bg-[var(--color-card-subtle)]">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'คู่มือตั้งค่า Supabase SMTP & แก้ปัญหาอีเมลยืนยัน' : 'Supabase SMTP & Email Confirmation Guide'}
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'วิธีแก้ปัญหา "Supabase ส่งอีเมลยืนยันไม่สำเร็จ"' : 'Fixing "Error sending confirmation email"'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSmtpGuideModal(false)}
+                className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-[var(--color-border)] bg-[var(--color-card)] px-4 pt-2 gap-1 overflow-x-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setSmtpTab('gmail_smtp')}
+                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
+                  smtpTab === 'gmail_smtp'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                1. ตั้งค่า Gmail SMTP ({MASTER_SYSTEM_EMAIL})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSmtpTab('disable_confirm')}
+                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
+                  smtpTab === 'disable_confirm'
+                    ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                2. ปิด Confirm Email (ใช้งานได้ทันที)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSmtpTab('sql_confirm')}
+                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
+                  smtpTab === 'sql_confirm'
+                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                3. คำสั่ง SQL ยืนยันบัญชีค้างอยู่
+              </button>
+              <button
+                type="button"
+                onClick={() => setSmtpTab('superadmin')}
+                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
+                  smtpTab === 'superadmin'
+                    ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                4. อนุมัติผ่าน Super Admin
+              </button>
+            </div>
+
+            {/* Tab Body */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs text-[var(--color-text-body)] flex-1">
+              {smtpTab === 'gmail_smtp' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 leading-relaxed text-xs">
+                    <span className="font-bold">สาเหตุที่เกิดปัญหานี้:</span> เมลเซิร์ฟเวอร์เริ่มต้นฟรีของ Supabase มีข้อจำกัด (Rate Limit ส่งได้เพียง 3-4 ฉบับต่อชั่วโมง) เพื่อส่งอีเมลยืนยันการสมัครและรีเซ็ตรหัสผ่านได้ไม่จำกัด แนะนำให้ตั้งค่า <strong>Gmail SMTP</strong> ด้วยอีเมล <strong>{MASTER_SYSTEM_EMAIL}</strong>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm text-[var(--color-text-title)] flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[11px]">1</span>
+                      <span>ขั้นตอนที่ 1: สร้าง Google App Password (รหัสผ่านสำหรับแอป)</span>
+                    </h4>
+                    <ol className="list-decimal list-inside space-y-1.5 pl-2 leading-relaxed text-[11px] text-[var(--color-text-body)]">
+                      <li>เข้าสู่บัญชี Google ที่ <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">myaccount.google.com/security <ExternalLink className="w-3 h-3" /></a></li>
+                      <li>เปิดใช้งาน <strong>การยืนยันแบบ 2 ขั้นตอน (2-Step Verification)</strong> ให้เรียบร้อย</li>
+                      <li>พิมพ์ค้นหาที่ช่องค้นหาด้านบนว่า <strong>"App passwords"</strong> หรือ <strong>"รหัสผ่านสำหรับแอป"</strong></li>
+                      <li>ตั้งชื่อแอป เช่น <code>EduVerse Supabase</code> แล้วกดปุ่ม <strong>สร้าง (Create)</strong></li>
+                      <li>คัดลอกรหัสผ่าน 16 ตัวอักษร (เช่น <code>abcd efgh ijkl mnop</code>)</li>
+                    </ol>
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t border-[var(--color-border)]">
+                    <h4 className="font-bold text-sm text-[var(--color-text-title)] flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[11px]">2</span>
+                      <span>ขั้นตอนที่ 2: นำค่าไปใส่ใน Supabase Dashboard</span>
+                    </h4>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      ไปที่ <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">Supabase Dashboard <ExternalLink className="w-3 h-3" /></a> → เลือกโปรเจกต์ → เมนู <strong>Authentication</strong> → <strong>Emails</strong> → แท็บ <strong>SMTP Settings</strong> → เปิด <strong>Enable Custom SMTP</strong> แล้วกรอกค่าเหล่านี้:
+                    </p>
+
+                    <div className="rounded-xl border border-[var(--color-border)] overflow-hidden divide-y divide-[var(--color-border)] font-mono text-[11px]">
+                      {[
+                        { label: 'Sender email', value: MASTER_SYSTEM_EMAIL },
+                        { label: 'Sender name', value: 'EduVerse Academic Operations' },
+                        { label: 'Host', value: 'smtp.gmail.com' },
+                        { label: 'Port', value: '465' },
+                        { label: 'Username', value: MASTER_SYSTEM_EMAIL },
+                        { label: 'Password', value: '[รหัสผ่าน App Password 16 ตัวที่ได้จาก Google]' },
+                      ].map((item) => (
+                        <div key={item.label} className="p-2.5 flex items-center justify-between gap-2 bg-[var(--color-card-subtle)]">
+                          <span className="text-[var(--color-text-muted)] font-sans font-medium w-28 shrink-0">{item.label}:</span>
+                          <span className="text-[var(--color-text-title)] font-bold truncate flex-1">{item.value}</span>
+                          {item.value !== '[รหัสผ่าน App Password 16 ตัวที่ได้จาก Google]' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopySnippet(item.value, item.label)}
+                              className="px-2 py-1 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[10px] font-sans font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer flex items-center gap-1 shrink-0"
+                            >
+                              {copiedSnippet === item.label ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                              <span>{copiedSnippet === item.label ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                      ✓ เมื่อกรอกครบแล้ว กดปุ่ม <strong>Save changes</strong> ที่ด้านล่าง จากนั้นลองกดปุ่มส่งลิงก์ยืนยันใน EduVerse อีกครั้งได้ทันที
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {smtpTab === 'disable_confirm' && (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 leading-relaxed text-xs">
+                    <span className="font-bold">วิธีที่เร็วที่สุด (ไม่ต้องใช้ SMTP):</span> หากต้องการให้ผู้ใช้สมัครสมาชิกแล้วล็อกอินใช้งานได้ทันทีโดยไม่ต้องรอยืนยันอีเมล ให้ปิดฟังก์ชัน <strong>Confirm email</strong> ใน Supabase
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <h4 className="font-bold text-sm text-[var(--color-text-title)]">ขั้นตอนการปิด Confirm email ใน Supabase Dashboard:</h4>
+                    <ol className="list-decimal list-inside space-y-2 pl-2 text-xs leading-relaxed">
+                      <li>เข้าสู่ <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">Supabase Dashboard <ExternalLink className="w-3 h-3" /></a> แล้วเลือกโปรเจกต์ของคุณ</li>
+                      <li>ในแถบเมนูด้านซ้าย คลิกที่ไอคอน <strong>Authentication</strong></li>
+                      <li>เลือกเมนูย่อย <strong>Providers</strong> แล้วคลิกที่แถบ <strong>Email</strong></li>
+                      <li>เลื่อนลงมาที่ตัวเลือก <strong>"Confirm email"</strong></li>
+                      <li><strong>คลิกสวิตช์เป็น ปิด (Disable / Turn Off)</strong></li>
+                      <li>คลิกปุ่มสีเขียว <strong>"Save"</strong> ที่มุมขวาล่าง</li>
+                    </ol>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                    💡 <strong>ผลลัพธ์:</strong> หลังจากปิด Confirm email แล้ว การสมัครโรงเรียนและสมัครบัญชีนักเรียนใหม่จะได้รับการยืนยันทันที 100% โดยจะไม่เกิดข้อผิดพลาด "Supabase ส่งอีเมลยืนยันไม่สำเร็จ" อีกต่อไป
+                  </div>
+                </div>
+              )}
+
+              {smtpTab === 'sql_confirm' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 text-xs leading-relaxed">
+                    หากคุณได้ทำการสมัครบัญชีไปแล้ว แต่อีเมลยังไม่ได้รับการยืนยัน สามารถรันคำสั่ง SQL นี้ใน <strong>Supabase SQL Editor</strong> เพื่อยืนยันบัญชีและเปิดใช้งานโรงเรียนได้ทันที
+                  </div>
+
+                  <div className="relative">
+                    <div className="flex items-center justify-between pb-1.5 text-[11px] font-semibold text-[var(--color-text-muted)]">
+                      <span>SQL Script (รันใน Supabase → SQL Editor):</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopySnippet(`-- 1. ยืนยันอีเมลบัญชีที่สมัครไว้ทั้งหมดทันที
+UPDATE auth.users 
+SET email_confirmed_at = NOW() 
+WHERE email_confirmed_at IS NULL;
+
+-- 2. เปิดใช้งานโปรไฟล์บัญชีผู้ใช้
+UPDATE public.user_profiles 
+SET status = 'active' 
+WHERE status = 'pending';
+
+-- 3. เปิดใช้งานโรงเรียนที่สมัครใหม่
+UPDATE public.schools 
+SET status = 'active' 
+WHERE status = 'pending';`, 'sql_all')}
+                        className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] flex items-center gap-1 transition cursor-pointer"
+                      >
+                        {copiedSnippet === 'sql_all' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedSnippet === 'sql_all' ? 'คัดลอกโค้ดแล้ว' : 'คัดลอกโค้ด SQL ทั้งหมด'}</span>
+                      </button>
+                    </div>
+
+                    <pre className="p-3 rounded-xl bg-slate-900 text-emerald-300 font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
+{`-- 1. ยืนยันอีเมลบัญชีที่สมัครไว้ทั้งหมดทันที
+UPDATE auth.users 
+SET email_confirmed_at = NOW() 
+WHERE email_confirmed_at IS NULL;
+
+-- 2. เปิดใช้งานโปรไฟล์บัญชีผู้ใช้
+UPDATE public.user_profiles 
+SET status = 'active' 
+WHERE status = 'pending';
+
+-- 3. เปิดใช้งานโรงเรียนที่สมัครใหม่
+UPDATE public.schools 
+SET status = 'active' 
+WHERE status = 'pending';`}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {smtpTab === 'superadmin' && (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs leading-relaxed">
+                    <span className="font-bold">อนุมัติด้วยตนเองผ่านระบบ (Manual Super Admin Approval):</span> 
+                    Super Admin สามารถเข้าสู่ระบบและกดอนุมัติการสมัครโรงเรียนได้โดยตรง แม้ว่าอีเมลจะยังไม่ได้รับการยืนยันก็ตาม
+                  </div>
+
+                  <ol className="list-decimal list-inside space-y-2 pl-2 text-xs leading-relaxed">
+                    <li>เข้าสู่ระบบด้วยบัญชี Super Admin: <span className="font-mono font-bold text-purple-700 dark:text-purple-300">{MASTER_SYSTEM_EMAIL}</span></li>
+                    <li>ไปที่เมนู <strong>ศูนย์ควบคุมระบบ (Super Admin Console)</strong></li>
+                    <li>เลือกแท็บ <strong>"อนุมัติการสมัครโรงเรียน" (School Approvals)</strong></li>
+                    <li>จะพบรายการโรงเรียนที่สมัครค้างอยู่ คลิกปุ่ม <strong>"อนุมัติ"</strong></li>
+                    <li>ระบบจะทำการยืนยันอีเมลและเปิดใช้งานโรงเรียนให้โดยอัตโนมัติทันที</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-[var(--color-border)] p-4 bg-[var(--color-card-subtle)] flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+                <Mail className="w-3.5 h-3.5 text-blue-600" />
+                <span>Master Contact: <strong>{MASTER_SYSTEM_EMAIL}</strong></span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSmtpGuideModal(false)}
+                className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-xs font-bold text-white transition cursor-pointer"
+              >
+                {lang === 'th' ? 'เข้าใจแล้ว / ปิดหน้าต่าง' : 'Got it / Close'}
+              </button>
             </div>
           </div>
         </div>
