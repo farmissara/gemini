@@ -67,6 +67,7 @@ import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 import { HallOfFame3DView } from './HallOfFame3DView';
 import { DigitalIdCardView } from './DigitalIdCardView';
 import { PagedList } from './PagedList';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type MobileTab = 'home' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
 
@@ -278,6 +279,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {lang.toUpperCase()}
           </button>
 
+          {/* Mobile Install App Button */}
+          <PWAInstallButton lang={lang} variant="nav" />
+
           {/* User Profile Thumbnail */}
           <button
             type="button"
@@ -328,6 +332,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Mobile App Install Card (Android & iOS) */}
+            <PWAInstallButton lang={lang} variant="mobile_card" />
 
             {/* Quick 4 Core Actions (Check-in, Leave, Games, Profile) */}
             <div className="grid grid-cols-1 gap-2.5">
@@ -835,6 +842,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <ChevronRight className="w-4 h-4 text-amber-600" />
                   </button>
                 )}
+
+                {/* Mobile App Install Button */}
+                <PWAInstallButton lang={lang} variant="sidebar" />
 
                 {/* Switch to Full Desktop View */}
                 <button

@@ -33,6 +33,7 @@ import {
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type NavTab = 
   | 'super_admin_console'
@@ -725,6 +726,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           </button>
         )}
+
+        {/* Mobile App Install Button (Android & iOS) */}
+        <PWAInstallButton lang={lang} variant="sidebar" />
 
         {/* Profile Button */}
         {onOpenProfile && (currentRole !== 'super_admin' || isSuperAdminSchoolView) && (

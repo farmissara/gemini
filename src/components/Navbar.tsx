@@ -204,8 +204,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* PWA Install Button (Prompt to install app on home screen) */}
-          <div className="hidden sm:flex">
+          {/* PWA Install Button (Prompt to install app on home screen for Android & iOS) */}
+          <div className="flex">
             <PWAInstallButton lang={lang} variant="nav" />
           </div>
 

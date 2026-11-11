@@ -572,6 +572,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* Install EduVerse on Android & iOS */}
+              <PWAInstallButton lang={lang} variant="mobile_card" />
             </div>
 
             {/* Right Educational Hero Visual */}
