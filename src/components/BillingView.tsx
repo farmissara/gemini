@@ -11,7 +11,10 @@ import {
   MessageSquare,
   Search,
   Filter,
-  DollarSign
+  DollarSign,
+  CreditCard,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { PagedList } from './PagedList';
 
@@ -21,6 +24,8 @@ interface BillingViewProps {
   systemConfig: SystemConfig;
   onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
   onSendLineReminder: (invoice: TuitionInvoice) => void;
+  currentRole?: string;
+  onOpenExamPaymentSettings?: () => void;
 }
 
 export const BillingView: React.FC<BillingViewProps> = ({
@@ -29,6 +34,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
   systemConfig,
   onPayInvoice,
   onSendLineReminder,
+  currentRole,
+  onOpenExamPaymentSettings,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [activeInvoice, setActiveInvoice] = useState<TuitionInvoice | null>(invoices[0] || null);
@@ -69,6 +76,39 @@ export const BillingView: React.FC<BillingViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Super Admin Quick Link Banner: For Exam Marketplace Payment & QR Upload */}
+      {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
+        <div className="shrink-0 p-4 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/20 shadow-xs">
+              <CreditCard className="w-5 h-5 text-amber-300" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-extrabold tracking-tight">
+                  สำหรับ Super Admin: ตั้งค่า QR PromptPay / อัปโหลด QR รับเงินขายข้อสอบกลาง
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-extrabold uppercase tracking-wide">
+                  Super Admin Only
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-blue-100 leading-relaxed">
+                หน้านี้เป็นระบบค่าเทอมนักเรียนประจำโรงเรียน หากต้องการอัปโหลดรูปภาพ QR หรือแก้ไขบัญชีรับเงินสำหรับขายข้อสอบกลาง 8 สาระฯ
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenExamPaymentSettings}
+            className="px-4 py-2 rounded-xl bg-white text-indigo-900 hover:bg-blue-50 text-xs font-bold shrink-0 transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap"
+          >
+            <CreditCard className="w-4 h-4 text-indigo-700" />
+            <span>เปิดหน้าตั้งค่า QR รับเงินขายข้อสอบ</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">

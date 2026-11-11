@@ -19,7 +19,8 @@ import {
   MapPin,
   Sparkles,
   Bell,
-  Mail
+  Mail,
+  CreditCard
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -52,6 +53,7 @@ interface NavbarProps {
   onOpenNotifications?: () => void;
   coordinationUnreadCount?: number;
   onOpenCoordinationDesk?: () => void;
+  onOpenExamPaymentSettings?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -80,6 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   coordinationUnreadCount = 0,
   onOpenCoordinationDesk,
+  onOpenExamPaymentSettings,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
@@ -259,6 +262,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {coordinationUnreadCount}
                 </span>
               )}
+            </button>
+          )}
+
+          {/* Super Admin Direct Exam Payment QR Settings Trigger */}
+          {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
+            <button
+              type="button"
+              onClick={onOpenExamPaymentSettings}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:text-emerald-200 text-xs font-extrabold transition cursor-pointer shadow-xs shrink-0"
+              title={lang === 'th' ? 'ตั้งค่า QR PromptPay / อัปโหลด QR รับเงินขายข้อสอบกลาง' : 'Central Exam Payment Settings'}
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+              <span>{lang === 'th' ? '💳 ตั้งค่า QR ขายข้อสอบ' : 'Exam Payment QR'}</span>
             </button>
           )}
 

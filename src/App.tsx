@@ -284,6 +284,7 @@ export const App: React.FC = () => {
 
   // Navigation, Mode, Theme, Language & Mobile Drawer State
   const [currentTab, setCurrentTab] = useState<NavTab>(deepLinkParams ? 'mobile_checkin' : 'dashboard');
+  const [superAdminSubTab, setSuperAdminSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>('approvals');
   const [isGamePlaying, setIsGamePlaying] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
@@ -762,6 +763,14 @@ export const App: React.FC = () => {
       setProgramMode('school_erp');
     }
     setCurrentTab(tab);
+  };
+
+  const handleOpenExamPaymentSettings = () => {
+    setIsGamePlaying(false);
+    setIsSuperAdminSchoolView(false);
+    setProgramMode('school_erp');
+    setSuperAdminSubTab('exam_payment');
+    setCurrentTab('super_admin_console');
   };
 
   const handleViewSchool = (school: School) => {
@@ -1957,6 +1966,7 @@ export const App: React.FC = () => {
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
         coordinationUnreadCount={coordinationUnreadCount}
         onOpenCoordinationDesk={['admin', 'super_admin'].includes(currentRole) ? () => navigateToAppTab('admin_superadmin_desk') : undefined}
+        onOpenExamPaymentSettings={currentRole === 'super_admin' ? handleOpenExamPaymentSettings : undefined}
       />}
       {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
@@ -2129,6 +2139,9 @@ export const App: React.FC = () => {
                   <div className="shrink-0 mb-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-0.5">
                     <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] min-w-0 max-w-full shadow-2xs">
                       {[
+                        ...(currentRole === 'super_admin' ? [
+                          { id: 'super_admin', labelTh: '🛡️ ศูนย์ควบคุมแม่ข่าย', labelEn: 'Master Console', defaultTab: 'super_admin_console' as NavTab, tabs: ['super_admin_console'] }
+                        ] : []),
                         { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'executive_monitor', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
                         { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
                         { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'central_exam_hub', 'hall_of_fame'] },
@@ -2195,6 +2208,7 @@ export const App: React.FC = () => {
                     onToggleSchoolStatus={handleToggleSchoolStatus}
                     coordinationUnreadCount={coordinationUnreadCount}
                     onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
+                    initialSubTab={superAdminSubTab}
                   />
                 )}
 
@@ -2587,6 +2601,8 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     onPayInvoice={handlePayInvoice}
                     onSendLineReminder={handleSendLineReminder}
+                    currentRole={currentRole}
+                    onOpenExamPaymentSettings={handleOpenExamPaymentSettings}
                   />
                 )}
 

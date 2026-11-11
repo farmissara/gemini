@@ -60,6 +60,7 @@ interface SuperAdminConsoleViewProps {
   onToggleSchoolStatus: (schoolId: string, status: School['status']) => Promise<void>;
   coordinationUnreadCount?: number;
   onOpenCoordinationDesk?: () => void;
+  initialSubTab?: 'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment';
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -78,8 +79,17 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   onToggleSchoolStatus,
   coordinationUnreadCount = 0,
   onOpenCoordinationDesk,
+  initialSubTab,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>('approvals');
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>(
+    initialSubTab || 'approvals'
+  );
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingSchoolRegistration[]>([]);
