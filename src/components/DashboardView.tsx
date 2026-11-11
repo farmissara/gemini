@@ -33,7 +33,8 @@ import {
   BarChart3,
   BellRing,
   Monitor,
-  Mail
+  Mail,
+  BookOpen
 } from 'lucide-react';
 import { 
   Student, 
@@ -65,6 +66,8 @@ interface DashboardViewProps {
   lang?: AppLanguage;
   onNavigate: (tab: NavTab) => void;
   onQuickCheckIn: (studentId: string) => void;
+  unclaimedCentralPacksCount?: number;
+  onOpenCentralExamPopup?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -79,6 +82,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentUser,
   lang = 'th',
   onNavigate,
+  unclaimedCentralPacksCount = 0,
+  onOpenCentralExamPopup,
 }) => {
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
@@ -339,6 +344,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {todayStr}
           </span>
         </div>
+
+        {unclaimedCentralPacksCount > 0 &&
+          (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
+            <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-100 font-bold">
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span>
+                  มีข้อสอบกลางชุดใหม่ {unclaimedCentralPacksCount} ชุด (8 กลุ่มสาระฯ) รอกดรับฟรีหรือสั่งซื้อเข้าโรงเรียน
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {currentUser?.role === 'admin' && onOpenCentralExamPopup && (
+                  <button
+                    type="button"
+                    onClick={onOpenCentralExamPopup}
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer"
+                  >
+                    เปิดดู & รับข้อสอบ
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onNavigate('central_exam_hub')}
+                  className="px-3 py-1.5 rounded-lg border border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-100 cursor-pointer"
+                >
+                  เข้าคลังข้อสอบกลาง
+                </button>
+              </div>
+            </div>
+          )}
 
         {/* Quick Actions Grid by User Role */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">

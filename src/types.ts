@@ -521,9 +521,21 @@ export interface SystemConfig {
   geofenceRadiusMeters?: number;
 }
 
+export type LearningStrandId =
+  | 'thai'
+  | 'math'
+  | 'science_tech'
+  | 'social'
+  | 'health_pe'
+  | 'arts'
+  | 'career_tech'
+  | 'foreign_lang';
+
 export interface QuizQuestion {
   id: string;
   schoolId?: string;
+  packId?: string;
+  strand?: LearningStrandId;
   subject: string; // e.g. "วิทยาศาสตร์", "คณิตศาสตร์", "ภาษาอังกฤษ"
   gradeLevel: string; // e.g. "ม.3", "ม.6"
   questionTh: string;
@@ -1030,5 +1042,34 @@ export interface ImportedUserCredential {
   username: string;
   initialPassword: string;
   createdAt: string;
+}
+
+// 11. Central Exam Bank & School Licensing Marketplace (8 Learning Strands)
+export interface CentralExamPack {
+  id: string;
+  titleTh: string;
+  titleEn: string;
+  strand: LearningStrandId;
+  gradeLevel: string;
+  descriptionTh: string;
+  pricingType: 'free' | 'paid';
+  priceThb: number;
+  status: 'draft' | 'published';
+  questions: QuizQuestion[];
+  createdBy: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SchoolExamEntitlement {
+  id: string;
+  schoolId: string;
+  packId: string;
+  claimType: 'free' | 'purchased';
+  amountPaidThb: number;
+  paymentMethod: 'free' | 'promptpay' | 'invoice';
+  claimedBy: string;
+  claimedAt: string;
 }
 

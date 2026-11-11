@@ -724,10 +724,13 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       if (selectedBankCategory !== 'all') {
         if (selectedBankCategory === 'onet' && q.category !== 'onet') return false;
         if (selectedBankCategory === 'midterm_final' && q.category !== 'exam') return false;
-        if (selectedBankCategory === 'stem' && !q.subject.includes('วิทย์') && !q.subject.includes('STEM') && !q.subject.includes('Science') && !q.subject.includes('หุ่นยนต์') && !q.subject.includes('AI') && !q.subject.includes('เคมี') && !q.subject.includes('ฟิสิกส์') && !q.subject.includes('ชีว')) return false;
-        if (selectedBankCategory === 'math' && !q.subject.includes('คณิต') && !q.subject.includes('Math') && !q.subject.includes('ตรรก')) return false;
-        if (selectedBankCategory === 'english' && !q.subject.includes('อังกฤษ') && !q.subject.includes('English') && !q.subject.includes('Idiom')) return false;
-        if (selectedBankCategory === 'thai_social' && !q.subject.includes('ไทย') && !q.subject.includes('สังคม') && !q.subject.includes('ประวัติ') && !q.subject.includes('ภูมิศาสตร์')) return false;
+        if (selectedBankCategory === 'stem' && q.strand !== 'science_tech' && !q.subject.includes('วิทย์') && !q.subject.includes('STEM') && !q.subject.includes('Science') && !q.subject.includes('หุ่นยนต์') && !q.subject.includes('AI') && !q.subject.includes('เคมี') && !q.subject.includes('ฟิสิกส์') && !q.subject.includes('ชีว')) return false;
+        if (selectedBankCategory === 'math' && q.strand !== 'math' && !q.subject.includes('คณิต') && !q.subject.includes('Math') && !q.subject.includes('ตรรก')) return false;
+        if (selectedBankCategory === 'english' && q.strand !== 'foreign_lang' && !q.subject.includes('อังกฤษ') && !q.subject.includes('English') && !q.subject.includes('Idiom') && !q.subject.includes('ภาษาต่างประเทศ')) return false;
+        if (selectedBankCategory === 'thai_social' && q.strand !== 'thai' && q.strand !== 'social' && !q.subject.includes('ไทย') && !q.subject.includes('สังคม') && !q.subject.includes('ประวัติ') && !q.subject.includes('ภูมิศาสตร์')) return false;
+        if (selectedBankCategory === 'health_pe' && q.strand !== 'health_pe' && !q.subject.includes('สุข') && !q.subject.includes('พลศึกษา') && !q.subject.includes('ปฐมพยาบาล') && !q.subject.includes('สุขภาพ')) return false;
+        if (selectedBankCategory === 'arts' && q.strand !== 'arts' && !q.subject.includes('ศิลป') && !q.subject.includes('ดนตรี') && !q.subject.includes('นาฏศิลป') && !q.subject.includes('ทัศนศิลป')) return false;
+        if (selectedBankCategory === 'career_tech' && q.strand !== 'career_tech' && !q.subject.includes('การงาน') && !q.subject.includes('อาชีพ') && !q.subject.includes('เกษตร') && !q.subject.includes('ช่าง')) return false;
         if (selectedBankCategory === 'general' && !q.subject.includes('ทั่วไป') && !q.subject.includes('ทักษะ') && !q.subject.includes('ปฐมพยาบาล') && !q.subject.includes('การเงิน')) return false;
       }
       // 2. Grade Level Filter

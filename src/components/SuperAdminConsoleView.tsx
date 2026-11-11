@@ -23,7 +23,9 @@ import {
   X,
   CreditCard,
   RefreshCw,
+  BookOpen,
 } from 'lucide-react';
+import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
 import {
   approvePendingSchoolRegistration,
   listPendingSchoolRegistrations,
@@ -76,7 +78,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   coordinationUnreadCount = 0,
   onOpenCoordinationDesk,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools'>('approvals');
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams'>('approvals');
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingSchoolRegistration[]>([]);
@@ -443,6 +445,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         >
           <Building2 className="w-4 h-4" />
           <span>กำกับดูแลสถานศึกษาทั้งหมด ({schools.length} แห่ง)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('central_exams')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
+            activeSubTab === 'central_exams'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>คลังข้อสอบกลาง (8 สาระ)</span>
         </button>
       </div>
 
@@ -1038,6 +1052,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* View 4: Central Exam Bank (8 Strands) Manager */}
+      {activeSubTab === 'central_exams' && (
+        <SuperAdminCentralExamManager isDemoMode={isDemoMode} />
       )}
 
       {/* Modal: Create New Promotion */}

@@ -66,6 +66,7 @@ export type NavTab =
   | 'hall_of_fame'
   | 'portfolio'
   | 'gradebook' 
+  | 'central_exam_hub'
   | 'billing' 
   | 'announcements';
 
@@ -86,6 +87,7 @@ interface SidebarProps {
   coursesCount: number;
   teachersCount?: number;
   coordinationUnreadCount?: number;
+  unclaimedCentralPacksCount?: number;
   lang: AppLanguage;
   onOpenProfile?: () => void;
 }
@@ -119,6 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   coursesCount,
   teachersCount = 0,
   coordinationUnreadCount = 0,
+  unclaimedCentralPacksCount = 0,
   lang,
   onOpenProfile,
 }) => {
@@ -354,6 +357,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Swords,
           badge: '3D',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'central_exam_hub',
+          labelTh: 'คลังข้อสอบกลาง 8 สาระฯ',
+          labelEn: '8-Strand Central Exam Hub',
+          icon: BookOpen,
+          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : '8 สาระ',
+          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'hall_of_fame',

@@ -46,6 +46,7 @@ interface EduBattleGameViewProps {
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onRedeemReward: (itemId: string, costGems: number) => void;
+  onOpenCentralExamHub?: () => void;
   onExit?: () => void;
 }
 
@@ -62,6 +63,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onEarnRewards,
   onRedeemReward,
   onGamePlayingChange,
+  onOpenCentralExamHub,
   onExit
 }) => {
   const [isMobileScreen, setIsMobileScreen] = useState(() => {
@@ -139,10 +141,23 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       ? questions.filter(q => q.category === 'standard_exam' || q.category === 'onet')
       : questions;
 
+  const matchesSubjectFilter = (q: QuizQuestion, subjFilter: string) => {
+    if (subjFilter === 'all') return true;
+    if (subjFilter === 'ภาษาไทย') return q.strand === 'thai' || q.subject.includes('ไทย');
+    if (subjFilter === 'คณิตศาสตร์') return q.strand === 'math' || q.subject.includes('คณิต');
+    if (subjFilter === 'วิทยาศาสตร์') return q.strand === 'science_tech' || q.subject.includes('วิทย์') || q.subject.includes('คำนวณ') || q.subject.includes('ฟิสิกส์') || q.subject.includes('เคมี') || q.subject.includes('ชีว');
+    if (subjFilter === 'สังคมศึกษา') return q.strand === 'social' || q.subject.includes('สังคม') || q.subject.includes('ประวัติ') || q.subject.includes('ภูมิศาสตร์');
+    if (subjFilter === 'สุขศึกษา') return q.strand === 'health_pe' || q.subject.includes('สุข') || q.subject.includes('พลศึกษา') || q.subject.includes('ปฐมพยาบาล');
+    if (subjFilter === 'ศิลปะ') return q.strand === 'arts' || q.subject.includes('ศิลป') || q.subject.includes('ดนตรี') || q.subject.includes('นาฏศิลป');
+    if (subjFilter === 'การงานอาชีพ') return q.strand === 'career_tech' || q.subject.includes('การงาน') || q.subject.includes('อาชีพ');
+    if (subjFilter === 'ภาษาอังกฤษ') return q.strand === 'foreign_lang' || q.subject.includes('อังกฤษ') || q.subject.includes('ภาษาต่างประเทศ');
+    return q.subject.includes(subjFilter);
+  };
+
   const subjectFilteredQuestions =
     selectedSubject === 'all'
       ? sourceFilteredQuestions
-      : sourceFilteredQuestions.filter(q => q.subject.includes(selectedSubject));
+      : sourceFilteredQuestions.filter(q => matchesSubjectFilter(q, selectedSubject));
 
   const battleQuestions = subjectFilteredQuestions.length > 0 ? subjectFilteredQuestions : sourceFilteredQuestions;
   const currentQ = battleQuestions[currentQuestionIndex % Math.max(1, battleQuestions.length)] || questions[0];
@@ -383,7 +398,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   };
 
   const filteredBank = questions.filter(q => {
-    const matchesSubject = selectedSubject === 'all' || q.subject.includes(selectedSubject);
+    const matchesSubject = matchesSubjectFilter(q, selectedSubject);
     const matchesSearch = !searchBankQuery || 
       q.questionTh.toLowerCase().includes(searchBankQuery.toLowerCase()) || 
       q.subject.toLowerCase().includes(searchBankQuery.toLowerCase());
@@ -764,12 +779,15 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     </label>
                     <div className="flex flex-wrap gap-1.5 pb-1">
                       {[
-                        { id: 'all', label: '⭐ ทุกวิชา' },
+                        { id: 'all', label: '⭐ ทั้ง 8 สาระ' },
+                        { id: 'ภาษาไทย', label: '🇹🇭 ไทย' },
                         { id: 'คณิตศาสตร์', label: '📐 คณิต' },
-                        { id: 'วิทยาศาสตร์', label: '🔬 วิทย์' },
-                        { id: 'วิทยาการคำนวณ', label: '💻 คอมฯ' },
-                        { id: 'ภาษาอังกฤษ', label: '🇬🇧 อังกฤษ' },
-                        { id: 'ภาษาไทย', label: '🇹🇭 ไทย' }
+                        { id: 'วิทยาศาสตร์', label: '🔬 วิทย์/AI' },
+                        { id: 'สังคมศึกษา', label: '🌏 สังคมฯ' },
+                        { id: 'สุขศึกษา', label: '🩺 สุขศึกษาฯ' },
+                        { id: 'ศิลปะ', label: '🎨 ศิลปะ' },
+                        { id: 'การงานอาชีพ', label: '🛠️ การงานฯ' },
+                        { id: 'ภาษาอังกฤษ', label: '🇬🇧 อังกฤษ' }
                       ].map(subj => (
                         <button
                           key={subj.id}
@@ -1061,17 +1079,30 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 onChange={(e) => setSelectedSubject(e.target.value)}
                 className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
-                <option value="all">ทุกหมวดวิชา (All Subjects)</option>
-                <option value="คณิตศาสตร์">คณิตศาสตร์</option>
-                <option value="วิทยาศาสตร์">วิทยาศาสตร์</option>
-                <option value="วิทยาการคำนวณ">วิทยาการคำนวณ</option>
-                <option value="ภาษาอังกฤษ">ภาษาอังกฤษ</option>
-                <option value="ภาษาไทย">ภาษาไทย</option>
+                <option value="all">ทุกกลุ่มสาระฯ (ทั้ง 8 สาระ)</option>
+                <option value="ภาษาไทย">1. ภาษาไทย</option>
+                <option value="คณิตศาสตร์">2. คณิตศาสตร์</option>
+                <option value="วิทยาศาสตร์">3. วิทยาศาสตร์และเทคโนโลยี</option>
+                <option value="สังคมศึกษา">4. สังคมศึกษา ศาสนา และวัฒนธรรม</option>
+                <option value="สุขศึกษา">5. สุขศึกษาและพลศึกษา</option>
+                <option value="ศิลปะ">6. ศิลปะ (ทัศนศิลป์ ดนตรี นาฏศิลป์)</option>
+                <option value="การงานอาชีพ">7. การงานอาชีพ</option>
+                <option value="ภาษาอังกฤษ">8. ภาษาต่างประเทศ (English)</option>
               </select>
             </div>
 
-            {/* Action Buttons: Import / Export / Add Question */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Action Buttons: Central Hub / Import / Export / Add Question */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {onOpenCentralExamHub && (currentUser?.role === 'admin' || currentUser?.role === 'teacher' || currentUser?.role === 'super_admin') && (
+                <button
+                  type="button"
+                  onClick={onOpenCentralExamHub}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'คลังข้อสอบกลาง 8 สาระ' : 'Central Exam Hub'}</span>
+                </button>
+              )}
               {/* Import Button */}
               <label className="cursor-pointer px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-all">
                 <Upload className="w-3.5 h-3.5 text-indigo-400" />

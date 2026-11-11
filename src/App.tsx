@@ -36,7 +36,9 @@ import {
   SchoolSubscriptionPlan,
   LeaveRequest,
   LeaveStatus,
-  CampusGateGeofence
+  CampusGateGeofence,
+  CentralExamPack,
+  SchoolExamEntitlement
 } from './types';
 import { 
   INITIAL_SCHOOLS,
@@ -124,6 +126,19 @@ import { MobileAppShell } from './components/MobileAppShell';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AdminSuperAdminDeskView } from './components/AdminSuperAdminDeskView';
 import { ExecutiveMonitorView } from './components/ExecutiveMonitorView';
+import { CentralExamHubView, CentralExamNotificationPopup } from './components/CentralExamHubView';
+import {
+  buildCentralExamSignature,
+  CENTRAL_EXAMS_UPDATED_EVENT,
+  claimCentralExamPack,
+  fetchCentralExamPacks,
+  fetchSchoolExamEntitlements,
+  fetchSchoolPersistedQuestions,
+  getUnclaimedPublishedPacks,
+  hasSeenCentralExamPopup,
+  markCentralExamPopupSeen,
+  saveSchoolQuestionsBatch,
+} from './lib/centralExamBank';
 import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database } from 'lucide-react';
@@ -320,6 +335,10 @@ export const App: React.FC = () => {
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
   const [coordinationUnreadCount, setCoordinationUnreadCount] = useState<number>(0);
+  const [centralExamPacks, setCentralExamPacks] = useState<CentralExamPack[]>([]);
+  const [schoolExamEntitlements, setSchoolExamEntitlements] = useState<SchoolExamEntitlement[]>([]);
+  const [showCentralExamPopup, setShowCentralExamPopup] = useState<boolean>(false);
+  const [eduBattleInitialSubTab, setEduBattleInitialSubTab] = useState<'battle_royale_3d' | 'bank' | undefined>(undefined);
 
   useEffect(() => {
     const updateUnread = () => {
@@ -351,6 +370,60 @@ export const App: React.FC = () => {
       active = false;
     };
   }, [currentUser, currentRole, activeSchool.id, isDemoMode, currentTab]);
+
+  // Load Central Exam Packs (8 Strands), School Entitlements, and Persisted School Questions
+  useEffect(() => {
+    if (!currentUser) return;
+    let active = true;
+
+    const loadCentralExamState = async () => {
+      const [packs, entitlements, persistedSchoolQs] = await Promise.all([
+        fetchCentralExamPacks(isDemoMode),
+        fetchSchoolExamEntitlements(activeSchool.id, isDemoMode),
+        fetchSchoolPersistedQuestions(activeSchool.id, isDemoMode),
+      ]);
+      if (!active) return;
+      setCentralExamPacks(packs);
+      setSchoolExamEntitlements(entitlements);
+
+      if (persistedSchoolQs.length > 0) {
+        setQuestions((prev) => {
+          const byId = new Map<string, QuizQuestion>();
+          for (const q of [...persistedSchoolQs, ...prev]) {
+            byId.set(q.id, q);
+          }
+          return Array.from(byId.values());
+        });
+      }
+    };
+
+    void loadCentralExamState();
+    const handleUpdated = () => {
+      void loadCentralExamState();
+    };
+    window.addEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdated);
+    return () => {
+      active = false;
+      window.removeEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdated);
+    };
+  }, [currentUser?.id, activeSchool.id, isDemoMode]);
+
+  const unclaimedCentralPacks = getUnclaimedPublishedPacks(centralExamPacks, schoolExamEntitlements);
+
+  // Auto-open pop-up notification for School Admin whenever newly published central packs exist
+  useEffect(() => {
+    if (!currentUser || currentRole !== 'admin' || programMode !== 'school_erp') {
+      return;
+    }
+    if (unclaimedCentralPacks.length === 0) {
+      setShowCentralExamPopup(false);
+      return;
+    }
+    const sig = buildCentralExamSignature(unclaimedCentralPacks);
+    if (!hasSeenCentralExamPopup(activeSchool.id, sig)) {
+      setShowCentralExamPopup(true);
+    }
+  }, [currentUser?.id, currentRole, programMode, activeSchool.id, centralExamPacks, schoolExamEntitlements]);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -1325,11 +1398,62 @@ export const App: React.FC = () => {
   };
 
   const handleAddQuestion = (question: QuizQuestion) => {
-    setQuestions((prev) => [{ ...question, schoolId: activeSchool.id }, ...prev]);
+    const tagged = { ...question, schoolId: activeSchool.id };
+    setQuestions((prev) => [tagged, ...prev.filter((q) => q.id !== tagged.id)]);
+    void saveSchoolQuestionsBatch(activeSchool.id, [tagged], isDemoMode);
   };
 
   const handleImportQuestions = (newQuestions: QuizQuestion[]) => {
-    setQuestions((prev) => [...newQuestions.map(q => ({ ...q, schoolId: activeSchool.id })), ...prev]);
+    const tagged = newQuestions.map((q) => ({ ...q, schoolId: activeSchool.id }));
+    setQuestions((prev) => {
+      const byId = new Map<string, QuizQuestion>();
+      for (const q of [...tagged, ...prev]) {
+        byId.set(q.id, q);
+      }
+      return Array.from(byId.values());
+    });
+    void saveSchoolQuestionsBatch(activeSchool.id, tagged, isDemoMode);
+  };
+
+  const handleClaimFreeCentralPack = async (pack: CentralExamPack) => {
+    const res = await claimCentralExamPack({
+      schoolId: activeSchool.id,
+      pack,
+      paymentMethod: 'free',
+      claimedBy: currentUser?.fullNameTh || currentUser?.email || 'School Admin',
+      isDemoMode,
+    });
+    setSchoolExamEntitlements(res.allEntitlements);
+    handleImportQuestions(res.addedQuestions);
+    sendEduVerseNotification({
+      title: `รับข้อสอบกลางเข้าโรงเรียนสำเร็จ: ${pack.titleTh}`,
+      body: `เพิ่มข้อสอบใหม่ ${res.addedQuestions.length} ข้อเข้าคลังข้อสอบของ ${activeSchool.nameTh} แล้ว`,
+      category: 'system',
+    });
+  };
+
+  const handleClaimAllFreeCentralPacks = async () => {
+    const freePacks = unclaimedCentralPacks.filter((p) => p.pricingType === 'free');
+    for (const pack of freePacks) {
+      await handleClaimFreeCentralPack(pack);
+    }
+  };
+
+  const handlePurchaseCentralPack = async (pack: CentralExamPack, method: 'promptpay' | 'invoice') => {
+    const res = await claimCentralExamPack({
+      schoolId: activeSchool.id,
+      pack,
+      paymentMethod: method,
+      claimedBy: currentUser?.fullNameTh || currentUser?.email || 'School Admin',
+      isDemoMode,
+    });
+    setSchoolExamEntitlements(res.allEntitlements);
+    handleImportQuestions(res.addedQuestions);
+    sendEduVerseNotification({
+      title: `สั่งซื้อข้อสอบกลางสำเร็จ: ${pack.titleTh}`,
+      body: `ปลดล็อก ${res.addedQuestions.length} ข้อเข้าคลังโรงเรียน (${method === 'promptpay' ? 'PromptPay' : 'ใบแจ้งหนี้โรงเรียน'} ฿${pack.priceThb.toLocaleString()})`,
+      category: 'billing',
+    });
   };
 
   const handleEarnRewards = (userId: string, exp: number, gems: number, isWin: boolean) => {
@@ -1762,6 +1886,7 @@ export const App: React.FC = () => {
                 teachersCount={schoolTeachers.length}
                 coursesCount={schoolCourses.length}
                 coordinationUnreadCount={coordinationUnreadCount}
+                unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                 lang={lang}
                 onOpenProfile={() => {
                   setShowProfileModal(true);
@@ -1789,6 +1914,7 @@ export const App: React.FC = () => {
               teachersCount={schoolTeachers.length}
               coursesCount={schoolCourses.length}
               coordinationUnreadCount={coordinationUnreadCount}
+              unclaimedCentralPacksCount={unclaimedCentralPacks.length}
               lang={lang}
               onOpenProfile={() => setShowProfileModal(true)}
             />
@@ -1827,7 +1953,7 @@ export const App: React.FC = () => {
                       {[
                         { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'executive_monitor', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
                         { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
-                        { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'hall_of_fame'] },
+                        { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'central_exam_hub', 'hall_of_fame'] },
                         { id: 'administration', labelTh: '⚙️ บริหาร & GPS', labelEn: 'Admin & GPS', defaultTab: 'school_gps' as NavTab, tabs: ['school_gps', 'executive_warning', 'school_permissions', 'admin_superadmin_desk', 'system_settings'] },
                         { id: 'finance', labelTh: '💰 การเงิน & ข่าว', labelEn: 'Finance', defaultTab: 'billing' as NavTab, tabs: ['billing', 'announcements'] },
                       ].map((cat) => {
@@ -1995,6 +2121,8 @@ export const App: React.FC = () => {
                     lang={lang}
                     onNavigate={setCurrentTab}
                     onQuickCheckIn={handleQuickCheckIn}
+                    unclaimedCentralPacksCount={unclaimedCentralPacks.length}
+                    onOpenCentralExamPopup={() => setShowCentralExamPopup(true)}
                   />
                 )}
 
@@ -2052,13 +2180,36 @@ export const App: React.FC = () => {
                     rewardItems={rewardItems}
                     currentUser={currentUser}
                     lang={lang}
+                    initialSubTab={eduBattleInitialSubTab}
                     isMobileMode={shouldShowMobileView}
                     onAddQuestion={handleAddQuestion}
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
                     onGamePlayingChange={setIsGamePlaying}
-                    onExit={() => setCurrentTab('dashboard')}
+                    onOpenCentralExamHub={() => navigateToAppTab('central_exam_hub')}
+                    onExit={() => {
+                      setEduBattleInitialSubTab(undefined);
+                      setCurrentTab('dashboard');
+                    }}
+                  />
+                )}
+
+                {currentTab === 'central_exam_hub' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                  <CentralExamHubView
+                    schoolId={activeSchool.id}
+                    schoolName={activeSchool.nameTh}
+                    currentRole={currentRole}
+                    packs={centralExamPacks}
+                    entitlements={schoolExamEntitlements}
+                    schoolQuestions={schoolQuestions}
+                    onClaimFreePack={handleClaimFreeCentralPack}
+                    onPurchasePack={handlePurchaseCentralPack}
+                    onOpenQuestionBankInEduBattle={() => {
+                      setEduBattleInitialSubTab('bank');
+                      navigateToAppTab('games');
+                    }}
+                    onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
                   />
                 )}
 
@@ -2610,6 +2761,24 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Auto Pop-up Notification for School Admin when New Central Exam Packs (8 Strands) are Published */}
+      <CentralExamNotificationPopup
+        isOpen={showCentralExamPopup && currentRole === 'admin' && programMode === 'school_erp'}
+        schoolName={activeSchool.nameTh}
+        unclaimedPacks={unclaimedCentralPacks}
+        onClaimFreePack={handleClaimFreeCentralPack}
+        onClaimAllFreePacks={handleClaimAllFreeCentralPacks}
+        onPurchasePack={handlePurchaseCentralPack}
+        onOpenHub={() => {
+          setShowCentralExamPopup(false);
+          navigateToAppTab('central_exam_hub');
+        }}
+        onDismiss={() => {
+          markCentralExamPopupSeen(activeSchool.id, buildCentralExamSignature(unclaimedCentralPacks));
+          setShowCentralExamPopup(false);
+        }}
+      />
 
       {/* Offline Status Connectivity Banner */}
       <OfflineIndicator lang={lang} />
