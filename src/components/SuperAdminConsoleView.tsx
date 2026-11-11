@@ -55,6 +55,8 @@ interface SuperAdminConsoleViewProps {
   isDemoMode: boolean;
   onViewSchool: (school: School) => void;
   onToggleSchoolStatus: (schoolId: string, status: School['status']) => Promise<void>;
+  coordinationUnreadCount?: number;
+  onOpenCoordinationDesk?: () => void;
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -71,6 +73,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   isDemoMode,
   onViewSchool,
   onToggleSchoolStatus,
+  coordinationUnreadCount = 0,
+  onOpenCoordinationDesk,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools'>('approvals');
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
@@ -384,15 +388,30 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           </p>
         </div>
 
-        {/* Quick KPI stats */}
-        <div className="flex items-center gap-3">
+        {/* Quick KPI stats & Urgent Desk Link */}
+        <div className="flex flex-wrap items-center gap-3">
+          {onOpenCoordinationDesk && (
+            <button
+              type="button"
+              onClick={onOpenCoordinationDesk}
+              className="px-3.5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-2 cursor-pointer"
+            >
+              <Mail className="w-4 h-4" />
+              <span>แชต/จดหมายโรงเรียน</span>
+              {coordinationUnreadCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
+                  {coordinationUnreadCount} ใหม่
+                </span>
+              )}
+            </button>
+          )}
           <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-center min-w-[90px]">
             <div className="text-xs text-[var(--color-text-muted)]">โรงเรียนในระบบ</div>
-            <div className="text-xl font-extrabold text-[var(--color-text-title)] mt-0.5">{schools.length}</div>
+            <div className="text-xl font-extrabold text-[var(--color-text-title)] mt-0.5 tabular-nums">{schools.length}</div>
           </div>
           <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-center min-w-[90px]">
             <div className="text-xs text-amber-900 dark:text-amber-200 font-semibold">รออนุมัติ</div>
-            <div className="text-xl font-extrabold text-amber-900 dark:text-amber-100 mt-0.5">
+            <div className="text-xl font-extrabold text-amber-900 dark:text-amber-100 mt-0.5 tabular-nums">
               {pendingRegistrations.length}
             </div>
           </div>

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Student, StudentStatus, GuardianInfo } from '../types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Student, StudentStatus, GuardianInfo, School, UserRole } from '../types';
 import { 
   Users, 
   Search, 
@@ -20,8 +20,19 @@ import {
   Camera,
   GraduationCap,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  ShieldCheck
 } from 'lucide-react';
+import {
+  approveStudentAccountInSupabase,
+  getDemoStudentAccounts,
+  linkStudentAccountToStudent,
+  listStudentAccountLinks,
+  StudentAccountLink,
+  updateDemoStudentAccount,
+  updateStudentAccountStatusInSupabase,
+} from '../lib/authDb';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from './PagedList';
 import { 
@@ -78,6 +89,9 @@ const PaginatedTableRows = <T,>({
 
 interface StudentsViewProps {
   students: Student[];
+  activeSchool?: School;
+  currentRole?: UserRole;
+  isDemoMode?: boolean;
   onSelectStudent: (student: Student) => void;
   onOpenReportCard: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
@@ -90,6 +104,9 @@ interface StudentsViewProps {
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
   students,
+  activeSchool,
+  currentRole = 'admin',
+  isDemoMode = false,
   onSelectStudent,
   onOpenReportCard,
   onToggleLineSync,
@@ -102,12 +119,106 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [activeTab, setActiveTab] = useState<'roster' | 'analytics'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'approvals'>('roster');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [studentFormStep, setStudentFormStep] = useState<1 | 2>(1);
+
+  const canManageApprovals = ['admin', 'super_admin'].includes(currentRole);
+  const schoolId = activeSchool?.id || students[0]?.schoolId || 'sch-bkk-01';
+  const [accountLinks, setAccountLinks] = useState<StudentAccountLink[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [accountsSuccess, setAccountsSuccess] = useState<string | null>(null);
+  const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
+  const [processingAccountId, setProcessingAccountId] = useState<string | null>(null);
+
+  const refreshAccountLinks = useCallback(async () => {
+    if (!canManageApprovals) return;
+    setAccountsLoading(true);
+    setAccountsError(null);
+    try {
+      const list = isDemoMode
+        ? getDemoStudentAccounts(schoolId)
+        : await listStudentAccountLinks(schoolId);
+      setAccountLinks(list);
+      setLinkDrafts((prev) => {
+        const next = { ...prev };
+        list.forEach((acc) => {
+          if (acc.student_id && !next[acc.id]) {
+            next[acc.id] = acc.student_id;
+          }
+        });
+        return next;
+      });
+    } catch (err) {
+      setAccountsError(err instanceof Error ? err.message : 'ไม่สามารถโหลดรายการคำขอสมัครได้');
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, [canManageApprovals, isDemoMode, schoolId]);
+
+  useEffect(() => {
+    void refreshAccountLinks();
+  }, [refreshAccountLinks]);
+
+  const pendingAccountsCount = useMemo(
+    () => accountLinks.filter((a) => a.status === 'pending').length,
+    [accountLinks]
+  );
+
+  const handleApproveStudentAccount = async (account: StudentAccountLink) => {
+    setProcessingAccountId(account.id);
+    setAccountsError(null);
+    setAccountsSuccess(null);
+    const chosenStudentId = linkDrafts[account.id] || account.student_id || '';
+    try {
+      if (isDemoMode) {
+        const updated = updateDemoStudentAccount(schoolId, account.id, {
+          status: 'active',
+          student_id: chosenStudentId || null,
+        });
+        setAccountLinks(updated);
+      } else {
+        await approveStudentAccountInSupabase(schoolId, account.id, chosenStudentId || null);
+        if (chosenStudentId) {
+          await linkStudentAccountToStudent(schoolId, account.id, chosenStudentId);
+        }
+        await refreshAccountLinks();
+      }
+      setAccountsSuccess(`อนุมัติบัญชีนักเรียน "${account.full_name_th || account.full_name_en}" เปิดใช้งานเรียบร้อยแล้ว`);
+    } catch (err) {
+      setAccountsError(err instanceof Error ? err.message : 'อนุมัติบัญชีไม่สำเร็จ');
+    } finally {
+      setProcessingAccountId(null);
+    }
+  };
+
+  const handleUpdateStudentStatus = async (account: StudentAccountLink, nextStatus: 'active' | 'suspended' | 'pending') => {
+    setProcessingAccountId(account.id);
+    setAccountsError(null);
+    setAccountsSuccess(null);
+    try {
+      if (isDemoMode) {
+        const updated = updateDemoStudentAccount(schoolId, account.id, { status: nextStatus });
+        setAccountLinks(updated);
+      } else {
+        await updateStudentAccountStatusInSupabase(schoolId, account.id, nextStatus);
+        await refreshAccountLinks();
+      }
+      setAccountsSuccess(
+        nextStatus === 'suspended'
+          ? `ระงับสิทธิ์บัญชี "${account.full_name_th}" เรียบร้อยแล้ว`
+          : `เปิดใช้งานบัญชี "${account.full_name_th}" เรียบร้อยแล้ว`
+      );
+    } catch (err) {
+      setAccountsError(err instanceof Error ? err.message : 'อัปเดตสถานะบัญชีไม่สำเร็จ');
+    } finally {
+      setProcessingAccountId(null);
+    }
+  };
 
   // Distinct grade levels in active students for filter
   const existingGradeLevels = useMemo(() => {
@@ -454,7 +565,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       </div>
 
       {/* View Tabs */}
-      <div className="shrink-0 flex items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
+      <div className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
         <button
           type="button"
           onClick={() => setActiveTab('roster')}
@@ -467,6 +578,25 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <Users className="w-3.5 h-3.5" />
           <span>ทะเบียนรายชื่อ ({filteredStudents.length} คน)</span>
         </button>
+        {canManageApprovals && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('approvals')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'approvals'
+                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>คำขอสมัครเข้าโรงเรียน / อนุมัติบัญชี</span>
+            {pendingAccountsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
+                {pendingAccountsCount} รออนุมัติ
+              </span>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setActiveTab('analytics')}
@@ -784,6 +914,138 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'approvals' && canManageApprovals && (
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
+          <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
+              <div className="space-y-1">
+                <h3 className="text-sm font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[var(--color-primary-text)]" />
+                  <span>อนุมัติการสมัครเข้าโรงเรียนของนักเรียน &amp; ผูกระเบียน DMC</span>
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  นักเรียนที่สมัครสมาชิกด้วยตนเองจากหน้าลงทะเบียนจะมีสถานะ <strong className="text-[var(--color-text-title)]">รออนุมัติ (pending)</strong> ผู้ดูแลโรงเรียนสามารถกดอนุมัติเปิดใช้งานและจับคู่กับระเบียนนักเรียนได้ทันที (เข้าถึงได้ทั้งจากหน้านี้และเมนู ตั้งค่าระบบ → อนุมัติ &amp; ผูกบัญชีนักเรียน)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void refreshAccountLinks()}
+                disabled={accountsLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-title)] cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${accountsLoading ? 'animate-spin' : ''}`} />
+                <span>รีเฟรชรายการ</span>
+              </button>
+            </div>
+
+            {accountsError && (
+              <div role="alert" className="rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium">
+                {accountsError}
+              </div>
+            )}
+            {accountsSuccess && (
+              <div role="status" className="rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium">
+                {accountsSuccess}
+              </div>
+            )}
+
+            {accountsLoading ? (
+              <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">กำลังโหลดรายการสมัครสมาชิกของนักเรียน...</p>
+            ) : accountLinks.length === 0 ? (
+              <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">ยังไม่มีคำขอสมัครสมาชิกนักเรียนในโรงเรียนนี้</p>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {accountLinks.map((acc) => {
+                  const linkedStudent = students.find((s) => s.id === acc.student_id);
+                  const draftStudentId = linkDrafts[acc.id] ?? acc.student_id ?? '';
+                  const isBusy = processingAccountId === acc.id;
+                  return (
+                    <div key={acc.id} className="py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-[var(--color-text-title)]">
+                            {acc.full_name_th || acc.full_name_en || 'ไม่ระบุชื่อ'}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              acc.status === 'active'
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                : acc.status === 'suspended'
+                                ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                            }`}
+                          >
+                            {acc.status === 'active' ? 'อนุมัติแล้ว (ใช้งานได้)' : acc.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติเข้าโรงเรียน'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-2 flex-wrap">
+                          {acc.email && <span className="font-mono">{acc.email}</span>}
+                          {acc.phone && <span>· โทร {acc.phone}</span>}
+                          <span>·</span>
+                          <span className={linkedStudent ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-amber-700 dark:text-amber-300'}>
+                            {linkedStudent
+                              ? `ผูกกับ ${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
+                              : 'ยังไม่ผูกกับระเบียนนักเรียน DMC'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <select
+                          value={draftStudentId}
+                          onChange={(e) => setLinkDrafts((prev) => ({ ...prev, [acc.id]: e.target.value }))}
+                          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] max-w-[230px]"
+                        >
+                          <option value="">-- ผูกระเบียนนักเรียน (ไม่บังคับ) --</option>
+                          {students.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.studentIdNumber} · {st.firstNameTh} {st.lastNameTh} ({st.room})
+                            </option>
+                          ))}
+                        </select>
+
+                        {acc.status !== 'active' ? (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleApproveStudentAccount(acc)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>{isBusy ? 'กำลังอนุมัติ...' : 'อนุมัติเข้าโรงเรียน'}</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isBusy || !draftStudentId}
+                              onClick={() => void handleApproveStudentAccount(acc)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              <span>บันทึกการผูกระเบียน</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleUpdateStudentStatus(acc, 'suspended')}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-xs font-bold cursor-pointer disabled:opacity-50"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>ระงับสิทธิ์</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

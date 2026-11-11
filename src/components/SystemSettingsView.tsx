@@ -33,7 +33,15 @@ import {
   KeyRound
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
-import { linkStudentAccountToStudent, listStudentAccountLinks, StudentAccountLink } from '../lib/authDb';
+import {
+  approveStudentAccountInSupabase,
+  getDemoStudentAccounts,
+  linkStudentAccountToStudent,
+  listStudentAccountLinks,
+  StudentAccountLink,
+  updateDemoStudentAccount,
+  updateStudentAccountStatusInSupabase,
+} from '../lib/authDb';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 
 interface SystemSettingsViewProps {
@@ -81,18 +89,27 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   useEffect(() => {
     if (
       activeTab !== 'student_accounts' ||
-      isDemoMode ||
       !['admin', 'super_admin'].includes(currentRole)
     ) return;
 
     let active = true;
     setStudentAccountsLoading(true);
     setStudentAccountError(null);
+    if (isDemoMode) {
+      const demoList = getDemoStudentAccounts(activeSchool.id);
+      setStudentAccounts(demoList);
+      const defaultAccount = demoList.find((account) => account.status === 'pending' || !account.student_id) || demoList[0];
+      setSelectedAccountId(defaultAccount?.id || '');
+      setSelectedStudentId(defaultAccount?.student_id || '');
+      setStudentAccountsLoading(false);
+      return;
+    }
+
     listStudentAccountLinks(activeSchool.id)
       .then((accounts) => {
         if (!active) return;
         setStudentAccounts(accounts);
-        const defaultAccount = accounts.find((account) => !account.student_id) || accounts[0];
+        const defaultAccount = accounts.find((account) => account.status === 'pending' || !account.student_id) || accounts[0];
         setSelectedAccountId(defaultAccount?.id || '');
         setSelectedStudentId(defaultAccount?.student_id || '');
       })
@@ -108,6 +125,16 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     };
   }, [activeTab, activeSchool.id, currentRole, isDemoMode]);
 
+  const reloadStudentAccounts = async () => {
+    if (isDemoMode) {
+      const accounts = getDemoStudentAccounts(activeSchool.id);
+      setStudentAccounts(accounts);
+      return;
+    }
+    const accounts = await listStudentAccountLinks(activeSchool.id);
+    setStudentAccounts(accounts);
+  };
+
   const handleLinkStudentAccount = async () => {
     if (!selectedAccountId || !selectedStudentId) {
       setStudentAccountError('กรุณาเลือกบัญชีและรายชื่อนักเรียน');
@@ -118,24 +145,44 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
     try {
-      await linkStudentAccountToStudent(activeSchool.id, selectedAccountId, selectedStudentId);
+      if (isDemoMode) {
+        updateDemoStudentAccount(activeSchool.id, selectedAccountId, {
+          student_id: selectedStudentId,
+          status: 'active',
+        });
+      } else {
+        await approveStudentAccountInSupabase(activeSchool.id, selectedAccountId, selectedStudentId);
+        await linkStudentAccountToStudent(activeSchool.id, selectedAccountId, selectedStudentId);
+      }
+      setStudentAccountSuccess('อนุมัติและผูกบัญชีกับระเบียนนักเรียนเรียบร้อยแล้ว');
+      await reloadStudentAccounts();
     } catch (error) {
       setStudentAccountError(error instanceof Error ? error.message : 'ผูกบัญชีนักเรียนไม่สำเร็จ');
+    } finally {
       setStudentAccountSaving(false);
-      return;
     }
+  };
 
-    setStudentAccountSuccess('ผูกบัญชีกับระเบียนนักเรียนเรียบร้อยแล้ว');
+  const handleApproveOrToggleStatus = async (account: StudentAccountLink, nextStatus: 'active' | 'suspended') => {
+    setStudentAccountSaving(true);
+    setStudentAccountError(null);
+    setStudentAccountSuccess(null);
     try {
-      const accounts = await listStudentAccountLinks(activeSchool.id);
-      setStudentAccounts(accounts);
-      const nextId = accounts.find((account) => !account.student_id)?.id || accounts[0]?.id || '';
-      setSelectedAccountId(nextId);
-      setSelectedStudentId(accounts.find((account) => account.id === nextId)?.student_id || '');
+      if (isDemoMode) {
+        updateDemoStudentAccount(activeSchool.id, account.id, { status: nextStatus });
+      } else if (nextStatus === 'active') {
+        await approveStudentAccountInSupabase(activeSchool.id, account.id, account.student_id || null);
+      } else {
+        await updateStudentAccountStatusInSupabase(activeSchool.id, account.id, nextStatus);
+      }
+      setStudentAccountSuccess(
+        nextStatus === 'active'
+          ? `อนุมัติบัญชี "${account.full_name_th || account.full_name_en}" เปิดใช้งานเรียบร้อยแล้ว`
+          : `ระงับสิทธิ์บัญชี "${account.full_name_th || account.full_name_en}" เรียบร้อยแล้ว`
+      );
+      await reloadStudentAccounts();
     } catch (error) {
-      setStudentAccountError(error instanceof Error
-        ? `ผูกบัญชีสำเร็จแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ: ${error.message}`
-        : 'ผูกบัญชีสำเร็จแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ');
+      setStudentAccountError(error instanceof Error ? error.message : 'อัปเดตสถานะไม่สำเร็จ');
     } finally {
       setStudentAccountSaving(false);
     }
@@ -523,7 +570,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           <span>{lang === 'th' ? 'พิกัด GPS & Geofence ประตูโรงเรียน' : 'School GPS & Geofence'}</span>
         </button>
 
-        {!isDemoMode && ['admin', 'super_admin'].includes(currentRole) && (
+        {['admin', 'super_admin'].includes(currentRole) && (
           <button
             type="button"
             onClick={() => setActiveTab('student_accounts')}
@@ -534,7 +581,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>ผูกบัญชีนักเรียน</span>
+            <span>อนุมัติ &amp; ผูกบัญชีนักเรียน</span>
           </button>
         )}
       </div>
@@ -1539,14 +1586,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       )}
 
       {activeTab === 'student_accounts' &&
-        !isDemoMode &&
         ['admin', 'super_admin'].includes(currentRole) && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
               <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">ผูกบัญชีล็อกอินกับรายชื่อนักเรียน</h3>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">อนุมัติคำขอสมัคร &amp; ผูกบัญชีล็อกอินกับรายชื่อนักเรียน</h3>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  เลือกบัญชีนักเรียนและระเบียนที่โรงเรียนยืนยันแล้ว ระบบจะใช้การผูกนี้ระบุชื่อและสิทธิ์เช็กอิน
+                  ตรวจสอบนักเรียนที่สมัครสมาชิกเข้าโรงเรียน กดอนุมัติเปิดใช้งาน และจับคู่กับระเบียนนักเรียน DMC เพื่อระบุตัวตนและสิทธิ์เช็กอิน
                 </p>
               </div>
 
@@ -1579,8 +1625,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     <option value="">เลือกบัญชี</option>
                     {studentAccounts.map((account) => (
                       <option key={account.id} value={account.id}>
-                        {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'} · {account.id.slice(0, 8)}
-                        {account.student_id ? ' (ผูกแล้ว)' : ''}
+                        {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'} ({account.status === 'pending' ? 'รออนุมัติ' : account.status})
+                        {account.student_id ? ' · ผูกแล้ว' : ''}
                       </option>
                     ))}
                   </select>
@@ -1613,9 +1659,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   type="button"
                   onClick={handleLinkStudentAccount}
                   disabled={studentAccountsLoading || studentAccountSaving || !selectedAccountId || !selectedStudentId}
-                  className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                 >
-                  {studentAccountSaving ? 'กำลังบันทึก...' : 'บันทึกการผูกบัญชี'}
+                  {studentAccountSaving ? 'กำลังบันทึก...' : 'อนุมัติ & ผูกระเบียน'}
                 </button>
               </div>
 
@@ -1628,20 +1674,53 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   {studentAccounts.map((account) => {
                     const linkedStudent = students.find((student) => student.id === account.student_id);
                     return (
-                      <div key={account.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+                      <div key={account.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-xs">
                         <div>
-                          <p className="font-semibold text-[var(--color-text-title)]">
-                            {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-[var(--color-text-title)]">
+                              {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'}
+                            </p>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                account.status === 'active'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                  : account.status === 'suspended'
+                                  ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                              }`}
+                            >
+                              {account.status === 'active' ? 'ใช้งานได้' : account.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติ'}
+                            </span>
+                          </div>
                           <p className="font-mono text-[10px] text-[var(--color-text-muted)]">
-                            บัญชี {account.id.slice(0, 8)} · {account.status === 'active' ? 'ใช้งาน' : account.status}
+                            {account.email || account.id.slice(0, 8)} ·{' '}
+                            {linkedStudent
+                              ? `${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
+                              : 'ยังไม่ผูกกับรายชื่อนักเรียน'}
                           </p>
                         </div>
-                        <p className={linkedStudent ? 'text-emerald-700' : 'text-amber-700'}>
-                          {linkedStudent
-                            ? `${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
-                            : 'ยังไม่ผูกกับรายชื่อนักเรียน'}
-                        </p>
+
+                        <div className="flex items-center gap-1.5">
+                          {account.status !== 'active' ? (
+                            <button
+                              type="button"
+                              disabled={studentAccountSaving}
+                              onClick={() => void handleApproveOrToggleStatus(account, 'active')}
+                              className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold cursor-pointer disabled:opacity-50"
+                            >
+                              อนุมัติเปิดใช้งาน
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={studentAccountSaving}
+                              onClick={() => void handleApproveOrToggleStatus(account, 'suspended')}
+                              className="px-3 py-1 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-[11px] font-bold cursor-pointer disabled:opacity-50"
+                            >
+                              ระงับสิทธิ์
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

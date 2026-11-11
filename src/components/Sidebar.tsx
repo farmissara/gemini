@@ -30,6 +30,8 @@ import {
   MapPin,
   Search,
   Layers,
+  Monitor,
+  Mail,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
@@ -41,6 +43,8 @@ export type NavTab =
   | 'system_settings'
   | 'school_gps'
   | 'executive_warning'
+  | 'executive_monitor'
+  | 'admin_superadmin_desk'
   | 'dashboard' 
   | 'students' 
   | 'teachers'
@@ -81,6 +85,7 @@ interface SidebarProps {
   studentsCount: number;
   coursesCount: number;
   teachersCount?: number;
+  coordinationUnreadCount?: number;
   lang: AppLanguage;
   onOpenProfile?: () => void;
 }
@@ -113,6 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   studentsCount,
   coursesCount,
   teachersCount = 0,
+  coordinationUnreadCount = 0,
   lang,
   onOpenProfile,
 }) => {
@@ -143,6 +149,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             badge: 'MASTER',
             roles: ['super_admin'],
           },
+          {
+            id: 'admin_superadmin_desk',
+            labelTh: 'แชต/จดหมายประสานงานโรงเรียน',
+            labelEn: 'School Urgent Desk',
+            icon: Mail,
+            badge: coordinationUnreadCount > 0 ? `${coordinationUnreadCount} ใหม่` : 'INBOX',
+            roles: ['super_admin'],
+          },
         ],
       });
     }
@@ -162,6 +176,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'Dashboard Overview',
           icon: LayoutDashboard,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'executive_monitor',
+          labelTh: 'แดชบอร์ดผู้บริหาร / จอทีวี (TV)',
+          labelEn: 'Director & TV Monitor',
+          icon: Monitor,
+          badge: 'TV / ผอ.',
+          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'students',
@@ -375,6 +397,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'School Role Permissions',
           icon: SlidersHorizontal,
           badge: 'ADMIN',
+          roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'admin_superadmin_desk',
+          labelTh: 'แชต/จดหมายประสานงาน Super Admin',
+          labelEn: 'Admin ↔ SuperAdmin Desk',
+          icon: Mail,
+          badge: coordinationUnreadCount > 0 ? `${coordinationUnreadCount} ใหม่` : 'ด่วน',
           roles: ['super_admin', 'admin'],
         },
         {

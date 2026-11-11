@@ -991,3 +991,44 @@ export interface RealWorldSnapQuest {
     isPass: boolean;
   };
 }
+
+// 9. Admin <-> Super Admin Urgent Coordination Chat & Official Mail Desk
+export interface AdminCoordinationAttachment {
+  id: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  dataUrl: string;
+}
+
+export interface AdminCoordinationMessage {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  senderRole: 'admin' | 'super_admin';
+  senderName: string;
+  senderEmail: string;
+  channelType: 'chat' | 'letter';
+  priority: 'urgent' | 'high' | 'normal';
+  subject: string;
+  body: string;
+  attachments: AdminCoordinationAttachment[];
+  status: 'open' | 'acknowledged' | 'resolved';
+  readByAdmin: boolean;
+  readBySuperAdmin: boolean;
+  createdAt: string;
+}
+
+// 10. Imported User Login Credentials Tracking
+export interface ImportedUserCredential {
+  id: string;
+  schoolId: string;
+  role: 'student' | 'teacher';
+  personCode: string;
+  fullName: string;
+  email: string;
+  username: string;
+  initialPassword: string;
+  createdAt: string;
+}
+

@@ -22,10 +22,12 @@ import {
   Send,
   Check,
   FileCheck2,
-  HelpCircle
+  HelpCircle,
+  KeyRound
 } from 'lucide-react';
 import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage, SdqAssessment } from '../types';
 import { getLocalDateString } from '../lib/date';
+import { saveImportedCredentials, StoredImportedCredential } from '../lib/authDb';
 
 export type ImportExportTab = 
   | 'students' // DMC ทะเบียนนักเรียน
@@ -45,6 +47,8 @@ interface DataImportExportModalProps {
   questions: QuizQuestion[];
   courses?: Course[];
   grades?: GradeRecord[];
+  activeSchoolId?: string;
+  activeSchoolName?: string;
   lang: AppLanguage;
   onImportStudents: (newStudents: Student[]) => void;
   onImportTeachers: (newTeachers: Teacher[]) => void;
@@ -63,6 +67,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   questions,
   courses = [],
   grades = [],
+  activeSchoolId = 'sch-bkk-01',
+  activeSchoolName = 'โรงเรียนในระบบ',
   lang,
   onImportStudents,
   onImportTeachers,
@@ -105,8 +111,72 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   const [previewPp3, setPreviewPp3] = useState<any[]>([]);
   const [previewQuestions, setPreviewQuestions] = useState<QuizQuestion[]>([]);
 
-  // Page Numbers
+  // Page Numbers & Imported Credentials Setup
   const [page, setPage] = useState(0);
+  const [passwordMode, setPasswordMode] = useState<'by_code' | 'fixed'>('by_code');
+  const [customInitialPassword, setCustomInitialPassword] = useState('EduVerse@2569');
+  const [lastIssuedCredentials, setLastIssuedCredentials] = useState<StoredImportedCredential[]>([]);
+
+  const resolveInitialPassword = (personCode: string) => {
+    if (passwordMode === 'fixed') {
+      return customInitialPassword.trim() || 'EduVerse@2569';
+    }
+    const cleanCode = personCode.replace(/\s+/g, '') || '2569';
+    return `Edu@${cleanCode}`;
+  };
+
+  const buildStudentCredentials = (list: Student[]): StoredImportedCredential[] => {
+    return list.map((s) => {
+      const code = (s.studentIdNumber || s.id).trim();
+      const loginId = (s.guardianEmail && s.guardianEmail.includes('@') && !s.guardianEmail.startsWith('somchai')
+        ? `${code.toLowerCase()}@student.eduverse.local`
+        : `${code.toLowerCase()}@student.eduverse.local`);
+      return {
+        id: `cred-stu-${code}-${Date.now()}`,
+        schoolId: activeSchoolId,
+        role: 'student',
+        personCode: code,
+        fullName: `${s.firstNameTh} ${s.lastNameTh}`.trim() || code,
+        email: loginId,
+        username: loginId,
+        initialPassword: resolveInitialPassword(code),
+        createdAt: new Date().toISOString(),
+      };
+    });
+  };
+
+  const buildTeacherCredentials = (list: Teacher[]): StoredImportedCredential[] => {
+    return list.map((t) => {
+      const code = (t.teacherIdNumber || t.id).trim();
+      const loginId = t.email?.trim() ? t.email.trim().toLowerCase() : `${code.toLowerCase()}@teacher.eduverse.local`;
+      return {
+        id: `cred-tch-${code}-${Date.now()}`,
+        schoolId: activeSchoolId,
+        role: 'teacher',
+        personCode: code,
+        fullName: t.fullNameTh || t.fullNameEn || code,
+        email: loginId,
+        username: loginId,
+        initialPassword: resolveInitialPassword(code),
+        createdAt: new Date().toISOString(),
+      };
+    });
+  };
+
+  const handleDownloadCredentialsCsv = (creds: StoredImportedCredential[], filenamePrefix: string) => {
+    if (creds.length === 0) return;
+    const headers = ['บทบาท', 'รหัสประจำตัว', 'ชื่อ-สกุล', 'Username / Email สำหรับล็อกอิน', 'รหัสผ่านเริ่มต้น (Initial Password)', 'โรงเรียน'];
+    const rows = creds.map((c) => [
+      c.role === 'teacher' ? 'ครู/บุคลากร' : 'นักเรียน',
+      c.personCode,
+      `"${c.fullName}"`,
+      c.username,
+      c.initialPassword,
+      `"${activeSchoolName}"`,
+    ]);
+    downloadFile(`${filenamePrefix}_credentials_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map((r) => r.join(','))].join('\n'));
+    showToast(`ดาวน์โหลดใบแจ้ง User & Password (${creds.length} บัญชี) สำเร็จ`);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -308,8 +378,11 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   const handleConfirmImportStudents = () => {
     if (previewStudents.length === 0) return;
+    const issued = buildStudentCredentials(previewStudents);
+    saveImportedCredentials(issued);
+    setLastIssuedCredentials(issued);
     onImportStudents(previewStudents);
-    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนเข้าสู่ระบบ DMC สำเร็จ!`);
+    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คน และออก User/Password เรียบร้อยแล้ว`);
     setPreviewStudents([]);
   };
 
@@ -436,8 +509,11 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   const handleConfirmImportTeachers = () => {
     if (previewTeachers.length === 0) return;
+    const issued = buildTeacherCredentials(previewTeachers);
+    saveImportedCredentials(issued);
+    setLastIssuedCredentials(issued);
     onImportTeachers(previewTeachers);
-    showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่านสำเร็จ!`);
+    showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่าน และออก User/Password เรียบร้อยแล้ว`);
     setPreviewTeachers([]);
   };
 
@@ -897,21 +973,96 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 'blue'
               )}
 
+              {/* Initial Password Policy Card */}
+              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
+                    <KeyRound className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <span>การกำหนด User &amp; รหัสผ่านเริ่มต้นสำหรับรายชื่อที่นำเข้า</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setPasswordMode('by_code')}
+                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
+                        passwordMode === 'by_code'
+                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                      }`}
+                    >
+                      ใช้รูปแบบ Edu@&lt;รหัสนักเรียน&gt;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPasswordMode('fixed')}
+                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
+                        passwordMode === 'fixed'
+                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                      }`}
+                    >
+                      กำหนดรหัสผ่านเดียวกันทั้งชุด
+                    </button>
+                    {passwordMode === 'fixed' && (
+                      <input
+                        type="text"
+                        value={customInitialPassword}
+                        onChange={(e) => setCustomInitialPassword(e.target.value)}
+                        placeholder="เช่น EduVerse@2569"
+                        className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-mono text-[var(--color-text-title)]"
+                      />
+                    )}
+                  </div>
+                </div>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  ระบบจะสร้างบัญชี Username เป็น <strong className="font-mono text-[var(--color-text-title)]">&lt;รหัสนักเรียน&gt;@student.eduverse.local</strong> และรหัสผ่านตามรูปแบบที่เลือก สามารถดาวน์โหลดเป็นไฟล์ CSV แจกนักเรียนเพื่อทดสอบล็อกอินได้ทันที (ในระบบฐานข้อมูลจริง Supabase ต้องให้นักเรียนสมัครสมาชิกด้วยอีเมลและให้ผู้ดูแลโรงเรียนกดอนุมัติเพื่อความปลอดภัย)
+                </p>
+              </div>
+
+              {lastIssuedCredentials.length > 0 && lastIssuedCredentials[0].role === 'student' && (
+                <div className="p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-xs text-emerald-900 dark:text-emerald-100">
+                    <div className="font-bold">บันทึกบัญชีเข้าสู่ระบบเริ่มต้นสำหรับนักเรียน {lastIssuedCredentials.length} คนแล้ว</div>
+                    <div className="text-[11px] opacity-85 mt-0.5">
+                      ตัวอย่าง: User <span className="font-mono font-bold">{lastIssuedCredentials[0].username}</span> · Password <span className="font-mono font-bold">{lastIssuedCredentials[0].initialPassword}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadCredentialsCsv(lastIssuedCredentials, 'students')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>ดาวน์โหลด User &amp; Password (CSV)</span>
+                  </button>
+                </div>
+              )}
+
               {previewStudents.length > 0 && (
                 <div className="p-4 rounded-2xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-blue-100">
                       <CheckCircle2 className="w-4 h-4 text-blue-600" />
                       <span>ตรวจสอบข้อมูลนักเรียนที่จะนำเข้า ({previewStudents.length} คน)</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewStudents([])}
-                      className="text-xs text-rose-600 hover:underline flex items-center gap-1 font-bold"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>ล้างพรีวิว</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadCredentialsCsv(buildStudentCredentials(previewStudents), 'students_preview')}
+                        className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>โหลดไฟล์ User/Pass ชุดนี้</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewStudents([])}
+                        className="text-xs text-rose-600 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>ล้างพรีวิว</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
@@ -919,24 +1070,25 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
                         <tr>
                           <th className="px-3 py-2">รหัสนักเรียน</th>
-                          <th className="px-3 py-2">เลข 13 หลัก (DMC)</th>
                           <th className="px-3 py-2">ชื่อ - นามสกุล</th>
                           <th className="px-3 py-2">ระดับชั้น / ห้อง</th>
-                          <th className="px-3 py-2 text-center">GPA</th>
-                          <th className="px-3 py-2">ผู้ปกครอง / เบอร์โทร</th>
+                          <th className="px-3 py-2">Username เข้าระบบ</th>
+                          <th className="px-3 py-2">รหัสผ่านเริ่มต้น</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewStudents.slice(page * 5, (page + 1) * 5).map((s, idx) => (
-                          <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
-                            <td className="px-3 py-2 font-mono font-bold text-blue-600">{s.studentIdNumber}</td>
-                            <td className="px-3 py-2 font-mono">{s.nationalId || '-'}</td>
-                            <td className="px-3 py-2 font-bold">{s.firstNameTh} {s.lastNameTh}</td>
-                            <td className="px-3 py-2">{s.gradeLevel} ({s.room})</td>
-                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{s.gpa}</td>
-                            <td className="px-3 py-2">{s.guardianName} ({s.guardianPhone})</td>
-                          </tr>
-                        ))}
+                        {previewStudents.slice(page * 5, (page + 1) * 5).map((s, idx) => {
+                          const code = (s.studentIdNumber || s.id).trim();
+                          return (
+                            <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
+                              <td className="px-3 py-2 font-mono font-bold text-blue-600">{code}</td>
+                              <td className="px-3 py-2 font-bold">{s.firstNameTh} {s.lastNameTh}</td>
+                              <td className="px-3 py-2">{s.gradeLevel} ({s.room})</td>
+                              <td className="px-3 py-2 font-mono text-[11px]">{`${code.toLowerCase()}@student.eduverse.local`}</td>
+                              <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-300">{resolveInitialPassword(code)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -948,7 +1100,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       className="px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
                       <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกข้อมูลนักเรียน {previewStudents.length} คนเข้าสู่ระบบ DMC</span>
+                      <span>ยืนยันบันทึกข้อมูลนักเรียน {previewStudents.length} คน + ออกบัญชีเริ่มต้น</span>
                     </button>
                   </div>
                 </div>
@@ -970,21 +1122,96 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 'purple'
               )}
 
+              {/* Initial Password Policy Card */}
+              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
+                    <KeyRound className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <span>การกำหนด User &amp; รหัสผ่านเริ่มต้นสำหรับครูที่นำเข้า</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setPasswordMode('by_code')}
+                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
+                        passwordMode === 'by_code'
+                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                      }`}
+                    >
+                      ใช้รูปแบบ Edu@&lt;รหัสครู&gt;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPasswordMode('fixed')}
+                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
+                        passwordMode === 'fixed'
+                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                      }`}
+                    >
+                      กำหนดรหัสผ่านเดียวกันทั้งชุด
+                    </button>
+                    {passwordMode === 'fixed' && (
+                      <input
+                        type="text"
+                        value={customInitialPassword}
+                        onChange={(e) => setCustomInitialPassword(e.target.value)}
+                        placeholder="เช่น EduVerse@2569"
+                        className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-mono text-[var(--color-text-title)]"
+                      />
+                    )}
+                  </div>
+                </div>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  ระบบใช้อีเมลครูในไฟล์ CSV เป็น Username (หากไม่มีอีเมลจะใช้ <strong className="font-mono text-[var(--color-text-title)]">&lt;รหัสครู&gt;@teacher.eduverse.local</strong>) พร้อมรหัสผ่านเริ่มต้นที่กำหนด
+                </p>
+              </div>
+
+              {lastIssuedCredentials.length > 0 && lastIssuedCredentials[0].role === 'teacher' && (
+                <div className="p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-xs text-emerald-900 dark:text-emerald-100">
+                    <div className="font-bold">บันทึกบัญชีเข้าสู่ระบบเริ่มต้นสำหรับครู {lastIssuedCredentials.length} ท่านแล้ว</div>
+                    <div className="text-[11px] opacity-85 mt-0.5">
+                      ตัวอย่าง: User <span className="font-mono font-bold">{lastIssuedCredentials[0].username}</span> · Password <span className="font-mono font-bold">{lastIssuedCredentials[0].initialPassword}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadCredentialsCsv(lastIssuedCredentials, 'teachers')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>ดาวน์โหลด User &amp; Password (CSV)</span>
+                  </button>
+                </div>
+              )}
+
               {previewTeachers.length > 0 && (
                 <div className="p-4 rounded-2xl border border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-950/30 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-sm font-bold text-purple-900 dark:text-purple-100">
                       <CheckCircle2 className="w-4 h-4 text-purple-600" />
                       <span>ตรวจสอบข้อมูลครู HRMS ({previewTeachers.length} ท่าน)</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewTeachers([])}
-                      className="text-xs text-rose-600 hover:underline flex items-center gap-1 font-bold"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>ล้างพรีวิว</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadCredentialsCsv(buildTeacherCredentials(previewTeachers), 'teachers_preview')}
+                        className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>โหลดไฟล์ User/Pass ชุดนี้</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTeachers([])}
+                        className="text-xs text-rose-600 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>ล้างพรีวิว</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
@@ -993,23 +1220,25 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                         <tr>
                           <th className="px-3 py-2">รหัสบุคลากร</th>
                           <th className="px-3 py-2">ชื่อ - สกุล</th>
-                          <th className="px-3 py-2">วิทยฐานะ (DPA)</th>
-                          <th className="px-3 py-2">กลุ่มสาระการเรียนรู้</th>
-                          <th className="px-3 py-2 text-center">อายุราชการ</th>
-                          <th className="px-3 py-2 text-center">คะแนน PA</th>
+                          <th className="px-3 py-2">กลุ่มสาระฯ</th>
+                          <th className="px-3 py-2">Username / Email เข้าระบบ</th>
+                          <th className="px-3 py-2">รหัสผ่านเริ่มต้น</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewTeachers.slice(page * 5, (page + 1) * 5).map((t, idx) => (
-                          <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
-                            <td className="px-3 py-2 font-mono font-bold text-purple-600">{t.teacherIdNumber}</td>
-                            <td className="px-3 py-2 font-bold">{t.fullNameTh}</td>
-                            <td className="px-3 py-2 text-indigo-700 dark:text-indigo-300 font-medium">{t.academicStanding}</td>
-                            <td className="px-3 py-2">{t.department}</td>
-                            <td className="px-3 py-2 text-center">{t.teachingExperienceYears == null ? '-' : `${t.teachingExperienceYears} ปี`}</td>
-                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{t.paScore == null ? '-' : t.paScore}</td>
-                          </tr>
-                        ))}
+                        {previewTeachers.slice(page * 5, (page + 1) * 5).map((t, idx) => {
+                          const code = (t.teacherIdNumber || t.id).trim();
+                          const loginId = t.email?.trim() ? t.email.trim().toLowerCase() : `${code.toLowerCase()}@teacher.eduverse.local`;
+                          return (
+                            <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
+                              <td className="px-3 py-2 font-mono font-bold text-purple-600">{code}</td>
+                              <td className="px-3 py-2 font-bold">{t.fullNameTh}</td>
+                              <td className="px-3 py-2">{t.department}</td>
+                              <td className="px-3 py-2 font-mono text-[11px]">{loginId}</td>
+                              <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-300">{resolveInitialPassword(code)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1021,7 +1250,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
                       <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกข้อมูลครู {previewTeachers.length} ท่านเข้าสู่ฐานข้อมูล HRMS</span>
+                      <span>ยืนยันบันทึกข้อมูลครู {previewTeachers.length} ท่าน + ออกบัญชีเริ่มต้น</span>
                     </button>
                   </div>
                 </div>

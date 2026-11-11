@@ -36,15 +36,20 @@ import {
   ExternalLink
 } from 'lucide-react';
 import {
+  authenticateImportedLocalUser,
   authenticateWithSupabase,
+  getDemoStudentAccounts,
   listActiveSchools,
   resendSignupConfirmation,
   requestPasswordReset,
   MASTER_SYSTEM_EMAIL,
   registerSchoolWithSupabase,
   registerStudentWithSupabase,
+  saveAllDemoStudentAccounts,
   type AuthContext,
+  type StoredImportedCredential,
 } from '../lib/authDb';
+import { getSupabaseClient } from '../lib/supabase';
 import { PWAInstallButton } from './PWAInstallButton';
 import heroImage from '../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 import featureLmsImage from '../assets/images/classroom_teaching_learning_1793958766838.jpg';
@@ -53,6 +58,7 @@ import featureClinicImage from '../assets/images/feature_smart_student_health_cl
 
 interface AuthLayoutProps {
   onLogin: (context: AuthContext) => void;
+  onLoginImportedUser?: (cred: StoredImportedCredential) => void;
   onStartDemo: (role?: UserRole) => void;
   initialError?: string | null;
   lang: AppLanguage;
@@ -72,6 +78,7 @@ function getAuthErrorMessage(message: string, lang: AppLanguage): string {
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onLogin,
+  onLoginImportedUser,
   onStartDemo,
   initialError,
   lang,
@@ -142,8 +149,21 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
     try {
       if (mode === 'login') {
-        onLogin(await authenticateWithSupabase(email, password));
-        return;
+        const importedMatch = authenticateImportedLocalUser(email, password);
+        if (!getSupabaseClient() && importedMatch && onLoginImportedUser) {
+          onLoginImportedUser(importedMatch);
+          return;
+        }
+        try {
+          onLogin(await authenticateWithSupabase(email, password));
+          return;
+        } catch (supaErr) {
+          if (importedMatch && onLoginImportedUser) {
+            onLoginImportedUser(importedMatch);
+            return;
+          }
+          throw supaErr;
+        }
       }
 
       if (registrationType === 'school') {
@@ -163,17 +183,35 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           : 'School registered successfully! Awaiting direct system approval from Super Admin.');
       } else {
         if (!schoolId) throw new Error(lang === 'th' ? 'ไม่มีโรงเรียนที่เปิดรับสมัคร กรุณาติดต่อผู้ดูแลระบบ' : 'No active school available.');
-        await registerStudentWithSupabase({
-          email,
-          password,
-          fullNameTh,
-          fullNameEn,
-          schoolId,
-          phone,
-        });
+        if (!getSupabaseClient()) {
+          const existingAll = getDemoStudentAccounts(schoolId);
+          saveAllDemoStudentAccounts([
+            {
+              id: `demo-stu-reg-${Date.now()}`,
+              school_id: schoolId,
+              student_id: null,
+              full_name_th: fullNameTh.trim(),
+              full_name_en: (fullNameEn || fullNameTh).trim(),
+              email: email.trim().toLowerCase(),
+              phone: phone.trim() || undefined,
+              status: 'pending',
+              created_at: new Date().toISOString(),
+            },
+            ...existingAll,
+          ]);
+        } else {
+          await registerStudentWithSupabase({
+            email,
+            password,
+            fullNameTh,
+            fullNameEn,
+            schoolId,
+            phone,
+          });
+        }
         setNotice(lang === 'th'
-          ? 'ลงทะเบียนนักเรียนสำเร็จ! บัญชีของคุณถูกส่งเข้าสู่ระบบแล้ว และรอการอนุมัติเปิดใช้งานจากผู้ดูแลระบบ'
-          : 'Student registered successfully! Awaiting administrator approval.');
+          ? 'ลงทะเบียนนักเรียนสำเร็จ! บัญชีของคุณถูกส่งเข้าสู่ระบบแล้ว และรอการอนุมัติเปิดใช้งานจากผู้ดูแลโรงเรียน (เมนู ทะเบียนนักเรียน DMC → คำขอสมัครเข้าโรงเรียน)'
+          : 'Student registered successfully! Awaiting school administrator approval.');
       }
       setMode('login');
     } catch (submitError: unknown) {
@@ -188,8 +226,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       }
       setError(mode === 'login' && message.toLowerCase().includes('invalid login credentials')
         ? (lang === 'th'
-          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีอยู่ระหว่างรอ Super Admin อนุมัติเปิดใช้งานจากระบบ'
-          : 'Invalid email or password, or account is awaiting Super Admin approval.')
+          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีอยู่ระหว่างรอ Super Admin / ผู้ดูแลโรงเรียนอนุมัติเปิดใช้งาน'
+          : 'Invalid email or password, or account is awaiting administrator approval.')
         : getAuthErrorMessage(message, lang));
     } finally {
       setIsLoading(false);

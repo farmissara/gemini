@@ -73,7 +73,8 @@ import {
   updateSchoolStatusInSupabase,
   updateUserProfileInSupabase,
 } from './lib/authDb';
-import type { AuthContext } from './lib/authDb';
+import type { AuthContext, StoredImportedCredential } from './lib/authDb';
+import { fetchCoordinationMessages } from './lib/coordinationDesk';
 import { loadSchoolData, saveSchoolCampusGates, saveSchoolGpsCoordinates, saveSchoolPeriodTimes, syncDataToSupabase } from './lib/supabase';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import { Navbar } from './components/Navbar';
@@ -121,6 +122,8 @@ import { SocraticTutorView } from './components/SocraticTutorView';
 import { RealWorldSnapQuestView } from './components/RealWorldSnapQuestView';
 import { MobileAppShell } from './components/MobileAppShell';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { AdminSuperAdminDeskView } from './components/AdminSuperAdminDeskView';
+import { ExecutiveMonitorView } from './components/ExecutiveMonitorView';
 import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles } from 'lucide-react';
@@ -291,6 +294,7 @@ export const App: React.FC = () => {
   const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+  const [coordinationUnreadCount, setCoordinationUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     const updateUnread = () => {
@@ -303,6 +307,25 @@ export const App: React.FC = () => {
       window.removeEventListener('eduverse:notification', updateUnread);
     };
   }, []);
+
+  useEffect(() => {
+    if (!currentUser || !['admin', 'super_admin'].includes(currentRole)) {
+      setCoordinationUnreadCount(0);
+      return;
+    }
+    let active = true;
+    const scopeId = currentRole === 'super_admin' ? undefined : activeSchool.id;
+    fetchCoordinationMessages(isDemoMode, scopeId).then((msgs) => {
+      if (!active) return;
+      const count = currentRole === 'super_admin'
+        ? msgs.filter((m) => m.senderRole === 'admin' && !m.readBySuperAdmin).length
+        : msgs.filter((m) => m.schoolId === activeSchool.id && m.senderRole === 'super_admin' && !m.readByAdmin).length;
+      setCoordinationUnreadCount(count);
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUser, currentRole, activeSchool.id, isDemoMode, currentTab]);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -468,6 +491,35 @@ export const App: React.FC = () => {
     setRolePermissions(INITIAL_ROLE_PERMISSIONS);
     setPromotions(INITIAL_PROMOTIONS);
     setSubscriptionPlans(INITIAL_SUBSCRIPTION_PLANS);
+    setIsDataReady(true);
+    setLoadedSchoolId(school.id);
+    setDataLoadError(null);
+    setDataSyncError(null);
+  };
+
+  const handleLoginImportedUser = (cred: StoredImportedCredential) => {
+    const school = schools.find((s) => s.id === cred.schoolId) || INITIAL_SCHOOLS[0];
+    demoModeRef.current = true;
+    setIsDemoMode(true);
+    setIsSuperAdminSchoolView(false);
+    setSchools(INITIAL_SCHOOLS);
+    setActiveSchool(school);
+    const syntheticUser: AuthUser = {
+      id: cred.id,
+      email: cred.email,
+      fullNameTh: cred.fullName,
+      fullNameEn: cred.fullName,
+      role: cred.role,
+      schoolId: school.id,
+      avatarUrl: cred.role === 'teacher'
+        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'
+        : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200',
+      lineConnected: false,
+    };
+    setCurrentUser(syntheticUser);
+    setCurrentRole(cred.role);
+    setProgramMode('school_erp');
+    setCurrentTab('dashboard');
     setIsDataReady(true);
     setLoadedSchoolId(school.id);
     setDataLoadError(null);
@@ -1370,6 +1422,7 @@ export const App: React.FC = () => {
     return (
       <AuthLayout
         onLogin={handleLogin}
+        onLoginImportedUser={handleLoginImportedUser}
         onStartDemo={handleStartDemo}
         initialError={dataLoadError}
         lang={lang}
@@ -1573,6 +1626,8 @@ export const App: React.FC = () => {
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
+        coordinationUnreadCount={coordinationUnreadCount}
+        onOpenCoordinationDesk={['admin', 'super_admin'].includes(currentRole) ? () => navigateToAppTab('admin_superadmin_desk') : undefined}
       />}
       {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
@@ -1631,6 +1686,7 @@ export const App: React.FC = () => {
                 studentsCount={schoolStudents.length}
                 teachersCount={schoolTeachers.length}
                 coursesCount={schoolCourses.length}
+                coordinationUnreadCount={coordinationUnreadCount}
                 lang={lang}
                 onOpenProfile={() => {
                   setShowProfileModal(true);
@@ -1657,6 +1713,7 @@ export const App: React.FC = () => {
               studentsCount={schoolStudents.length}
               teachersCount={schoolTeachers.length}
               coursesCount={schoolCourses.length}
+              coordinationUnreadCount={coordinationUnreadCount}
               lang={lang}
               onOpenProfile={() => setShowProfileModal(true)}
             />
@@ -1693,10 +1750,10 @@ export const App: React.FC = () => {
                   <div className="shrink-0 mb-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-0.5">
                     <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] min-w-0 max-w-full shadow-2xs">
                       {[
-                        { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
+                        { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'executive_monitor', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
                         { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
                         { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'hall_of_fame'] },
-                        { id: 'administration', labelTh: '⚙️ บริหาร & GPS', labelEn: 'Admin & GPS', defaultTab: 'school_gps' as NavTab, tabs: ['school_gps', 'executive_warning', 'school_permissions', 'system_settings'] },
+                        { id: 'administration', labelTh: '⚙️ บริหาร & GPS', labelEn: 'Admin & GPS', defaultTab: 'school_gps' as NavTab, tabs: ['school_gps', 'executive_warning', 'school_permissions', 'admin_superadmin_desk', 'system_settings'] },
                         { id: 'finance', labelTh: '💰 การเงิน & ข่าว', labelEn: 'Finance', defaultTab: 'billing' as NavTab, tabs: ['billing', 'announcements'] },
                       ].map((cat) => {
                         const isCatActive = cat.tabs.includes(currentTab);
@@ -1757,6 +1814,40 @@ export const App: React.FC = () => {
                     isDemoMode={isDemoMode}
                     onViewSchool={handleViewSchool}
                     onToggleSchoolStatus={handleToggleSchoolStatus}
+                    coordinationUnreadCount={coordinationUnreadCount}
+                    onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
+                  />
+                )}
+
+                {currentTab === 'admin_superadmin_desk' && ['admin', 'super_admin'].includes(currentRole) && (
+                  <AdminSuperAdminDeskView
+                    currentUser={currentUser}
+                    activeSchool={activeSchool}
+                    schools={schools}
+                    currentRole={currentRole}
+                    lang={lang}
+                    isDemoMode={isDemoMode}
+                    onUnreadCountChange={setCoordinationUnreadCount}
+                  />
+                )}
+
+                {currentTab === 'executive_monitor' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                  <ExecutiveMonitorView
+                    activeSchool={activeSchool}
+                    students={schoolStudents}
+                    teachers={schoolTeachers}
+                    courses={schoolCourses}
+                    grades={schoolGrades}
+                    attendance={schoolAttendance}
+                    invoices={schoolInvoices}
+                    announcements={schoolAnnouncements}
+                    infirmaryVisits={schoolInfirmaryVisits}
+                    behaviorRecords={schoolBehaviorRecords}
+                    sdqAssessments={schoolSdqAssessments}
+                    homeworkSubmissions={schoolHomeworkSubmissions}
+                    leaveRequests={leaveRequests}
+                    lang={lang}
+                    onNavigate={navigateToAppTab}
                   />
                 )}
 
@@ -1835,6 +1926,9 @@ export const App: React.FC = () => {
                 {currentTab === 'students' && (
                   <StudentsView
                     students={schoolStudents}
+                    activeSchool={activeSchool}
+                    currentRole={currentRole}
+                    isDemoMode={isDemoMode}
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenReportCard={setSelectedStudentForReport}
                     onToggleLineSync={handleToggleLineSync}
@@ -2280,6 +2374,8 @@ export const App: React.FC = () => {
           questions={schoolQuestions}
           courses={schoolCourses}
           grades={schoolGrades}
+          activeSchoolId={activeSchool.id}
+          activeSchoolName={activeSchool.nameTh}
           lang={lang}
           initialTab={importExportInitialTab}
           onImportStudents={handleImportStudents}

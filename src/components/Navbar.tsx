@@ -18,7 +18,8 @@ import {
   FileSpreadsheet,
   MapPin,
   Sparkles,
-  Bell
+  Bell,
+  Mail
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -49,6 +50,8 @@ interface NavbarProps {
   onOpenOnboardingTutor?: () => void;
   onSwitchToMobileMode?: () => void;
   onOpenNotifications?: () => void;
+  coordinationUnreadCount?: number;
+  onOpenCoordinationDesk?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -75,6 +78,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchToMobileMode,
   unreadCount = 0,
   onOpenNotifications,
+  coordinationUnreadCount = 0,
+  onOpenCoordinationDesk,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
@@ -236,6 +241,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
               <span className="hidden xl:inline">{lang === 'th' ? 'นำเข้า/ส่งออก' : 'Import/Export'}</span>
+            </button>
+          )}
+
+          {/* Admin <-> Super Admin Urgent Coordination Desk Trigger */}
+          {onOpenCoordinationDesk && ['admin', 'super_admin'].includes(currentRole) && (
+            <button
+              type="button"
+              onClick={onOpenCoordinationDesk}
+              className="relative inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900 dark:border-sky-700 dark:bg-sky-950 dark:hover:bg-sky-900 dark:text-sky-200 text-[11px] font-bold transition cursor-pointer shrink-0"
+              title={lang === 'th' ? 'แชตและจดหมายประสานงานด่วน Admin ↔ Super Admin' : 'Admin ↔ Super Admin Urgent Desk'}
+            >
+              <Mail className="w-3.5 h-3.5 text-sky-700 dark:text-sky-300" />
+              <span className="hidden lg:inline">{lang === 'th' ? 'ประสานงาน Super Admin' : 'Urgent Desk'}</span>
+              {coordinationUnreadCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[9px] font-bold tabular-nums">
+                  {coordinationUnreadCount}
+                </span>
+              )}
             </button>
           )}
 
