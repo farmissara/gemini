@@ -145,7 +145,19 @@ import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles,
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
-  const [schools, setSchools] = useState<School[]>(INITIAL_SCHOOLS);
+  const [schools, setSchools] = useState<School[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_SCHOOLS;
+    try {
+      return INITIAL_SCHOOLS.map((school) => {
+        const raw = localStorage.getItem(`eduverse_school_custom_settings_${school.id}`);
+        if (!raw) return school;
+        const custom = JSON.parse(raw);
+        return { ...school, ...custom };
+      });
+    } catch {
+      return INITIAL_SCHOOLS;
+    }
+  });
 
   // Parse dedicated school login query parameters (e.g., ?schoolId=...&loginMode=student or ?school=...&loginMode=student)
   const schoolPortalParams = (() => {
@@ -706,7 +718,22 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateSchool = (updates: Partial<School>) => {
-    setActiveSchool((prev) => ({ ...prev, ...updates }));
+    setActiveSchool((prev) => {
+      const next = { ...prev, ...updates };
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem(`eduverse_school_custom_settings_${next.id}`);
+          const existing = raw ? JSON.parse(raw) : {};
+          localStorage.setItem(
+            `eduverse_school_custom_settings_${next.id}`,
+            JSON.stringify({ ...existing, ...updates })
+          );
+        } catch {
+          // ignore
+        }
+      }
+      return next;
+    });
     setSchools((prev) =>
       prev.map((s) => (s.id === activeSchool.id ? { ...s, ...updates } : s))
     );
