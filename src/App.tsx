@@ -1613,6 +1613,7 @@ export const App: React.FC = () => {
                     students={schoolStudents}
                     attendance={schoolAttendance}
                     grades={schoolGrades}
+                    courses={schoolCourses}
                     sdqAssessments={schoolSdqAssessments}
                     behaviorRecords={schoolBehaviorRecords}
                     onNavigateToTab={(tab: string) => navigateToAppTab(tab as NavTab)}
