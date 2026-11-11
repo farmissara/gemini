@@ -347,14 +347,20 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* Header and Controls */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)]" />
-            {lang === 'th' ? 'ทำเนียบคณาจารย์และแฟ้มวิทยฐานะ (PA)' : 'Faculty & Staff Directory (PA Hub)'}
+            <span>{lang === 'th' ? 'ระบบบุคลากรโรงเรียน & ทำวิทยฐานะ DPA (HRMS)' : 'Faculty & Staff Directory (HRMS / DPA)'}</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
+              HRMS สพฐ.
+            </span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">
+              DPA (ว.PA)
+            </span>
           </h1>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             {lang === 'th'
-              ? 'ระบบทะเบียนครูครบวงจร จัดเก็บวิชาเอก-โท แฟ้มผลงานเลื่อนวิทยฐานะ (ว.PA) และวิเคราะห์ศักยภาพการสอน'
-              : 'Comprehensive faculty database with major/minor specialties, PA portfolio artifacts, and teaching analytics.'}
+              ? 'ระบบบุคลากรโรงเรียน (HRMS) ทะเบียนประวัติครู แฟ้มวิทยฐานะดิจิทัล DPA (ว.PA 3 ด้าน) และวิเคราะห์ศักยภาพการจัดการเรียนรู้'
+              : 'Official HRMS teacher directory with DPA digital performance appraisal (PA 3 aspects) and teaching analytics.'}
           </p>
         </div>
 

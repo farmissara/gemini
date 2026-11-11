@@ -205,10 +205,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
             <Users className="w-5 h-5 text-[var(--color-primary-text)]" />
-            Student Information System (SIS)
+            <span>ระบบทะเบียนนักเรียน (DMC / SIS)</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
+              DMC สพฐ.
+            </span>
           </h1>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            Manage student registrations, Thai/English identity, guardian contacts, and LINE OA notification status.
+            จัดการข้อมูลทะเบียนนักเรียน เลขประจำตัวประชาชน 13 หลัก (DMC), สิทธิทุนยากจน (CCT), ผู้ปกครอง และสถานะแจ้งเตือน LINE OA
           </p>
         </div>
 

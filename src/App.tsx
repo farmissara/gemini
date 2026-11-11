@@ -108,6 +108,7 @@ import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
 import { SchoolGpsModal } from './components/SchoolGpsModal';
 import { DataImportExportModal } from './components/DataImportExportModal';
 import { ModuleGuideModal } from './components/ModuleGuideModal';
+import { SchoolOnboardingTutorModal } from './components/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AiDiagnosticLearningView } from './components/AiDiagnosticLearningView';
 import { HallOfFame3DView } from './components/HallOfFame3DView';
@@ -118,7 +119,7 @@ import { SocraticTutorView } from './components/SocraticTutorView';
 import { RealWorldSnapQuestView } from './components/RealWorldSnapQuestView';
 import { MobileAppShell } from './components/MobileAppShell';
 import { getLocalDateString } from './lib/date';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User } from 'lucide-react';
+import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
@@ -199,6 +200,7 @@ export const App: React.FC = () => {
   }, []);
 
   const shouldShowMobileView = deviceViewPreference === 'mobile' || (deviceViewPreference === 'auto' && isMobileScreen);
+  const isMobileInDesktopView = isMobileScreen && deviceViewPreference === 'desktop';
   const useImmersiveGameLayout = isGamePlaying || ['games', 'boss_raid', 'subject_labs'].includes(currentTab);
 
   // Sync Tailwind .dark class and custom CSS theme variables with active themePalette
@@ -277,8 +279,10 @@ export const App: React.FC = () => {
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
+  const [showOnboardingTutorModal, setShowOnboardingTutorModal] = useState<boolean>(false);
+  const [hasSandboxData, setHasSandboxData] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
-  const [importExportInitialTab, setImportExportInitialTab] = useState<'students' | 'courses' | 'enrollment' | 'grades' | 'teachers' | 'questions'>('courses');
+  const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
   const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
 
   // Filter items by active school
@@ -319,12 +323,78 @@ export const App: React.FC = () => {
         schoolNameTh: school.nameTh,
       }));
     }
+    // Registered real school starts clean without mock data pollution
+    setStudents([]);
+    setTeachers([]);
+    setCourses([]);
+    setGrades([]);
+    setAttendance([]);
+    setInvoices([]);
+    setAnnouncements([]);
+    setLessons([]);
+    setAssignments([]);
+    setQuestions([]);
+    setPlayerScores([]);
+    setRewardItems([]);
+    setPeriodAttendance([]);
+    setPortfolioItems([]);
+    setTimetableSlots([]);
+    setBehaviorRecords([]);
+    setSdqAssessments([]);
+    setInfirmaryVisits([]);
+    setHomeworkSubmissions([]);
+    setLeaveRequests([]);
+    setHasSandboxData(false);
+
     if (context.user.role === 'super_admin') {
       setProgramMode('school_erp');
       setCurrentTab('super_admin_console');
     } else {
       setCurrentTab('dashboard');
     }
+  };
+
+  const handleLoadSandboxData = () => {
+    setStudents(INITIAL_STUDENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
+    setTeachers(INITIAL_TEACHERS.map(t => ({ ...t, schoolId: activeSchool.id })));
+    setCourses(INITIAL_COURSES.map(c => ({ ...c, schoolId: activeSchool.id })));
+    setGrades(INITIAL_GRADES.map(g => ({ ...g, schoolId: activeSchool.id })));
+    setAttendance(INITIAL_ATTENDANCE.map(a => ({ ...a, schoolId: activeSchool.id })));
+    setInvoices(INITIAL_INVOICES.map(i => ({ ...i, schoolId: activeSchool.id })));
+    setAnnouncements(INITIAL_ANNOUNCEMENTS.map(an => ({ ...an, schoolId: activeSchool.id })));
+    setLessons(INITIAL_LESSONS.map(l => ({ ...l, schoolId: activeSchool.id })));
+    setAssignments(INITIAL_ASSIGNMENTS.map(a => ({ ...a, schoolId: activeSchool.id })));
+    setQuestions(INITIAL_QUESTIONS.map(q => ({ ...q, schoolId: activeSchool.id })));
+    setTimetableSlots(INITIAL_TIMETABLE_SLOTS.map(t => ({ ...t, schoolId: activeSchool.id })));
+    setBehaviorRecords(INITIAL_BEHAVIOR_RECORDS.map(b => ({ ...b, schoolId: activeSchool.id })));
+    setSdqAssessments(INITIAL_SDQ_ASSESSMENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
+    setInfirmaryVisits(INITIAL_INFIRMARY_VISITS.map(i => ({ ...i, schoolId: activeSchool.id })));
+    setHomeworkSubmissions(INITIAL_HOMEWORK_SUBMISSIONS.map(h => ({ ...h, schoolId: activeSchool.id })));
+    setHasSandboxData(true);
+  };
+
+  const handleClearSandboxData = () => {
+    setStudents([]);
+    setTeachers([]);
+    setCourses([]);
+    setGrades([]);
+    setAttendance([]);
+    setInvoices([]);
+    setAnnouncements([]);
+    setLessons([]);
+    setAssignments([]);
+    setQuestions([]);
+    setPlayerScores([]);
+    setRewardItems([]);
+    setPeriodAttendance([]);
+    setPortfolioItems([]);
+    setTimetableSlots([]);
+    setBehaviorRecords([]);
+    setSdqAssessments([]);
+    setInfirmaryVisits([]);
+    setHomeworkSubmissions([]);
+    setLeaveRequests([]);
+    setHasSandboxData(false);
   };
 
   const handleStartDemo = (targetRole: UserRole = 'admin') => {
@@ -469,26 +539,30 @@ export const App: React.FC = () => {
           skipNextSuperAdminSyncRef.current = true;
         }
         setStudents(data.students);
+        setTeachers(data.teachers);
         setCourses(data.courses);
         setGrades(data.grades);
         setAttendance(data.attendance);
         setInvoices(data.invoices);
         setAnnouncements(data.announcements);
-        // Preserve module records so other school modules stay functional
-        setLessons(prev => prev.length > 0 ? prev : INITIAL_LESSONS.map(l => ({ ...l, schoolId: activeSchool.id })));
-        setAssignments(prev => prev.length > 0 ? prev : INITIAL_ASSIGNMENTS.map(a => ({ ...a, schoolId: activeSchool.id })));
-        setQuestions(prev => prev.length > 0 ? prev : INITIAL_QUESTIONS.map(q => ({ ...q, schoolId: activeSchool.id })));
-        setPlayerScores(prev => prev.length > 0 ? prev : INITIAL_PLAYER_SCORES);
-        setRewardItems(prev => prev.length > 0 ? prev : INITIAL_REWARD_ITEMS);
-        setPeriodAttendance(prev => prev.length > 0 ? prev : INITIAL_PERIOD_ATTENDANCE.map(p => ({ ...p, schoolId: activeSchool.id })));
-        setPortfolioItems(prev => prev.length > 0 ? prev : INITIAL_PORTFOLIO_ITEMS.map(p => ({ ...p, schoolId: activeSchool.id })));
-        setTimetableSlots(prev => prev.length > 0 ? prev : INITIAL_TIMETABLE_SLOTS.map(t => ({ ...t, schoolId: activeSchool.id })));
-        setBehaviorRecords(prev => prev.length > 0 ? prev : INITIAL_BEHAVIOR_RECORDS.map(b => ({ ...b, schoolId: activeSchool.id })));
-        setSdqAssessments(prev => prev.length > 0 ? prev : INITIAL_SDQ_ASSESSMENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
-        setInfirmaryVisits(prev => prev.length > 0 ? prev : INITIAL_INFIRMARY_VISITS.map(i => ({ ...i, schoolId: activeSchool.id })));
-        setHomeworkSubmissions(prev => prev.length > 0 ? prev : INITIAL_HOMEWORK_SUBMISSIONS.map(h => ({ ...h, schoolId: activeSchool.id })));
+        // Real schools only keep school-scoped module items; do NOT force mock demo data
+        setLessons(prev => prev.filter(l => l.schoolId === activeSchool.id));
+        setAssignments(prev => prev.filter(a => a.schoolId === activeSchool.id));
+        setQuestions(prev => prev.filter(q => q.schoolId === activeSchool.id));
+        setPeriodAttendance(prev => prev.filter(p => p.schoolId === activeSchool.id));
+        setPortfolioItems(prev => prev.filter(p => p.schoolId === activeSchool.id));
+        setTimetableSlots(prev => prev.filter(t => t.schoolId === activeSchool.id));
+        setBehaviorRecords(prev => prev.filter(b => b.schoolId === activeSchool.id));
+        setSdqAssessments(prev => prev.filter(s => s.schoolId === activeSchool.id));
+        setInfirmaryVisits(prev => prev.filter(i => i.schoolId === activeSchool.id));
+        setHomeworkSubmissions(prev => prev.filter(h => h.schoolId === activeSchool.id));
         setIsDataReady(true);
         setLoadedSchoolId(activeSchool.id);
+
+        // If new or clean real school, offer onboarding tutor
+        if (data.students.length === 0 && data.teachers.length === 0) {
+          setShowOnboardingTutorModal(true);
+        }
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -518,6 +592,7 @@ export const App: React.FC = () => {
           school: activeSchool,
           role: currentUser.role,
           students: students.filter((item) => item.schoolId === activeSchool.id),
+          teachers: teachers.filter((item) => !item.schoolId || item.schoolId === activeSchool.id),
           courses: courses.filter((item) => item.schoolId === activeSchool.id),
           grades: grades.filter((item) => item.schoolId === activeSchool.id),
           attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
@@ -539,6 +614,7 @@ export const App: React.FC = () => {
     loadedSchoolId,
     activeSchool,
     students,
+    teachers,
     courses,
     grades,
     attendance,
@@ -577,7 +653,21 @@ export const App: React.FC = () => {
   };
 
   const handleAddTeacher = (newTeacher: Teacher) => {
-    setTeachers((prev) => [{ ...newTeacher, schoolId: activeSchool.id }, ...prev]);
+    const fullTeacher = { ...newTeacher, schoolId: activeSchool.id };
+    setTeachers((prev) => [fullTeacher, ...prev]);
+    if (currentUser && !isDemoMode && ['super_admin', 'admin'].includes(currentUser.role)) {
+      syncDataToSupabase({
+        school: activeSchool,
+        role: currentUser.role,
+        students: students.filter((item) => item.schoolId === activeSchool.id),
+        teachers: [fullTeacher, ...teachers.filter((item) => item.schoolId === activeSchool.id)],
+        courses: courses.filter((item) => item.schoolId === activeSchool.id),
+        grades: grades.filter((item) => item.schoolId === activeSchool.id),
+        attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
+        invoices: invoices.filter((item) => item.schoolId === activeSchool.id),
+        announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
+      }).catch((err) => console.warn('Direct teacher save warning:', err));
+    }
   };
 
   const handleUpdateTeacher = (updatedTeacher: Teacher) => {
@@ -1111,6 +1201,7 @@ export const App: React.FC = () => {
           onLogout={handleLogout}
           onSwitchToDesktopMode={() => setDeviceViewPreference('desktop')}
           onOpenProfileModal={() => setShowProfileModal(true)}
+          onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
           students={schoolStudents}
           teachers={schoolTeachers}
           courses={schoolCourses}
@@ -1203,7 +1294,24 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="h-dvh max-h-dvh overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200">
+    <div className={`${isMobileInDesktopView ? 'min-h-dvh w-full overflow-x-auto overflow-y-auto' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
+      {/* Sticky Top Banner when viewing Desktop View on Mobile Screen */}
+      {isMobileInDesktopView && (
+        <div className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-3 py-1.5 text-xs flex items-center justify-between shadow-md shrink-0">
+          <div className="flex items-center gap-2 font-medium">
+            <span>🖥️ <strong>โหมดคอมพิวเตอร์ (Desktop ERP)</strong></span>
+            <span className="text-blue-100 text-[11px]">— เลื่อนซ้าย-ขวาเพื่อดูตารางและคอลัมน์ข้อมูลได้ครบถ้วน</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDeviceViewPreference('mobile')}
+            className="px-2.5 py-1 bg-white text-blue-800 hover:bg-blue-50 font-bold rounded-lg text-[11px] transition shadow-xs cursor-pointer shrink-0 ml-2"
+          >
+            กลับโหมดมือถือ
+          </button>
+        </div>
+      )}
+
       {/* Top Navbar */}
       {!useImmersiveGameLayout && <Navbar
         currentUser={currentUser}
@@ -1229,12 +1337,13 @@ export const App: React.FC = () => {
         onOpenGpsSettings={() => navigateToAppTab('school_gps')}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
+        onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
       />}
       {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
           <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>
-          <span className="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-violet-200 dark:bg-violet-800 text-violet-950 dark:text-violet-100 rounded">DEMO</span>
+          <span className="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-violet-200 dark:border-violet-800 text-violet-950 dark:text-violet-100 rounded">DEMO</span>
         </div>
       )}
       {!useImmersiveGameLayout && dataSyncError && (
@@ -1262,6 +1371,20 @@ export const App: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            {/* Quick Link to Onboarding Tutor in Drawer */}
+            <div className="p-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setShowOnboardingTutorModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 text-xs font-bold hover:bg-amber-100 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>ติวเตอร์ระบบ & ข้อมูลกระทรวง</span>
+              </button>
+            </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
               <Sidebar
                 currentTab={currentTab}
@@ -1285,10 +1408,13 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      <div className={`flex-1 flex overflow-hidden min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950' : ''}`}>
+      <div 
+        className={`flex-1 flex min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950 overflow-hidden' : (isMobileInDesktopView ? 'overflow-visible' : 'overflow-hidden')}`}
+        style={isMobileInDesktopView ? { minWidth: '1120px' } : undefined}
+      >
         {/* Desktop Left Sidebar only shown in School ERP mode */}
         {!useImmersiveGameLayout && programMode === 'school_erp' && (
-          <div className="hidden lg:flex shrink-0">
+          <div className={`${isMobileInDesktopView ? 'flex shrink-0' : 'hidden lg:flex shrink-0'}`}>
             <Sidebar
               currentTab={currentTab}
               setCurrentTab={navigateToAppTab}
@@ -1304,8 +1430,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col overflow-y-auto ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'p-2 sm:p-3 lg:p-4'}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : 'max-w-7xl mx-auto'} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'p-3 overflow-visible' : 'p-2 sm:p-3 lg:p-4 overflow-y-auto')}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-7xl mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1925,6 +2051,31 @@ export const App: React.FC = () => {
               setCurrentTab(mod as NavTab);
             }
           }}
+        />
+      )}
+
+      {/* School Onboarding Tutor Modal (DMC, School MIS, CCT, OBEC Care, ONET, HRMS, DPA, PP3 & Sandbox) */}
+      {showOnboardingTutorModal && (
+        <SchoolOnboardingTutorModal
+          isOpen={showOnboardingTutorModal}
+          onClose={() => setShowOnboardingTutorModal(false)}
+          activeSchool={activeSchool}
+          studentsCount={schoolStudents.length}
+          teachersCount={schoolTeachers.length}
+          coursesCount={schoolCourses.length}
+          lang={lang}
+          onNavigateToTab={(tab) => {
+            setShowOnboardingTutorModal(false);
+            navigateToAppTab(tab);
+          }}
+          onOpenImportExport={(tab) => {
+            setShowOnboardingTutorModal(false);
+            setImportExportInitialTab(tab || 'students');
+            setShowImportExportModal(true);
+          }}
+          onLoadSandboxData={handleLoadSandboxData}
+          onClearSandboxData={handleClearSandboxData}
+          hasSandboxData={hasSandboxData}
         />
       )}
 

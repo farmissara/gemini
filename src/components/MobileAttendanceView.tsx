@@ -11,6 +11,7 @@ import {
   Users, 
   Check, 
   Camera,
+  SwitchCamera,
   RefreshCw,
   LogIn,
   LogOut,
@@ -193,6 +194,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isFlashActive, setIsFlashActive] = useState(false);
@@ -327,13 +329,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
   };
 
-  // Start live webcam feed
-  const startCamera = async () => {
+  // Start live webcam feed with front/back camera support
+  const startCamera = async (targetFacingMode: 'user' | 'environment' = facingMode) => {
     setCameraError(null);
     try {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          video: { 
+            facingMode: { ideal: targetFacingMode }, 
+            width: { ideal: 640 }, 
+            height: { ideal: 480 } 
+          },
           audio: false
         });
         if (videoRef.current) {
@@ -342,13 +353,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           setIsCameraActive(true);
         }
       } else {
-        setCameraError('เบราว์เซอร์นี้ไม่รองรับการเข้าถึงกล้องหน้า');
+        setCameraError('เบราว์เซอร์นี้ไม่รองรับการเข้าถึงกล้อง');
       }
     } catch (err) {
       console.warn('Camera access denied or unavailable, fallback active:', err);
       setCameraError('ไม่สามารถเปิดกล้องได้ (กรุณาอนุญาตสิทธิ์การเข้าถึงกล้อง หรือใช้ปุ่มถ่ายภาพจำลอง)');
       setIsCameraActive(false);
     }
+  };
+
+  // Toggle front/back camera (สลับกล้องหน้า / กล้องหลัง)
+  const handleToggleFacingMode = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
   };
 
   // Stop camera feed
@@ -363,7 +381,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   useEffect(() => {
     if (subTab === 'selfie_mobile') {
-      startCamera();
+      startCamera(facingMode);
     } else {
       stopCamera();
     }
@@ -385,8 +403,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         canvas.height = videoRef.current.videoHeight || 480;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
+          // Mirror horizontally only for front selfie camera
+          if (facingMode === 'user') {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
           setCapturedPhotoUrl(dataUrl);
@@ -889,7 +910,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   autoPlay
                   playsInline
                   muted
-                  className={`w-full h-full object-cover transform -scale-x-100 ${
+                  className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''} ${
                     capturedPhotoUrl ? 'hidden' : 'block'
                   }`}
                 />
@@ -900,6 +921,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     alt="Captured selfie"
                     className="w-full h-full object-cover"
                   />
+                )}
+
+                {/* Camera Switch Front/Back Button (สลับกล้องหน้า/หลัง) */}
+                {!capturedPhotoUrl && isCameraActive && (
+                  <button
+                    type="button"
+                    onClick={handleToggleFacingMode}
+                    className="absolute top-2 right-2 z-30 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto"
+                    title="สลับกล้องหน้า / กล้องหลัง (Switch Front / Back Camera)"
+                  >
+                    <SwitchCamera className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                  </button>
                 )}
 
                 {isFlashActive && (
@@ -915,7 +949,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                           วางใบหน้าในกรอบ
                         </p>
                         <p className="text-[8px] text-cyan-200">
-                          ถ่ายยืนยันตัวตน
+                          {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} (กดปุ่มสลับกล้องได้)
                         </p>
                       </div>
                     </div>
@@ -923,7 +957,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 )}
 
                 {/* Floating GPS & Time Badge */}
-                <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none text-[10px]">
+                <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none text-[10px]">
                   <div className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white font-mono flex items-center gap-1 border border-white/20">
                     <Clock className="w-3 h-3 text-cyan-300" />
                     <span>{new Date().toLocaleTimeString('th-TH')}</span>
@@ -993,7 +1027,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <div className="flex items-center justify-center gap-5 py-0.5">
                     <button
                       type="button"
-                      onClick={startCamera}
+                      onClick={() => { void startCamera(); }}
                       className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
                       title="เปิด/รีเฟรชกล้อง"
                     >

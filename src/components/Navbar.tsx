@@ -16,7 +16,8 @@ import {
   Menu,
   HelpCircle,
   FileSpreadsheet,
-  MapPin
+  MapPin,
+  Sparkles
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -44,6 +45,7 @@ interface NavbarProps {
   onOpenProfile?: () => void;
   onOpenGuide?: () => void;
   onOpenImportExport?: () => void;
+  onOpenOnboardingTutor?: () => void;
   onSwitchToMobileMode?: () => void;
 }
 
@@ -67,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfile,
   onOpenGuide,
   onOpenImportExport,
+  onOpenOnboardingTutor,
   onSwitchToMobileMode,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
@@ -229,6 +232,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
               <span className="hidden xl:inline">{lang === 'th' ? 'นำเข้า/ส่งออก' : 'Import/Export'}</span>
+            </button>
+          )}
+
+          {/* School Onboarding Tutor Trigger (สพฐ. / ศธ. Guide & Sandbox) */}
+          {canAccessSchoolOperations && onOpenOnboardingTutor && (
+            <button
+              type="button"
+              onClick={onOpenOnboardingTutor}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer bg-purple-50 border-purple-300 text-purple-900 hover:bg-purple-100 dark:bg-purple-950 dark:border-purple-700 dark:text-purple-200 shadow-xs"
+              title={lang === 'th' ? 'ติวเตอร์แนะนำการเริ่มต้นใช้งาน 8 ระบบ สพฐ./ศธ.' : 'School Onboarding Tutor'}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-700 dark:text-purple-300" />
+              <span className="hidden sm:inline">{lang === 'th' ? 'ติวเตอร์ระบบ' : 'Tutor'}</span>
             </button>
           )}
 

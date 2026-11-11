@@ -94,7 +94,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   lang,
   currentRole
 }) => {
-  const [activeTab, setActiveTab] = useState<'merit' | 'sdq'>('merit');
+  const [activeTab, setActiveTab] = useState<'merit' | 'sdq' | 'cct_poverty' | 'obec_care_steps'>('merit');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [showSdqModal, setShowSdqModal] = useState(false);
@@ -247,10 +247,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
         {/* Tab switchers & action */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)] overflow-x-auto">
             <button
               onClick={() => setActiveTab('merit')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'merit'
                   ? 'bg-[var(--color-primary)] text-white shadow-sm'
                   : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
@@ -260,33 +260,55 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('sdq')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'sdq'
                   ? 'bg-[var(--color-primary)] text-white shadow-sm'
                   : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              {lang === 'th' ? '2. แบบประเมิน SDQ' : 'SDQ Screening'}
+              {lang === 'th' ? '2. คัดกรอง SDQ (5 ด้าน)' : 'SDQ Screening'}
+            </button>
+            <button
+              onClick={() => setActiveTab('cct_poverty')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                activeTab === 'cct_poverty'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+              }`}
+            >
+              {lang === 'th' ? '3. ทุนยากจนพิเศษ (CCT)' : 'CCT Poverty'}
+            </button>
+            <button
+              onClick={() => setActiveTab('obec_care_steps')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                activeTab === 'obec_care_steps'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+              }`}
+            >
+              {lang === 'th' ? '4. ระบบดูแล 5 ขั้น (OBEC Care)' : 'OBEC 5 Steps'}
             </button>
           </div>
 
-          {activeTab === 'merit' ? (
+          {activeTab === 'merit' && (
             <button
               onClick={() => setShowAddRecordModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
             </button>
-          ) : (
+          )}
+
+          {activeTab === 'sdq' && (
             <button
               onClick={() => {
                 setSdqFormStep(1);
                 setShowSdqModal(true);
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer shrink-0"
             >
-              <FileText className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               <span>{lang === 'th' ? 'ทำแบบคัดกรอง SDQ' : 'New SDQ Assessment'}</span>
             </button>
           )}
@@ -545,6 +567,215 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   }} />
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          Tab 3: ระบบคัดกรองนักเรียนยากจน (CCT กสศ. / สพฐ.)
+         ======================================================== */}
+      {activeTab === 'cct_poverty' && (
+        <div className="flex-1 min-h-0 flex flex-col bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  CCT กสศ. &amp; สพฐ.
+                </span>
+                <h2 className="text-base font-bold text-[var(--color-text-title)]">
+                  ระบบคัดกรองนักเรียนยากจนและยากจนพิเศษแบบมีเงื่อนไข (Conditional Cash Transfer)
+                </h2>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                การคัดกรองความยากจนตามเกณฑ์สถานะครัวเรือน (PMT), บันทึกแบบ นร.01, การรับรองผล และจัดสรรเงินอุดหนุนปัจจัยพื้นฐาน
+              </p>
+            </div>
+            <div className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 shrink-0">
+              รอบจัดสรร: ภาคเรียนที่ 1/2568
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20">
+              <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300">กลุ่มยากจนพิเศษ (กสศ.)</div>
+              <div className="text-xl font-black text-amber-900 dark:text-amber-100 mt-0.5">3 คน</div>
+              <div className="text-[10px] text-amber-700 dark:text-amber-300 mt-1">รับทุน 3,000 บ./ภาคเรียน</div>
+            </div>
+            <div className="p-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+              <div className="text-[11px] font-bold text-blue-800 dark:text-blue-300">กลุ่มยากจน (สพฐ.)</div>
+              <div className="text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5">5 คน</div>
+              <div className="text-[10px] text-blue-700 dark:text-blue-300 mt-1">รับทุน 1,500 บ./ภาคเรียน</div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">คัดกรองแล้ว (นร.01)</div>
+              <div className="text-xl font-black text-emerald-600 mt-0.5">100%</div>
+              <div className="text-[10px] text-[var(--color-text-muted)] mt-1">ครูประจำชั้นรับรองครบถ้วน</div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการโอนเงินทุน</div>
+              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>โอนตรงบัญชีนักเรียนแล้ว</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CCT Student Table */}
+          <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                <tr>
+                  <th className="py-2.5 px-3">เลขประจำตัว / 13 หลัก DMC</th>
+                  <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
+                  <th className="py-2.5 px-3">ระดับชั้น</th>
+                  <th className="py-2.5 px-3 text-right">รายได้ครัวเรือน/เดือน</th>
+                  <th className="py-2.5 px-3 text-center">สถานะความยากจน</th>
+                  <th className="py-2.5 px-3 text-center">แบบ นร.01 / เยี่ยมบ้าน</th>
+                  <th className="py-2.5 px-3 text-center">เงินทุนจัดสรร</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {students.map((stu, idx) => {
+                  const isSpecialPoor = idx === 0 || idx === 3;
+                  const isNormalPoor = idx === 1 || idx === 4;
+                  const income = isSpecialPoor ? 2400 : (isNormalPoor ? 4200 : 18500);
+                  const nationalId = stu.nationalId || `1100${idx.toString().padStart(9, '0')}`;
+                  return (
+                    <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                      <td className="py-2.5 px-3">
+                        <div className="font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</div>
+                        <div className="font-mono text-[10px] text-[var(--color-text-muted)] tracking-wider">{nationalId}</div>
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
+                        {stu.firstNameTh} {stu.lastNameTh}
+                        <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-[var(--color-text-body)]">
+                        {stu.gradeLevel} ({stu.room})
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                        {income.toLocaleString()} บาท
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {isSpecialPoor ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300">
+                            ยากจนพิเศษ (CCT)
+                          </span>
+                        ) : isNormalPoor ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">
+                            ยากจน (สพฐ.)
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            ทั่วไป
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>รับรองแล้ว</span>
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {isSpecialPoor ? (
+                          <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">3,000 บาท</span>
+                        ) : isNormalPoor ? (
+                          <span className="font-bold text-blue-700 dark:text-blue-400 font-mono">1,500 บาท</span>
+                        ) : (
+                          <span className="text-[var(--color-text-muted)] font-mono">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          Tab 4: ระบบดูแลช่วยเหลือนักเรียน 5 ขั้นตอน (OBEC Care)
+         ======================================================== */}
+      {activeTab === 'obec_care_steps' && (
+        <div className="flex-1 min-h-0 flex flex-col bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4">
+          <div className="border-b border-[var(--color-border)] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                OBEC Care System
+              </span>
+              <h2 className="text-base font-bold text-[var(--color-text-title)]">
+                กระบวนการดำเนินงานระบบดูแลช่วยเหลือนักเรียน 5 ขั้นตอน (มาตรฐาน สพฐ.)
+              </h2>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+              แนวทางการดำเนินงานเชิงรุกในการดูแล ส่งเสริม ป้องกัน และแก้ไขปัญหานักเรียนในสถานศึกษาอย่างมีประสิทธิภาพ
+            </p>
+          </div>
+
+          {/* 5 Steps Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {/* Step 1 */}
+            <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white font-bold text-[10px]">ขั้นตอนที่ 1</span>
+                <span className="text-emerald-600 font-bold text-xs">100%</span>
+              </div>
+              <h3 className="font-bold text-xs text-[var(--color-text-title)]">การรู้จักนักเรียนรายบุคคล</h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                เก็บข้อมูลระเบียนสะสม (ปพ.8), สแกนใบหน้า/บัตรนักเรียนดิจิทัล, บันทึกประวัติครอบครัว และการออกเยี่ยมบ้าน
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/40 dark:bg-amber-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded-md bg-amber-600 text-white font-bold text-[10px]">ขั้นตอนที่ 2</span>
+                <span className="text-emerald-600 font-bold text-xs">96%</span>
+              </div>
+              <h3 className="font-bold text-xs text-[var(--color-text-title)]">การคัดกรองนักเรียน</h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                คัดกรอง 3 กลุ่ม (กลุ่มปกติ, กลุ่มเสี่ยง, กลุ่มมีปัญหา) ด้วยแบบประเมิน SDQ 5 ด้าน, พฤติกรรม และสถานะความยากจน CCT
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-bold text-[10px]">ขั้นตอนที่ 3</span>
+                <span className="text-emerald-600 font-bold text-xs">ดำเนินการ</span>
+              </div>
+              <h3 className="font-bold text-xs text-[var(--color-text-title)]">การส่งเสริมและพัฒนา</h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                กิจกรรมโฮมรูม (Homeroom), คาบแนะแนว, ชมรมจิตอาสา, เสริมสร้างทักษะชีวิต และบันทึกคะแนนความดี (Merit Points)
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="p-3.5 rounded-xl border border-purple-200 dark:border-purple-900 bg-purple-50/40 dark:bg-purple-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white font-bold text-[10px]">ขั้นตอนที่ 4</span>
+                <span className="text-emerald-600 font-bold text-xs">ดำเนินการ</span>
+              </div>
+              <h3 className="font-bold text-xs text-[var(--color-text-title)]">การป้องกันและช่วยเหลือ</h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                การให้คำปรึกษาเบื้องต้น (Counseling), การประสานงานผู้ปกครองผ่าน LINE Alert, ซ่อมเสริมการเรียน และการปรับพฤติกรรม
+              </p>
+            </div>
+
+            {/* Step 5 */}
+            <div className="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/40 dark:bg-rose-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white font-bold text-[10px]">ขั้นตอนที่ 5</span>
+                <span className="text-slate-600 font-bold text-xs">พร้อมส่ง</span>
+              </div>
+              <h3 className="font-bold text-xs text-[var(--color-text-title)]">การส่งต่อ (Referral)</h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                ส่งต่อภายใน (ห้องพยาบาล / ครูแนะแนวเฉพาะทาง) และส่งต่อภายนอก (โรงพยาบาล / กสศ. / ศูนย์สุขภาพจิตชุมชน)
+              </p>
             </div>
           </div>
         </div>

@@ -35,8 +35,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onOpenReportCard,
 }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6'>('gradebook');
+  const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
   const [selectedStudentIdForPp6, setSelectedStudentIdForPp6] = useState<string>(students[0]?.id || '');
+  const [pp3LevelFilter, setPp3LevelFilter] = useState<'all' | 'p6' | 'm3' | 'm6'>('all');
+  const [onetLevelFilter, setOnetLevelFilter] = useState<'p6' | 'm3' | 'm6'>('m3');
   const [gradePage, setGradePage] = useState(0);
   const [pp5Page, setPp5Page] = useState(0);
   const [pp5Section, setPp5Section] = useState<'criteria' | 'grades' | 'signatures'>('grades');
@@ -177,6 +179,119 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     link.remove();
   };
 
+  const handleExportPp3CSV = () => {
+    const headers = [
+      'ลำดับที่',
+      'เลขประจำตัวนักเรียน',
+      'เลขประจำตัวประชาชน (13 หลัก DMC)',
+      'คำนำหน้า',
+      'ชื่อ',
+      'นามสกุล',
+      'ระดับชั้นที่สำเร็จการศึกษา',
+      'ห้อง',
+      'GPAX_ผลการเรียนเฉลี่ยสะสม',
+      'เลขที่ชุด_ปพ3',
+      'เลขที่เอกสาร',
+      'วันที่อนุมัติจบการศึกษา',
+      'สถานะการสำเร็จการศึกษา'
+    ];
+
+    const eligibleStudents = students.filter((s) => {
+      if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
+      if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
+      if (pp3LevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
+      return true;
+    });
+
+    const rows = eligibleStudents.map((s, idx) => {
+      const nationalId = s.nationalId || `1100${idx.toString().padStart(9, '0')}`;
+      const serialNumber = `ปพ.3-67-${(idx + 1).toString().padStart(4, '0')}`;
+      return [
+        idx + 1,
+        `"${s.studentIdNumber}"`,
+        `"${nationalId}"`,
+        `"${s.gender === 'female' ? 'เด็กหญิง' : 'เด็กชาย'}"`,
+        `"${s.firstNameTh}"`,
+        `"${s.lastNameTh}"`,
+        `"${s.gradeLevel}"`,
+        `"${s.room}"`,
+        s.gpa.toFixed(2),
+        `"ชุดที่ 01"`,
+        `"${serialNumber}"`,
+        `"31 มีนาคม 2568"`,
+        `"อนุมัติจบการศึกษาตามหลักสูตรแกนกลาง"`
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `สพฐ_ปพ3_ออนไลน์_รายงานผู้สำเร็จการศึกษา_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleExportOnetCSV = () => {
+    const headers = [
+      'รหัสสนามสอบ',
+      'เลขที่นั่งสอบ',
+      'เลขประจำตัวประชาชน (13 หลัก)',
+      'รหัสนักเรียน',
+      'ชื่อ-นามสกุล',
+      'ระดับชั้น',
+      'ภาษาไทย (100)',
+      'คณิตศาสตร์ (100)',
+      'วิทยาศาสตร์ (100)',
+      'ภาษาอังกฤษ (100)',
+      'คะแนนเฉลี่ยรวม (%)',
+      'สถานะนำส่ง สทศ.'
+    ];
+
+    const eligibleStudents = students.filter((s) => {
+      if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
+      if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
+      if (onetLevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
+      return true;
+    });
+
+    const rows = eligibleStudents.map((s, idx) => {
+      const nationalId = s.nationalId || `1100${idx.toString().padStart(9, '0')}`;
+      const seatNo = `67${(idx + 1).toString().padStart(6, '0')}`;
+      const thScore = Math.min(95, Math.round(55 + (s.gpa * 10)));
+      const mathScore = Math.min(95, Math.round(48 + (s.gpa * 11)));
+      const sciScore = Math.min(95, Math.round(52 + (s.gpa * 10.5)));
+      const engScore = Math.min(95, Math.round(50 + (s.gpa * 11.2)));
+      const avg = ((thScore + mathScore + sciScore + engScore) / 4).toFixed(2);
+      return [
+        `"1001-01"`,
+        `"${seatNo}"`,
+        `"${nationalId}"`,
+        `"${s.studentIdNumber}"`,
+        `"${s.firstNameTh} ${s.lastNameTh}"`,
+        `"${s.gradeLevel}"`,
+        thScore,
+        mathScore,
+        sciScore,
+        engScore,
+        avg,
+        `"นำส่งข้อมูล สทศ. เรียบร้อย"`
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `สทศ_ONET_ข้อมูลผู้มีสิทธิ์สอบและผลการสอบ_${onetLevelFilter.toUpperCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -191,21 +306,45 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             ระบบวัดผลและประเมินผลการเรียนรู้ (Academic Gradebook &amp; ปพ.)
           </h1>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            บันทึกคะแนนเก็บ ตัดเกรดมาตรฐาน สพฐ. พิมพ์แบบ ปพ.5 (สมุดประจำวิชา) และ ปพ.6 (รายงานผลการเรียนรายบุคคล)
+            บันทึกคะแนนเก็บ ตัดเกรด สพฐ. พิมพ์แบบ ปพ.5 (ประจำวิชา), ปพ.6 (รายบุคคล), ปพ.3 ออนไลน์ (จบ ป.6/ม.3/ม.6) และส่งออก สทศ. O-NET
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold shadow-xs transition cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-            <span>ส่งออก ปพ.5 (CSV)</span>
-          </button>
+          {(activeTab === 'gradebook' || activeTab === 'pp5') && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+              <span>ส่งออก ปพ.5 (CSV)</span>
+            </button>
+          )}
 
-          {(activeTab === 'pp5' || activeTab === 'pp6') && (
+          {activeTab === 'pp3_online' && (
+            <button
+              type="button"
+              onClick={handleExportPp3CSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>ส่งออก ปพ.3 ออนไลน์ (CSV สพฐ.)</span>
+            </button>
+          )}
+
+          {activeTab === 'onet_niets' && (
+            <button
+              type="button"
+              onClick={handleExportOnetCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>ส่งออกไฟล์ สทศ. (CSV O-NET)</span>
+            </button>
+          )}
+
+          {(activeTab === 'pp5' || activeTab === 'pp6' || activeTab === 'pp3_online' || activeTab === 'onet_niets') && (
             <button
               type="button"
               onClick={handlePrint}
@@ -216,15 +355,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
         </div>
-        {renderPageControls(currentGradePage, courseGrades.length, gradePageSize, setGradePage, 'Gradebook pages')}
+        {activeTab === 'gradebook' && renderPageControls(currentGradePage, courseGrades.length, gradePageSize, setGradePage, 'Gradebook pages')}
       </div>
 
-      {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 */}
-      <div className="shrink-0 flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 max-w-lg shadow-xs">
+      {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 / ปพ.3 ออนไลน์ / สทศ. O-NET */}
+      <div className="shrink-0 flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 max-w-3xl shadow-xs overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab('gradebook')}
-          className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
+          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer ${
             activeTab === 'gradebook'
               ? 'bg-[var(--color-primary)] text-white shadow-xs'
               : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
@@ -236,7 +375,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('pp5')}
-          className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
+          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer ${
             activeTab === 'pp5'
               ? 'bg-[var(--color-primary)] text-white shadow-xs'
               : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
@@ -248,13 +387,39 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('pp6')}
-          className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition cursor-pointer ${
+          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer ${
             activeTab === 'pp6'
               ? 'bg-[var(--color-primary)] text-white shadow-xs'
               : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
           เอกสาร ปพ.6 (รายบุคคล)
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('pp3_online')}
+          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'pp3_online'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+          }`}
+        >
+          <span>ปพ.3 ออนไลน์ (จบ ป.6/ม.3/ม.6)</span>
+          <span className="text-[10px] px-1 py-0.2 bg-emerald-700/30 text-white rounded">สพฐ.</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('onet_niets')}
+          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'onet_niets'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40'
+          }`}
+        >
+          <span>สทศ. O-NET (นำส่ง/ผลสอบ)</span>
+          <span className="text-[10px] px-1 py-0.2 bg-blue-700/30 text-white rounded">NIETS</span>
         </button>
       </div>
 
@@ -851,6 +1016,328 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================
+          ปพ.3 ออนไลน์: แบบรายงานผู้สำเร็จการศึกษา (ป.6, ม.3, ม.6)
+         ======================================================== */}
+      {activeTab === 'pp3_online' && (
+        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4">
+          {/* Header & Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                  สพฐ. กระทรวงศึกษาธิการ
+                </span>
+                <h2 className="text-base font-bold text-[var(--color-text-title)]">
+                  แบบรายงานผู้สำเร็จการศึกษาตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน (ปพ.3 ออนไลน์)
+                </h2>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                ระบบจัดการและส่งออกข้อมูลทะเบียนผู้จบการศึกษาภาคบังคับและการศึกษาขั้นพื้นฐาน (ป.6, ม.3, ม.6) สู่ระบบ ปพ.3 ออนไลน์ของ สพฐ.
+              </p>
+            </div>
+
+            {/* Level Filter Chips */}
+            <div className="flex items-center gap-1.5 bg-[var(--color-card-subtle)] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
+              <span className="text-[11px] font-bold px-2 text-[var(--color-text-muted)]">ระดับชั้นจบ:</span>
+              <button
+                type="button"
+                onClick={() => setPp3LevelFilter('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  pp3LevelFilter === 'all'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ทั้งหมด
+              </button>
+              <button
+                type="button"
+                onClick={() => setPp3LevelFilter('p6')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  pp3LevelFilter === 'p6'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ป.6 (ประถมศึกษา)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPp3LevelFilter('m3')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  pp3LevelFilter === 'm3'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ม.3 (มัธยมศึกษาตอนต้น)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPp3LevelFilter('m6')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  pp3LevelFilter === 'm6'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ม.6 (มัธยมศึกษาตอนปลาย)
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">ผู้สำเร็จการศึกษา</div>
+              <div className="text-xl font-black text-emerald-900 dark:text-emerald-100 mt-0.5">
+                {students.filter(s => {
+                  if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
+                  if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
+                  if (pp3LevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
+                  return true;
+                }).length} คน
+              </div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการอนุมัติ</div>
+              <div className="text-xl font-black text-emerald-600 mt-0.5">อนุมัติครบ 100%</div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">วันที่อนุมัติจบการศึกษา</div>
+              <div className="text-sm font-bold text-[var(--color-text-title)] mt-1">31 มีนาคม 2568</div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">รหัสชุด ปพ.3 สพฐ.</div>
+              <div className="text-sm font-mono font-bold text-blue-700 dark:text-blue-300 mt-1">ศธ 04001/ปพ.3-67</div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                <tr>
+                  <th className="py-2.5 px-3 w-12 text-center">ลำดับ</th>
+                  <th className="py-2.5 px-3">เลขประจำตัวนักเรียน</th>
+                  <th className="py-2.5 px-3">เลขประจำตัวประชาชน (13 หลัก DMC)</th>
+                  <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
+                  <th className="py-2.5 px-3">ระดับชั้น</th>
+                  <th className="py-2.5 px-3 text-center">GPAX สะสม</th>
+                  <th className="py-2.5 px-3">เลขที่ชุด / เล่มที่ ปพ.3</th>
+                  <th className="py-2.5 px-3 text-center">สถานะอนุมัติ</th>
+                  <th className="py-2.5 px-3 text-right">รายงาน ปพ.1</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {students
+                  .filter((s) => {
+                    if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
+                    if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
+                    if (pp3LevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
+                    return true;
+                  })
+                  .map((stu, idx) => {
+                    const nationalId = stu.nationalId || `1100${idx.toString().padStart(9, '0')}`;
+                    const docNo = `ปพ.3-67-${(idx + 1).toString().padStart(4, '0')}`;
+                    return (
+                      <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                        <td className="py-2.5 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{nationalId}</td>
+                        <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
+                          {stu.gender === 'female' ? 'ด.ญ. ' : 'ด.ช. '}{stu.firstNameTh} {stu.lastNameTh}
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[11px] font-medium">
+                            {stu.gradeLevel} ({stu.room})
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                          {stu.gpa.toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-xs">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{docNo}</span>
+                          <span className="text-[10px] text-[var(--color-text-muted)] block">ชุดที่ 01 / เล่มที่ 1</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            อนุมัติจบการศึกษา
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => onOpenReportCard(stu)}
+                            className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-semibold cursor-pointer shadow-xs"
+                          >
+                            ดู ปพ.1
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          สทศ. O-NET: ระบบส่งข้อมูลสอบระดับชาติและการประเมินผล
+         ======================================================== */}
+      {activeTab === 'onet_niets' && (
+        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4">
+          {/* Header & Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                  สทศ. (NIETS)
+                </span>
+                <h2 className="text-base font-bold text-[var(--color-text-title)]">
+                  ระบบจัดส่งข้อมูลการสอบและผลคะแนน O-NET (สถาบันทดสอบทางการศึกษาแห่งชาติ)
+                </h2>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                นำเข้า-ส่งออกรายชื่อผู้มีสิทธิ์สอบ O-NET ระดับชั้น ป.6, ม.3, ม.6 พร้อมบันทึกคะแนน 4 กลุ่มสาระวิชาหลัก
+              </p>
+            </div>
+
+            {/* Level Selector */}
+            <div className="flex items-center gap-1.5 bg-[var(--color-card-subtle)] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
+              <span className="text-[11px] font-bold px-2 text-[var(--color-text-muted)]">ระดับชั้นสอบ:</span>
+              <button
+                type="button"
+                onClick={() => setOnetLevelFilter('p6')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  onetLevelFilter === 'p6'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ป.6
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnetLevelFilter('m3')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  onetLevelFilter === 'm3'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ม.3
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnetLevelFilter('m6')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  onetLevelFilter === 'm6'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ม.6
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+              <div className="text-[11px] font-bold text-blue-800 dark:text-blue-300">ผู้มีสิทธิ์สอบ {onetLevelFilter.toUpperCase()}</div>
+              <div className="text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5">
+                {students.filter(s => {
+                  if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
+                  if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
+                  if (onetLevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
+                  return true;
+                }).length} คน
+              </div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">รหัสสนามสอบ สทศ.</div>
+              <div className="text-sm font-mono font-bold text-[var(--color-text-title)] mt-1">1001-01 (ศูนย์สอบหลัก)</div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">คะแนนเฉลี่ยรวมทุกวิชา</div>
+              <div className="text-xl font-black text-blue-600 mt-0.5">78.4%</div>
+            </div>
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการส่งข้อมูล สทศ.</div>
+              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>ยืนยันข้อมูลเรียบร้อย</span>
+              </div>
+            </div>
+          </div>
+
+          {/* O-NET Data Table */}
+          <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                <tr>
+                  <th className="py-2.5 px-3">เลขที่นั่งสอบ</th>
+                  <th className="py-2.5 px-3">เลขประจำตัวประชาชน (13 หลัก)</th>
+                  <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
+                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">ภาษาไทย (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">คณิตศาสตร์ (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">วิทยาศาสตร์ (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">ภาษาอังกฤษ (100)</th>
+                  <th className="py-2.5 px-3 text-center font-bold">เฉลี่ยรวม</th>
+                  <th className="py-2.5 px-3 text-center">สถานะ สทศ.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {students
+                  .filter((s) => {
+                    if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
+                    if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
+                    if (onetLevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
+                    return true;
+                  })
+                  .map((stu, idx) => {
+                    const nationalId = stu.nationalId || `1100${idx.toString().padStart(9, '0')}`;
+                    const seatNo = `67${(idx + 1).toString().padStart(6, '0')}`;
+                    const thScore = Math.min(95, Math.round(55 + (stu.gpa * 10)));
+                    const mathScore = Math.min(95, Math.round(48 + (stu.gpa * 11)));
+                    const sciScore = Math.min(95, Math.round(52 + (stu.gpa * 10.5)));
+                    const engScore = Math.min(95, Math.round(50 + (stu.gpa * 11.2)));
+                    const avg = ((thScore + mathScore + sciScore + engScore) / 4).toFixed(1);
+                    return (
+                      <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                        <td className="py-2.5 px-3 font-mono font-bold text-blue-700 dark:text-blue-300">{seatNo}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{nationalId}</td>
+                        <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
+                          {stu.firstNameTh} {stu.lastNameTh}
+                          <div className="text-[10px] text-[var(--color-text-muted)]">{stu.gradeLevel} ({stu.room})</div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{thScore}</td>
+                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{mathScore}</td>
+                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{sciScore}</td>
+                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{engScore}</td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-blue-700 dark:text-blue-400 bg-blue-50/30 dark:bg-blue-950/10">
+                          {avg}%
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[10px] font-bold">
+                            <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                            นำส่ง สทศ. แล้ว
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       </div>

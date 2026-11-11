@@ -92,6 +92,7 @@ interface MobileAppShellProps {
   onLogout: () => void;
   onSwitchToDesktopMode: () => void;
   onOpenProfileModal: () => void;
+  onOpenOnboardingTutor?: () => void;
   
   // Data props
   students: Student[];
@@ -154,6 +155,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onLogout,
   onSwitchToDesktopMode,
   onOpenProfileModal,
+  onOpenOnboardingTutor,
   students,
   teachers = [],
   courses,
@@ -242,6 +244,19 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
         {/* Right actions: Desktop Switcher & Profile Avatar */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Quick Onboarding Tutor */}
+          {onOpenOnboardingTutor && (
+            <button
+              type="button"
+              onClick={onOpenOnboardingTutor}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-[11px] font-bold transition shadow-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
+              title="คู่มือและติวเตอร์ระบบการศึกษาไทย"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="hidden xs:inline">ติวเตอร์</span>
+            </button>
+          )}
+
           {/* Switch to Full Computer / Desktop View */}
           <button
             type="button"
@@ -802,6 +817,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Onboarding Tutor & Thai Systems Guide */}
+                {onOpenOnboardingTutor && (
+                  <button
+                    type="button"
+                    onClick={onOpenOnboardingTutor}
+                    className="w-full p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 font-bold flex items-center justify-between text-left cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <div className="text-xs font-bold">ติวเตอร์ระบบ & คู่มือการศึกษาไทย</div>
+                        <div className="text-[10px] text-amber-700/80 dark:text-amber-300/80 font-normal">DMC, MIS, CCT, OBEC Care, O-NET, HRMS, DPA, ปพ.3</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-amber-600" />
+                  </button>
+                )}
 
                 {/* Switch to Full Desktop View */}
                 <button

@@ -280,9 +280,12 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {/* Top Header */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--color-card)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <BookOpen className="w-5 h-5 text-[var(--color-primary-text)]" />
-            <span>หลักสูตรและการจัดการรายวิชา (Curriculum &amp; Syllabus)</span>
+            <span>หลักสูตรและการจัดการรายวิชา (School MIS / Curriculum)</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
+              School MIS
+            </span>
           </h1>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             จัดการสาระการเรียนรู้, หมวดวิชา, หน่วยกิต, เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ ปพ.5) และรายชื่อนักเรียนที่ลงทะเบียน
