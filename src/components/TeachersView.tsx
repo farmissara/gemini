@@ -232,14 +232,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const handleSaveTeacher = (e: React.FormEvent) => {
     e.preventDefault();
     const experience = formData.teachingExperienceYears;
-    if (
-      !formData.fullNameTh?.trim() ||
-      !formData.email?.trim() ||
-      experience === undefined ||
-      !Number.isFinite(experience) ||
-      experience < 0
-    ) {
-      setFormError('กรุณากรอกชื่อ อีเมล และประสบการณ์สอนเป็นจำนวนปีตั้งแต่ 0 ขึ้นไป');
+    if (experience !== undefined && (!Number.isFinite(experience) || experience < 0)) {
+      setFormError('ประสบการณ์สอนต้องเป็นจำนวนปีตั้งแต่ 0 ขึ้นไป (เช่น 5 หรือ 0)');
+      setTeacherFormStep(1);
+      return;
+    }
+    if (!formData.fullNameTh?.trim()) {
+      setFormError('กรุณากรอกชื่อ-สกุล (ภาษาไทย)');
       setTeacherFormStep(1);
       return;
     }
@@ -251,7 +250,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         ...formData,
         fullNameTh: formData.fullNameTh.trim(),
         fullNameEn: formData.fullNameEn?.trim() || '',
-        email: formData.email.trim(),
+        email: formData.email?.trim() || '',
         phone: formData.phone?.trim() || '',
         academicDegree: formData.academicDegree?.trim() || '',
         major: formData.major?.trim() || '',
@@ -268,18 +267,18 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     } else {
       const newTeacher: Teacher = {
         id: `tch-${Date.now()}`,
-        teacherIdNumber: formData.teacherIdNumber || `TCH-${Date.now()}`,
-        fullNameTh: formData.fullNameTh || '',
-        fullNameEn: formData.fullNameEn || formData.fullNameTh || '',
+        teacherIdNumber: formData.teacherIdNumber?.trim() || `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        fullNameTh: formData.fullNameTh.trim(),
+        fullNameEn: formData.fullNameEn?.trim() || formData.fullNameTh.trim(),
         gender: formData.gender || 'male',
-        email: formData.email || '',
-        phone: formData.phone || '',
-        avatarUrl: formData.avatarUrl || '',
+        email: formData.email?.trim() || '',
+        phone: formData.phone?.trim() || '',
+        avatarUrl: formData.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
         academicDegree: formData.academicDegree?.trim() || '',
         major: formData.major?.trim() || '',
         minor: formData.minor?.trim() || '',
-        academicStanding: formData.academicStanding?.trim() || '',
-        department: formData.department?.trim() || '',
+        academicStanding: formData.academicStanding?.trim() || 'ครูผู้ช่วย',
+        department: formData.department?.trim() || 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
         teacherLicenseNo: formData.teacherLicenseNo?.trim() || '',
         teachingSubjects: formData.teachingSubjects || [],
         homeroomClasses: formData.homeroomClasses || [],
@@ -753,13 +752,27 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedTeacherForDetail(null)}
-                className="p-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleOpenEdit(selectedTeacherForDetail);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-bold border border-blue-400/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>แก้ไขข้อมูล</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTeacherForDetail(null)}
+                  className="p-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Tab Navigation */}
@@ -1110,21 +1123,48 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   {formError}
                 </p>
               )}
-              <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
-                <span className={teacherFormStep === 1 ? 'font-bold text-[var(--color-primary-text)]' : ''}>1. Profile</span>
-                <span>→</span>
-                <span className={teacherFormStep === 2 ? 'font-bold text-[var(--color-primary-text)]' : ''}>2. Teaching details</span>
+              {/* Interactive Tabs for smooth editing */}
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
+                <button
+                  type="button"
+                  onClick={() => setTeacherFormStep(1)}
+                  className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                    teacherFormStep === 1
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
+                  }`}
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>1. ข้อมูลทั่วไป &amp; ประวัติครู</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeacherFormStep(2)}
+                  className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                    teacherFormStep === 2
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>2. การสอน, ทักษะ &amp; ว.PA</span>
+                </button>
               </div>
+
               {teacherFormStep === 1 && (
                 <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">รหัสครู/บุคลากร *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">รหัสครู/บุคลากร *</label>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">แก้ไขได้</span>
+                  </div>
                   <input
                     type="text"
                     required
                     value={formData.teacherIdNumber || ''}
                     onChange={(e) => setFormData({ ...formData, teacherIdNumber: e.target.value })}
+                    placeholder="เช่น TCH-2024-0012"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
@@ -1167,22 +1207,28 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Name Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">
-                    ชื่อ-สกุล (ภาษาไทย) *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">
+                      ชื่อ-สกุล (ภาษาไทย) *
+                    </label>
+                    <span className="text-[10px] text-rose-700 font-semibold">จำเป็น</span>
+                  </div>
                   <input
                     type="text"
                     required
                     value={formData.fullNameTh || ''}
                     onChange={(e) => setFormData({ ...formData, fullNameTh: e.target.value })}
                     placeholder="เช่น ดร.ประเสริฐ ถาวร"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">
-                    Full Name (English)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">
+                      Full Name (English)
+                    </label>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">แก้ไขได้</span>
+                  </div>
                   <input
                     type="text"
                     value={formData.fullNameEn || ''}
@@ -1196,10 +1242,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Contact Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">อีเมลติดต่อ *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">อีเมลติดต่อ</label>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">แก้ไขได้</span>
+                  </div>
                   <input
                     type="email"
-                    required
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="teacher@eduverse.ac.th"
@@ -1207,7 +1255,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">เบอร์โทรศัพท์</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">เบอร์โทรศัพท์</label>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">แก้ไขได้</span>
+                  </div>
                   <input
                     type="tel"
                     value={formData.phone || ''}
@@ -1217,19 +1268,26 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ประสบการณ์สอน (ปี) *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">ประสบการณ์สอน (ปี)</label>
+                    <span className="text-[10px] text-emerald-800 dark:text-emerald-400 font-semibold">แก้ไขได้อิสระ</span>
+                  </div>
                   <input
                     type="number"
-                    required
                     min="0"
+                    max="60"
                     step="0.5"
                     value={formData.teachingExperienceYears ?? ''}
                     onChange={(e) => setFormData({
                       ...formData,
                       teachingExperienceYears: e.target.value === '' ? undefined : Number(e.target.value),
                     })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    placeholder="ระบุจำนวนปี เช่น 5 หรือ 0 (แก้ไขได้)"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   />
+                  <span className="text-[10px] text-[var(--color-text-muted)] block mt-0.5">
+                    * ไม่บังคับใส่ค่าทิ้งไว้ ระบุหรือแก้ไขได้ตามจริง
+                  </span>
                 </div>
               </div>
                 </div>
@@ -1237,26 +1295,31 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
               {teacherFormStep === 2 && (
                 <div className="space-y-4">
-              {/* Major & Minor Fields (Requirement 2) */}
+              {/* Major & Minor Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">วิชาเอก (Major) *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">วิชาเอก (Major)</label>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">แก้ไขได้</span>
+                  </div>
                   <input
                     type="text"
-                    required
                     value={formData.major || ''}
                     onChange={(e) => setFormData({ ...formData, major: e.target.value })}
-                    placeholder="กรอกข้อมูลวิชาเอก"
+                    placeholder="เช่น วิทยาการคำนวณ, คณิตศาสตร์, ภาษาอังกฤษ"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">วิชาโท (Minor)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[var(--color-text-title)] font-bold">วิชาโท (Minor)</label>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">แก้ไขได้</span>
+                  </div>
                   <input
                     type="text"
                     value={formData.minor || ''}
                     onChange={(e) => setFormData({ ...formData, minor: e.target.value })}
-                    placeholder="เช่น ปัญญาประดิษฐ์ประยุกต์ / ภาษาอังกฤษ"
+                    placeholder="เช่น ปัญญาประดิษฐ์ประยุกต์ / ภาษาไทย"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
@@ -1590,54 +1653,56 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[var(--color-border)] flex justify-end gap-2">
+              <div className="pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => setTeacherFormStep(1)}
                   className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
                 >
-                  Back
+                  ← ย้อนกลับ
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer"
-                >
-                  {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer"
+                  >
+                    {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
+                  </button>
+                </div>
               </div>
                 </div>
               )}
               {teacherFormStep === 1 && (
-                <div className="flex justify-between gap-2">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer">Cancel</button>
+                <div className="pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (
-                        formData.fullNameTh?.trim() &&
-                        formData.email?.trim() &&
-                        formData.major?.trim() &&
-                        formData.teachingExperienceYears !== undefined &&
-                        Number.isFinite(formData.teachingExperienceYears) &&
-                        formData.teachingExperienceYears >= 0
-                      ) {
-                        setFormError(null);
-                        setTeacherFormStep(2);
-                      } else {
-                        setFormError('กรุณากรอกชื่อ อีเมล วิชาเอก และประสบการณ์สอนก่อนดำเนินการต่อ');
-                      }
-                    }}
-                    className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer"
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
                   >
-                    Continue
+                    ยกเลิก
                   </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTeacherFormStep(2)}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold cursor-pointer transition"
+                    >
+                      ถัดไป: ข้อมูลการสอน &amp; ว.PA →
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer"
+                    >
+                      {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
+                    </button>
+                  </div>
                 </div>
               )}
             </form>

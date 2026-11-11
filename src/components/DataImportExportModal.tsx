@@ -1006,8 +1006,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                             <td className="px-3 py-2 font-bold">{t.fullNameTh}</td>
                             <td className="px-3 py-2 text-indigo-700 dark:text-indigo-300 font-medium">{t.academicStanding}</td>
                             <td className="px-3 py-2">{t.department}</td>
-                            <td className="px-3 py-2 text-center">{t.teachingExperienceYears} ปี</td>
-                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{t.paScore}</td>
+                            <td className="px-3 py-2 text-center">{t.teachingExperienceYears == null ? '-' : `${t.teachingExperienceYears} ปี`}</td>
+                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{t.paScore == null ? '-' : t.paScore}</td>
                           </tr>
                         ))}
                       </tbody>
