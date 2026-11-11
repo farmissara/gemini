@@ -530,8 +530,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-slate-950">+EXP</span>
                 </div>
                 <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ทำเควสต์สะสมแต้ม</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">1v1, 3D Battle, แล็บ</div>
+                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ศูนย์เกม 7 สไตล์ +EXP</div>
+                  <div className="text-[10px] text-[var(--color-text-muted)]">ยิงสมการ จับคู่ คำศัพท์ 3D</div>
                 </div>
               </button>
 

@@ -301,6 +301,90 @@ export function playGrandVictoryFanfare() {
   });
 }
 
+// 10. Arcade Laser Shot Sound
+export function playLaserShotSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(980, now);
+  osc.frequency.exponentialRampToValueAtTime(220, now + 0.14);
+
+  gain.gain.setValueAtTime(0.14, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.16);
+}
+
+// 11. Tactile Card Flip / Tile Tap Sound
+export function playCardFlipSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(520, now);
+  osc.frequency.exponentialRampToValueAtTime(780, now + 0.06);
+
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.08);
+}
+
+// 12. Soft Arcade Error Buzz
+export function playErrorBuzzSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(190, now);
+  osc.frequency.linearRampToValueAtTime(125, now + 0.18);
+
+  gain.gain.setValueAtTime(0.2, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.22);
+}
+
+// 13. Power-up Freeze / Shield Chime
+export function playPowerupChimeSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [587.33, 880, 1174.66].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const st = now + i * 0.06;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, st);
+    gain.gain.setValueAtTime(0.15, st);
+    gain.gain.exponentialRampToValueAtTime(0.001, st + 0.22);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(st);
+    osc.stop(st + 0.24);
+  });
+}
+
 // Aliases for compatibility
 export const playExplosionSound = playBoomExplosionSound;
 export const playSuccessSound = playSuccessChimeSound;

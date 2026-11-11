@@ -25,13 +25,52 @@ import {
   FlaskConical,
   ZoomIn,
   ZoomOut,
-  ArrowLeft
+  ArrowLeft,
+  Rocket,
+  Grid2x2,
+  SpellCheck2,
+  GitBranch,
+  LayoutGrid,
+  Shield,
+  Split,
+  Timer,
+  Award
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
+import { MeteorMathBlasterGame } from './games/MeteorMathBlasterGame';
+import { ConceptMatchBlitzGame } from './games/ConceptMatchBlitzGame';
+import { WordBuilderPuzzleGame } from './games/WordBuilderPuzzleGame';
+import { ChronoSortTowerGame } from './games/ChronoSortTowerGame';
+import {
+  DAILY_ARCADE_MISSIONS,
+  DailyArcadeMission,
+  ArcadeMissionProgress,
+  loadDailyArcadeMissions,
+  incrementArcadeMissionProgress,
+  claimArcadeMissionReward,
+} from '../data/arcadeGamesData';
 import { PagedList } from './PagedList';
-import { playHeavyImpactSound, playComboStreakSound, playGrandVictoryFanfare } from '../lib/labSoundEffects';
+import {
+  playHeavyImpactSound,
+  playComboStreakSound,
+  playGrandVictoryFanfare,
+  playPowerupChimeSound,
+} from '../lib/labSoundEffects';
+
+export type EduGameSubTab =
+  | 'hub'
+  | 'meteor_blaster'
+  | 'concept_match'
+  | 'word_builder'
+  | 'chrono_sort'
+  | 'battle_royale_3d'
+  | 'subject_labs'
+  | 'arena'
+  | 'bank'
+  | 'leaderboard'
+  | 'shop';
 
 interface EduBattleGameViewProps {
   questions: QuizQuestion[];
@@ -39,7 +78,7 @@ interface EduBattleGameViewProps {
   rewardItems: RewardItem[];
   currentUser: AuthUser | null;
   lang: AppLanguage;
-  initialSubTab?: 'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop';
+  initialSubTab?: EduGameSubTab;
   isMobileMode?: boolean;
   onGamePlayingChange?: (isPlaying: boolean) => void;
   onAddQuestion: (q: QuizQuestion) => void;
@@ -79,8 +118,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   const isMobile = isMobileMode || isMobileScreen;
 
-  const [activeSubTab, setActiveSubTab] = useState<'battle_royale_3d' | 'subject_labs' | 'arena' | 'bank' | 'leaderboard' | 'shop'>(
-    initialSubTab || (isMobile ? 'arena' : 'battle_royale_3d')
+  const effectiveUserId = currentUser?.id || 'temp';
+
+  const [activeSubTab, setActiveSubTab] = useState<EduGameSubTab>(
+    initialSubTab || 'hub'
   );
 
   useEffect(() => {
@@ -89,11 +130,33 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     }
   }, [initialSubTab]);
 
+  // Daily Arcade Missions Progress
+  const [missionProgress, setMissionProgress] = useState<ArcadeMissionProgress>(() =>
+    loadDailyArcadeMissions(effectiveUserId)
+  );
+
+  useEffect(() => {
+    setMissionProgress(loadDailyArcadeMissions(effectiveUserId));
+  }, [effectiveUserId]);
+
+  const recordMissionProgress = (missionId: DailyArcadeMission['id'], delta = 1) => {
+    setMissionProgress(incrementArcadeMissionProgress(effectiveUserId, missionId, delta));
+  };
+
+  const handleClaimMission = (mission: DailyArcadeMission) => {
+    const count = missionProgress.counts[mission.id] || 0;
+    const alreadyClaimed = missionProgress.claimed[mission.id];
+    if (alreadyClaimed || count < mission.target) return;
+    playPowerupChimeSound();
+    setMissionProgress(claimArcadeMissionReward(effectiveUserId, mission.id));
+    onEarnRewards(effectiveUserId, mission.rewardExp, mission.rewardGems, false);
+  };
+
   const [examSource, setExamSource] = useState<'all' | 'teacher_created' | 'standard'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [searchBankQuery, setSearchBankQuery] = useState('');
 
-  // 1v1 Battle State
+  // 1v1 Battle State & Tactical Lifelines
   const [battleState, setBattleState] = useState<'idle' | 'playing' | 'round_over' | 'finished'>('idle');
   const [lobbyStep, setLobbyStep] = useState<0 | 1>(0);
   const [is3DBattlePlaying, setIs3DBattlePlaying] = useState(false);
@@ -107,6 +170,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   const [roundScore, setRoundScore] = useState(0);
   const [battleFeedback, setBattleFeedback] = useState<string | null>(null);
   const [arenaZoom, setArenaZoom] = useState<number>(1.0);
+  const [fiftyFiftyLeft, setFiftyFiftyLeft] = useState(1);
+  const [timeBoostLeft, setTimeBoostLeft] = useState(1);
+  const [shieldCharges, setShieldCharges] = useState(1);
+  const [shieldActive, setShieldActive] = useState(false);
+  const [eliminatedIndices, setEliminatedIndices] = useState<number[]>([]);
 
   useEffect(() => {
     onGamePlayingChange?.(battleState === 'playing' || is3DBattlePlaying);
@@ -216,19 +284,58 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     setStreak(0);
     setRoundScore(0);
     setBattleFeedback(null);
+    setFiftyFiftyLeft(1);
+    setTimeBoostLeft(1);
+    setShieldCharges(1);
+    setShieldActive(false);
+    setEliminatedIndices([]);
     setBattleState('playing');
   };
 
+  const handleUseFiftyFifty = () => {
+    if (battleState !== 'playing' || selectedAnswer !== null || fiftyFiftyLeft <= 0) return;
+    const wrongIndices = currentQ.options
+      .map((_, i) => i)
+      .filter((i) => i !== currentQ.correctIndex && !eliminatedIndices.includes(i));
+    const picked = wrongIndices.sort(() => Math.random() - 0.5).slice(0, 2);
+    setEliminatedIndices(picked);
+    setFiftyFiftyLeft((prev) => prev - 1);
+    playPowerupChimeSound();
+  };
+
+  const handleUseTimeBoost = () => {
+    if (battleState !== 'playing' || selectedAnswer !== null || timeBoostLeft <= 0) return;
+    setTimer((prev) => prev + 7);
+    setTimeBoostLeft((prev) => prev - 1);
+    playPowerupChimeSound();
+  };
+
+  const handleUseShield = () => {
+    if (battleState !== 'playing' || selectedAnswer !== null || shieldCharges <= 0 || shieldActive) return;
+    setShieldActive(true);
+    setShieldCharges((prev) => prev - 1);
+    playPowerupChimeSound();
+  };
+
   const handleTimeOut = () => {
+    if (shieldActive) {
+      playPowerupChimeSound();
+      setShieldActive(false);
+      setStreak(0);
+      setBattleFeedback('🛡️ หมดเวลาแต่โล่กันดาเมจช่วยป้องกัน 25 HP ไว้ได้!');
+      checkBattleEnd(playerHp, opponentHp);
+      return;
+    }
     playArcadeSound(180, 'sawtooth', 0.3);
-    setPlayerHp(prev => Math.max(0, prev - 25));
+    const newHp = Math.max(0, playerHp - 25);
+    setPlayerHp(newHp);
     setStreak(0);
     setBattleFeedback('⏰ หมดเวลา! ได้รับดาเมจ 25 HP');
-    checkBattleEnd(playerHp - 25, opponentHp);
+    checkBattleEnd(newHp, opponentHp);
   };
 
   const handleAnswer = (index: number) => {
-    if (selectedAnswer !== null || battleState !== 'playing') return;
+    if (selectedAnswer !== null || battleState !== 'playing' || eliminatedIndices.includes(index)) return;
     setSelectedAnswer(index);
 
     const isCorrect = index === currentQ.correctIndex;
@@ -246,6 +353,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       setRoundScore(prev => prev + currentQ.points + timeBonus);
       setBattleFeedback(`💥 คริติคอลสตริก! โจมตี +${damage} HP (โบนัสความเร็ว +${timeBonus})`);
       checkBattleEnd(playerHp, newOpponentHp);
+    } else if (shieldActive) {
+      playPowerupChimeSound();
+      setShieldActive(false);
+      setStreak(0);
+      setBattleFeedback(`🛡️ โล่กันดาเมจทำงาน! ป้องกัน 20 HP สำเร็จ (เฉลยข้อ ${String.fromCharCode(65 + currentQ.correctIndex)}: ${currentQ.options[currentQ.correctIndex]})`);
+      checkBattleEnd(playerHp, opponentHp);
     } else {
       playArcadeSound(200, 'sawtooth', 0.25);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -269,12 +382,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         }
         const expGained = isWin ? 250 : 80;
         const gemsGained = isWin ? 30 : 10;
-        if (currentUser) {
-          onEarnRewards(currentUser.id, expGained, gemsGained, isWin);
-        }
+        onEarnRewards(effectiveUserId, expGained, gemsGained, isWin);
+        recordMissionProgress('duel', 1);
       } else {
         setCurrentQuestionIndex(prev => prev + 1);
         setSelectedAnswer(null);
+        setEliminatedIndices([]);
         setTimer(15);
         setBattleFeedback(null);
       }
@@ -418,12 +531,103 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     streak: 4
   };
 
-  const isFullHeightGameView = ['arena', 'battle_royale_3d', 'subject_labs'].includes(activeSubTab);
+  const playerLevel = Math.floor(currentPlayerStats.exp / 500) + 1;
+  const levelProgressPct = Math.round(((currentPlayerStats.exp % 500) / 500) * 100);
+
+  const ARCADE_GAME_CARDS: {
+    id: EduGameSubTab;
+    titleTh: string;
+    genreEn: string;
+    badge: string;
+    descriptionTh: string;
+    strandsTh: string;
+    gradient: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    {
+      id: 'meteor_blaster',
+      titleTh: '☄️ ยิงอุกกาบาตสมการ',
+      genreEn: 'Canvas Space Shooter',
+      badge: 'ใหม่ • ARCADE',
+      descriptionTh: 'ขับยานอวกาศยิงทำลายอุกกาบาตโจทย์คณิต ป.1–ม.6 และสูตรฟิสิกส์ มีไอเทม Freeze & Nova Burst',
+      strandsTh: 'คณิตศาสตร์ • ฟิสิกส์',
+      gradient: 'from-cyan-500/20 via-sky-900/40 to-slate-900 border-cyan-500/40 hover:border-cyan-400',
+      icon: Rocket,
+    },
+    {
+      id: 'concept_match',
+      titleTh: '🃏 จับคู่ & Memory 8 สาระ',
+      genreEn: 'Lightning Pair & Memory Flip',
+      badge: 'ใหม่ • 8 สาระ',
+      descriptionTh: 'เล่นได้ทั้งโหมดจับคู่ความเร็วสูงและพลิกการ์ดความจำ 12 ใบ พร้อมแฟลชการ์ดทบทวนความรู้หลังจบเกม',
+      strandsTh: 'ครบทั้ง 8 กลุ่มสาระฯ',
+      gradient: 'from-violet-500/20 via-indigo-900/40 to-slate-900 border-violet-500/40 hover:border-violet-400',
+      icon: Grid2x2,
+    },
+    {
+      id: 'word_builder',
+      titleTh: '🔤 ต่อคำศัพท์สองภาษา',
+      genreEn: 'Interactive Letter Tiles',
+      badge: 'ใหม่ • ศัพท์วิชาการ',
+      descriptionTh: 'แตะเรียงตัวอักษรสร้างคำศัพท์สำคัญทั้งวิทยาศาสตร์ อังกฤษ สังคม ศิลปะ พร้อม 3 ตัวช่วยเปิดอักษร',
+      strandsTh: 'อังกฤษ • วิทย์ • 8 สาระฯ',
+      gradient: 'from-amber-500/20 via-orange-900/35 to-slate-900 border-amber-500/40 hover:border-amber-400',
+      icon: SpellCheck2,
+    },
+    {
+      id: 'chrono_sort',
+      titleTh: '⚡ ChronoSort & สายพานด่วน',
+      genreEn: 'Conveyor Rush & Sequence Tower',
+      badge: 'ใหม่ • LOGIC',
+      descriptionTh: 'แยกหมวดสายพานซ้าย/ขวา (คำเป็น-คำตาย, กรด-เบส, จำนวนเฉพาะ) และเรียงลำดับไทม์ไลน์-อัลกอริทึม',
+      strandsTh: 'ไทย • วิทย์ • สังคม • โค้ดดิ้ง',
+      gradient: 'from-emerald-500/20 via-teal-900/35 to-slate-900 border-emerald-500/40 hover:border-emerald-400',
+      icon: GitBranch,
+    },
+    {
+      id: 'arena',
+      titleTh: '⚔️ 1v1 ดวลตอบสดความเร็ว',
+      genreEn: 'Live HP Duel + Lifelines',
+      badge: 'อัพเกรด 3 ตัวช่วย',
+      descriptionTh: 'ประลองตอบคำถามจากคลังข้อสอบโรงเรียนและข้อสอบกลาง พร้อมไอเทม 50/50, +7s และโล่กันดาเมจ',
+      strandsTh: `คลังข้อสอบ ${questions.length} ข้อ`,
+      gradient: 'from-rose-500/20 via-pink-900/35 to-slate-900 border-rose-500/40 hover:border-rose-400',
+      icon: Swords,
+    },
+    {
+      id: 'battle_royale_3d',
+      titleTh: '🎮 3D EduArena Battle Royale',
+      genreEn: 'Three.js 3D Exploration',
+      badge: '3D THREE.JS',
+      descriptionTh: 'เดินสำรวจสนามประลอง 3 มิติ เก็บหีบสมบัติ หลบหลุมอันตราย และชิงคะแนนสูงสุดในห้อง',
+      strandsTh: '8 กลุ่มสาระฯ เต็มรูปแบบ',
+      gradient: 'from-indigo-500/20 via-purple-900/35 to-slate-900 border-indigo-500/40 hover:border-indigo-400',
+      icon: Gamepad2,
+    },
+    {
+      id: 'subject_labs',
+      titleTh: '🧪 เวิร์กช็อปจำลอง 6 มิติ',
+      genreEn: 'Hands-on Interactive Labs',
+      badge: 'SIMULATION',
+      descriptionTh: 'ทดลองผสมสารเคมี ยิงจรวดฟิสิกส์ ครัวไวยากรณ์อังกฤษ ลอจิกบล็อกโค้ดดิ้ง และแผนที่ภูมิศาสตร์โลก',
+      strandsTh: 'STEM • ภาษา • สังคมฯ',
+      gradient: 'from-blue-500/20 via-cyan-900/35 to-slate-900 border-blue-500/40 hover:border-blue-400',
+      icon: FlaskConical,
+    },
+  ];
+
+  const missionTargetTabMap: Record<DailyArcadeMission['id'], EduGameSubTab> = {
+    meteor: 'meteor_blaster',
+    match: 'concept_match',
+    word: 'word_builder',
+    sort: 'chrono_sort',
+    duel: 'arena',
+  };
 
   return (
-    <div className={`w-full ${isMobile || isFullHeightGameView ? 'h-full min-h-0 flex flex-col overflow-hidden bg-slate-950 text-white select-none' : 'space-y-6'}`}>
+    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-slate-950 text-white select-none">
       {/* Mobile Top Arcade HUD */}
-      {isMobile ? (
+      {isMobile && (
         <header className="shrink-0 px-3 py-2 bg-slate-900/95 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between gap-2 z-20">
           <div className="flex items-center gap-2 min-w-0">
             {onExit && (
@@ -447,7 +651,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   {currentPlayerStats.name}
                 </div>
                 <div className="text-[10px] text-amber-300 font-semibold truncate">
-                  {currentPlayerStats.rankTitle}
+                  Lv.{playerLevel} • {currentPlayerStats.rankTitle}
                 </div>
               </div>
             </div>
@@ -464,68 +668,21 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </div>
           </div>
         </header>
-      ) : (
-        /* Desktop Top Marketing Banner (Only on desktop bank/leaderboard/shop) */
-        (!isMobile && battleState !== 'playing' && (activeSubTab === 'bank' || activeSubTab === 'leaderboard' || activeSubTab === 'shop')) && (
-          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 text-white shadow-xl shadow-rose-950/20 border border-white/10">
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/45 border border-white/25 backdrop-blur-md text-xs font-semibold">
-                  <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-                  <span>EduVerse Gamification Engine • คลังโจทย์ฝึกหัด & แบทเทิล 1v1</span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                  {lang === 'th' ? 'สนามประลองความรู้ & คลังข้อสอบอัจฉริยะ' : 'EduBattle Arena & Question Bank'}
-                </h1>
-                <p className="text-slate-100 text-sm max-w-2xl">
-                  {lang === 'th'
-                    ? 'ฝึกฝนโจทย์ตัวอย่างและบทเรียนประจำคาบผ่านเกมประลองแบบ 1v1 พร้อมสะสมคะแนน EXP และเพชร (Gems) เพื่อแลกรางวัลในร้านค้า'
-                    : 'Interactive 1v1 knowledge battles and comprehensive national exam quests with real EXP & Gem rewards.'}
-                </p>
-              </div>
-
-              {/* User Score Summary Card */}
-              <div className="bg-slate-950/55 backdrop-blur-md border border-white/25 rounded-2xl p-4 flex items-center gap-4 shrink-0">
-                <img 
-                  src={currentPlayerStats.avatarUrl} 
-                  alt={currentPlayerStats.name} 
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
-                />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm">{currentPlayerStats.name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/40 font-semibold">
-                      {currentPlayerStats.rankTitle}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5 text-amber-300 font-bold">
-                      <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      <span>{currentPlayerStats.exp.toLocaleString()} EXP</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
-                      <Coins className="w-4 h-4 text-cyan-300" />
-                      <span>{currentPlayerStats.gems} Gems</span>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-slate-200">
-                    สถิติชนะ {currentPlayerStats.battleWins} ครั้ง • สตรีค {currentPlayerStats.streak} ติดต่อกัน
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
       )}
 
       {/* Keep game modes visible; place supporting tools behind one compact menu. */}
       {battleState !== 'playing' && !is3DBattlePlaying && (
-        <div className="shrink-0 flex items-center gap-2 px-2 py-1.5 bg-slate-900/90 border-b border-slate-800/80 z-10">
+        <div className="shrink-0 flex items-center gap-2 px-2.5 py-2 bg-slate-900/95 border-b border-slate-800/80 z-20">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {[
-              { id: 'arena' as const, label: isMobile ? '1v1' : (lang === 'th' ? '1v1 ดวลตอบสด' : '1v1 Arena'), icon: Swords },
-              { id: 'battle_royale_3d' as const, label: isMobile ? '3D Arena' : '3D EduArena', icon: Gamepad2 },
-              { id: 'subject_labs' as const, label: isMobile ? 'เวิร์กช็อป' : (lang === 'th' ? 'เวิร์กช็อปจำลอง 6 สาระ' : 'Subject Workshops'), icon: FlaskConical },
+              { id: 'hub' as const, label: isMobile ? 'ศูนย์เกม' : (lang === 'th' ? 'ศูนย์เกม 7 สไตล์' : 'Arcade Hub'), icon: LayoutGrid },
+              { id: 'meteor_blaster' as const, label: isMobile ? 'ยิงสมการ' : '☄️ ยิงสมการ', icon: Rocket },
+              { id: 'concept_match' as const, label: isMobile ? 'จับคู่' : '🃏 จับคู่ 8 สาระ', icon: Grid2x2 },
+              { id: 'word_builder' as const, label: isMobile ? 'ต่อศัพท์' : '🔤 ต่อคำศัพท์', icon: SpellCheck2 },
+              { id: 'chrono_sort' as const, label: isMobile ? 'แยกหมวด' : '⚡ ChronoSort', icon: GitBranch },
+              { id: 'arena' as const, label: isMobile ? '1v1' : '⚔️ 1v1 ดวลสด', icon: Swords },
+              { id: 'battle_royale_3d' as const, label: isMobile ? '3D' : '🎮 3D Arena', icon: Gamepad2 },
+              { id: 'subject_labs' as const, label: isMobile ? 'แล็บ' : '🧪 แล็บ 6 สาระ', icon: FlaskConical },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -535,10 +692,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   setShowUtilitiesMenu(false);
                 }}
                 aria-pressed={activeSubTab === id}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
                   activeSubTab === id
-                    ? 'bg-indigo-700 text-white shadow-md'
-                    : 'bg-slate-800 text-slate-200 border border-slate-600 hover:bg-slate-700 hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/60'
+                    : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -547,13 +704,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             ))}
           </div>
 
-          {onExit && (
+          {onExit && !isMobile && (
             <button
               type="button"
               onClick={onExit}
-              className="shrink-0 px-2 py-1 text-xs font-bold text-slate-200 hover:text-white underline underline-offset-4 cursor-pointer"
+              className="shrink-0 px-2.5 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
             >
-              {lang === 'th' ? '← กลับหน้าหลัก' : '← Exit'}
+              {lang === 'th' ? '← กลับ' : '← Exit'}
             </button>
           )}
 
@@ -564,19 +721,19 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               aria-expanded={showUtilitiesMenu}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 ['bank', 'leaderboard', 'shop'].includes(activeSubTab)
-                  ? 'bg-slate-700 text-white'
+                  ? 'bg-amber-500 text-slate-950'
                   : 'bg-slate-800/80 text-slate-200 border border-slate-700 hover:text-white'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เครื่องมือ' : 'Tools'}</span>
+              <span>{lang === 'th' ? 'คลัง & ร้านค้า' : 'Tools'}</span>
             </button>
             {showUtilitiesMenu && (
-              <div className="absolute right-0 top-full mt-2 z-30 min-w-48 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+              <div className="absolute right-0 top-full mt-2 z-30 min-w-52 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
                 {[
-                  { id: 'bank' as const, label: lang === 'th' ? `คลังโจทย์ (${questions.length})` : `Question Bank (${questions.length})`, icon: BookOpen },
-                  { id: 'leaderboard' as const, label: lang === 'th' ? 'ตารางอันดับ' : 'Leaderboard', icon: Trophy },
-                  { id: 'shop' as const, label: lang === 'th' ? 'ร้านค้ารางวัล' : 'Reward Store', icon: ShoppingBag },
+                  { id: 'bank' as const, label: lang === 'th' ? `คลังโจทย์ (${questions.length} ข้อ)` : `Question Bank (${questions.length})`, icon: BookOpen },
+                  { id: 'leaderboard' as const, label: lang === 'th' ? 'ตารางอันดับ Hall of Fame' : 'Leaderboard', icon: Trophy },
+                  { id: 'shop' as const, label: lang === 'th' ? `ร้านค้ารางวัล (${currentPlayerStats.gems} Gems)` : 'Reward Store', icon: ShoppingBag },
                 ].map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -606,6 +763,280 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         </div>
       )}
 
+      {/* TAB: ARCADE STUDIO HUB (ศูนย์รวม 7 เกมส์การเรียนรู้ + ภารกิจรายวัน) */}
+      {activeSubTab === 'hub' && (
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
+          <div className="max-w-7xl mx-auto space-y-5">
+            {/* Player Level & Studio Header */}
+            <div className="rounded-3xl p-4 sm:p-6 bg-gradient-to-br from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-500/30 shadow-xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="relative shrink-0">
+                    <img
+                      src={currentPlayerStats.avatarUrl}
+                      alt={currentPlayerStats.name}
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-lg"
+                    />
+                    <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 text-[10px] font-black shadow">
+                      Lv.{playerLevel}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[11px] font-black">
+                        EduArcade Studio • 7 รูปแบบเกมการเรียนรู้
+                      </span>
+                      <span className="text-xs font-bold text-amber-300">{currentPlayerStats.rankTitle}</span>
+                    </div>
+                    <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate">
+                      สวัสดี {currentPlayerStats.name} — เลือกภารกิจเกมสนุกได้ทั้ง 8 สาระ!
+                    </h1>
+                    <div className="flex items-center gap-3 max-w-md">
+                      <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-400 to-cyan-400 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.max(8, levelProgressPct)}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-300 shrink-0">
+                        {currentPlayerStats.exp % 500}/500 EXP สู่ Lv.{playerLevel + 1}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <div className="px-3.5 py-2 rounded-2xl bg-slate-950/70 border border-amber-500/30 flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    <div className="text-left">
+                      <div className="text-[10px] text-slate-400 font-bold">EXP รวม</div>
+                      <div className="text-sm font-black text-amber-300">{currentPlayerStats.exp.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div className="px-3.5 py-2 rounded-2xl bg-slate-950/70 border border-cyan-500/30 flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-cyan-400" />
+                    <div className="text-left">
+                      <div className="text-[10px] text-slate-400 font-bold">Gems</div>
+                      <div className="text-sm font-black text-cyan-300">{currentPlayerStats.gems}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab('shop')}
+                    className="px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>แลกรางวัล</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab('leaderboard')}
+                    className="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Trophy className="w-4 h-4 text-amber-300" />
+                    <span>อันดับ</span>
+                  </button>
+                  {onOpenCentralExamHub && (currentUser?.role === 'admin' || currentUser?.role === 'teacher' || currentUser?.role === 'super_admin') && (
+                    <button
+                      type="button"
+                      onClick={onOpenCentralExamHub}
+                      className="px-3.5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>คลังข้อสอบกลาง</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Arcade Missions Strip */}
+            <section className="rounded-3xl bg-slate-900/90 border border-slate-800 p-4 sm:p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-400" />
+                  <h2 className="text-sm sm:text-base font-black text-white">
+                    ภารกิจอาร์เคดประจำวัน (Daily Arcade Missions)
+                  </h2>
+                </div>
+                <span className="text-xs text-slate-400">เล่นเกมหลากหลายเพื่อปลดล็อกโบนัส EXP &amp; Gems ทุกวัน</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {DAILY_ARCADE_MISSIONS.map((mission) => {
+                  const currentCount = missionProgress.counts[mission.id] || 0;
+                  const clamped = Math.min(currentCount, mission.target);
+                  const pct = Math.round((clamped / mission.target) * 100);
+                  const isReady = currentCount >= mission.target;
+                  const isClaimed = missionProgress.claimed[mission.id];
+
+                  return (
+                    <div
+                      key={mission.id}
+                      className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 transition ${
+                        isClaimed
+                          ? 'bg-emerald-950/30 border-emerald-700/40'
+                          : isReady
+                          ? 'bg-amber-950/40 border-amber-500/60 shadow-lg shadow-amber-950/30'
+                          : 'bg-slate-950/70 border-slate-800'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs font-bold text-white leading-snug">{mission.titleTh}</span>
+                          <span className="text-[11px] font-mono font-black text-cyan-300 shrink-0">
+                            {clamped}/{mission.target}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isClaimed ? 'bg-emerald-400' : isReady ? 'bg-amber-400' : 'bg-indigo-500'
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <span className="text-[11px] font-bold text-amber-300">
+                          +{mission.rewardExp} EXP • +{mission.rewardGems} Gems
+                        </span>
+                        {isClaimed ? (
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[11px] font-black flex items-center gap-1">
+                            <Check className="w-3 h-3" /> รับแล้ว
+                          </span>
+                        ) : isReady ? (
+                          <button
+                            type="button"
+                            onClick={() => handleClaimMission(mission)}
+                            className="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-black transition cursor-pointer"
+                          >
+                            รับรางวัล!
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveSubTab(missionTargetTabMap[mission.id])}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold transition cursor-pointer"
+                          >
+                            เล่นเลย →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* 7 Diverse Games Showcase Grid */}
+            <section className="space-y-3 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-black text-white">
+                  เลือกสไตล์เกมที่ชอบ — 7 รูปแบบความสนุกได้ความรู้จริง
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('bank')}
+                  className="text-xs font-bold text-indigo-300 hover:text-indigo-200 underline underline-offset-4 cursor-pointer"
+                >
+                  จัดการคลังข้อสอบ ({questions.length} ข้อ)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {ARCADE_GAME_CARDS.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setActiveSubTab(card.id)}
+                      className={`group text-left rounded-3xl p-5 border bg-gradient-to-br ${card.gradient} transition-all hover:-translate-y-0.5 hover:shadow-2xl flex flex-col justify-between gap-4 cursor-pointer`}
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-950/70 border border-white/15 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
+                            <Icon className="w-6 h-6 text-amber-300" />
+                          </div>
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-950/70 border border-white/15 text-[10px] font-black tracking-wide text-amber-300 uppercase">
+                            {card.badge}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-semibold text-cyan-300">{card.genreEn}</div>
+                          <h3 className="text-base sm:text-lg font-black text-white">{card.titleTh}</h3>
+                          <p className="text-xs text-slate-200/90 leading-relaxed">
+                            {card.descriptionTh}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-slate-300">{card.strandsTh}</span>
+                        <span className="px-3.5 py-1.5 rounded-xl bg-white/15 group-hover:bg-amber-400 group-hover:text-slate-950 text-white text-xs font-black transition-colors">
+                          เข้าเล่นทันที →
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: METEOR EQUATION BLASTER */}
+      {activeSubTab === 'meteor_blaster' && (
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
+          <MeteorMathBlasterGame
+            userId={effectiveUserId}
+            onEarnRewards={onEarnRewards}
+            onMissionProgress={(count) => recordMissionProgress('meteor', count)}
+            onBack={() => setActiveSubTab('hub')}
+          />
+        </div>
+      )}
+
+      {/* TAB: 8-STRAND CONCEPT MATCH & MEMORY BLITZ */}
+      {activeSubTab === 'concept_match' && (
+        <div className="flex-1 min-h-0 w-full overflow-y-auto">
+          <ConceptMatchBlitzGame
+            userId={effectiveUserId}
+            onEarnRewards={onEarnRewards}
+            onMissionProgress={() => recordMissionProgress('match', 1)}
+            onBack={() => setActiveSubTab('hub')}
+          />
+        </div>
+      )}
+
+      {/* TAB: BILINGUAL WORD BUILDER */}
+      {activeSubTab === 'word_builder' && (
+        <div className="flex-1 min-h-0 w-full overflow-y-auto">
+          <WordBuilderPuzzleGame
+            userId={effectiveUserId}
+            onEarnRewards={onEarnRewards}
+            onMissionProgress={(solvedCount) => recordMissionProgress('word', solvedCount)}
+            onBack={() => setActiveSubTab('hub')}
+          />
+        </div>
+      )}
+
+      {/* TAB: CHRONOSORT & CONVEYOR LOGIC */}
+      {activeSubTab === 'chrono_sort' && (
+        <div className="flex-1 min-h-0 w-full overflow-y-auto">
+          <ChronoSortTowerGame
+            userId={effectiveUserId}
+            onEarnRewards={onEarnRewards}
+            onMissionProgress={() => recordMissionProgress('sort', 1)}
+            onBack={() => setActiveSubTab('hub')}
+          />
+        </div>
+      )}
+
       {/* TAB 0: 3D EduArena Battle Royale */}
       {activeSubTab === 'battle_royale_3d' && (
         <div className="flex-1 min-h-0 w-full overflow-hidden">
@@ -618,7 +1049,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             onGamePhaseChange={setIs3DBattlePlaying}
             onExit={() => {
               setIs3DBattlePlaying(false);
-              setActiveSubTab('arena');
+              setActiveSubTab('hub');
             }}
           />
         </div>
@@ -632,7 +1063,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
             lang={lang}
             onEarnRewards={onEarnRewards}
-            onBackToGames={() => setActiveSubTab('arena')}
+            onBackToGames={() => setActiveSubTab('hub')}
           />
         </div>
       )}
@@ -952,6 +1383,53 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 )}
               </div>
 
+              {/* Tactical Lifelines Bar */}
+              <div className="shrink-0 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  disabled={fiftyFiftyLeft <= 0 || selectedAnswer !== null}
+                  onClick={handleUseFiftyFifty}
+                  className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    fiftyFiftyLeft > 0 && selectedAnswer === null
+                      ? 'bg-indigo-900/70 hover:bg-indigo-800 border-indigo-500/50 text-indigo-100'
+                      : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Split className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>50/50 ({fiftyFiftyLeft})</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={timeBoostLeft <= 0 || selectedAnswer !== null}
+                  onClick={handleUseTimeBoost}
+                  className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    timeBoostLeft > 0 && selectedAnswer === null
+                      ? 'bg-amber-900/60 hover:bg-amber-800/80 border-amber-500/50 text-amber-100'
+                      : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Timer className="w-3.5 h-3.5 text-amber-300" />
+                  <span>+7 วินาที ({timeBoostLeft})</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={shieldCharges <= 0 || shieldActive || selectedAnswer !== null}
+                  onClick={handleUseShield}
+                  className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    shieldActive
+                      ? 'bg-emerald-600/30 border-emerald-400 text-emerald-200'
+                      : shieldCharges > 0 && selectedAnswer === null
+                      ? 'bg-emerald-900/60 hover:bg-emerald-800/80 border-emerald-500/50 text-emerald-100'
+                      : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>{shieldActive ? 'โล่กำลังทำงาน' : `โล่กันพลาด (${shieldCharges})`}</span>
+                </button>
+              </div>
+
               {/* BOTTOM: 4 LARGE ARCADE BUTTONS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2 shrink-0">
                 {currentQ.options.map((opt, idx) => {
@@ -962,9 +1440,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     'bg-amber-500/20 text-amber-300 border-amber-500/40',
                     'bg-purple-500/20 text-purple-300 border-purple-500/40'
                   ];
+                  const isEliminated = eliminatedIndices.includes(idx);
 
                   let btnStyle = 'bg-slate-900 hover:bg-slate-800 active:bg-slate-800 border-slate-700 text-slate-100';
-                  if (selectedAnswer !== null) {
+                  if (isEliminated && selectedAnswer === null) {
+                    btnStyle = 'bg-slate-950/50 border-slate-800 text-slate-600 line-through opacity-40 cursor-not-allowed';
+                  } else if (selectedAnswer !== null) {
                     if (idx === currentQ.correctIndex) {
                       btnStyle = 'bg-emerald-800/80 border-emerald-400 text-white font-black shadow-lg shadow-emerald-500/30 scale-[1.01]';
                     } else if (idx === selectedAnswer) {
@@ -978,7 +1459,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     <button
                       key={idx}
                       type="button"
-                      disabled={selectedAnswer !== null}
+                      disabled={selectedAnswer !== null || isEliminated}
                       onClick={() => handleAnswer(idx)}
                       className={`min-h-[50px] sm:min-h-[56px] p-2.5 sm:p-3 rounded-2xl border text-left text-xs sm:text-sm font-semibold transition-all flex items-center gap-2.5 sm:gap-3 cursor-pointer active:scale-98 ${btnStyle}`}
                     >
@@ -1058,7 +1539,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
       {/* TAB 2: Question Bank Management (คลังข้อสอบ & Import/Export) */}
       {activeSubTab === 'bank' && (
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
           {/* Controls Bar: Import / Export / Add */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800">
             {/* Search and Subject Filter */}
@@ -1206,12 +1688,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
             )} />
           </div>
+          </div>
         </div>
       )}
 
       {/* TAB 3: Leaderboard & Hall of Fame */}
       {activeSubTab === 'leaderboard' && (
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {playerScores.slice(0, 3).map((player, idx) => (
               <div 
@@ -1300,12 +1784,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               )} />
             </div>
           </div>
+          </div>
         </div>
       )}
 
       {/* TAB 4: Reward Item Store */}
       {activeSubTab === 'shop' && (
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-white">
             <div className="flex items-center gap-3">
               <Coins className="w-6 h-6 text-cyan-400" />
@@ -1376,6 +1862,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               );
             }} />
           </div>
+        </div>
         </div>
       )}
 

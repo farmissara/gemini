@@ -352,10 +352,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'games',
-          labelTh: 'เกมตอบคำถาม 3 มิติ EduBattle',
-          labelEn: 'Educational 3D Quiz',
+          labelTh: 'EduArcade ศูนย์เกม 7 สไตล์',
+          labelEn: 'EduArcade 7-Genre Games',
           icon: Swords,
-          badge: '3D',
+          badge: '7 เกม',
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {

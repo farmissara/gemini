@@ -195,7 +195,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   initialPeriodCode,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
-  const [activeGameView, setActiveGameView] = useState<'hub' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
+  const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
   const [homePage, setHomePage] = useState(0);
   const [gameHubPage, setGameHubPage] = useState(0);
   const [profilePage, setProfilePage] = useState(0);
@@ -626,6 +626,27 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <div className="space-y-2.5">
               {gameHubPage === 0 && (
                 <>
+                  {/* Game 0: EduArcade 7-Genre Studio */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveGameView('arcade_studio')}
+                    className="w-full p-4 rounded-2xl border-2 border-cyan-500/70 bg-gradient-to-r from-cyan-950/60 via-indigo-950/60 to-slate-900 hover:border-cyan-400 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-md cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center font-bold shrink-0">
+                        <Sparkles className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-black text-sm text-white">EduArcade ศูนย์เกม 7 สไตล์</h3>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black">NEW • 8 สาระ</span>
+                        </div>
+                        <p className="text-xs text-cyan-100/80 mt-0.5">ยิงอุกกาบาตสมการ จับคู่ 8 สาระ ต่อคำศัพท์ ChronoSort &amp; ภารกิจรายวัน</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-cyan-300 shrink-0" />
+                  </button>
+
                   {/* Game 1: 3D EduArena Battle Royale */}
                   <button
                     type="button"
@@ -1174,6 +1195,25 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 lang={lang}
                 rewardItems={rewardItems}
                 onEarnRewards={onEarnRewards}
+                onExit={() => setActiveGameView('hub')}
+              />
+            </div>
+          )}
+
+          {activeGameView === 'arcade_studio' && (
+            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950">
+              <EduBattleGameView
+                questions={questions}
+                playerScores={playerScores}
+                rewardItems={rewardItems}
+                currentUser={currentUser}
+                lang={lang}
+                initialSubTab="hub"
+                isMobileMode={true}
+                onAddQuestion={onAddQuestion}
+                onImportQuestions={onImportQuestions}
+                onEarnRewards={onEarnRewards}
+                onRedeemReward={onRedeemReward}
                 onExit={() => setActiveGameView('hub')}
               />
             </div>
