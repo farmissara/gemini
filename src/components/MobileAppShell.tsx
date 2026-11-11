@@ -94,6 +94,8 @@ interface MobileAppShellProps {
   onSwitchToDesktopMode: () => void;
   onOpenProfileModal: () => void;
   onOpenOnboardingTutor?: () => void;
+  unreadCount?: number;
+  onOpenNotifications?: () => void;
   
   // Data props
   students: Student[];
@@ -157,6 +159,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onSwitchToDesktopMode,
   onOpenProfileModal,
   onOpenOnboardingTutor,
+  unreadCount = 0,
+  onOpenNotifications,
   students,
   teachers = [],
   courses,
@@ -281,6 +285,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
           {/* Mobile Install App Button */}
           <PWAInstallButton lang={lang} variant="nav" />
+
+          {/* Web Push & Notification Center Trigger */}
+          {onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="relative p-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
+              title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
+            >
+              <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse shadow-xs">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* User Profile Thumbnail */}
           <button

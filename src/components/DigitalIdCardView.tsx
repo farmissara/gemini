@@ -19,6 +19,7 @@ import {
 import { Student, School, AppLanguage, UserRole } from '../types';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from './PagedList';
+import { BatchIdCardPrintModal } from './BatchIdCardPrintModal';
 
 interface DigitalIdCardViewProps {
   students: Student[];
@@ -335,76 +336,14 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
         </div>
       </div>
 
-      {/* Print Modal for A4 Card Sheet */}
-      {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white text-slate-900 rounded-2xl w-full max-w-2xl p-6 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">พิมพ์บัตรนักเรียนดิจิทัล (Print Ready)</h3>
-                <p className="text-xs text-slate-700">ขนาดมาตรฐาน CR-80 (85.60 × 53.98 มม.) พร้อมตัดใส่ซองสายคล้องคอ</p>
-              </div>
-              <div className="flex gap-2 print:hidden">
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-700 text-white text-xs font-semibold hover:bg-blue-800 shadow cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>พิมพ์ทันที</span>
-                </button>
-                <button
-                  onClick={() => setShowPrintModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 text-slate-900 text-xs font-semibold hover:bg-slate-300 cursor-pointer"
-                >
-                  ปิด
-                </button>
-              </div>
-            </div>
-
-            {/* Printable Preview of Card Front and Back */}
-            <div className="grid grid-cols-2 gap-4 p-4 border border-slate-300 rounded-xl bg-slate-50">
-              {/* Front Print Card */}
-              <div className="border border-slate-400 rounded-xl p-3 bg-white space-y-2 text-xs shadow-sm">
-                <div className="flex items-center justify-between border-b pb-1">
-                  <div className="font-bold text-[10px] text-slate-800">{school.nameTh}</div>
-                  <span className="text-[8px] bg-slate-200 px-1 rounded font-bold">STUDENT</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <img
-                    src={selectedStudent?.avatarUrl}
-                    alt=""
-                    className="w-14 h-16 rounded object-cover border"
-                  />
-                  <div className="text-[10px] space-y-0.5">
-                    <p className="font-bold">{selectedStudent?.firstNameTh} {selectedStudent?.lastNameTh}</p>
-                    <p className="text-[9px] text-slate-600">{selectedStudent?.firstNameEn} {selectedStudent?.lastNameEn}</p>
-                    <p className="text-[9px] font-mono">ID: {selectedStudent?.studentIdNumber}</p>
-                    <p className="text-[9px]">ชั้น: {selectedStudent?.room}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center text-[9px] border-t pt-1 font-mono">
-                  <span>|||| | || ||||| |</span>
-                  <span>Blood: {selectedStudent?.bloodType || 'O'}</span>
-                </div>
-              </div>
-
-              {/* Back Print Card */}
-              <div className="border border-slate-400 rounded-xl p-3 bg-white space-y-2 text-xs shadow-sm flex flex-col justify-between">
-                <div className="text-[9px] space-y-1 text-slate-700">
-                  <p className="font-bold text-slate-900">เงื่อนไขการใช้บัตร:</p>
-                  <p>1. พกติดตัวในสถานศึกษาตลอดเวลา</p>
-                  <p>2. ใช้ยืม-คืนหนังสือและอุปกรณ์</p>
-                  <p>3. พบเห็นติดต่อ: {school.phone}</p>
-                </div>
-                <div className="border-t pt-1 text-[9px] flex justify-between font-mono">
-                  <span>LIB-{selectedStudent?.studentIdNumber}</span>
-                  <span>EXP: 03/2027</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Batch ID Card Print Modal (A4 Sheet & CR80 Multi-Student) */}
+      <BatchIdCardPrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        students={students}
+        school={school}
+        lang={lang}
+      />
 
       {/* Image Capture & Upload Modal */}
       {selectedStudent && (

@@ -118,6 +118,8 @@ import { CoopBossRaidView } from './components/CoopBossRaidView';
 import { SocraticTutorView } from './components/SocraticTutorView';
 import { RealWorldSnapQuestView } from './components/RealWorldSnapQuestView';
 import { MobileAppShell } from './components/MobileAppShell';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles } from 'lucide-react';
 
@@ -284,6 +286,20 @@ export const App: React.FC = () => {
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
   const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
+  const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+
+  useEffect(() => {
+    const updateUnread = () => {
+      const items = getStoredNotifications();
+      setUnreadNotifCount(items.filter(n => !n.read).length);
+    };
+    updateUnread();
+    window.addEventListener('eduverse:notification', updateUnread);
+    return () => {
+      window.removeEventListener('eduverse:notification', updateUnread);
+    };
+  }, []);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -827,6 +843,20 @@ export const App: React.FC = () => {
 
       return [newRecord, ...prev];
     });
+
+    const isCheckOut = extra?.recordType === 'check_out';
+    const st = schoolStudents.find(s => s.id === studentId);
+    const tc = schoolTeachers.find(t => t.id === studentId || t.id === extra?.teacherId);
+    const personName = extra?.userName || (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'นักเรียน/บุคลากร'));
+    const statusLabel = status === 'present' ? 'มาเรียน (ตรงเวลา)' : status === 'late' ? 'มาสาย' : 'ลา';
+
+    sendEduVerseNotification({
+      title: isCheckOut ? '🔔 บันทึกสแกนเลิกเรียนสำเร็จ' : '🔔 บันทึกการเข้าเรียนสำเร็จ',
+      body: `${personName} • สถานะ: ${statusLabel} เวลา ${nowTime}`,
+      category: 'attendance',
+      tag: `att-${studentId}-${todayStr}`,
+      data: { studentId, status, date: todayStr }
+    });
   };
 
   const handleRecordPeriodAttendance = (records: PeriodAttendanceRecord[]) => {
@@ -1202,6 +1232,8 @@ export const App: React.FC = () => {
           onSwitchToDesktopMode={() => setDeviceViewPreference('desktop')}
           onOpenProfileModal={() => setShowProfileModal(true)}
           onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
+          unreadCount={unreadNotifCount}
+          onOpenNotifications={() => setShowNotificationModal(true)}
           students={schoolStudents}
           teachers={schoolTeachers}
           courses={schoolCourses}
@@ -1287,6 +1319,17 @@ export const App: React.FC = () => {
           />
         )}
 
+        {showNotificationModal && (
+          <NotificationCenterModal
+            isOpen={showNotificationModal}
+            onClose={() => {
+              setShowNotificationModal(false);
+              setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+            }}
+            lang={lang}
+          />
+        )}
+
         {/* Offline Status Connectivity Banner */}
         <OfflineIndicator lang={lang} />
       </div>
@@ -1319,7 +1362,8 @@ export const App: React.FC = () => {
         currentRole={currentRole}
         isSuperAdminSchoolView={isSuperAdminSchoolView}
         systemConfig={systemConfig}
-        unreadCount={schoolAnnouncements.length}
+        unreadCount={unreadNotifCount}
+        onOpenNotifications={() => setShowNotificationModal(true)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         programMode={programMode}
@@ -1566,6 +1610,12 @@ export const App: React.FC = () => {
                     lang={lang}
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้บริหารสถานศึกษา'}
+                    students={schoolStudents}
+                    attendance={schoolAttendance}
+                    grades={schoolGrades}
+                    sdqAssessments={schoolSdqAssessments}
+                    behaviorRecords={schoolBehaviorRecords}
+                    onNavigateToTab={(tab: string) => navigateToAppTab(tab as NavTab)}
                   />
                 )}
 
@@ -2091,6 +2141,18 @@ export const App: React.FC = () => {
           onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
         />
       )}
+      {/* Push Notification Center Modal */}
+      {showNotificationModal && (
+        <NotificationCenterModal
+          isOpen={showNotificationModal}
+          onClose={() => {
+            setShowNotificationModal(false);
+            setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+          }}
+          lang={lang}
+        />
+      )}
+
       {/* Offline Status Connectivity Banner */}
       <OfflineIndicator lang={lang} />
     </div>

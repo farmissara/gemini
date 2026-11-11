@@ -46,6 +46,7 @@ import {
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 import { PagedList } from './PagedList';
+import { ContinuousRapidScannerModal } from './ContinuousRapidScannerModal';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -128,6 +129,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   );
 
   const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'school_gps'>('gate_scanner');
+  const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
 
   // Scanner state (Staff must enter Student ID before check-in; Students only see themselves)
   const [scannerStudentIdInput, setScannerStudentIdInput] = useState<string>('');
@@ -357,9 +359,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               }`}
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span>4. พิกัด GPS</span>
             </button>
           )}
+
+          {/* Continuous Rapid Scanner Modal Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowRapidScannerModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>📷 สแกนรัวต่อเนื่อง 1วิ/คน</span>
+          </button>
         </nav>
       </div>
 
@@ -870,6 +881,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Continuous Rapid Scanner Modal */}
+      <ContinuousRapidScannerModal
+        isOpen={showRapidScannerModal}
+        onClose={() => setShowRapidScannerModal(false)}
+        students={students}
+        onRecordAttendance={onRecordAttendance}
+        lang={lang}
+      />
     </div>
   );
 };

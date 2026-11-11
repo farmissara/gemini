@@ -65,6 +65,7 @@ import {
 } from '../types';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { PagedList } from './PagedList';
+import { ContinuousRapidScannerModal } from './ContinuousRapidScannerModal';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -145,6 +146,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     safeInitialSubTab
   );
   const [compactPane, setCompactPane] = useState<'camera' | 'identity' | 'geofence'>('camera');
+  const [showRapidScanner, setShowRapidScanner] = useState(false);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -825,6 +827,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             ) : null}
           </button>
         ))}
+
+        {/* Rapid Scanner Button */}
+        <button
+          type="button"
+          onClick={() => setShowRapidScanner(true)}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-[11px] shadow-xs cursor-pointer ml-auto shrink-0"
+          title="เปิดโหมดสแกนเนอร์บาร์โค้ด & QR รัวต่อเนื่อง"
+        >
+          <Camera className="w-3 h-3" />
+          <span>📷 สแกนรัว 1วิ/คน</span>
+        </button>
       </nav>
 
       {/* Pane Switcher for Mobile Selfie - Compact Underlined Text Links */}
@@ -2255,6 +2268,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Continuous Rapid Scanner Modal */}
+      <ContinuousRapidScannerModal
+        isOpen={showRapidScanner}
+        onClose={() => setShowRapidScanner(false)}
+        students={students}
+        onRecordAttendance={onRecordAttendance}
+        lang={lang}
+      />
     </div>
   );
 };

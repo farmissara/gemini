@@ -17,7 +17,8 @@ import {
   HelpCircle,
   FileSpreadsheet,
   MapPin,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -47,6 +48,7 @@ interface NavbarProps {
   onOpenImportExport?: () => void;
   onOpenOnboardingTutor?: () => void;
   onSwitchToMobileMode?: () => void;
+  onOpenNotifications?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -71,6 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenImportExport,
   onOpenOnboardingTutor,
   onSwitchToMobileMode,
+  unreadCount = 0,
+  onOpenNotifications,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
@@ -245,6 +249,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-700 dark:text-purple-300" />
               <span className="hidden sm:inline">{lang === 'th' ? 'ติวเตอร์ระบบ' : 'Tutor'}</span>
+            </button>
+          )}
+
+          {/* Notification Center Trigger (Web Push & In-App) */}
+          {onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer"
+              title={lang === 'th' ? 'ศูนย์การแจ้งเตือน Web Push & ในระบบ' : 'Web Push & Notification Center'}
+            >
+              <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse shadow-xs">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           )}
 
