@@ -264,22 +264,55 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             {/* Guardian Info */}
             <div className="p-4 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
               <span className="text-[11px] font-bold text-[var(--color-primary-text)] uppercase tracking-wider block">
-                ข้อมูลผู้ปกครอง
+                ข้อมูลผู้ปกครอง {student.guardians && student.guardians.length > 1 ? `(${student.guardians.length} คน)` : ''}
               </span>
-              <div className="space-y-1">
-                <p className="font-semibold text-[var(--color-text-title)] flex items-center gap-2">
-                  <User className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  {student.guardianName} ({student.guardianRelation})
-                </p>
-                <p className="text-[var(--color-text-body)] flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  {student.guardianPhone}
-                </p>
-                <p className="text-[var(--color-text-body)] flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  {student.guardianEmail}
-                </p>
-              </div>
+              {student.guardians && student.guardians.length > 0 ? (
+                <div className="space-y-3">
+                  {student.guardians.map((g, i) => (
+                    <div key={g.id || i} className="p-2.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-[var(--color-text-title)] flex items-center gap-1.5 text-xs">
+                          <User className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                          <span>{g.name || 'ไม่ระบุชื่อ'}</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border border-indigo-200">
+                            {g.relation}
+                          </span>
+                        </p>
+                        {g.isPrimary && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                            ★ ผู้ปกครองหลัก
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[var(--color-text-body)] flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                        <span>{g.phone || '-'}</span>
+                      </p>
+                      {g.email && (
+                        <p className="text-[11px] text-[var(--color-text-body)] flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                          <span>{g.email}</span>
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="font-semibold text-[var(--color-text-title)] flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    {student.guardianName} ({student.guardianRelation})
+                  </p>
+                  <p className="text-[var(--color-text-body)] flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    {student.guardianPhone}
+                  </p>
+                  <p className="text-[var(--color-text-body)] flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    {student.guardianEmail}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Attendance Summary */}

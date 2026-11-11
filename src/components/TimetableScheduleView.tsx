@@ -24,9 +24,11 @@ import {
   XCircle,
   AlertCircle,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  BellRing
 } from 'lucide-react';
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
+import { sendEduVerseNotification } from '../lib/pushNotifications';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -418,6 +420,72 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Timetable Period Automated Notification Status & Test Bar */}
+      <div className="shrink-0 p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0">
+            <BellRing className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="font-bold text-indigo-950 dark:text-indigo-100 flex items-center gap-2">
+              <span>ระบบแจ้งเตือนตารางสอนอัตโนมัติ (Automated Period Notifications)</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300 dark:border-emerald-700">
+                ทำงานอัตโนมัติทุก 30 วินาที
+              </span>
+            </p>
+            <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
+              แจ้งเตือนนักเรียนและครูทุกคาบ: เตือนก่อนเริ่มคาบ 5 นาที, เตือนเช็กชื่อเข้า (Check-in), เตือนหมดคาบ (Check-out), และเตือนเมื่อเลยเวลา 10 นาที (มาสาย/ลืมเช็กชื่อ)
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ทดสอบเตือน:</span>
+          <button
+            type="button"
+            onClick={() => {
+              sendEduVerseNotification({
+                title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
+                body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็กชื่อเข้าเรียน (Check-in)`,
+                category: 'attendance',
+                priority: 'urgent',
+              });
+            }}
+            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition cursor-pointer shadow-2xs"
+          >
+            ⏰ เริ่มคาบ &amp; เช็กอิน
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              sendEduVerseNotification({
+                title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
+                body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็กชื่อออก (Check-out)`,
+                category: 'attendance',
+                priority: 'normal',
+              });
+            }}
+            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition cursor-pointer shadow-2xs"
+          >
+            🔔 หมดคาบ &amp; เช็กเอาท์
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              sendEduVerseNotification({
+                title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็กชื่อ / มาสาย',
+                body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็กชื่อเข้าเรียน กรุณาสแกนด่วน`,
+                category: 'attendance',
+                priority: 'urgent',
+              });
+            }}
+            className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition cursor-pointer shadow-2xs"
+          >
+            ⚠️ ลืมเช็กชื่อ / มาสาย
+          </button>
         </div>
       </div>
 

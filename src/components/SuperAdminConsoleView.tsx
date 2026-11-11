@@ -29,6 +29,7 @@ import {
   listPendingSchoolRegistrations,
   PendingSchoolRegistration,
 } from '../lib/authDb';
+import { fetchSchoolCounts } from '../lib/supabase';
 import { 
   School, 
   AuthUser, 
@@ -113,6 +114,28 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       active = false;
     };
   }, [activeSubTab, isDemoMode, registrationRefreshKey]);
+
+  // Live real-time Student & Teacher counts per school
+  const [liveSchoolCounts, setLiveSchoolCounts] = useState<Record<string, { studentsCount: number; teachersCount: number }>>({});
+  const [isCountingSchools, setIsCountingSchools] = useState(false);
+
+  const refreshLiveSchoolCounts = () => {
+    if (isDemoMode) return;
+    const schoolIds = schools.map(s => s.id);
+    if (schoolIds.length === 0) return;
+    setIsCountingSchools(true);
+    fetchSchoolCounts(schoolIds)
+      .then(counts => {
+        setLiveSchoolCounts(counts);
+      })
+      .finally(() => {
+        setIsCountingSchools(false);
+      });
+  };
+
+  useEffect(() => {
+    refreshLiveSchoolCounts();
+  }, [schools, activeSubTab, registrationRefreshKey, isDemoMode]);
 
   // New Promotion Form State
   const [showNewPromoModal, setShowNewPromoModal] = useState(false);
@@ -892,13 +915,22 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               {schoolStatusError}
             </div>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-[var(--color-text-title)]">ทะเบียนสถาบันการศึกษาทั้งหมด (Registered Institutions)</h3>
               <p className="text-xs text-[var(--color-text-body)]">
                 กำกับดูแลสถานะการใช้งาน ตรวจสอบจำนวนนักเรียน และระงับ/เปิดใช้งานสถานศึกษา
               </p>
             </div>
+            <button
+              type="button"
+              onClick={refreshLiveSchoolCounts}
+              disabled={isCountingSchools}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 text-[var(--color-primary-text)] text-xs font-bold flex items-center gap-1.5 border border-[var(--color-border)] transition cursor-pointer self-start sm:self-auto"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isCountingSchools ? 'animate-spin' : ''}`} />
+              <span>{isCountingSchools ? 'กำลังอัปเดตยอด...' : 'รีเฟรชยอดนักเรียน/ครูจริง'}</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -909,25 +941,29 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   <th className="py-2.5 px-3">ชื่อสถานศึกษา</th>
                   <th className="py-2.5 px-3">ประเภท</th>
                   <th className="py-2.5 px-3">จังหวัด</th>
-                  <th className="py-2.5 px-3">นักเรียน / ครู</th>
+                  <th className="py-2.5 px-3">นักเรียน / ครู (จริง)</th>
                   <th className="py-2.5 px-3">โปรโมชั่นที่ใช้</th>
                   <th className="py-2.5 px-3 text-right">สถานะ</th>
                   <th className="py-2.5 px-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text-body)]">
-                {schools.slice(schoolPage * 4, (schoolPage + 1) * 4).map((s) => (
-                  <tr key={s.id} className="hover:bg-[var(--color-card-subtle)]">
-                    <td className="py-3 px-3 font-mono font-bold text-[var(--color-primary-text)]">{s.code}</td>
-                    <td className="py-3 px-3">
-                      <div className="font-bold text-[var(--color-text-title)]">{s.nameTh}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)]">{s.nameEn}</div>
-                    </td>
-                    <td className="py-3 px-3 capitalize text-[var(--color-text-body)]">{s.type}</td>
-                    <td className="py-3 px-3 text-[var(--color-text-muted)]">{s.province}</td>
-                    <td className="py-3 px-3">
-                      <span className="font-semibold text-[var(--color-text-title)]">{s.studentsCount}</span> คน / {s.teachersCount} ครู
-                    </td>
+                {schools.slice(schoolPage * 4, (schoolPage + 1) * 4).map((s) => {
+                  const live = liveSchoolCounts[s.id];
+                  const actualStudents = live ? live.studentsCount : (s.studentsCount || 0);
+                  const actualTeachers = live ? live.teachersCount : (s.teachersCount || 0);
+                  return (
+                    <tr key={s.id} className="hover:bg-[var(--color-card-subtle)]">
+                      <td className="py-3 px-3 font-mono font-bold text-[var(--color-primary-text)]">{s.code}</td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-[var(--color-text-title)]">{s.nameTh}</div>
+                        <div className="text-[11px] text-[var(--color-text-muted)]">{s.nameEn}</div>
+                      </td>
+                      <td className="py-3 px-3 capitalize text-[var(--color-text-body)]">{s.type}</td>
+                      <td className="py-3 px-3 text-[var(--color-text-muted)]">{s.province}</td>
+                      <td className="py-3 px-3">
+                        <span className="font-bold text-emerald-800 dark:text-emerald-300">{actualStudents}</span> คน / <span className="font-semibold text-[var(--color-text-title)]">{actualTeachers}</span> ครู
+                      </td>
                     <td className="py-3 px-3">
                       <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700">
                         {s.appliedPromoCode || 'BACK2SCHOOL26'}
@@ -970,7 +1006,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       )}
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>

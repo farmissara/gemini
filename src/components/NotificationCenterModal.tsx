@@ -85,15 +85,46 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     }
   };
 
-  const handleTestNotification = async () => {
-    await sendEduVerseNotification({
-      title: lang === 'th' ? '✅ [ทดสอบ] ด.ช. ภัทรดนัย เข้าโรงเรียนแล้ว' : '✅ [Test] Student Checked In',
-      body: lang === 'th'
-        ? 'สแกนผ่านประตูหลักโรงเรียน เวลา 07:42 น. (ตรงเวลาปกติ) ผู้ปกครองสามารถดูรายละเอียดได้'
-        : 'Student scanned at Main Gate 07:42 AM. Real-time parent notification verified.',
-      category: 'attendance',
-      priority: 'urgent',
-    });
+  const handleTestNotification = async (typeOrEvent?: 'gate_checkin' | 'period_start' | 'period_end' | 'late_alert' | 'teacher_leave' | React.MouseEvent) => {
+    const type = typeof typeOrEvent === 'string' ? typeOrEvent : 'gate_checkin';
+    if (type === 'period_start') {
+      await sendEduVerseNotification({
+        title: '⏰ [ทดสอบ] ใกล้เริ่มคาบเรียนที่ 2 (09:20 - 10:10)',
+        body: 'วิชา ว21101 วิทยาศาสตร์กายภาพ (ห้อง 402) อย่าลืมสแกน Barcode/QR เช็กชื่อเข้าเรียน (Check-in)',
+        category: 'attendance',
+        priority: 'urgent',
+      });
+    } else if (type === 'period_end') {
+      await sendEduVerseNotification({
+        title: '🔔 [ทดสอบ] สิ้นสุดคาบเรียนที่ 2 (10:10 น.)',
+        body: 'หมดเวลาคาบเรียนวิชา ว21101 กรุณาเช็กชื่อออก (Check-out) และเตรียมตัวสำหรับคาบเรียนถัดไป',
+        category: 'attendance',
+        priority: 'normal',
+      });
+    } else if (type === 'late_alert') {
+      await sendEduVerseNotification({
+        title: '⚠️ [ทดสอบ] แจ้งเตือนลืมเช็กชื่อ / มาสาย',
+        body: 'คาบเรียนที่ 2 เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็กชื่อของ ด.ช. ภัทรดนัย กรุณาสแกนหรือติดต่อครูผู้สอน',
+        category: 'attendance',
+        priority: 'urgent',
+      });
+    } else if (type === 'teacher_leave') {
+      await sendEduVerseNotification({
+        title: '📋 [ทดสอบ] แจ้งเตือนครูยื่นลาสอนรายคาบ (CC ผู้เกี่ยวข้อง)',
+        body: 'ครูสมศรี ลาสอนคาบที่ 3 (ค21101) มอบหมาย ครูประเสริฐ สอนแทน | CC: หัวหน้าหมวด, รอง ผอ.วิชาการ',
+        category: 'announcement',
+        priority: 'urgent',
+      });
+    } else {
+      await sendEduVerseNotification({
+        title: lang === 'th' ? '✅ [ทดสอบ] ด.ช. ภัทรดนัย เข้าโรงเรียนแล้ว' : '✅ [Test] Student Checked In',
+        body: lang === 'th'
+          ? 'สแกนผ่านประตูหลักโรงเรียน เวลา 07:42 น. (ตรงเวลาปกติ) ผู้ปกครองสามารถดูรายละเอียดได้'
+          : 'Student scanned at Main Gate 07:42 AM. Real-time parent notification verified.',
+        category: 'attendance',
+        priority: 'urgent',
+      });
+    }
     setNotifications(getStoredNotifications());
     setTestSentNotice(true);
     setTimeout(() => setTestSentNotice(false), 3000);
@@ -238,6 +269,51 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                     <span>{lang === 'th' ? 'ล้างประวัติ' : 'Clear'}</span>
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Quick Test & Simulation Suite */}
+            <div className="px-3 py-2 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-1.5 shrink-0 text-xs">
+              <span className="text-[10px] font-bold text-[var(--color-text-muted)] flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-500" />
+                <span>จำลองการแจ้งเตือนตามเงื่อนไข (Simulate Real-time Notifications):</span>
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleTestNotification('period_start')}
+                  className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
+                >
+                  ⏰ เริ่มคาบ &amp; เช็กอิน
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTestNotification('period_end')}
+                  className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
+                >
+                  🔔 หมดคาบ &amp; เช็กเอ้าท์
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTestNotification('late_alert')}
+                  className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
+                >
+                  ⚠️ ลืมเช็กชื่อ / มาสาย
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTestNotification('teacher_leave')}
+                  className="px-2 py-0.5 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
+                >
+                  📋 ครูลาสอน (CC)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTestNotification('gate_checkin')}
+                  className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
+                >
+                  ☀️ เช็กชื่อเข้า รร.
+                </button>
               </div>
             </div>
 

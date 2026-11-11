@@ -125,6 +125,7 @@ export interface AuthUser {
   lineConnected: boolean;
   phone?: string;
   studentRecordId?: string;
+  teacherRecordId?: string;
 
   // General & Personal Information
   nickname?: string;
@@ -314,11 +315,19 @@ export interface LeaveRequest {
   userName: string;
   userRole: 'student' | 'teacher';
   gradeLevelOrDepartment?: string;
+  leaveScope?: 'full_day' | 'period_hourly'; // ลาเต็มวัน หรือ ลาเฉพาะคาบสอน/รายชั่วโมง
+  periodNumber?: number; // คาบเรียนที่ขอลา (1-8)
+  courseId?: string; // รหัสรายวิชาที่ขอลา
+  courseCode?: string;
+  courseTitle?: string;
+  substituteTeacherId?: string; // ครูสอนแทน
+  substituteTeacherName?: string;
+  ccEmailsOrRoles?: string[] | string; // CC คนที่เกี่ยวข้อง เช่น หัวหน้ากลุ่มสาระ, รอง ผอ. ฝ่ายวิชาการ
   leaveType: LeaveType;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   reason: string;
-  attachmentUrl?: string; // photo of medical certificate or document
+  attachmentUrl?: string; // photo of medical certificate or document / official mission order
   status: LeaveStatus;
   approvedBy?: string;
   approvalRemarks?: string;
@@ -610,6 +619,7 @@ export interface PeriodAttendanceRecord {
   date: string;
   studentId: string;
   status: 'present' | 'late' | 'absent' | 'excused';
+  recordType?: 'check_in' | 'check_out'; // เช็กอินเข้าคาบ หรือ เช็กเอ้าท์เลิกคาบ
   verifiedByTeacherId: string;
   verifiedByTeacherName: string;
   checkMethod: 'student_mobile' | 'teacher_proxy' | 'qr_code';

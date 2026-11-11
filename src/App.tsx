@@ -74,7 +74,7 @@ import {
   updateUserProfileInSupabase,
 } from './lib/authDb';
 import type { AuthContext } from './lib/authDb';
-import { loadSchoolData, saveSchoolCampusGates, saveSchoolPeriodTimes, syncDataToSupabase } from './lib/supabase';
+import { loadSchoolData, saveSchoolCampusGates, saveSchoolGpsCoordinates, saveSchoolPeriodTimes, syncDataToSupabase } from './lib/supabase';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
@@ -886,6 +886,30 @@ export const App: React.FC = () => {
       }
       return updated;
     });
+
+    if (records.length > 0) {
+      const firstRec = records[0];
+      const isCheckout = firstRec.recordType === 'check_out';
+      const course = courses.find((c) => c.id === firstRec.courseId);
+      const student = students.find((s) => s.id === firstRec.studentId);
+      const studentName = student ? `${student.firstNameTh} ${student.lastNameTh}` : 'นักเรียน';
+
+      if (records.length === 1) {
+        sendEduVerseNotification({
+          title: isCheckout ? '🔴 เช็กชื่อออกคาบเรียนสำเร็จ (Check-out)' : '🟢 เช็กชื่อเข้าคาบเรียนสำเร็จ (Check-in)',
+          body: `${studentName} • วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} (${firstRec.timeSlot})`,
+          category: 'attendance',
+          priority: 'normal',
+        }).catch(() => {});
+      } else {
+        sendEduVerseNotification({
+          title: '📋 บันทึกเช็กชื่อทั้งคาบเรียนสำเร็จ',
+          body: `วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} บันทึกรายชื่อแล้ว ${records.length} คน`,
+          category: 'attendance',
+          priority: 'normal',
+        }).catch(() => {});
+      }
+    }
   };
 
   const handleAddLeaveRequest = (req: LeaveRequest) => {
@@ -966,6 +990,126 @@ export const App: React.FC = () => {
     }
   };
 
+  // -------------------------------------------------------------
+  // SCHEDULE & TIMETABLE AUTOMATED NOTIFICATION WATCHER
+  // Monitored for all users (students, teachers, admins):
+  // 1. Period Start & Check-in reminder (5 mins before / at start)
+  // 2. Period End & Check-out reminder (at end time)
+  // 3. Late warning / Missed Check-in alert (10 mins after start)
+  // 4. Morning arrival reminder & Late warning (> 08:00)
+  // 5. Afternoon departure reminder (15:30 - 16:30)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const firedAlerts = new Set<string>();
+
+    const checkScheduleAndAttendance = () => {
+      const now = new Date();
+      const todayStr = getLocalDateString();
+      const currentHours = now.getHours();
+      const currentMins = now.getMinutes();
+      const totalMinutes = currentHours * 60 + currentMins;
+
+      // 1. Morning School Arrival (07:30 - 08:00: reminder to check-in)
+      const morningKey = `${todayStr}-morning-arrival`;
+      if (totalMinutes >= 450 && totalMinutes <= 480 && !firedAlerts.has(morningKey)) {
+        firedAlerts.add(morningKey);
+        sendEduVerseNotification({
+          title: '☀️ สวัสดีตอนเช้า: อย่าลืมสแกนเข้าโรงเรียน',
+          body: 'ยินดีต้อนรับสู่โรงเรียน กรุณาถ่ายรูปหรือสแกนบัตรเช็กอินผ่านพิกัด GPS ประตูโรงเรียนก่อนเวลา 08:00 น.',
+          category: 'attendance',
+          priority: 'normal',
+        }).catch(() => {});
+      }
+
+      // 2. Morning Late Alert (> 08:05: if not checked in yet)
+      const lateKey = `${todayStr}-morning-late-alert`;
+      if (totalMinutes >= 485 && totalMinutes <= 540 && !firedAlerts.has(lateKey)) {
+        firedAlerts.add(lateKey);
+        const userHasCheckedIn = attendance.some(
+          (a) =>
+            a.date === todayStr &&
+            (a.recordType === 'check_in' || !a.recordType) &&
+            ((currentUser?.studentRecordId && a.studentId === currentUser.studentRecordId) ||
+              (currentUser?.teacherRecordId &&
+                (a.teacherId === currentUser.teacherRecordId || a.studentId === currentUser.teacherRecordId)) ||
+              (currentUser?.fullNameTh && a.userName?.includes(currentUser.fullNameTh)))
+        );
+        if (!userHasCheckedIn) {
+          sendEduVerseNotification({
+            title: '⚠️ แจ้งเตือนเวลาเข้าโรงเรียน (เลยเวลา 08:00 น.)',
+            body: 'ขณะนี้เลยเวลา 08:00 น. แล้ว ระบบยังไม่พบบันทึกการเช็กอินเข้าโรงเรียนของคุณ กรุณาติดต่อครูเวรประจำวันหรือสแกนเช็กชื่อด่วน',
+            category: 'attendance',
+            priority: 'urgent',
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Afternoon Departure Check-out (15:30 - 16:30)
+      const departureKey = `${todayStr}-afternoon-departure`;
+      if (totalMinutes >= 930 && totalMinutes <= 990 && !firedAlerts.has(departureKey)) {
+        firedAlerts.add(departureKey);
+        sendEduVerseNotification({
+          title: '🏫 สิ้นสุดเวลาเรียนประจำวัน: อย่าลืมเช็กเอาท์',
+          body: 'หมดเวลาเรียนตามตารางแล้ว กรุณาสแกนหรือถ่ายรูปเช็กเอาท์ (Check-out) ก่อนเดินทางกลับบ้านอย่างปลอดภัย',
+          category: 'attendance',
+          priority: 'normal',
+        }).catch(() => {});
+      }
+
+      // 4. Period Timetable Notifications (Start, End, and Late/Missed alerts)
+      const periodsToCheck = (schoolPeriods.length > 0 ? schoolPeriods : DEFAULT_SCHOOL_PERIODS).filter(
+        (p) => !p.isBreak && p.periodNumber > 0
+      );
+
+      periodsToCheck.forEach((p) => {
+        const [sH, sM] = p.startTime.split(':').map(Number);
+        const [eH, eM] = p.endTime.split(':').map(Number);
+        const startMin = sH * 60 + sM;
+        const endMin = eH * 60 + eM;
+
+        // 4.1. Period Start & Check-in Reminder (within 5 minutes before or at start)
+        const pStartKey = `${todayStr}-p${p.periodNumber}-start`;
+        if (totalMinutes >= startMin - 5 && totalMinutes <= startMin + 3 && !firedAlerts.has(pStartKey)) {
+          firedAlerts.add(pStartKey);
+          sendEduVerseNotification({
+            title: `⏰ เริ่มคาบเรียนที่ ${p.periodNumber} (${p.startTime} - ${p.endTime})`,
+            body: `ใกล้เริ่มคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเข้าห้องเรียนและสแกน Barcode/QR เพื่อเช็กชื่อเข้าเรียน (Check-in)`,
+            category: 'attendance',
+            priority: 'urgent',
+          }).catch(() => {});
+        }
+
+        // 4.2. Mid-period Late / Missed Check-in Reminder (10 mins after start)
+        const pLateKey = `${todayStr}-p${p.periodNumber}-missed`;
+        if (totalMinutes >= startMin + 10 && totalMinutes <= startMin + 15 && !firedAlerts.has(pLateKey)) {
+          firedAlerts.add(pLateKey);
+          sendEduVerseNotification({
+            title: `⚠️ แจ้งเตือนลืมเช็กชื่อคาบที่ ${p.periodNumber}`,
+            body: `คาบที่ ${p.periodNumber} (${p.startTime} - ${p.endTime}) เริ่มไปแล้ว 10 นาที หากเข้าห้องเรียนแล้ว กรุณาสแกน Barcode/QR หรือแจ้งอาจารย์ผู้สอน`,
+            category: 'attendance',
+            priority: 'urgent',
+          }).catch(() => {});
+        }
+
+        // 4.3. Period End & Check-out Reminder (within 3 mins of end)
+        const pEndKey = `${todayStr}-p${p.periodNumber}-end`;
+        if (totalMinutes >= endMin - 2 && totalMinutes <= endMin + 3 && !firedAlerts.has(pEndKey)) {
+          firedAlerts.add(pEndKey);
+          sendEduVerseNotification({
+            title: `🔔 สิ้นสุดคาบเรียนที่ ${p.periodNumber} (${p.endTime} น.)`,
+            body: `หมดเวลาคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเช็กชื่อออก (Check-out) และเตรียมตัวสำหรับคาบถัดไป`,
+            category: 'attendance',
+            priority: 'normal',
+          }).catch(() => {});
+        }
+      });
+    };
+
+    checkScheduleAndAttendance();
+    const interval = setInterval(checkScheduleAndAttendance, 30000);
+    return () => clearInterval(interval);
+  }, [schoolPeriods, attendance, currentUser]);
+
   const handleSaveCampusGates = async (gates: CampusGateGeofence[]) => {
     if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
       throw new Error('ไม่มีสิทธิ์แก้ไขชื่อจุดเช็กชื่อ');
@@ -1004,6 +1148,11 @@ export const App: React.FC = () => {
       localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({ lat, lng, radiusMeters }));
     } catch (e) {
       console.warn('Failed to save school gps to localStorage', e);
+    }
+    if (!isDemoMode && activeSchool.id) {
+      saveSchoolGpsCoordinates(activeSchool.id, lat, lng, radiusMeters).catch(err => {
+        console.warn('Could not sync school coordinates to Supabase:', err);
+      });
     }
     setCampusGates((prevGates) => {
       if (prevGates.length === 0) {

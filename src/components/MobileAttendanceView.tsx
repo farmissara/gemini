@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Smartphone, 
   UserCheck, 
@@ -62,12 +62,15 @@ import {
   CampusGateGeofence,
   LeaveRequest,
   LeaveType,
-  LeaveStatus
+  LeaveStatus,
+  UserRole
 } from '../types';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { PagedList } from './PagedList';
 import { ContinuousRapidScannerModal } from './ContinuousRapidScannerModal';
+import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 import { saveStudentSelfAttendance } from '../lib/supabase';
+import { sendEduVerseNotification } from '../lib/pushNotifications';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -111,6 +114,10 @@ interface MobileAttendanceViewProps {
   initialPeriodNumber?: number;
   initialPeriodDate?: string;
   initialPeriodCode?: string;
+  currentRole?: UserRole;
+  onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
+  onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
+  onUpdateSchoolCoordinates?: (lat: number, lng: number, radius: number) => void;
 }
 
 export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
@@ -134,6 +141,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   initialPeriodNumber,
   initialPeriodDate,
   initialPeriodCode,
+  currentRole = 'admin',
+  onUpdateCampusGates,
+  onSaveCampusGates,
+  onUpdateSchoolCoordinates,
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
   const isStudentOnly = currentUser?.role === 'student';
@@ -282,6 +293,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [studentPeriodCodeInput, setStudentPeriodCodeInput] = useState<string>(initialPeriodCode || '');
   const [studentPeriodCheckinMsg, setStudentPeriodCheckinMsg] = useState<string | null>(null);
   const [studentPeriodCheckinError, setStudentPeriodCheckinError] = useState<string | null>(null);
+  const [periodCheckType, setPeriodCheckType] = useState<'check_in' | 'check_out'>('check_in');
+
+  // Teacher hourly/period leave state
+  const [leaveScope, setLeaveScope] = useState<'full_day' | 'period_hourly'>('full_day');
+  const [leavePeriodNum, setLeavePeriodNum] = useState<number>(1);
+  const [leaveCourseId, setLeaveCourseId] = useState<string>(courses[0]?.id || '');
+  const [leaveSubstituteTeacherId, setLeaveSubstituteTeacherId] = useState<string>('');
+  const [leaveCcRoles, setLeaveCcRoles] = useState<string>('หัวหน้ากลุ่มสาระฯ, รอง ผอ. ฝ่ายวิชาการ');
+  const [leaveMissionNumber, setLeaveMissionNumber] = useState<string>('');
+
+  // GPS Admin edit modal state
+  const [showGpsAdminModal, setShowGpsAdminModal] = useState<boolean>(false);
 
   useEffect(() => {
     if (initialPeriodCourseId) setSelectedCourseId(initialPeriodCourseId);
@@ -290,9 +313,27 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     if (initialPeriodCode) setStudentPeriodCodeInput(initialPeriodCode);
   }, [initialPeriodCourseId, initialPeriodNumber, initialPeriodDate, initialPeriodCode]);
 
-  const periodStudentIds: string[] = (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0)
-    ? selectedCourse.enrolledStudentIds
-    : students.map(s => s.id);
+  // Strict classroom & enrollment calculation for period attendance
+  const periodStudentIds: string[] = useMemo(() => {
+    if (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0) {
+      return selectedCourse.enrolledStudentIds;
+    }
+    // Strict room matching: only students enrolled in this course or room can check in
+    if (selectedCourse.room) {
+      const roomStudents = students.filter(
+        s => s.room && s.room.trim().toLowerCase() === selectedCourse.room.trim().toLowerCase()
+      );
+      if (roomStudents.length > 0) return roomStudents.map(s => s.id);
+    }
+    // If course specifies category matching grade level
+    if (selectedCourse.category) {
+      const gradeStudents = students.filter(
+        s => s.gradeLevel && s.gradeLevel.toLowerCase().includes(selectedCourse.category.toLowerCase())
+      );
+      if (gradeStudents.length > 0) return gradeStudents.map(s => s.id);
+    }
+    return [];
+  }, [selectedCourse, students]);
 
   const isSelfCheckin = isRestrictedViewer || attendanceMode === 'self';
 
@@ -638,6 +679,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       return;
     }
 
+    const selectedCourseObj = courses.find((c) => c.id === leaveCourseId);
+    const substituteTeacherObj = teachers.find((t) => t.id === leaveSubstituteTeacherId);
+
     const newLeave: LeaveRequest = {
       id: `leave-${Date.now()}`,
       userId: isSelfCheckin ? loggedInProfile.targetId : (effectiveUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1')),
@@ -645,9 +689,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       userRole: isSelfCheckin ? (loggedInProfile.userType === 'student' ? 'student' : 'teacher') : effectiveUserType,
       gradeLevelOrDepartment: isSelfCheckin ? loggedInProfile.departmentOrRoom : activeDepartmentOrRoom,
       leaveType,
+      leaveScope,
+      periodNumber: leaveScope === 'period_hourly' ? leavePeriodNum : undefined,
+      courseId: leaveScope === 'period_hourly' ? leaveCourseId : undefined,
+      courseCode: leaveScope === 'period_hourly' ? (selectedCourseObj?.code || 'GEN-101') : undefined,
+      courseTitle: leaveScope === 'period_hourly' ? (selectedCourseObj?.titleTh || selectedCourseObj?.titleEn) : undefined,
+      substituteTeacherId: leaveScope === 'period_hourly' ? leaveSubstituteTeacherId : undefined,
+      substituteTeacherName: leaveScope === 'period_hourly' ? (substituteTeacherObj?.fullNameTh || 'ระบุครูสอนแทนแล้ว') : undefined,
+      ccEmailsOrRoles: leaveScope === 'period_hourly' ? (leaveCcRoles || 'ฝ่ายวิชาการ, หัวหน้ากลุ่มสาระฯ') : undefined,
       startDate: leaveStartDate,
-      endDate: leaveEndDate,
-      reason: leaveReason,
+      endDate: leaveScope === 'period_hourly' ? leaveStartDate : leaveEndDate,
+      reason: leaveScope === 'period_hourly' && leaveMissionNumber
+        ? `[เลขที่คำสั่ง/ภารกิจ: ${leaveMissionNumber}] ${leaveReason}`
+        : leaveReason,
       attachmentUrl: leaveAttachmentUrl || undefined,
       status: 'pending',
       createdAt: `${getLocalDateString()} ${new Date().toLocaleTimeString('th-TH')}`
@@ -657,9 +711,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       onAddLeaveRequest(newLeave);
     }
 
-    setLeaveSuccessNotice(`ส่งใบ${leaveType === 'sick' ? 'ลาป่วย' : 'ลากิจ'}เรียบร้อยแล้ว รอครูประจำชั้นหรือฝ่ายวิชาการอนุมัติ`);
+    // Send push notification alert to substitute teacher and academic head
+    if (leaveScope === 'period_hourly') {
+      sendEduVerseNotification({
+        title: `📋 แจ้งเตือนครูลาสอนรายคาบ: ${newLeave.userName}`,
+        body: `ลาคาบที่ ${leavePeriodNum} (${newLeave.courseCode || 'วิชาเรียน'}) ${newLeave.substituteTeacherName ? `มอบหมายสอนแทน: ${newLeave.substituteTeacherName}` : ''} | CC: ${newLeave.ccEmailsOrRoles || 'วิชาการ'}`,
+        category: 'announcement',
+        priority: 'urgent',
+      }).catch(() => {});
+    }
+
+    setLeaveSuccessNotice(
+      leaveScope === 'period_hourly'
+        ? `ส่งใบลาสอนคาบที่ ${leavePeriodNum} (${newLeave.courseCode}) เรียบร้อยแล้ว ระบบได้แจ้งเตือนครูผู้สอนแทน (${newLeave.substituteTeacherName || '-'}) และ CC บุคลากรที่เกี่ยวข้องแล้ว`
+        : `ส่งใบ${leaveType === 'sick' ? 'ลาป่วย' : leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}เรียบร้อยแล้ว รอครูประจำชั้นหรือฝ่ายวิชาการอนุมัติ`
+    );
     setLeaveReason('');
     setLeaveAttachmentUrl('');
+    setLeaveMissionNumber('');
     setTimeout(() => setLeaveSuccessNotice(null), 5000);
   };
 
@@ -770,7 +839,26 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
 
     const targetCourse = courses.find((c) => c.id === resolvedCourseId) || selectedCourse;
+
+    // Strict validation: Must belong to targetCourse (enrolledStudentIds or room match)
+    let isStudentEnrolledInClass = false;
+    if (targetCourse.enrolledStudentIds && targetCourse.enrolledStudentIds.length > 0) {
+      isStudentEnrolledInClass = targetCourse.enrolledStudentIds.includes(targetStudent.id);
+    } else if (targetCourse.room && targetStudent.room) {
+      isStudentEnrolledInClass = targetCourse.room.trim().toLowerCase() === targetStudent.room.trim().toLowerCase();
+    } else if (targetCourse.category && targetStudent.gradeLevel) {
+      isStudentEnrolledInClass = targetStudent.gradeLevel.toLowerCase().includes(targetCourse.category.toLowerCase());
+    }
+
+    if (!isStudentEnrolledInClass) {
+      setStudentPeriodCheckinError(
+        `⛔ ปฏิเสธการเช็กชื่อ: นักเรียน ${targetStudent.firstNameTh} ${targetStudent.lastNameTh} (ชั้น ${targetStudent.gradeLevel} ห้อง ${targetStudent.room || '-'}) ไม่ได้อยู่ในรายชื่อหรือห้องเรียนของวิชานี้ (${targetCourse.code || ''} ${targetCourse.titleTh || ''} ${targetCourse.room ? 'ห้อง ' + targetCourse.room : ''}) สิทธิ์เช็กชื่อรายคาบอนุญาตเฉพาะเด็กในชั้นเรียนนี้เท่านั้น`
+      );
+      return;
+    }
+
     const currentPeriodInfo = periodsList.find((p) => p.period === resolvedPeriodNum);
+    const actionLabel = periodCheckType === 'check_in' ? 'เช็กชื่อเข้าเรียน (Check-in)' : 'เช็กชื่อออกคาบเรียน (Check-out)';
 
     const record: PeriodAttendanceRecord = {
       id: `patt-qr-${Date.now()}-${targetStudent.id}`,
@@ -782,10 +870,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       date: resolvedDate,
       studentId: targetStudent.id,
       status: 'present',
+      recordType: periodCheckType,
       verifiedByTeacherId: 'qr-self-checkin',
-      verifiedByTeacherName: targetCourse.teacherName || 'ระบบ QR รายคาบ',
+      verifiedByTeacherName: targetCourse.teacherName || 'ระบบ Barcode/QR รายคาบ',
       checkMethod: 'qr_code',
-      remarks: `นักเรียนสแกน QR/ลิงก์เช็กชื่อรายคาบ (${resolvedCode})`,
+      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${resolvedCode})`,
     };
 
     onRecordPeriodAttendance([record]);
@@ -794,7 +883,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setPeriodDate(resolvedDate);
     playChime();
     setStudentPeriodCheckinMsg(
-      `เช็กชื่อเข้าเรียนวิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
+      `${periodCheckType === 'check_in' ? '🟢 เช็กชื่อเข้าเรียน (Check-in)' : '🔴 เช็กชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
     );
     setTimeout(() => setStudentPeriodCheckinMsg(null), 5000);
   };
@@ -1326,19 +1415,31 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
             {/* Multi-Gate Geofence Radar */}
             {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 overflow-hidden' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs text-[var(--color-text-body)]`}>
-              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                   <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็กชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRefreshGps}
-                  className="text-xs text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
-                  <span>ตรวจพิกัด</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {(currentRole === 'admin' || currentRole === 'super_admin') && (
+                    <button
+                      type="button"
+                      onClick={() => setShowGpsAdminModal(true)}
+                      className="text-xs text-[var(--color-primary-text)] font-bold flex items-center gap-1 cursor-pointer bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] px-2.5 py-1 rounded-lg border border-[var(--color-border)] transition"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                      <span>⚙️ แก้ไขพิกัดจุดเช็กชื่อ (Admin)</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRefreshGps}
+                    className="text-xs text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
+                    <span>ตรวจพิกัด</span>
+                  </button>
+                </div>
               </div>
 
               {/* Multi-gate Selector List */}
@@ -1510,6 +1611,121 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 )}
               </div>
 
+              {/* Leave Scope Toggle: Full day vs Period / Hourly teaching leave */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-[var(--color-text-title)]">ขอบเขตการลา:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLeaveScope('full_day')}
+                    className={`p-2.5 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
+                      leaveScope === 'full_day'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 shadow-2xs ring-1 ring-emerald-500'
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    📅 ลาเต็มวัน / หลายวัน
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaveScope('period_hourly')}
+                    className={`p-2.5 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
+                      leaveScope === 'period_hourly'
+                        ? 'bg-purple-100 dark:bg-purple-950 border-purple-400 dark:border-purple-700 text-purple-900 dark:text-purple-200 shadow-2xs ring-1 ring-purple-500'
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    ⏰ ลาเฉพาะคาบสอน / รายชม.
+                  </button>
+                </div>
+              </div>
+
+              {/* Period / Hourly Specific Selectors */}
+              {leaveScope === 'period_hourly' && (
+                <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-3">
+                  <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-bold text-xs">
+                    <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span>ระบุคาบสอนและครูผู้สอนแทน (Period Leave Details)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold text-[var(--color-text-muted)]">คาบเรียนที่ลา:</label>
+                      <select
+                        value={leavePeriodNum}
+                        onChange={(e) => setLeavePeriodNum(Number(e.target.value))}
+                        className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                      >
+                        {periodsList.map((p) => (
+                          <option key={p.period} value={p.period}>
+                            {p.label} ({p.time})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-[var(--color-text-muted)]">วิชาที่ติดสอน:</label>
+                      <select
+                        value={leaveCourseId}
+                        onChange={(e) => setLeaveCourseId(e.target.value)}
+                        className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                      >
+                        {(courses.length > 0 ? courses : [fallbackCourse]).map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.code} {c.titleTh} {c.room ? `(ห้อง ${c.room})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[var(--color-text-muted)]">
+                      ครูผู้ปฏิบัติการสอนแทน (Substitute Teacher):
+                    </label>
+                    <select
+                      value={leaveSubstituteTeacherId}
+                      onChange={(e) => setLeaveSubstituteTeacherId(e.target.value)}
+                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                    >
+                      <option value="">-- เลือกครูสอนแทน หรือเวรประจำวัน --</option>
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.fullNameTh} ({t.department} - {t.academicStanding})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[var(--color-text-muted)]">
+                      CC บุคคล/ตำแหน่งที่เกี่ยวข้อง (แจ้งเตือนพร้อมกัน):
+                    </label>
+                    <input
+                      type="text"
+                      value={leaveCcRoles}
+                      onChange={(e) => setLeaveCcRoles(e.target.value)}
+                      placeholder="เช่น หัวหน้ากลุ่มสาระฯ, รอง ผอ.กลุ่มบริหารวิชาการ, ฝ่ายบุคคล"
+                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-[var(--color-text-muted)]">
+                      เลขที่บันทึกข้อความ / คำสั่งราชการภารกิจ (ถ้ามี):
+                    </label>
+                    <input
+                      type="text"
+                      value={leaveMissionNumber}
+                      onChange={(e) => setLeaveMissionNumber(e.target.value)}
+                      placeholder="เช่น ศธ 04225/ว1234 หรือ ลิงก์เอกสารขอไปราชการ"
+                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Leave Type */}
               <div className="space-y-1.5">
                 <label className="font-bold text-[var(--color-text-title)]">ประเภทการลา:</label>
@@ -1534,7 +1750,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
                     }`}
                   >
-                    🚗 ลากิจ
+                    🚗 ลากิจ / ติดภารกิจ
                   </button>
                   <button
                     type="button"
@@ -1545,42 +1761,49 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
                     }`}
                   >
-                    🏛️ ไปราชการ
+                    🏛️ ไปราชการ / อบรม
                   </button>
                 </div>
               </div>
 
               {/* Date Range */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid ${leaveScope === 'period_hourly' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
                 <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-title)]">ตั้งแต่วันที่:</label>
+                  <label className="font-bold text-[var(--color-text-title)]">
+                    {leaveScope === 'period_hourly' ? 'วันที่ลาคาบสอน:' : 'ตั้งแต่วันที่:'}
+                  </label>
                   <input
                     type="date"
                     value={leaveStartDate}
-                    onChange={(e) => setLeaveStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setLeaveStartDate(e.target.value);
+                      if (leaveScope === 'period_hourly') setLeaveEndDate(e.target.value);
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-title)]">ถึงวันที่:</label>
-                  <input
-                    type="date"
-                    value={leaveEndDate}
-                    onChange={(e) => setLeaveEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                    required
-                  />
-                </div>
+                {leaveScope === 'full_day' && (
+                  <div className="space-y-1">
+                    <label className="font-bold text-[var(--color-text-title)]">ถึงวันที่:</label>
+                    <input
+                      type="date"
+                      value={leaveEndDate}
+                      onChange={(e) => setLeaveEndDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                      required
+                    />
+                  </div>
+                )}
               </div>
                   <button
                     type="button"
                     onClick={() => {
-                      if (leaveStartDate && leaveEndDate) setLeaveFormStep(2);
+                      if (leaveStartDate) setLeaveFormStep(2);
                     }}
                     className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
                   >
-                    Continue to reason and evidence
+                    ไปยังขั้นตอนระบุเหตุผลและหลักฐาน →
                   </button>
                 </div>
               )}
@@ -1589,12 +1812,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <div className="space-y-4">
               {/* Reason */}
               <div className="space-y-1">
-                <label className="font-bold text-[var(--color-text-title)]">เหตุผลประกอบการลา:</label>
+                <label className="font-bold text-[var(--color-text-title)]">
+                  {leaveScope === 'period_hourly' ? 'เหตุผลและภารกิจประกอบการลาสอน:' : 'เหตุผลประกอบการลา:'}
+                </label>
                 <textarea
                   rows={3}
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
-                  placeholder="ระบุอาการเจ็บป่วย หรือภารกิจจำเป็น..."
+                  placeholder={
+                    leaveScope === 'period_hourly'
+                      ? 'ระบุภารกิจราชการ การนำนักเรียนแข่งขันทักษะ หรืออาการป่วยกะทันหัน...'
+                      : 'ระบุอาการเจ็บป่วย หรือภารกิจจำเป็น...'
+                  }
                   className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
                   required
                 />
@@ -1602,7 +1831,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Medical certificate / Document attachment */}
               <div className="space-y-2">
-                <label className="font-bold text-[var(--color-text-title)]">แนบรูปใบรับรองแพทย์ / เอกสารหลักฐาน (ถ้ามี):</label>
+                <label className="font-bold text-[var(--color-text-title)]">
+                  {leaveScope === 'period_hourly' ? 'แนบรูปคำสั่ง / ภาพภารกิจ / ใบมอบหมายสอนแทน (ถ้ามี):' : 'แนบรูปใบรับรองแพทย์ / เอกสารหลักฐาน (ถ้ามี):'}
+                </label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1613,7 +1844,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     className="text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1.5 underline underline-offset-4 cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    <span>แนบรูปใบรับรองแพทย์ตัวอย่าง</span>
+                    <span>แนบรูปเอกสารตัวอย่าง</span>
                   </button>
                   {leaveAttachmentUrl && (
                     <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
@@ -1625,7 +1856,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                 {leaveAttachmentUrl && (
                   <div className="relative w-36 h-24 rounded-xl overflow-hidden border border-[var(--color-border)] mt-2">
-                    <img src={leaveAttachmentUrl} alt="Medical Certificate" className="w-full h-full object-cover" />
+                    <img src={leaveAttachmentUrl} alt="Document Attachment" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setLeaveAttachmentUrl('')}
@@ -1642,7 +1873,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>ส่งคำขอใบลาให้อาจารย์ประจำชั้น</span>
+                <span>
+                  {leaveScope === 'period_hourly' ? 'ยื่นคำขอลาสอนคาบนี้และแจ้งเตือนครูสอนแทน (CC)' : 'ส่งคำขอใบลาให้อาจารย์ประจำชั้น'}
+                </span>
               </button>
                   <button
                     type="button"
@@ -1670,13 +1903,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <div className="space-y-3">
               <PagedList items={scopedLeaveRequests} pageSize={2} emptyState={<p className="text-xs text-[var(--color-text-muted)] py-4 text-center">ยังไม่มีประวัติใบลาของคุณ</p>} renderItem={(req) => (
                 <div key={req.id} className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' :
-                      req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700'
-                    }`}>
-                      {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
-                    </span>
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' :
+                        req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700'
+                      }`}>
+                        {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                      </span>
+                      {req.leaveScope === 'period_hourly' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700">
+                          ⏰ ลาสอนคาบที่ {req.periodNumber || 1} {req.courseCode ? `(${req.courseCode})` : ''}
+                        </span>
+                      )}
+                    </div>
 
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                       req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
@@ -1688,7 +1928,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                   <div>
                     <p className="font-bold text-[var(--color-text-title)]">{req.userName}</p>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">{req.gradeLevelOrDepartment} • วันที่ {req.startDate} ถึง {req.endDate}</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      {req.gradeLevelOrDepartment} • {req.leaveScope === 'period_hourly' ? `วันที่ ${req.startDate}` : `วันที่ ${req.startDate} ถึง ${req.endDate}`}
+                    </p>
+                    {req.leaveScope === 'period_hourly' && (
+                      <div className="mt-1 text-[11px] text-purple-800 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 p-1.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <p>👤 <strong>สอนแทนโดย:</strong> {req.substituteTeacherName || 'ยังไม่ระบุ'}</p>
+                        {req.ccEmailsOrRoles && <p className="text-[10px] text-[var(--color-text-muted)]">📨 <strong>CC:</strong> {req.ccEmailsOrRoles}</p>}
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-[var(--color-text-body)] text-[11px] bg-[var(--color-card)] p-2 rounded-lg border border-[var(--color-border)]">
@@ -2119,9 +2367,40 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </span>
                 </div>
 
+                {/* Check-in vs Check-out Mode Toggle */}
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex-wrap">
+                  <span className="text-[11px] font-bold text-[var(--color-text-title)]">โหมดการบันทึก:</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPeriodCheckType('check_in')}
+                      className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                        periodCheckType === 'check_in'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-[var(--color-border)]'
+                      }`}
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>เช็กชื่อเข้า (Check-in)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPeriodCheckType('check_out')}
+                      className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                        periodCheckType === 'check_out'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-[var(--color-border)]'
+                      }`}
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>เช็กชื่อออก (Check-out)</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-[var(--color-text-title)] block">
-                    วางลิงก์เช็กชื่อ หรือกรอกรหัสจากการสแกน QR คาบเรียน:
+                    วางลิงก์เช็กชื่อ หรือกรอกรหัส Barcode/QR คาบเรียน:
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
@@ -2137,10 +2416,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleStudentSelfPeriodCheckin()}
-                      className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                      className={`px-4 py-2 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-xs transition ${
+                        periodCheckType === 'check_in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
+                      }`}
                     >
                       <QrCode className="w-4 h-4" />
-                      <span>ยืนยันเช็กชื่อเข้าคาบ</span>
+                      <span>{periodCheckType === 'check_in' ? 'ยืนยันเช็กชื่อเข้าเรียน' : 'ยืนยันเช็กชื่อออกคาบ'}</span>
                     </button>
                   </div>
                 </div>
@@ -2432,6 +2713,40 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         onRecordAttendance={onRecordAttendance}
         lang={lang}
       />
+
+      {/* Admin GPS & Gates Management Modal */}
+      {showGpsAdminModal && _school && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="bg-[var(--color-card)] rounded-3xl p-4 sm:p-6 max-w-4xl w-full border border-[var(--color-border)] shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[var(--color-primary)]" />
+                <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                  ตั้งค่าและแก้ไขพิกัดจุดเช็กชื่อโรงเรียน (School GPS & Gates Management)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGpsAdminModal(false)}
+                className="p-1.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] cursor-pointer"
+                aria-label="ปิดหน้าต่างตั้งค่าพิกัด"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <SchoolGpsSettingsCard
+              activeSchool={_school}
+              campusGates={campusGates}
+              currentRole={currentRole}
+              lang={lang}
+              onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+              onSaveCampusGates={onSaveCampusGates}
+              onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

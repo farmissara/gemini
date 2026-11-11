@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Student, StudentStatus } from '../types';
+import { Student, StudentStatus, GuardianInfo } from '../types';
 import { 
   Users, 
   Search, 
@@ -138,6 +138,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
   });
 
+  // Multiple guardians state (ผู้ปกครองมากกว่า 1 คน)
+  const [guardiansList, setGuardiansList] = useState<GuardianInfo[]>([
+    {
+      id: 'g-initial-1',
+      name: '',
+      relation: 'บิดา',
+      phone: '081-',
+      email: '',
+      isPrimary: true,
+    }
+  ]);
+
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
       // 1. Search filter
@@ -223,6 +235,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       gpa: 3.50,
       avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
     });
+    setGuardiansList([
+      {
+        id: `g-${Date.now()}-1`,
+        name: '',
+        relation: 'บิดา',
+        phone: '081-',
+        email: '',
+        isPrimary: true,
+      }
+    ]);
     setShowAddModal(true);
   };
 
@@ -247,12 +269,71 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       gpa: student.gpa,
       avatarUrl: student.avatarUrl,
     });
+    if (student.guardians && student.guardians.length > 0) {
+      setGuardiansList(student.guardians.map(g => ({ ...g })));
+    } else {
+      setGuardiansList([
+        {
+          id: `g-${Date.now()}-1`,
+          name: student.guardianName || '',
+          relation: student.guardianRelation || 'ผู้ปกครอง',
+          phone: student.guardianPhone || '',
+          email: student.guardianEmail || '',
+          isPrimary: true,
+        }
+      ]);
+    }
     setShowAddModal(true);
+  };
+
+  const handleAddGuardian = () => {
+    const nextIdx = guardiansList.length + 1;
+    const defaultRel = nextIdx === 2 ? 'มารดา' : nextIdx === 3 ? 'ปู่/ย่า/ตา/ยาย' : 'ผู้ปกครอง';
+    setGuardiansList(prev => [
+      ...prev,
+      {
+        id: `g-${Date.now()}-${nextIdx}`,
+        name: '',
+        relation: defaultRel,
+        phone: '08X-',
+        email: '',
+        isPrimary: false,
+      }
+    ]);
+  };
+
+  const handleRemoveGuardian = (id: string) => {
+    if (guardiansList.length <= 1) return;
+    setGuardiansList(prev => {
+      const filtered = prev.filter(g => g.id !== id);
+      if (!filtered.some(g => g.isPrimary) && filtered.length > 0) {
+        filtered[0].isPrimary = true;
+      }
+      return filtered;
+    });
+  };
+
+  const handleUpdateGuardian = (id: string, updates: Partial<GuardianInfo>) => {
+    setGuardiansList(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+  };
+
+  const handleSetPrimaryGuardian = (id: string) => {
+    setGuardiansList(prev => prev.map(g => ({ ...g, isPrimary: g.id === id })));
   };
 
   const handleSaveStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.firstNameTh.trim()) return;
+
+    const primaryGuardian = guardiansList.find(g => g.isPrimary) || guardiansList[0];
+    const finalGuardianName = primaryGuardian?.name?.trim() || formData.guardianName.trim() || 'Parent / Guardian';
+    const finalGuardianRelation = primaryGuardian?.relation || 'ผู้ปกครอง';
+    const finalGuardianPhone = primaryGuardian?.phone?.trim() || formData.guardianPhone.trim() || '081-000-0000';
+    const finalGuardianEmail = primaryGuardian?.email?.trim() || formData.guardianEmail.trim() || 'guardian@email.com';
+    const finalGuardians = guardiansList.map((g, idx) => ({
+      ...g,
+      isPrimary: primaryGuardian ? g.id === primaryGuardian.id : idx === 0,
+    }));
 
     if (editingStudent) {
       const updated: Student = {
@@ -268,9 +349,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         gradeLevel: formData.gradeLevel.trim() || 'มัธยมศึกษาปีที่ 4 (M.4)',
         room: formData.room.trim() || 'ม.4/1',
         status: formData.status,
-        guardianName: formData.guardianName.trim() || 'Parent / Guardian',
-        guardianPhone: formData.guardianPhone.trim() || '081-000-0000',
-        guardianEmail: formData.guardianEmail.trim() || 'guardian@email.com',
+        guardianName: finalGuardianName,
+        guardianRelation: finalGuardianRelation,
+        guardianPhone: finalGuardianPhone,
+        guardianEmail: finalGuardianEmail,
+        guardians: finalGuardians,
         gpa: Number(formData.gpa),
         avatarUrl: formData.avatarUrl || editingStudent.avatarUrl,
       };
@@ -297,10 +380,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80'
         : 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80'),
       gpa: Number(formData.gpa),
-      guardianName: formData.guardianName.trim() || 'Parent / Guardian',
-      guardianRelation: 'Guardian',
-      guardianPhone: formData.guardianPhone.trim() || '081-000-0000',
-      guardianEmail: formData.guardianEmail.trim() || 'guardian@email.com',
+      guardianName: finalGuardianName,
+      guardianRelation: finalGuardianRelation,
+      guardianPhone: finalGuardianPhone,
+      guardianEmail: finalGuardianEmail,
+      guardians: finalGuardians,
       lineLinked: false,
       lineNotifyEnabled: false,
       enrolledDate: new Date().toISOString().split('T')[0],
@@ -932,54 +1016,162 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
               {studentFormStep === 2 && (
                 <div className="space-y-4">
-                  {/* Guardian Information */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[var(--color-text-title)] font-bold mb-1">ชื่อ-สกุล ผู้ปกครอง</label>
-                      <input
-                        type="text"
-                        value={formData.guardianName}
-                        onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
-                        placeholder="เช่น นายประภาส สุขสมบูรณ์"
-                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                      />
+                  {/* Dynamic Guardians Information with + Add Guardian */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between pb-1 border-b border-[var(--color-border)]">
+                      <div>
+                        <h4 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                          <span>👨‍👩‍👧 ข้อมูลผู้ปกครอง (Guardians)</span>
+                          <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 text-[10px] font-bold border border-blue-300 dark:border-blue-700">
+                            {guardiansList.length} คน
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-[var(--color-text-muted)]">
+                          นักเรียน 1 คนสามารถมีผู้ปกครองได้มากกว่า 1 คน (เช่น บิดา, มารดา, หรือผู้ดูแล)
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddGuardian}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>เพิ่มผู้ปกครอง</span>
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-[var(--color-text-title)] font-bold mb-1">เบอร์โทรศัพท์ผู้ปกครอง</label>
-                      <input
-                        type="text"
-                        value={formData.guardianPhone}
-                        onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
-                        placeholder="08X-XXX-XXXX"
-                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
-                      />
+
+                    <div className="space-y-3">
+                      {guardiansList.map((g, idx) => (
+                        <div
+                          key={g.id}
+                          className={`p-3.5 rounded-2xl border transition ${
+                            g.isPrimary
+                              ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/30'
+                              : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-[var(--color-primary)] text-white text-[10px] font-bold flex items-center justify-center">
+                                {idx + 1}
+                              </span>
+                              <span className="text-xs font-bold text-[var(--color-text-title)]">
+                                ผู้ปกครองคนที่ {idx + 1}
+                              </span>
+                              {g.isPrimary ? (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
+                                  ★ ผู้ปกครองหลัก
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetPrimaryGuardian(g.id)}
+                                  className="text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                                >
+                                  ตั้งเป็นผู้ปกครองหลัก
+                                </button>
+                              )}
+                            </div>
+
+                            {guardiansList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGuardian(g.id)}
+                                className="p-1 rounded-lg text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950 transition cursor-pointer"
+                                title="ลบผู้ปกครองคนนี้"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                            <div>
+                              <label className="block text-[11px] font-bold text-[var(--color-text-title)] mb-1">
+                                ความสัมพันธ์
+                              </label>
+                              <select
+                                value={g.relation}
+                                onChange={(e) => handleUpdateGuardian(g.id, { relation: e.target.value })}
+                                className="w-full px-2.5 py-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-semibold"
+                              >
+                                <option value="บิดา">บิดา (Father)</option>
+                                <option value="มารดา">มารดา (Mother)</option>
+                                <option value="ผู้ปกครอง">ผู้ปกครอง (Guardian)</option>
+                                <option value="ปู่/ย่า/ตา/ยาย">ปู่ / ย่า / ตา / ยาย</option>
+                                <option value="น้า/อา">น้า / อา / ลุง / ป้า</option>
+                                <option value="ญาติผู้ใหญ่">ญาติผู้ใหญ่ / ผู้ดูแลตามกฎหมาย</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-[var(--color-text-title)] mb-1">
+                                ชื่อ-สกุล ผู้ปกครอง *
+                              </label>
+                              <input
+                                type="text"
+                                value={g.name}
+                                onChange={(e) => handleUpdateGuardian(g.id, { name: e.target.value })}
+                                placeholder="เช่น นายประภาส สุขสมบูรณ์"
+                                className="w-full px-2.5 py-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-medium"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-[var(--color-text-title)] mb-1">
+                                เบอร์โทรศัพท์ *
+                              </label>
+                              <input
+                                type="text"
+                                value={g.phone}
+                                onChange={(e) => handleUpdateGuardian(g.id, { phone: e.target.value })}
+                                placeholder="08X-XXX-XXXX"
+                                className="w-full px-2.5 py-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-xs">
+                            <label className="block text-[11px] font-bold text-[var(--color-text-title)] mb-1">
+                              อีเมลผู้ปกครอง (สำหรับส่งเกรด/ใบแจ้งหนี้)
+                            </label>
+                            <input
+                              type="email"
+                              value={g.email || ''}
+                              onChange={(e) => handleUpdateGuardian(g.id, { email: e.target.value })}
+                              placeholder="parent@email.com"
+                              className="w-full px-2.5 py-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-medium"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
+
+                    {/* Prominent Plus Button to add another guardian */}
+                    <button
+                      type="button"
+                      onClick={handleAddGuardian}
+                      className="w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-indigo-400 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 hover:bg-indigo-100/60 text-indigo-900 dark:text-indigo-200 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
+                      <span>+ เพิ่มผู้ปกครองคนที่ {guardiansList.length + 1} (มีผู้ปกครองมากกว่า 1 คน)</span>
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[var(--color-text-title)] font-bold mb-1">อีเมลผู้ปกครอง</label>
-                      <input
-                        type="email"
-                        value={formData.guardianEmail}
-                        onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
-                        placeholder="parent@email.com"
-                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[var(--color-text-title)] font-bold mb-1">เกรดเฉลี่ยสะสม (GPA)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="4"
-                        step="0.01"
-                        value={formData.gpa}
-                        onChange={(e) => setFormData({ ...formData, gpa: Number(e.target.value) })}
-                        placeholder="เช่น 3.50"
-                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold"
-                      />
-                    </div>
+                  {/* Academic GPA */}
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <label className="block text-[var(--color-text-title)] font-bold mb-1">เกรดเฉลี่ยสะสม (GPA)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="4"
+                      step="0.01"
+                      value={formData.gpa}
+                      onChange={(e) => setFormData({ ...formData, gpa: Number(e.target.value) })}
+                      placeholder="เช่น 3.50"
+                      className="w-full sm:w-1/2 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold"
+                    />
                   </div>
                 </div>
               )}

@@ -459,7 +459,8 @@ export async function saveStudentSelfAttendance(record: AttendanceRecord, userId
     .upload(photoStoragePath, photoBlob, { contentType: 'image/jpeg', upsert: false });
   if (uploadError) throw new Error(`Could not save attendance photo: ${uploadError.message}`);
 
-  const { error: insertError } = await client.from('attendance').insert({
+  let insertError: any = null;
+  const insertPayload = {
     id: record.id,
     school_id: record.schoolId,
     student_id: record.studentId,
@@ -472,7 +473,28 @@ export async function saveStudentSelfAttendance(record: AttendanceRecord, userId
     record_type: record.recordType || 'check_in',
     user_name: record.userName,
     photo_url: photoStoragePath,
-  });
+  };
+
+  const firstAttempt = await client.from('attendance').insert(insertPayload);
+  insertError = firstAttempt.error;
+
+  // If Supabase schema cache does not have photo_url / record_type / user_name, fallback to base columns
+  if (insertError && (/photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(insertError.message))) {
+    console.warn('[Attendance] Retrying insert with base attendance columns due to missing columns in Supabase schema cache:', insertError.message);
+    const fallbackAttempt = await client.from('attendance').insert({
+      id: record.id,
+      school_id: record.schoolId,
+      student_id: record.studentId,
+      date: record.date,
+      time: record.time,
+      status: record.status,
+      checkin_method: record.checkinMethod,
+      remarks: record.remarks ? `${record.remarks} [Photo: ${photoStoragePath}]` : `Photo: ${photoStoragePath}`,
+      line_notification_sent: false,
+    });
+    insertError = fallbackAttempt.error;
+  }
+
   if (insertError) {
     const { error: cleanupError } = await client.storage
       .from('attendance-selfies')
@@ -623,7 +645,7 @@ export async function syncDataToSupabase(payload: {
       if (gradeErr) throw new Error(`Grades sync error: ${gradeErr.message}`);
     }
 
-    // 5. Upsert Attendance
+    // 5. Upsert Attendance with fallback if table schema lacks newer columns (photo_url, record_type, user_name)
     if (payload.attendance.length > 0) {
       const attRows = payload.attendance.map((a) => ({
         id: a.id,
@@ -639,8 +661,30 @@ export async function syncDataToSupabase(payload: {
         user_name: a.userName || null,
         photo_url: a.photoStoragePath || null,
       }));
-      const { error: attErr } = await client.from('attendance').upsert(attRows);
-      if (attErr) throw new Error(`Attendance sync error: ${attErr.message}`);
+      let { error: attErr } = await client.from('attendance').upsert(attRows);
+      if (attErr && (/photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(attErr.message))) {
+        console.warn('[Attendance] Retrying attendance upsert with base columns:', attErr.message);
+        const baseRows = payload.attendance.map((a) => ({
+          id: a.id,
+          school_id: payload.school.id,
+          student_id: a.studentId,
+          date: a.date,
+          time: a.time,
+          status: a.status,
+          checkin_method: a.checkinMethod,
+          remarks: a.remarks || null,
+          line_notification_sent: a.lineNotificationSent,
+        }));
+        const retryResult = await client.from('attendance').upsert(baseRows);
+        if (retryResult.error) {
+          throw new Error(`Attendance sync error: ${retryResult.error.message}`);
+        } else {
+          warnings.push('ตาราง attendance ขาดคอลัมน์ photo_url ใน Supabase จึงบันทึกข้อมูลแบบมาตรฐานเรียบร้อยแล้ว (แนะนำให้รัน SQL Migration เพิ่มคอลัมน์ photo_url)');
+          attErr = null;
+        }
+      } else if (attErr) {
+        throw new Error(`Attendance sync error: ${attErr.message}`);
+      }
     }
 
     // 6. Upsert Invoices
@@ -685,6 +729,16 @@ export async function syncDataToSupabase(payload: {
       if (annErr) throw new Error(`Announcements sync error: ${annErr.message}`);
     }
 
+    // 8. Automatically keep schools.students_count and teachers_count up to date in Supabase
+    try {
+      await client.from('schools').update({
+        students_count: payload.students.length,
+        teachers_count: payload.teachers?.length || 0,
+      }).eq('id', payload.school.id);
+    } catch {
+      // Non-fatal if schema differs
+    }
+
     const syncedMessage = `Successfully synchronized ${payload.students.length} students, ${payload.teachers?.length || 0} teachers, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`;
     return {
       success: warnings.length === 0,
@@ -694,4 +748,75 @@ export async function syncDataToSupabase(payload: {
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, message: msg };
   }
+}
+
+/**
+ * Save school GPS coordinates & geofence radius directly into Supabase schools table
+ */
+export async function saveSchoolGpsCoordinates(
+  schoolId: string,
+  latitude: number,
+  longitude: number,
+  radiusMeters: number
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from('schools')
+      .update({
+        latitude,
+        longitude,
+        geofence_radius_meters: radiusMeters,
+      })
+      .eq('id', schoolId);
+
+    if (error) {
+      console.warn('Could not update school coordinates in Supabase schools table:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Failed to save school coordinates to Supabase:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch actual real-time student and teacher counts for all schools from Supabase
+ */
+export async function fetchSchoolCounts(schoolIds: string[]): Promise<Record<string, { studentsCount: number; teachersCount: number }>> {
+  const result: Record<string, { studentsCount: number; teachersCount: number }> = {};
+  for (const id of schoolIds) {
+    result[id] = { studentsCount: 0, teachersCount: 0 };
+  }
+
+  const client = getSupabaseClient();
+  if (!client) return result;
+
+  try {
+    const [{ data: studentRows }, { data: teacherRows }] = await Promise.all([
+      client.from('students').select('school_id'),
+      client.from('teachers').select('school_id'),
+    ]);
+
+    (studentRows || []).forEach((row: { school_id: string }) => {
+      if (row.school_id) {
+        if (!result[row.school_id]) result[row.school_id] = { studentsCount: 0, teachersCount: 0 };
+        result[row.school_id].studentsCount += 1;
+      }
+    });
+
+    (teacherRows || []).forEach((row: { school_id: string }) => {
+      if (row.school_id) {
+        if (!result[row.school_id]) result[row.school_id] = { studentsCount: 0, teachersCount: 0 };
+        result[row.school_id].teachersCount += 1;
+      }
+    });
+  } catch (err) {
+    console.warn('Error fetching school counts from Supabase:', err);
+  }
+
+  return result;
 }
