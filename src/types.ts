@@ -624,6 +624,13 @@ export interface PortfolioItem {
 // 1. Timetable / Schedule Management
 export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
 
+export interface SchoolPeriodTime {
+  periodNumber: number;
+  startTime: string;
+  endTime: string;
+  isBreak?: boolean;
+}
+
 export interface TimetableSlot {
   id: string;
   schoolId?: string;

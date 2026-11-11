@@ -163,6 +163,32 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     CONSTRAINT teachers_id_school_unique UNIQUE (id, school_id)
 );
 
+-- School-wide bell schedule, including the lunch break (period_number = 0).
+CREATE TABLE IF NOT EXISTS public.school_period_times (
+    school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 0 AND 7),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_break BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (school_id, period_number),
+    CHECK (end_time > start_time),
+    CHECK ((period_number = 0) = is_break)
+);
+
+CREATE TABLE IF NOT EXISTS public.school_campus_gates (
+    id TEXT NOT NULL,
+    school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    name_th TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    radius_meters INTEGER NOT NULL CHECK (radius_meters > 0),
+    is_primary BOOLEAN NOT NULL DEFAULT false,
+    type TEXT NOT NULL DEFAULT 'main_gate',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    PRIMARY KEY (school_id, id)
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -575,6 +601,8 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.parent_student_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.school_period_times ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.school_campus_gates ENABLE ROW LEVEL SECURITY;
 
 -- Remove the previous unrestricted policies and replace them with membership-
 -- and role-scoped policies. RLS is fail-closed until a user has a profile.
@@ -663,6 +691,34 @@ CREATE POLICY "School staff can update teachers" ON public.teachers
 DROP POLICY IF EXISTS "School staff can delete teachers" ON public.teachers;
 CREATE POLICY "School staff can delete teachers" ON public.teachers
     FOR DELETE USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin']));
+
+DROP POLICY IF EXISTS "School members can read school period times" ON public.school_period_times;
+CREATE POLICY "School members can read school period times" ON public.school_period_times
+    FOR SELECT USING (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher', 'student', 'parent'])
+    );
+DROP POLICY IF EXISTS "School staff can manage school period times" ON public.school_period_times;
+CREATE POLICY "School staff can manage school period times" ON public.school_period_times
+    FOR ALL USING (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    )
+    WITH CHECK (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    );
+
+DROP POLICY IF EXISTS "School members can read campus gates" ON public.school_campus_gates;
+CREATE POLICY "School members can read campus gates" ON public.school_campus_gates
+    FOR SELECT USING (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher', 'student', 'parent'])
+    );
+DROP POLICY IF EXISTS "School staff can manage campus gates" ON public.school_campus_gates;
+CREATE POLICY "School staff can manage campus gates" ON public.school_campus_gates
+    FOR ALL USING (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    )
+    WITH CHECK (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    );
 
 DROP POLICY IF EXISTS "Users can read permitted grades" ON public.grades;
 CREATE POLICY "Users can read permitted grades" ON public.grades
@@ -766,6 +822,8 @@ GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.current_user_school_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.has_school_role(TEXT, TEXT[]) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.can_access_student(TEXT) TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.school_period_times TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_campus_gates TO authenticated;
 
 -- Super Admin registration review. Run the corresponding migration on
 -- databases that already have this schema installed.

@@ -8,9 +8,12 @@ import {
   AttendanceRecord, 
   TuitionInvoice, 
   Announcement,
+  CampusGateGeofence,
+  SchoolPeriodTime,
   UserRole,
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
+import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -85,6 +88,10 @@ export function clearCustomSupabaseCredentials() {
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
 
+function isMissingTableError(error: { code?: string; message: string }): boolean {
+  return error.code === 'PGRST205' || error.code === '42P01' || /schema cache|could not find the table/i.test(error.message);
+}
+
 export async function testSupabaseConnection(): Promise<{
   ok: boolean;
   message: string;
@@ -158,6 +165,8 @@ export interface SchoolData {
   attendance: AttendanceRecord[];
   invoices: TuitionInvoice[];
   announcements: Announcement[];
+  schoolPeriods: SchoolPeriodTime[];
+  campusGates: CampusGateGeofence[];
 }
 
 export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
@@ -175,8 +184,52 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
 
   const teacherResult = await client.from('teachers').select('*').eq('school_id', schoolId);
   if (teacherResult.error) {
-    throw new Error(`Could not load teachers: ${teacherResult.error.message}`);
+    if (!isMissingTableError(teacherResult.error)) {
+      throw new Error(`Could not load teachers: ${teacherResult.error.message}`);
+    }
+    console.warn('Teachers table is not installed yet; loading the rest of the school data.');
   }
+  const schoolPeriodsResult = await client
+    .from('school_period_times')
+    .select('period_number, start_time, end_time, is_break')
+    .eq('school_id', schoolId)
+    .order('period_number');
+  const campusGatesResult = await client
+    .from('school_campus_gates')
+    .select('id, school_id, name_th, name_en, latitude, longitude, radius_meters, is_primary, type, is_active')
+    .eq('school_id', schoolId);
+  if (campusGatesResult.error && !isMissingTableError(campusGatesResult.error)) {
+    throw new Error(`Could not load check-in points: ${campusGatesResult.error.message}`);
+  }
+  if (schoolPeriodsResult.error && !isMissingTableError(schoolPeriodsResult.error)) {
+    throw new Error(`Could not load school period times: ${schoolPeriodsResult.error.message}`);
+  }
+  const savedPeriods = new Map(
+    (schoolPeriodsResult.data || []).map((row) => [
+      row.period_number,
+      {
+        periodNumber: row.period_number,
+        startTime: String(row.start_time).slice(0, 5),
+        endTime: String(row.end_time).slice(0, 5),
+        isBreak: Boolean(row.is_break),
+      },
+    ])
+  );
+  const schoolPeriods: SchoolPeriodTime[] = DEFAULT_SCHOOL_PERIODS.map(
+    (period) => savedPeriods.get(period.periodNumber) || period
+  );
+  const campusGates: CampusGateGeofence[] = (campusGatesResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    nameTh: row.name_th,
+    nameEn: row.name_en,
+    lat: Number(row.latitude),
+    lng: Number(row.longitude),
+    radiusMeters: Number(row.radius_meters),
+    isPrimary: Boolean(row.is_primary),
+    type: row.type,
+    isActive: Boolean(row.is_active),
+  }));
   const teachers: Teacher[] = (teacherResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -308,7 +361,68 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     resendEmailSent: Boolean(row.resend_email_sent),
   }));
 
-  return { students, teachers, courses, grades, attendance, invoices, announcements };
+  return { students, teachers, courses, grades, attendance, invoices, announcements, schoolPeriods, campusGates };
+}
+
+export async function saveSchoolPeriodTimes(
+  schoolId: string,
+  periods: SchoolPeriodTime[]
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const rows = periods.map((period) => ({
+    school_id: schoolId,
+    period_number: period.periodNumber,
+    start_time: period.startTime,
+    end_time: period.endTime,
+    is_break: Boolean(period.isBreak),
+  }));
+  const { error } = await client.from('school_period_times').upsert(rows);
+  if (error) throw new Error(`Could not save school period times: ${error.message}`);
+}
+
+export async function saveSchoolCampusGates(
+  schoolId: string,
+  gates: CampusGateGeofence[]
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const rows = gates.map((gate) => ({
+    id: gate.id,
+    school_id: schoolId,
+    name_th: gate.nameTh,
+    name_en: gate.nameEn,
+    latitude: gate.lat,
+    longitude: gate.lng,
+    radius_meters: gate.radiusMeters,
+    is_primary: gate.isPrimary,
+    type: gate.type,
+    is_active: gate.isActive ?? true,
+  }));
+  const { error } = await client.from('school_campus_gates').upsert(rows);
+  if (error) {
+    if (isMissingTableError(error)) return false;
+    throw new Error(`Could not save check-in points: ${error.message}`);
+  }
+
+  const { data: existingGates, error: existingError } = await client
+    .from('school_campus_gates')
+    .select('id')
+    .eq('school_id', schoolId);
+  if (existingError) throw new Error(`Could not verify saved check-in points: ${existingError.message}`);
+  const retainedIds = new Set(gates.map((gate) => gate.id));
+  for (const existingGate of existingGates || []) {
+    if (retainedIds.has(existingGate.id)) continue;
+    const { error: deleteError } = await client
+      .from('school_campus_gates')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('id', existingGate.id);
+    if (deleteError) throw new Error(`Could not remove deleted check-in point: ${deleteError.message}`);
+  }
+  return true;
 }
 
 // Convert camelCase models to snake_case Postgres columns and back
@@ -328,6 +442,7 @@ export async function syncDataToSupabase(payload: {
     return { success: false, message: 'Supabase client is not connected' };
   }
 
+  const warnings: string[] = [];
   try {
     // School identity is provisioned by an administrator and is never upserted by the client.
     if (['super_admin', 'admin'].includes(payload.role) && payload.students.length > 0) {
@@ -391,7 +506,13 @@ export async function syncDataToSupabase(payload: {
         self_development_plan: t.selfDevelopmentPlan || null,
       }));
       const { error: tErr } = await client.from('teachers').upsert(teacherRows);
-      if (tErr) throw new Error(`Teachers sync error: ${tErr.message}`);
+      if (tErr) {
+        if (isMissingTableError(tErr)) {
+          warnings.push('ตาราง teachers ยังไม่มีใน Supabase จึงยังไม่ได้บันทึกข้อมูลครู กรุณารัน migration สำหรับตาราง teachers');
+        } else {
+          throw new Error(`Teachers sync error: ${tErr.message}`);
+        }
+      }
     }
 
     // 3. Upsert Courses
@@ -499,9 +620,10 @@ export async function syncDataToSupabase(payload: {
       if (annErr) throw new Error(`Announcements sync error: ${annErr.message}`);
     }
 
+    const syncedMessage = `Successfully synchronized ${payload.students.length} students, ${payload.teachers?.length || 0} teachers, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`;
     return {
-      success: true,
-      message: `Successfully synchronized ${payload.students.length} students, ${payload.teachers?.length || 0} teachers, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`,
+      success: warnings.length === 0,
+      message: warnings.length > 0 ? `${syncedMessage} ${warnings.join(' ')}` : syncedMessage,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

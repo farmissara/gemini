@@ -9,7 +9,8 @@ import {
   CampusGateGeofence,
   School,
   AppLanguage,
-  AuthUser
+  AuthUser,
+  UserRole
 } from '../types';
 import { 
   QrCode, 
@@ -88,6 +89,7 @@ interface AttendanceViewProps {
   campusGates?: CampusGateGeofence[];
   activeSchool?: School;
   currentUser?: AuthUser | null;
+  currentRole?: UserRole;
   lang?: AppLanguage;
   onRecordAttendance: (
     studentId: string, 
@@ -98,6 +100,7 @@ interface AttendanceViewProps {
   ) => void;
   onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
+  onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
 }
 
@@ -109,10 +112,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   campusGates = DEFAULT_CAMPUS_GATES,
   activeSchool,
   currentUser,
+  currentRole = 'student',
   lang = 'th',
   onRecordAttendance,
   onUpdateLeaveStatus,
   onUpdateCampusGates,
+  onSaveCampusGates,
   onUpdateSchoolCoordinates,
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
@@ -829,8 +834,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               status: 'active'
             }}
             campusGates={campusGates}
+            currentRole={currentRole}
             lang={lang}
             onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+            onSaveCampusGates={onSaveCampusGates}
             onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
           />
         </div>

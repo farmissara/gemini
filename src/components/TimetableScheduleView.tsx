@@ -26,7 +26,7 @@ import {
   SlidersHorizontal,
   ChevronRight
 } from 'lucide-react';
-import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student } from '../types';
+import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -35,6 +35,8 @@ interface TimetableScheduleViewProps {
   students: Student[];
   onAddSlot: (slot: TimetableSlot) => void;
   onDeleteSlot: (id: string) => void;
+  schoolPeriods: SchoolPeriodTime[];
+  onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
   lang: AppLanguage;
   currentRole: UserRole;
   schoolName: string;
@@ -48,16 +50,17 @@ const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
   { key: 'fri', th: 'วันศุกร์', en: 'Friday', color: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-200' }
 ];
 
-const PERIODS = [
-  { num: 1, time: '08:30 - 09:20' },
-  { num: 2, time: '09:20 - 10:10' },
-  { num: 3, time: '10:20 - 11:10' },
-  { num: 4, time: '11:10 - 12:00' },
-  { num: 'lunch', time: '12:00 - 13:00', isBreak: true },
-  { num: 5, time: '13:00 - 13:50' },
-  { num: 6, time: '13:50 - 14:40' },
-  { num: 7, time: '14:40 - 15:30' }
+const PERIOD_LAYOUT = [
+  { num: 1 },
+  { num: 2 },
+  { num: 3 },
+  { num: 4 },
+  { num: 'lunch', isBreak: true },
+  { num: 5 },
+  { num: 6 },
+  { num: 7 }
 ];
+const PERIOD_ORDER = [1, 2, 3, 4, 0, 5, 6, 7];
 
 const DEFAULT_CLASSROOMS = [
   'ห้อง 401 (วิทย์-คณิต)',
@@ -83,6 +86,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   students,
   onAddSlot,
   onDeleteSlot,
+  schoolPeriods,
+  onSaveSchoolPeriods,
   lang,
   currentRole,
   schoolName
@@ -112,6 +117,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showPeriodSettings, setShowPeriodSettings] = useState(false);
+  const [periodDraft, setPeriodDraft] = useState<SchoolPeriodTime[]>(schoolPeriods);
+  const [periodSettingsError, setPeriodSettingsError] = useState<string | null>(null);
+  const [isSavingPeriods, setIsSavingPeriods] = useState(false);
   const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<TimetableSlot | null>(null);
 
   // Add slot form state
@@ -125,6 +134,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newRoom, setNewRoom] = useState('ห้อง 401');
   const [newCredits, setNewCredits] = useState<number>(1.5);
   const [newColor, setNewColor] = useState<TimetableSlot['colorTag']>('sky');
+  const getPeriodTime = (periodNumber: number) => schoolPeriods.find((period) => period.periodNumber === periodNumber);
 
   // Filter slots based on active view mode
   const activeSlots = viewMode === 'teacher'
@@ -209,15 +219,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     e.preventDefault();
     if (!newCourseCode || !newTitleTh) return;
 
-    const periodTimes: Record<number, { start: string; end: string }> = {
-      1: { start: '08:30', end: '09:20' },
-      2: { start: '09:20', end: '10:10' },
-      3: { start: '10:20', end: '11:10' },
-      4: { start: '11:10', end: '12:00' },
-      5: { start: '13:00', end: '13:50' },
-      6: { start: '13:50', end: '14:40' },
-      7: { start: '14:40', end: '15:30' }
-    };
+    const periodTime = getPeriodTime(newPeriod);
 
     const targetCourse = selectedCourseId !== 'custom' ? courses.find((c) => c.id === selectedCourseId) : null;
     const credits = targetCourse?.credits || newCredits || 1.5;
@@ -227,8 +229,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       id: `time-${Date.now()}`,
       dayOfWeek: newDay,
       periodNumber: newPeriod,
-      startTime: periodTimes[newPeriod]?.start || '08:30',
-      endTime: periodTimes[newPeriod]?.end || '09:20',
+      startTime: periodTime?.startTime || '08:30',
+      endTime: periodTime?.endTime || '09:20',
       courseCode: newCourseCode.trim(),
       courseTitleTh: newTitleTh.trim(),
       courseTitleEn: newTitleEn.trim() || newTitleTh.trim(),
@@ -243,6 +245,51 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
     onAddSlot(newSlot);
     setShowAddModal(false);
+  };
+
+  const handleSavePeriodSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const orderedPeriods = [...periodDraft].sort(
+      (a, b) => PERIOD_ORDER.indexOf(a.periodNumber) - PERIOD_ORDER.indexOf(b.periodNumber)
+    );
+    if (
+      orderedPeriods.length !== PERIOD_ORDER.length ||
+      orderedPeriods.some((period, index) => period.periodNumber !== PERIOD_ORDER[index] || Boolean(period.isBreak) !== (period.periodNumber === 0))
+    ) {
+      setPeriodSettingsError('ต้องกำหนดเวลาให้ครบทุกคาบและช่วงพักกลางวัน');
+      return;
+    }
+    const timeToMinutes = (time: string) => {
+      const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+      return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+    for (let index = 0; index < orderedPeriods.length; index++) {
+      const period = orderedPeriods[index];
+      const start = timeToMinutes(period.startTime);
+      const end = timeToMinutes(period.endTime);
+      if (start === null || end === null || end <= start) {
+        setPeriodSettingsError(`กรุณาตรวจสอบเวลาเริ่มและเลิกของ${period.isBreak ? 'ช่วงพักกลางวัน' : `คาบที่ ${period.periodNumber}`}`);
+        return;
+      }
+      if (index > 0) {
+        const previousEnd = timeToMinutes(orderedPeriods[index - 1].endTime);
+        if (previousEnd !== null && start < previousEnd) {
+          setPeriodSettingsError('เวลาแต่ละคาบต้องไม่ทับซ้อนกัน และเรียงตามลำดับเวลา');
+          return;
+        }
+      }
+    }
+
+    setIsSavingPeriods(true);
+    setPeriodSettingsError(null);
+    try {
+      await onSaveSchoolPeriods(orderedPeriods);
+      setShowPeriodSettings(false);
+    } catch (error) {
+      setPeriodSettingsError(error instanceof Error ? error.message : 'บันทึกเวลาเรียนไม่สำเร็จ');
+    } finally {
+      setIsSavingPeriods(false);
+    }
   };
 
   // Compute academic hours breakdown per course in this classroom
@@ -343,19 +390,33 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
           {/* Add Slot Button (Admin / Teacher / Super Admin) */}
           {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
-            <button
-              type="button"
-              onClick={() => {
-                if (courses.length > 0) {
-                  handleSelectCourse(courses[0].id);
-                }
-                setShowAddModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>เพิ่มคาบเรียน</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
+                  setPeriodSettingsError(null);
+                  setShowPeriodSettings(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-body)] transition cursor-pointer"
+              >
+                <Clock className="w-4 h-4" />
+                <span>ตั้งเวลาเรียน</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (courses.length > 0) {
+                    handleSelectCourse(courses[0].id);
+                  }
+                  setShowAddModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มคาบเรียน</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -577,14 +638,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
                   <th className="p-3 w-28 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
-                  {PERIODS.map((p, idx) => (
-                    <th key={idx} className={`p-2.5 text-center font-medium ${p.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
-                      <div className={`font-bold ${p.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
-                        {p.isBreak ? 'พัก' : `คาบ ${p.num}`}
-                      </div>
-                      <div className={`text-[10px] font-mono mt-0.5 ${p.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>{p.time}</div>
-                    </th>
-                  ))}
+                  {PERIOD_LAYOUT.map((period, idx) => {
+                    const time = getPeriodTime(period.isBreak ? 0 : Number(period.num));
+                    return (
+                      <th key={idx} className={`p-2.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
+                        <div className={`font-bold ${period.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
+                          {period.isBreak ? 'พัก' : `คาบ ${period.num}`}
+                        </div>
+                        <div className={`text-[10px] font-mono mt-0.5 ${period.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>
+                          {time ? `${time.startTime} - ${time.endTime}` : 'ยังไม่ตั้งเวลา'}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-xs">
@@ -598,7 +664,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     </td>
 
                     {/* Periods */}
-                    {PERIODS.map((period, pIdx) => {
+                    {PERIOD_LAYOUT.map((period, pIdx) => {
                       if (period.isBreak) {
                         return (
                           <td key={pIdx} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
@@ -611,7 +677,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
                       // Find matching slot
                       const slot = activeSlots.find(
-                        (s) => s.dayOfWeek === day.key && s.periodNumber === period.num
+                        (s) => s.dayOfWeek === day.key && s.periodNumber === Number(period.num)
                       );
 
                       const hasConflict = slot && conflicts.some((c) => c.slotId === slot.id);
@@ -689,6 +755,73 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
+      {showPeriodSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs">
+          <div className="w-full max-w-xl max-h-[92vh] overflow-hidden rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] shadow-2xl flex flex-col">
+            <div className="p-4 border-b border-[var(--color-border)] shrink-0">
+              <h3 className="font-bold text-base text-[var(--color-text-title)] flex items-center gap-2">
+                <Clock className="w-5 h-5 text-[var(--color-primary-text)]" />
+                ตั้งเวลาเรียนมาตรฐานของโรงเรียน
+              </h3>
+              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                ครูและผู้ดูแลที่มีสิทธิ์แก้ไขได้ การเปลี่ยนแปลงจะมีผลกับตารางเรียนของทุกคนในโรงเรียนนี้
+              </p>
+            </div>
+            <form onSubmit={handleSavePeriodSettings} className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
+              {periodDraft.slice().sort(
+                (a, b) => PERIOD_ORDER.indexOf(a.periodNumber) - PERIOD_ORDER.indexOf(b.periodNumber)
+              ).map((period) => (
+                <div key={period.periodNumber} className={`grid grid-cols-[minmax(90px,1fr)_1fr_1fr] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
+                  <span className="text-xs font-bold">{period.isBreak ? 'พักกลางวัน' : `คาบที่ ${period.periodNumber}`}</span>
+                  <label className="text-[10px] text-[var(--color-text-muted)]">
+                    เริ่ม
+                    <input
+                      type="time"
+                      required
+                      value={period.startTime}
+                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, startTime: event.target.value } : item))}
+                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
+                    />
+                  </label>
+                  <label className="text-[10px] text-[var(--color-text-muted)]">
+                    เลิก
+                    <input
+                      type="time"
+                      required
+                      value={period.endTime}
+                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, endTime: event.target.value } : item))}
+                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
+                    />
+                  </label>
+                </div>
+              ))}
+              {periodSettingsError && (
+                <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-2.5 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                  {periodSettingsError}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPeriodSettings(false)}
+                  disabled={isSavingPeriods}
+                  className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-xs font-semibold hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingPeriods}
+                  className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {isSavingPeriods ? 'กำลังบันทึก...' : 'บันทึกเวลาเรียน'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Detail Popover Modal for Clicked Slot */}
       {selectedSlotForDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
@@ -698,7 +831,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
                   {selectedSlotForDetail.courseCode}
                 </span>
-                <span className="text-xs text-[var(--color-text-muted)]">คาบที่ {selectedSlotForDetail.periodNumber} ({selectedSlotForDetail.startTime} - {selectedSlotForDetail.endTime})</span>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                คาบที่ {selectedSlotForDetail.periodNumber} ({getPeriodTime(selectedSlotForDetail.periodNumber)?.startTime || selectedSlotForDetail.startTime} - {getPeriodTime(selectedSlotForDetail.periodNumber)?.endTime || selectedSlotForDetail.endTime})
+              </span>
               </div>
               <button
                 type="button"
@@ -842,9 +977,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     onChange={(e) => setNewPeriod(Number(e.target.value))}
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                      <option key={num} value={num}>คาบที่ {num} ({PERIODS.find((p) => p.num === num)?.time})</option>
-                    ))}
+                    {[1, 2, 3, 4, 5, 6, 7].map((num) => {
+                      const time = getPeriodTime(num);
+                      return (
+                        <option key={num} value={num}>
+                          คาบที่ {num} ({time ? `${time.startTime} - ${time.endTime}` : 'ยังไม่ตั้งเวลา'})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>

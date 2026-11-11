@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { School, CampusGateGeofence, AppLanguage } from '../types';
+import { School, CampusGateGeofence, AppLanguage, UserRole } from '../types';
 import { 
   MapPin, 
   Navigation, 
@@ -24,8 +24,10 @@ import { PagedList } from './PagedList';
 interface SchoolGpsSettingsCardProps {
   activeSchool: School;
   campusGates: CampusGateGeofence[];
+  currentRole: UserRole;
   lang?: AppLanguage;
   onUpdateCampusGates: (gates: CampusGateGeofence[]) => void;
+  onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radius: number) => void;
 }
 
@@ -34,10 +36,14 @@ type GpsSubTab = 'center_geofence' | 'campus_gates' | 'radar_test';
 export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   activeSchool,
   campusGates,
+  currentRole,
   lang = 'th',
   onUpdateCampusGates,
+  onSaveCampusGates,
   onUpdateSchoolCoordinates
 }) => {
+  const canEditNames = currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher';
+  const canManageGeofence = currentRole === 'admin' || currentRole === 'super_admin';
   const [activeTab, setActiveTab] = useState<GpsSubTab>('center_geofence');
 
   // Find primary gate or first gate for school center coordinates
@@ -62,6 +68,9 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   const [isLocating, setIsLocating] = useState(false);
   const [locateStatus, setLocateStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [copiedCoords, setCopiedCoords] = useState(false);
 
   // Live test distance state
@@ -253,29 +262,41 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   };
 
   // Save all GPS configuration
-  const handleSaveAll = () => {
-    // 1. Update gates
-    onUpdateCampusGates(gatesList);
-
-    // 2. Update school coordinates if callback provided
-    if (onUpdateSchoolCoordinates) {
-      onUpdateSchoolCoordinates(schoolLat, schoolLng, schoolRadius);
-    }
-
-    // 3. Save to localStorage with activeSchool.id for persistence
+  const handleSaveAll = async () => {
+    if (!canEditNames) return;
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveWarning(null);
     try {
-      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gatesList));
-      localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({
-        latitude: schoolLat,
-        longitude: schoolLng,
-        geofenceRadiusMeters: schoolRadius
-      }));
-    } catch (e) {
-      console.warn('Failed to save GPS settings to localStorage', e);
-    }
+      let savedToDatabase = false;
+      if (onSaveCampusGates) {
+        savedToDatabase = await onSaveCampusGates(gatesList);
+      } else {
+        onUpdateCampusGates(gatesList);
+      }
 
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3500);
+      if (canManageGeofence && onUpdateSchoolCoordinates) {
+        onUpdateSchoolCoordinates(schoolLat, schoolLng, schoolRadius);
+      }
+
+      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gatesList));
+      if (canManageGeofence) {
+        localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({
+          latitude: schoolLat,
+          longitude: schoolLng,
+          geofenceRadiusMeters: schoolRadius
+        }));
+      }
+      setSaveSuccess(true);
+      if (!savedToDatabase) {
+        setSaveWarning('บันทึกไว้ในอุปกรณ์นี้เท่านั้น ต้องติดตั้ง migration school_campus_gates เพื่อให้ทุกคนในโรงเรียนเห็นข้อมูลร่วมกัน');
+      }
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'บันทึกจุดเช็กชื่อไม่สำเร็จ');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -295,9 +316,9 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
             </h2>
           </div>
           <p className="text-xs text-blue-100 leading-relaxed">
-            {lang === 'th' 
-              ? 'ผู้ดูแลระบบสามารถกำหนดละติจูด ลองจิจูด รัศมีเขตโรงเรียน และประตูสแกนเข้าเรียนได้โดยตรง'
-              : 'School admins can configure latitude, longitude, allowable check-in radius, and gate geofences.'}
+            {lang === 'th'
+              ? 'ครูและผู้ดูแลแก้ไขชื่อจุดเช็กชื่อได้ ผู้ดูแลระบบกำหนดพิกัดและรัศมีได้'
+              : 'Teachers and admins can edit check-in point names. Admins can also edit GPS coordinates and radius.'}
           </p>
         </div>
 
@@ -305,10 +326,11 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           <button
             type="button"
             onClick={handleSaveAll}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+            disabled={!canEditNames || isSaving}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-3.5 h-3.5 text-slate-950" />
-            <span>{lang === 'th' ? 'บันทึกพิกัดโรงเรียน' : 'Save GPS Settings'}</span>
+            <span>{isSaving ? 'กำลังบันทึก...' : lang === 'th' ? 'บันทึกจุดเช็กชื่อ' : 'Save Check-in Points'}</span>
           </button>
         </div>
       </div>
@@ -318,11 +340,21 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         <div className="shrink-0 p-2.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between animate-in fade-in duration-200">
           <span className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-            <span>{lang === 'th' ? `บันทึกพิกัด GPS (${schoolLat}, ${schoolLng}) และ ${gatesList.length} ประตูของ ${activeSchool.nameTh} สำเร็จแล้ว!` : `Saved GPS settings (${schoolLat}, ${schoolLng}) successfully!`}</span>
+            <span>{lang === 'th' ? `บันทึกชื่อจุดเช็กชื่อ ${gatesList.length} จุดของ ${activeSchool.nameTh} สำเร็จแล้ว!` : `Saved ${gatesList.length} check-in points for ${activeSchool.nameTh}.`}</span>
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-100 border border-emerald-400 dark:border-emerald-700">
             {activeSchool.code}
           </span>
+        </div>
+      )}
+      {saveError && (
+        <div role="alert" className="shrink-0 p-2.5 rounded-lg bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-semibold">
+          บันทึกไม่สำเร็จ: {saveError}
+        </div>
+      )}
+      {saveWarning && (
+        <div role="status" className="shrink-0 p-2.5 rounded-lg bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-semibold">
+          {saveWarning}
         </div>
       )}
 
@@ -407,7 +439,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
                   <button
                     type="button"
-                    disabled={isLocating}
+                    disabled={isLocating || !canManageGeofence}
                     onClick={() => handleDetectCurrentLocation()}
                     className="px-2.5 py-1 rounded-md bg-[var(--color-primary-light)] hover:opacity-90 text-[var(--color-primary-text)] text-xs font-bold flex items-center gap-1.5 border border-[var(--color-border)] transition cursor-pointer disabled:opacity-50"
                   >
@@ -425,6 +457,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     <input
                       type="number"
                       step="any"
+                      disabled={!canManageGeofence}
                       value={schoolLat}
                       onChange={(e) => setSchoolLat(parseFloat(e.target.value) || 0)}
                       placeholder="เช่น 13.736717"
@@ -443,6 +476,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     <input
                       type="number"
                       step="any"
+                      disabled={!canManageGeofence}
                       value={schoolLng}
                       onChange={(e) => setSchoolLng(parseFloat(e.target.value) || 0)}
                       placeholder="เช่น 100.523186"
@@ -471,6 +505,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     min="30"
                     max="1000"
                     step="10"
+                    disabled={!canManageGeofence}
                     value={schoolRadius}
                     onChange={(e) => setSchoolRadius(parseInt(e.target.value, 10))}
                     className="w-full accent-indigo-700 cursor-pointer"
@@ -481,6 +516,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       <button
                         key={preset}
                         type="button"
+                        disabled={!canManageGeofence}
                         onClick={() => setSchoolRadius(preset)}
                         className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
                           schoolRadius === preset
@@ -597,6 +633,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
               <button
                 type="button"
+                disabled={!canManageGeofence}
                 onClick={handleAddNewGate}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold shadow-sm transition cursor-pointer"
               >
@@ -627,6 +664,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         <input
                           type="text"
                           value={gate.nameTh}
+                          disabled={!canEditNames}
                           onChange={(e) => {
                             const val = e.target.value;
                             setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, nameTh: val } : g));
@@ -640,6 +678,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
+                        disabled={!canManageGeofence}
                         onClick={() => handleSetPrimary(gate.id)}
                         className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                           gate.isPrimary
@@ -653,6 +692,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       {gatesList.length > 1 && (
                         <button
                           type="button"
+                          disabled={!canManageGeofence}
                           onClick={() => handleRemoveGate(gate.id)}
                           className="p-1 rounded text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950 transition cursor-pointer"
                         >
@@ -670,6 +710,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         type="number"
                         step="any"
                         value={gate.lat}
+                        disabled={!canManageGeofence}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
                           setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, lat: val } : g));
@@ -684,6 +725,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         type="number"
                         step="any"
                         value={gate.lng}
+                        disabled={!canManageGeofence}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
                           setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, lng: val } : g));
@@ -697,6 +739,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       <input
                         type="number"
                         value={gate.radiusMeters}
+                        disabled={!canManageGeofence}
                         onChange={(e) => {
                           const val = parseInt(e.target.value, 10) || 50;
                           setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, radiusMeters: val } : g));
@@ -713,6 +756,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     </span>
                     <button
                       type="button"
+                      disabled={!canManageGeofence}
                       onClick={() => handleDetectCurrentLocation(gate.id)}
                       className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                     >

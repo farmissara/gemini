@@ -32,16 +32,18 @@ import {
   Mail,
   KeyRound
 } from 'lucide-react';
-import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence } from '../types';
+import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
   activeSchool: School;
   students: Student[];
+  currentRole: UserRole;
   lang: AppLanguage;
   campusGates?: CampusGateGeofence[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
+  onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
   onUpdateConfig: (updated: SystemConfig) => void;
 }
@@ -50,9 +52,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   systemConfig,
   activeSchool,
   students,
+  currentRole,
   lang,
   campusGates = [],
   onUpdateCampusGates,
+  onSaveCampusGates,
   onUpdateSchoolCoordinates,
   onUpdateConfig,
 }) => {
@@ -1437,8 +1441,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           <SchoolGpsSettingsCard
             activeSchool={activeSchool}
             campusGates={campusGates}
+            currentRole={currentRole}
             lang={lang}
             onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+            onSaveCampusGates={onSaveCampusGates}
             onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
           />
         </div>

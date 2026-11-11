@@ -1,5 +1,5 @@
 import React from 'react';
-import { School, CampusGateGeofence, AppLanguage } from '../types';
+import { School, CampusGateGeofence, AppLanguage, UserRole } from '../types';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 import { X, MapPin } from 'lucide-react';
 
@@ -8,8 +8,10 @@ interface SchoolGpsModalProps {
   onClose: () => void;
   activeSchool: School;
   campusGates: CampusGateGeofence[];
+  currentRole: UserRole;
   lang?: AppLanguage;
   onUpdateCampusGates: (gates: CampusGateGeofence[]) => void;
+  onSaveCampusGates: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates: (lat: number, lng: number, radius: number) => void;
 }
 
@@ -18,8 +20,10 @@ export const SchoolGpsModal: React.FC<SchoolGpsModalProps> = ({
   onClose,
   activeSchool,
   campusGates,
+  currentRole,
   lang = 'th',
   onUpdateCampusGates,
+  onSaveCampusGates,
   onUpdateSchoolCoordinates,
 }) => {
   if (!isOpen) return null;
@@ -67,8 +71,10 @@ export const SchoolGpsModal: React.FC<SchoolGpsModalProps> = ({
           <SchoolGpsSettingsCard
             activeSchool={activeSchool}
             campusGates={campusGates}
+            currentRole={currentRole}
             lang={lang}
             onUpdateCampusGates={onUpdateCampusGates}
+            onSaveCampusGates={onSaveCampusGates}
             onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
           />
         </div>

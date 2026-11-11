@@ -25,6 +25,7 @@ import {
   RewardItem,
   PeriodAttendanceRecord,
   PortfolioItem,
+  SchoolPeriodTime,
   TimetableSlot,
   BehaviorRecord,
   SdqAssessment,
@@ -73,7 +74,8 @@ import {
   updateUserProfileInSupabase,
 } from './lib/authDb';
 import type { AuthContext } from './lib/authDb';
-import { loadSchoolData, syncDataToSupabase } from './lib/supabase';
+import { loadSchoolData, saveSchoolCampusGates, saveSchoolPeriodTimes, syncDataToSupabase } from './lib/supabase';
+import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { AuthLayout } from './components/AuthLayout';
@@ -238,6 +240,7 @@ export const App: React.FC = () => {
   const [periodAttendance, setPeriodAttendance] = useState<PeriodAttendanceRecord[]>(INITIAL_PERIOD_ATTENDANCE);
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>(INITIAL_PORTFOLIO_ITEMS);
   const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>(INITIAL_TIMETABLE_SLOTS);
+  const [schoolPeriods, setSchoolPeriods] = useState<SchoolPeriodTime[]>(DEFAULT_SCHOOL_PERIODS);
   const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>(INITIAL_BEHAVIOR_RECORDS);
   const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>(INITIAL_SDQ_ASSESSMENTS);
   const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>(INITIAL_INFIRMARY_VISITS);
@@ -355,6 +358,7 @@ export const App: React.FC = () => {
     setPeriodAttendance([]);
     setPortfolioItems([]);
     setTimetableSlots([]);
+    setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
     setBehaviorRecords([]);
     setSdqAssessments([]);
     setInfirmaryVisits([]);
@@ -382,6 +386,7 @@ export const App: React.FC = () => {
     setAssignments(INITIAL_ASSIGNMENTS.map(a => ({ ...a, schoolId: activeSchool.id })));
     setQuestions(INITIAL_QUESTIONS.map(q => ({ ...q, schoolId: activeSchool.id })));
     setTimetableSlots(INITIAL_TIMETABLE_SLOTS.map(t => ({ ...t, schoolId: activeSchool.id })));
+    setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
     setBehaviorRecords(INITIAL_BEHAVIOR_RECORDS.map(b => ({ ...b, schoolId: activeSchool.id })));
     setSdqAssessments(INITIAL_SDQ_ASSESSMENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
     setInfirmaryVisits(INITIAL_INFIRMARY_VISITS.map(i => ({ ...i, schoolId: activeSchool.id })));
@@ -455,6 +460,7 @@ export const App: React.FC = () => {
     setPeriodAttendance(INITIAL_PERIOD_ATTENDANCE);
     setPortfolioItems(INITIAL_PORTFOLIO_ITEMS);
     setTimetableSlots(INITIAL_TIMETABLE_SLOTS);
+    setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
     setBehaviorRecords(INITIAL_BEHAVIOR_RECORDS);
     setSdqAssessments(INITIAL_SDQ_ASSESSMENTS);
     setInfirmaryVisits(INITIAL_INFIRMARY_VISITS);
@@ -561,6 +567,15 @@ export const App: React.FC = () => {
         setAttendance(data.attendance);
         setInvoices(data.invoices);
         setAnnouncements(data.announcements);
+        setSchoolPeriods(data.schoolPeriods);
+        if (data.campusGates.length > 0) {
+          setCampusGates(data.campusGates);
+          try {
+            localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(data.campusGates));
+          } catch (error) {
+            console.warn('Could not cache school check-in points locally:', error);
+          }
+        }
         // Real schools only keep school-scoped module items; do NOT force mock demo data
         setLessons(prev => prev.filter(l => l.schoolId === activeSchool.id));
         setAssignments(prev => prev.filter(a => a.schoolId === activeSchool.id));
@@ -941,6 +956,15 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSaveCampusGates = async (gates: CampusGateGeofence[]) => {
+    if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
+      throw new Error('ไม่มีสิทธิ์แก้ไขชื่อจุดเช็กชื่อ');
+    }
+    const savedToDatabase = isDemoMode ? false : await saveSchoolCampusGates(activeSchool.id, gates);
+    handleUpdateCampusGates(gates);
+    return savedToDatabase;
+  };
+
   const handleUpdateSchoolCoordinates = (lat: number, lng: number, radiusMeters: number) => {
     setActiveSchool((prev) => ({
       ...prev,
@@ -1136,6 +1160,22 @@ export const App: React.FC = () => {
 
   const handleDeleteTimetableSlot = (slotId: string) => {
     setTimetableSlots((prev) => prev.filter(s => s.id !== slotId));
+  };
+
+  const handleSaveSchoolPeriods = async (periods: SchoolPeriodTime[]) => {
+    if (!currentUser) throw new Error('กรุณาเข้าสู่ระบบก่อนบันทึกเวลาเรียน');
+    if (!isDemoMode) {
+      await saveSchoolPeriodTimes(activeSchool.id, periods);
+    }
+    setSchoolPeriods(periods);
+    setTimetableSlots((prev) => prev.map((slot) => {
+      if (slot.schoolId && slot.schoolId !== activeSchool.id) return slot;
+      const period = periods.find((item) => item.periodNumber === slot.periodNumber);
+      return period
+        ? { ...slot, schoolId: activeSchool.id, startTime: period.startTime, endTime: period.endTime }
+        : slot;
+    }));
+    setDataSyncError(null);
   };
 
   const handleAddBehaviorRecord = (record: BehaviorRecord) => {
@@ -1563,8 +1603,10 @@ export const App: React.FC = () => {
                     <SchoolGpsSettingsCard
                       activeSchool={activeSchool}
                       campusGates={campusGates}
+                      currentRole={currentRole}
                       lang={lang}
                       onUpdateCampusGates={handleUpdateCampusGates}
+                      onSaveCampusGates={handleSaveCampusGates}
                       onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                     />
                   </div>
@@ -1584,9 +1626,11 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     activeSchool={activeSchool}
                     students={schoolStudents}
+                    currentRole={currentRole}
                     lang={lang}
                     campusGates={campusGates}
                     onUpdateCampusGates={handleUpdateCampusGates}
+                    onSaveCampusGates={handleSaveCampusGates}
                     onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                     onUpdateConfig={setSystemConfig}
                   />
@@ -1748,6 +1792,8 @@ export const App: React.FC = () => {
                     students={schoolStudents}
                     onAddSlot={handleAddTimetableSlot}
                     onDeleteSlot={handleDeleteTimetableSlot}
+                    schoolPeriods={schoolPeriods}
+                    onSaveSchoolPeriods={handleSaveSchoolPeriods}
                     lang={lang}
                     currentRole={currentRole}
                     schoolName={activeSchool.nameTh}
@@ -1776,10 +1822,12 @@ export const App: React.FC = () => {
                     campusGates={campusGates}
                     activeSchool={activeSchool}
                     currentUser={currentUser}
+                    currentRole={currentRole}
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
                     onUpdateCampusGates={handleUpdateCampusGates}
+                    onSaveCampusGates={handleSaveCampusGates}
                     onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                   />
                 )}
@@ -2124,8 +2172,10 @@ export const App: React.FC = () => {
           onClose={() => setShowGpsModal(false)}
           activeSchool={activeSchool}
           campusGates={campusGates}
+          currentRole={currentRole}
           lang={lang}
           onUpdateCampusGates={handleUpdateCampusGates}
+          onSaveCampusGates={handleSaveCampusGates}
           onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
         />
       )}
