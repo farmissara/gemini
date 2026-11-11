@@ -1575,6 +1575,7 @@ export const INITIAL_QUESTIONS: QuizQuestion[] = [
 export const INITIAL_PLAYER_SCORES: PlayerScore[] = [
   {
     userId: 'usr-student',
+    studentId: 'stu-1',
     name: 'นายธนาธร สมชาย (STU-6901)',
     role: 'student',
     avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
@@ -1582,10 +1583,15 @@ export const INITIAL_PLAYER_SCORES: PlayerScore[] = [
     gems: 320,
     rankTitle: 'Grandmaster Scholar 🏆',
     battleWins: 34,
-    streak: 7
+    streak: 7,
+    attendanceDays: 24,
+    attendanceStreak: 7,
+    libraryVisits: 16,
+    academicGpa: 3.92
   },
   {
     userId: 'stu-2',
+    studentId: 'stu-2',
     name: 'กัญญา วงศ์สวัสดิ์ (STU-6902)',
     role: 'student',
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80',
@@ -1593,7 +1599,11 @@ export const INITIAL_PLAYER_SCORES: PlayerScore[] = [
     gems: 290,
     rankTitle: 'Diamond Master 💎',
     battleWins: 31,
-    streak: 5
+    streak: 5,
+    attendanceDays: 18,
+    attendanceStreak: 5,
+    libraryVisits: 14,
+    academicGpa: 3.78
   },
   {
     userId: 'usr-teacher',
@@ -1604,10 +1614,15 @@ export const INITIAL_PLAYER_SCORES: PlayerScore[] = [
     gems: 1500,
     rankTitle: 'Sage Instructor 🌟',
     battleWins: 89,
-    streak: 15
+    streak: 15,
+    attendanceDays: 30,
+    attendanceStreak: 15,
+    libraryVisits: 32,
+    academicGpa: 4.0
   },
   {
     userId: 'stu-4',
+    studentId: 'stu-4',
     name: 'พิมพ์ชนก รัตนกุล (STU-6904)',
     role: 'student',
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
@@ -1615,7 +1630,11 @@ export const INITIAL_PLAYER_SCORES: PlayerScore[] = [
     gems: 210,
     rankTitle: 'Platinum Challenger ⚔️',
     battleWins: 22,
-    streak: 4
+    streak: 4,
+    attendanceDays: 11,
+    attendanceStreak: 4,
+    libraryVisits: 7,
+    academicGpa: 3.45
   }
 ];
 

@@ -1021,6 +1021,26 @@ export const App: React.FC = () => {
       tag: `att-${studentId}-${todayStr}`,
       data: { studentId, status, date: todayStr }
     });
+
+    if (!isCheckOut && (status === 'present' || status === 'late')) {
+      setPlayerScores((prev) =>
+        prev.map((p) => {
+          const isMatch =
+            p.studentId === studentId ||
+            p.userId === studentId ||
+            (studentId === 'stu-1' && p.userId === 'usr-student');
+          if (!isMatch) return p;
+          const isPresent = status === 'present';
+          return {
+            ...p,
+            attendanceDays: (p.attendanceDays ?? 0) + 1,
+            attendanceStreak: isPresent ? (p.attendanceStreak ?? p.streak) + 1 : p.attendanceStreak ?? p.streak,
+            exp: p.exp + (isPresent ? 35 : 15),
+            gems: p.gems + (isPresent ? 5 : 2),
+          };
+        })
+      );
+    }
   };
 
   const handleRecordPeriodAttendance = (records: PeriodAttendanceRecord[]) => {
@@ -1469,6 +1489,44 @@ export const App: React.FC = () => {
             }
           : p
       )
+    );
+  };
+
+  const handleRecordMilestoneActivity = (
+    userId: string,
+    kind: 'library_visit' | 'attendance',
+    studentId?: string
+  ) => {
+    if (kind === 'attendance' && studentId) {
+      handleRecordAttendance(
+        studentId,
+        'present',
+        'บันทึกเข้าเรียนและอัปเดตเหรียญ Milestone Achievement'
+      );
+      return;
+    }
+
+    setPlayerScores((prev) =>
+      prev.map((p) => {
+        if (p.userId !== userId && (!studentId || p.studentId !== studentId)) {
+          return p;
+        }
+        if (kind === 'library_visit') {
+          return {
+            ...p,
+            libraryVisits: (p.libraryVisits ?? 0) + 1,
+            exp: p.exp + 50,
+            gems: p.gems + 5,
+          };
+        }
+        return {
+          ...p,
+          attendanceDays: (p.attendanceDays ?? 0) + 1,
+          attendanceStreak: (p.attendanceStreak ?? p.streak) + 1,
+          exp: p.exp + 35,
+          gems: p.gems + 5,
+        };
+      })
     );
   };
 
@@ -2113,6 +2171,8 @@ export const App: React.FC = () => {
                     teachers={schoolTeachers}
                     courses={schoolCourses}
                     attendance={schoolAttendance}
+                    grades={schoolGrades}
+                    playerScores={playerScores}
                     invoices={schoolInvoices}
                     announcements={schoolAnnouncements}
                     systemConfig={systemConfig}
@@ -2121,6 +2181,7 @@ export const App: React.FC = () => {
                     lang={lang}
                     onNavigate={setCurrentTab}
                     onQuickCheckIn={handleQuickCheckIn}
+                    onRecordMilestoneActivity={handleRecordMilestoneActivity}
                     unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                     onOpenCentralExamPopup={() => setShowCentralExamPopup(true)}
                   />

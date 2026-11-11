@@ -46,18 +46,23 @@ import {
   SystemConfig,
   School,
   AuthUser,
-  AppLanguage
+  AppLanguage,
+  GradeRecord,
+  PlayerScore
 } from '../types';
 import { NavTab } from './Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { filterAttendanceForUser } from '../lib/attendanceScope';
 import { PagedList } from './PagedList';
+import { MilestoneAchievementsPanel } from './MilestoneAchievementsPanel';
 
 interface DashboardViewProps {
   students: Student[];
   teachers?: Teacher[];
   courses: Course[];
   attendance: AttendanceRecord[];
+  grades?: GradeRecord[];
+  playerScores?: PlayerScore[];
   invoices: TuitionInvoice[];
   announcements: Announcement[];
   systemConfig: SystemConfig;
@@ -66,6 +71,11 @@ interface DashboardViewProps {
   lang?: AppLanguage;
   onNavigate: (tab: NavTab) => void;
   onQuickCheckIn: (studentId: string) => void;
+  onRecordMilestoneActivity?: (
+    userId: string,
+    kind: 'library_visit' | 'attendance',
+    studentId?: string
+  ) => void;
   unclaimedCentralPacksCount?: number;
   onOpenCentralExamPopup?: () => void;
 }
@@ -75,6 +85,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   teachers = [],
   courses,
   attendance,
+  grades = [],
+  playerScores = [],
   invoices,
   announcements,
   systemConfig,
@@ -82,6 +94,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentUser,
   lang = 'th',
   onNavigate,
+  onRecordMilestoneActivity,
   unclaimedCentralPacksCount = 0,
   onOpenCentralExamPopup,
 }) => {
@@ -832,6 +845,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             {/* 4 Balanced High-level Overview Cards with High Contrast */}
             {overviewStep === 0 && (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Students */}
               <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
@@ -905,6 +919,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             </div>
+
+            {playerScores.length > 0 && (
+              <MilestoneAchievementsPanel
+                playerScores={playerScores}
+                students={students}
+                attendance={scopedAttendance}
+                grades={grades}
+                currentUser={currentUser}
+                lang={lang}
+                onLogLibraryVisit={(userId) =>
+                  onRecordMilestoneActivity?.(userId, 'library_visit')
+                }
+                onQuickAttendanceForMilestone={(studentId, userId) =>
+                  onRecordMilestoneActivity?.(userId, 'attendance', studentId)
+                }
+              />
+            )}
+            </>
             )}
 
             {/* Quick Navigation Cards */}

@@ -133,6 +133,71 @@ textarea::placeholder {
 }
 
 /* ========================================================
+   MILESTONE ACHIEVEMENT BADGE ANIMATIONS (Compositor-only)
+   ======================================================== */
+@keyframes milestone-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes milestone-sweep {
+  0% {
+    transform: translateX(-140%) skewX(-20deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.45;
+  }
+  55% {
+    transform: translateX(240%) skewX(-20deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(240%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes milestone-ring {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.48;
+  }
+  75% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+.milestone-badge-float {
+  animation: milestone-float 3.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.milestone-badge-sweep {
+  animation: milestone-sweep 4.2s ease-in-out infinite;
+}
+
+.milestone-badge-ring {
+  animation: milestone-ring 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .milestone-badge-float,
+  .milestone-badge-sweep,
+  .milestone-badge-ring {
+    animation: none !important;
+  }
+}
+
+/* ========================================================
    OFFICIAL PRINT STYLESHEET (สำหรับใบ ปพ.1, ปพ.5 และใบเสร็จรับเงิน)
    ======================================================== */
 @media print {

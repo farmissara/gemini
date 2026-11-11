@@ -549,6 +549,7 @@ export interface QuizQuestion {
 
 export interface PlayerScore {
   userId: string;
+  studentId?: string;
   name: string;
   role: 'student' | 'teacher';
   avatarUrl: string;
@@ -557,6 +558,52 @@ export interface PlayerScore {
   rankTitle: string;
   battleWins: number;
   streak: number;
+  attendanceDays?: number;
+  attendanceStreak?: number;
+  libraryVisits?: number;
+  academicGpa?: number;
+}
+
+export type MilestoneCategory = 'attendance' | 'library' | 'academic';
+
+export type MilestoneTier = 'bronze' | 'silver' | 'gold' | 'diamond';
+
+export interface MilestoneAchievementDef {
+  id: string;
+  category: MilestoneCategory;
+  tier: MilestoneTier;
+  titleTh: string;
+  titleEn: string;
+  descriptionTh: string;
+  descriptionEn: string;
+  metricLabelTh: string;
+  metricLabelEn: string;
+  unitTh: string;
+  unitEn: string;
+  thresholdValue: number;
+  expThreshold?: number;
+  winsThreshold?: number;
+  rewardExp: number;
+  rewardGems: number;
+  iconKey:
+    | 'clock_check'
+    | 'flame_streak'
+    | 'shield_perfect'
+    | 'book_open'
+    | 'library_stack'
+    | 'crown_library'
+    | 'star_academic'
+    | 'award_honor'
+    | 'trophy_grandmaster';
+}
+
+export interface EvaluatedMilestone {
+  def: MilestoneAchievementDef;
+  currentValue: number;
+  currentExp: number;
+  currentWins: number;
+  progressPct: number;
+  unlocked: boolean;
 }
 
 export interface RewardItem {
