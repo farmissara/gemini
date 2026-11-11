@@ -173,43 +173,38 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
   }
 
-  // Load teachers from teachers table (graceful fallback if table is not yet migrated)
-  let teachers: Teacher[] = [];
-  try {
-    const teacherResult = await client.from('teachers').select('*').eq('school_id', schoolId);
-    if (!teacherResult.error && teacherResult.data) {
-      teachers = teacherResult.data.map((row) => ({
-        id: row.id,
-        schoolId: row.school_id,
-        teacherIdNumber: row.teacher_id_number || '',
-        fullNameTh: row.full_name_th || '',
-        fullNameEn: row.full_name_en || '',
-        gender: row.gender || 'other',
-        email: row.email || '',
-        phone: row.phone || '',
-        avatarUrl: row.avatar_url || '',
-        academicDegree: row.academic_degree || '',
-        major: row.major || '',
-        minor: row.minor || undefined,
-        academicStanding: row.academic_standing || '',
-        department: row.department || '',
-        teacherLicenseNo: row.teacher_license_no || '',
-        teachingSubjects: Array.isArray(row.teaching_subjects) ? row.teaching_subjects : [],
-        homeroomClasses: Array.isArray(row.homeroom_classes) ? row.homeroom_classes : [],
-        teachingGrades: Array.isArray(row.teaching_grades) ? row.teaching_grades : [],
-        isSchoolAdmin: Boolean(row.is_school_admin),
-        lineUserId: row.line_user_id || undefined,
-        lineLinked: Boolean(row.line_linked),
-        otherSkills: Array.isArray(row.other_skills) ? row.other_skills : [],
-        certifications: Array.isArray(row.certifications) ? row.certifications : [],
-        teachingExperienceYears: Number(row.teaching_experience_years || 0),
-        paScore: Number(row.pa_score || 0),
-        selfDevelopmentPlan: row.self_development_plan || undefined,
-      }));
-    }
-  } catch (err) {
-    console.warn('Teachers table query skipped:', err);
+  const teacherResult = await client.from('teachers').select('*').eq('school_id', schoolId);
+  if (teacherResult.error) {
+    throw new Error(`Could not load teachers: ${teacherResult.error.message}`);
   }
+  const teachers: Teacher[] = (teacherResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    teacherIdNumber: row.teacher_id_number || '',
+    fullNameTh: row.full_name_th || '',
+    fullNameEn: row.full_name_en || '',
+    gender: row.gender || 'other',
+    email: row.email || '',
+    phone: row.phone || '',
+    avatarUrl: row.avatar_url || '',
+    academicDegree: row.academic_degree || '',
+    major: row.major || '',
+    minor: row.minor || undefined,
+    academicStanding: row.academic_standing || '',
+    department: row.department || '',
+    teacherLicenseNo: row.teacher_license_no || '',
+    teachingSubjects: Array.isArray(row.teaching_subjects) ? row.teaching_subjects : [],
+    homeroomClasses: Array.isArray(row.homeroom_classes) ? row.homeroom_classes : [],
+    teachingGrades: Array.isArray(row.teaching_grades) ? row.teaching_grades : [],
+    isSchoolAdmin: Boolean(row.is_school_admin),
+    lineUserId: row.line_user_id || undefined,
+    lineLinked: Boolean(row.line_linked),
+    otherSkills: Array.isArray(row.other_skills) ? row.other_skills : [],
+    certifications: Array.isArray(row.certifications) ? row.certifications : [],
+    teachingExperienceYears: Number(row.teaching_experience_years || 0),
+    paScore: Number(row.pa_score || 0),
+    selfDevelopmentPlan: row.self_development_plan || undefined,
+  }));
 
   const [studentResult, courseResult, gradeResult, attendanceResult, invoiceResult, announcementResult] = results;
   const students: Student[] = (studentResult.data || []).map((row) => ({
@@ -396,9 +391,7 @@ export async function syncDataToSupabase(payload: {
         self_development_plan: t.selfDevelopmentPlan || null,
       }));
       const { error: tErr } = await client.from('teachers').upsert(teacherRows);
-      if (tErr) {
-        console.warn('Teachers sync warning (teachers table):', tErr.message);
-      }
+      if (tErr) throw new Error(`Teachers sync error: ${tErr.message}`);
     }
 
     // 3. Upsert Courses
@@ -508,7 +501,7 @@ export async function syncDataToSupabase(payload: {
 
     return {
       success: true,
-      message: `Successfully synchronized ${payload.students.length} students, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`,
+      message: `Successfully synchronized ${payload.students.length} students, ${payload.teachers?.length || 0} teachers, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -671,19 +671,6 @@ export const App: React.FC = () => {
   const handleAddTeacher = (newTeacher: Teacher) => {
     const fullTeacher = { ...newTeacher, schoolId: activeSchool.id };
     setTeachers((prev) => [fullTeacher, ...prev]);
-    if (currentUser && !isDemoMode && ['super_admin', 'admin'].includes(currentUser.role)) {
-      syncDataToSupabase({
-        school: activeSchool,
-        role: currentUser.role,
-        students: students.filter((item) => item.schoolId === activeSchool.id),
-        teachers: [fullTeacher, ...teachers.filter((item) => item.schoolId === activeSchool.id)],
-        courses: courses.filter((item) => item.schoolId === activeSchool.id),
-        grades: grades.filter((item) => item.schoolId === activeSchool.id),
-        attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
-        invoices: invoices.filter((item) => item.schoolId === activeSchool.id),
-        announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
-      }).catch((err) => console.warn('Direct teacher save warning:', err));
-    }
   };
 
   const handleUpdateTeacher = (updatedTeacher: Teacher) => {
