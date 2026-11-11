@@ -30,7 +30,8 @@ import {
   Sliders,
   MapPin,
   Mail,
-  KeyRound
+  KeyRound,
+  GraduationCap
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
 import {
@@ -43,6 +44,7 @@ import {
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
+import { SchoolStudentLoginSettingsCard } from './SchoolStudentLoginSettingsCard';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -55,6 +57,7 @@ interface SystemSettingsViewProps {
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
+  onUpdateSchool?: (updates: Partial<School>) => void;
   onUpdateConfig: (updated: SystemConfig) => void;
 }
 
@@ -69,9 +72,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
+  onUpdateSchool,
   onUpdateConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts'>('line_events');
+  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts' | 'student_login_config'>('line_events');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
@@ -582,6 +586,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           >
             <Users className="w-4 h-4" />
             <span>อนุมัติ &amp; ผูกบัญชีนักเรียน</span>
+          </button>
+        )}
+
+        {['admin', 'super_admin'].includes(currentRole) && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('student_login_config')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+              activeTab === 'student_login_config'
+                ? 'bg-blue-700 text-white shadow-md'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4 text-amber-300" />
+            <span>{lang === 'th' ? 'รูปแบบล็อกอินนักเรียน & ลิงก์โรงเรียน' : 'Student Login & School Link'}</span>
           </button>
         )}
       </div>
@@ -1727,6 +1746,18 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+      {/* TAB 8: Student Login Configuration & Dedicated School Login Link (Requirement 1) */}
+      {activeTab === 'student_login_config' &&
+        ['admin', 'super_admin'].includes(currentRole) && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <SchoolStudentLoginSettingsCard
+              activeSchool={activeSchool}
+              lang={lang}
+              onUpdateSchool={onUpdateSchool}
+            />
           </div>
         )}
       </div>

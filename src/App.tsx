@@ -146,7 +146,59 @@ import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles,
 export const App: React.FC = () => {
   // Multi-School & Auth State
   const [schools, setSchools] = useState<School[]>(INITIAL_SCHOOLS);
-  const [activeSchool, setActiveSchool] = useState<School>(INITIAL_SCHOOLS[0]);
+
+  // Parse dedicated school login query parameters (e.g., ?schoolId=...&loginMode=student or ?school=...&loginMode=student)
+  const schoolPortalParams = (() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const schoolId = sp.get('schoolId') || undefined;
+      const schoolCode = sp.get('schoolCode') || undefined;
+      const schoolSlug = sp.get('school') || sp.get('slug') || undefined;
+      const modeParam = sp.get('loginMode') || sp.get('mode');
+      const loginMode = modeParam === 'student' ? 'student' : modeParam === 'staff' ? 'staff' : undefined;
+      if (!schoolId && !schoolCode && !schoolSlug && !loginMode) return null;
+      return {
+        schoolId,
+        schoolCode,
+        schoolSlug,
+        loginMode: loginMode as 'student' | 'staff' | undefined,
+      };
+    } catch {
+      return null;
+    }
+  })();
+
+  const [activeSchool, setActiveSchool] = useState<School>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        const schoolId = sp.get('schoolId');
+        const schoolCode = sp.get('schoolCode');
+        const schoolSlug = sp.get('school') || sp.get('slug');
+        if (schoolId) {
+          const match = INITIAL_SCHOOLS.find((s) => s.id === schoolId);
+          if (match) return match;
+        }
+        if (schoolCode) {
+          const match = INITIAL_SCHOOLS.find((s) => s.code?.toLowerCase() === schoolCode.toLowerCase());
+          if (match) return match;
+        }
+        if (schoolSlug) {
+          const match = INITIAL_SCHOOLS.find(
+            (s) =>
+              s.customLoginSlug?.toLowerCase() === schoolSlug.toLowerCase() ||
+              s.code?.toLowerCase() === schoolSlug.toLowerCase() ||
+              s.id.toLowerCase() === schoolSlug.toLowerCase()
+          );
+          if (match) return match;
+        }
+      } catch {
+        // fallback to default
+      }
+    }
+    return INITIAL_SCHOOLS[0];
+  });
   const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -622,6 +674,42 @@ export const App: React.FC = () => {
     setLoadedSchoolId(school.id);
     setDataLoadError(null);
     setDataSyncError(null);
+  };
+
+  const handleLoginStudent = (studentUser: AuthUser, school: School) => {
+    demoModeRef.current = true;
+    setIsDemoMode(true);
+    setIsSuperAdminSchoolView(false);
+    setSchools((prev) => (prev.some((s) => s.id === school.id) ? prev : [...prev, school]));
+    setActiveSchool(school);
+    setCurrentUser(studentUser);
+    setCurrentRole('student');
+    setProgramMode('school_erp');
+    setCurrentTab('dashboard');
+
+    // Populate school data if empty so students can explore their courses, grades, homework, and ID card
+    if (students.length === 0) {
+      setStudents(INITIAL_STUDENTS.map((s) => ({ ...s, schoolId: school.id })));
+      setTeachers(INITIAL_TEACHERS.map((t) => ({ ...t, schoolId: school.id })));
+      setCourses(INITIAL_COURSES.map((c) => ({ ...c, schoolId: school.id })));
+      setGrades(INITIAL_GRADES.map((g) => ({ ...g, schoolId: school.id })));
+      setAttendance(INITIAL_ATTENDANCE.map((a) => ({ ...a, schoolId: school.id })));
+      setAnnouncements(INITIAL_ANNOUNCEMENTS.map((an) => ({ ...an, schoolId: school.id })));
+      setTimetableSlots(INITIAL_TIMETABLE_SLOTS.map((t) => ({ ...t, schoolId: school.id })));
+      setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
+      setHomeworkSubmissions(INITIAL_HOMEWORK_SUBMISSIONS.map((h) => ({ ...h, schoolId: school.id })));
+    }
+    setIsDataReady(true);
+    setLoadedSchoolId(school.id);
+    setDataLoadError(null);
+    setDataSyncError(null);
+  };
+
+  const handleUpdateSchool = (updates: Partial<School>) => {
+    setActiveSchool((prev) => ({ ...prev, ...updates }));
+    setSchools((prev) =>
+      prev.map((s) => (s.id === activeSchool.id ? { ...s, ...updates } : s))
+    );
   };
 
   const handleLogout = async () => {
@@ -1632,12 +1720,17 @@ export const App: React.FC = () => {
       <AuthLayout
         onLogin={handleLogin}
         onLoginImportedUser={handleLoginImportedUser}
+        onLoginStudent={handleLoginStudent}
         onStartDemo={handleStartDemo}
         initialError={dataLoadError}
         lang={lang}
         setLang={setLang}
         themePalette={themePalette}
         setThemePalette={setThemePalette}
+        initialSchoolId={activeSchool.id}
+        initialLoginMode={schoolPortalParams?.loginMode}
+        activeSchools={schools}
+        allStudents={students.length > 0 ? students : INITIAL_STUDENTS}
       />
     );
   }
@@ -2146,6 +2239,7 @@ export const App: React.FC = () => {
                     onUpdateCampusGates={handleUpdateCampusGates}
                     onSaveCampusGates={handleSaveCampusGates}
                     onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
+                    onUpdateSchool={handleUpdateSchool}
                     onUpdateConfig={setSystemConfig}
                   />
                 )}

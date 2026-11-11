@@ -1,13 +1,16 @@
 import { DEFAULT_CENTRAL_EXAM_PACKS, LEARNING_STRANDS } from '../data/examQuestionBanks';
 import {
   CentralExamPack,
+  CentralExamPaymentSettings,
   LearningStrandId,
   QuizQuestion,
   SchoolExamEntitlement,
 } from '../types';
+export type { CentralExamPaymentSettings } from '../types';
 import { getSupabaseClient } from './supabase';
 
 export const CENTRAL_EXAMS_UPDATED_EVENT = 'eduverse:central-exams-updated';
+export const EXAM_PAYMENT_SETTINGS_UPDATED_EVENT = 'eduverse:central-exam-payment-settings-updated';
 
 const PACKS_STORAGE_KEY = 'eduverse_central_exam_packs_v1';
 const entitlementsStorageKey = (schoolId: string) => `eduverse_school_exam_entitlements_v1_${schoolId}`;
@@ -713,4 +716,120 @@ export function buildCentralExamCsvTemplate(): string {
     '"การงานอาชีพ","ม.2","หลักการจัดการขยะ 3R เพื่อความยั่งยืน ข้อใดหมายถึงการลดการใช้ทรัพยากร","Reduce","Reuse","Recycle","Repair","0","Reduce คือการลดการใช้ตั้งแต่ต้นทาง เช่น ใช้ถุงผ้าแทนถุงพลาสติก",100,"career_tech"',
   ];
   return '\uFEFF' + [header, ...rows].join('\n');
+}
+
+// ========================================================
+// SUPER ADMIN CENTRAL EXAM PAYMENT & PROMPTPAY SETTINGS (Requirement 2)
+// ========================================================
+
+export const CENTRAL_EXAM_PAYMENT_STORAGE_KEY = 'eduverse_central_exam_payment_settings_v1';
+
+export const DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS: CentralExamPaymentSettings = {
+  promptPayId: '0819998888',
+  promptPayType: 'phone',
+  accountName: 'ศูนย์อำนวยการคลังข้อสอบกลาง EduVerse (Super Admin)',
+  bankName: 'พร้อมเพย์ / PromptPay (ธนาคารแห่งประเทศไทย)',
+  accountNumber: '142-2-90188-3',
+  qrImageUrl: '',
+  transferInstructions: 'สแกน QR Code พร้อมเพย์ด้วยแอปธนาคารทุกแห่ง ยอดเงินตรงตามชุดข้อสอบ เพื่อปลดล็อกเข้าสู่คลังข้อสอบโรงเรียนทันที',
+  notes: 'ออกหลักฐานและยืนยันสิทธิ์ทันทีผ่านระบบอัตโนมัติ ติดต่อสอบถาม Super Admin: farmissara@gmail.com',
+  enablePromptPay: true,
+  enableInvoice: true,
+  lastUpdated: '2026-11-11T00:00:00.000Z',
+  updatedBy: 'Super Admin (farmissara@gmail.com)',
+};
+
+export function fetchCentralExamPaymentSettings(): CentralExamPaymentSettings {
+  if (typeof window === 'undefined') return DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS;
+  try {
+    const raw = localStorage.getItem(CENTRAL_EXAM_PAYMENT_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(CENTRAL_EXAM_PAYMENT_STORAGE_KEY, JSON.stringify(DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS));
+      return DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS;
+    }
+    const parsed = JSON.parse(raw) as Partial<CentralExamPaymentSettings>;
+    return {
+      ...DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS,
+      ...parsed,
+    };
+  } catch (err) {
+    console.warn('Could not read payment settings from localStorage, using defaults:', err);
+    return DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS;
+  }
+}
+
+export function saveCentralExamPaymentSettings(settings: CentralExamPaymentSettings): CentralExamPaymentSettings {
+  const updated: CentralExamPaymentSettings = {
+    ...settings,
+    lastUpdated: new Date().toISOString(),
+  };
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(CENTRAL_EXAM_PAYMENT_STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent(EXAM_PAYMENT_SETTINGS_UPDATED_EVENT, { detail: updated }));
+    } catch (err) {
+      console.warn('Could not save payment settings to localStorage:', err);
+    }
+  }
+  return updated;
+}
+
+/**
+ * Calculates standard CRC16-CCITT for EMVCo Thai PromptPay QR
+ */
+function crc16(data: string): string {
+  let crc = 0xffff;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = ((crc << 1) ^ 0x1021) & 0xffff;
+      } else {
+        crc = (crc << 1) & 0xffff;
+      }
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+/**
+ * Generates an EMVCo Thai PromptPay standard QR string
+ * Supported: Mobile phone (10 digits) or National ID / Tax ID (13 digits)
+ */
+export function generatePromptPayPayload(promptPayId: string, amountThb?: number): string {
+  const rawId = (promptPayId || '').replace(/[^0-9]/g, '');
+  if (!rawId) {
+    return `EDUVERSE:PAY:PROMPTPAY:${promptPayId || '0819998888'}:${amountThb || 0}`;
+  }
+
+  // Determine PromptPay target type: Mobile (10 digits) vs National ID / Tax ID (13 digits)
+  const isMobile = rawId.length === 10 && rawId.startsWith('0');
+  const targetTag = isMobile ? '01' : '02';
+  
+  let formattedTarget = rawId;
+  if (isMobile) {
+    // Convert 08x-xxx-xxxx to 00668xxxxxxxx (13 chars)
+    formattedTarget = '0066' + rawId.slice(1);
+  }
+
+  const aid = 'A000000677010111';
+  const subtag00 = `00${String(aid.length).padStart(2, '0')}${aid}`;
+  const subtagTarget = `${targetTag}${String(formattedTarget.length).padStart(2, '0')}${formattedTarget}`;
+  const tag29Value = `${subtag00}${subtagTarget}`;
+  const tag29 = `29${String(tag29Value.length).padStart(2, '0')}${tag29Value}`;
+
+  const tag00 = '000201'; // Payload format indicator
+  const tag01 = amountThb && amountThb > 0 ? '010212' : '010211'; // 12 = dynamic amount, 11 = static
+  const tag53 = '5303764'; // Currency THB (764)
+  const tag58 = '5802TH'; // Country code
+
+  let tag54 = '';
+  if (amountThb && amountThb > 0) {
+    const amountStr = amountThb.toFixed(2);
+    tag54 = `54${String(amountStr.length).padStart(2, '0')}${amountStr}`;
+  }
+
+  const base = `${tag00}${tag01}${tag29}${tag53}${tag54}${tag58}6304`;
+  const checksum = crc16(base);
+  return `${base}${checksum}`;
 }

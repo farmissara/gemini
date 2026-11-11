@@ -3,6 +3,7 @@ import {
   BookOpen,
   CheckCircle2,
   Coins,
+  CreditCard,
   Download,
   Eye,
   FileSpreadsheet,
@@ -17,6 +18,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import { LEARNING_STRANDS } from '../data/examQuestionBanks';
 import {
   buildCentralExamCsvTemplate,
@@ -94,6 +96,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const [importPriceThb, setImportPriceThb] = useState(490);
   const [importPublishNow, setImportPublishNow] = useState(true);
   const [importRawText, setImportRawText] = useState('');
+  const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
 
   const loadPacks = async () => {
     setLoading(true);
@@ -467,6 +470,14 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           >
             <Upload className="w-3.5 h-3.5" />
             <span>นำเข้า CSV / JSON</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPaymentSettingsModal(true)}
+            className="px-3.5 py-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>ตั้งค่า QR PromptPay รับเงิน</span>
           </button>
           <button
             type="button"
@@ -1291,6 +1302,39 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Super Admin PromptPay & Payment Settings */}
+      {showPaymentSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-5xl p-6 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="font-extrabold text-base text-[var(--color-text-title)]">
+                  ตั้งค่าระบบรับเงิน PromptPay &amp; อัปโหลด QR Code ขายข้อสอบ
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPaymentSettingsModal(false)}
+                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <CentralExamPaymentSettingsView
+              adminEmail={adminDisplayName}
+              onSaved={() => {
+                setFeedbackMessage({
+                  type: 'success',
+                  text: 'บันทึกการตั้งค่า QR PromptPay รับเงินขายข้อสอบเรียบร้อยแล้ว!',
+                });
+              }}
+            />
           </div>
         </div>
       )}

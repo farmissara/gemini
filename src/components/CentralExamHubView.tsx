@@ -2,9 +2,12 @@ import React, { useMemo, useState } from 'react';
 import {
   BellRing,
   BookOpen,
+  Check,
   CheckCircle2,
   Coins,
+  Copy,
   CreditCard,
+  Download,
   Eye,
   FileText,
   Gift,
@@ -13,10 +16,15 @@ import {
   ShoppingBag,
   Sparkles,
   Swords,
+  Upload,
   X,
 } from 'lucide-react';
 import { LEARNING_STRANDS } from '../data/examQuestionBanks';
-import { getStrandMeta } from '../lib/centralExamBank';
+import {
+  fetchCentralExamPaymentSettings,
+  generatePromptPayPayload,
+  getStrandMeta,
+} from '../lib/centralExamBank';
 import {
   CentralExamPack,
   LearningStrandId,
@@ -42,11 +50,37 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
   onClose,
 }) => {
   const [method, setMethod] = useState<'promptpay' | 'invoice'>('promptpay');
+  const [copiedNumber, setCopiedNumber] = useState(false);
+  const [slipFilePreview, setSlipFilePreview] = useState<string | null>(null);
   const strandMeta = getStrandMeta(pack.strand);
+  const paymentSettings = useMemo(() => fetchCentralExamPaymentSettings(), []);
+
+  const promptPayCode = useMemo(() => {
+    return generatePromptPayPayload(paymentSettings.promptPayId, pack.priceThb);
+  }, [paymentSettings.promptPayId, pack.priceThb]);
+
+  const handleCopyPromptPay = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(paymentSettings.promptPayId);
+      setCopiedNumber(true);
+      setTimeout(() => setCopiedNumber(false), 2000);
+    }
+  };
+
+  const handleSlipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setSlipFilePreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+    <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl my-8">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
           <h3 className="text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
             <ShoppingBag className="w-4 h-4 text-amber-600" />
@@ -111,17 +145,103 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
         </div>
 
         {method === 'promptpay' ? (
-          <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col items-center gap-2 text-center">
-            <QrCodeMatrix
-              value={`EDUVERSE:EXAM:${pack.id}:${pack.priceThb}:${schoolName}`}
-              size={148}
-              label={`QR ชำระค่าชุดข้อสอบ ${pack.titleTh}`}
-            />
-            <div className="text-xs font-bold text-slate-900">
-              สแกนพร้อมเพย์ ยอดชำระ ฿{pack.priceThb.toLocaleString()}
+          <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col items-center gap-2.5 text-center shadow-xs">
+            {/* Header Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-extrabold">
+              <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+              <span>{paymentSettings.bankName || 'พร้อมเพย์ / PromptPay'}</span>
             </div>
-            <div className="text-[11px] text-slate-600">
-              ผู้รับ: กองทุนคลังข้อสอบกลาง EduVerse · {schoolName}
+
+            {/* Uploaded QR Image or Generated EMVCo QR */}
+            {paymentSettings.qrImageUrl ? (
+              <div className="space-y-1">
+                <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200 inline-block">
+                  <img
+                    src={paymentSettings.qrImageUrl}
+                    alt="PromptPay QR Code"
+                    className="w-44 h-44 object-contain rounded"
+                  />
+                </div>
+                <div className="text-[10px] text-emerald-600 font-bold">
+                  ✓ QR Code รับเงินอย่างเป็นทางการ (Super Admin)
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1 flex flex-col items-center">
+                <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
+                  <QrCodeMatrix
+                    value={promptPayCode}
+                    size={160}
+                    label={`QR ชำระค่าชุดข้อสอบ ${pack.titleTh}`}
+                  />
+                </div>
+                <div className="text-[10px] text-blue-600 font-bold">
+                  ✓ สแกนได้ด้วยแอปธนาคารทุกแห่งในไทย
+                </div>
+              </div>
+            )}
+
+            <div className="text-sm font-extrabold text-slate-900">
+              ยอดชำระ <span className="text-amber-600 text-lg font-black">฿{pack.priceThb.toLocaleString()}</span>
+            </div>
+
+            {/* Beneficiary Info */}
+            <div className="w-full text-left bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-[11px]">ชื่อบัญชีผู้รับ:</span>
+                <span className="font-bold text-slate-900 text-[11px] truncate max-w-[200px]">
+                  {paymentSettings.accountName}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-[11px]">หมายเลขพร้อมเพย์:</span>
+                <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900">
+                  <span>{paymentSettings.promptPayId}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyPromptPay}
+                    className="p-1 rounded hover:bg-slate-200 text-slate-600 cursor-pointer"
+                    title="คัดลอกหมายเลข"
+                  >
+                    {copiedNumber ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {paymentSettings.accountNumber && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 text-[11px]">เลขที่บัญชี:</span>
+                  <span className="font-mono font-bold text-slate-900 text-[11px]">
+                    {paymentSettings.accountNumber}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Instructions */}
+            <div className="w-full text-left text-[11px] text-slate-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200 leading-relaxed">
+              <span className="font-bold text-amber-900">คำแนะนำ: </span>
+              {paymentSettings.transferInstructions}
+            </div>
+
+            {/* Optional Slip Upload */}
+            <div className="w-full text-left pt-1">
+              <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between mb-1">
+                <span className="flex items-center gap-1">
+                  <Upload className="w-3 h-3 text-slate-500" />
+                  <span>แนบสลิปหลักฐานการโอน (ไม่บังคับ)</span>
+                </span>
+                {slipFilePreview && (
+                  <span className="text-[10px] text-emerald-600 font-bold">✓ แนบไฟล์แล้ว</span>
+                )}
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleSlipChange}
+                className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+              />
             </div>
           </div>
         ) : (
@@ -146,7 +266,7 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
             type="button"
             disabled={isProcessing}
             onClick={() => void onConfirmPurchase(pack, method)}
-            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition active:scale-95"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>

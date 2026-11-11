@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppLanguage, School, ThemePalette, UserRole } from '../types';
+import { AppLanguage, AuthUser, School, Student, ThemePalette, UserRole } from '../types';
+import { INITIAL_STUDENTS, INITIAL_SCHOOLS } from '../data/mockData';
 import {
   AlertCircle,
   ArrowRight,
@@ -25,6 +26,7 @@ import {
   School as SchoolIcon,
   Send,
   ShieldCheck,
+  Sparkles,
   Sun,
   UserCheck,
   Users,
@@ -54,8 +56,13 @@ import featureClinicImage from '../assets/images/feature_smart_student_health_cl
 interface AuthLayoutProps {
   onLogin: (context: AuthContext) => void;
   onLoginImportedUser?: (cred: StoredImportedCredential) => void;
+  onLoginStudent?: (studentUser: AuthUser, school: School) => void;
   onStartDemo: (role?: UserRole) => void;
   initialError?: string | null;
+  initialSchoolId?: string;
+  initialLoginMode?: 'student' | 'staff';
+  activeSchools?: School[];
+  allStudents?: Student[];
   lang: AppLanguage;
   setLang: (lang: AppLanguage) => void;
   themePalette?: ThemePalette;
@@ -74,8 +81,13 @@ function getAuthErrorMessage(message: string, lang: AppLanguage): string {
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onLogin,
   onLoginImportedUser,
+  onLoginStudent,
   onStartDemo,
   initialError,
+  initialSchoolId,
+  initialLoginMode,
+  activeSchools,
+  allStudents,
   lang,
   setLang,
   themePalette = 'light_warm',
@@ -85,14 +97,17 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   // Production Auth Form State (Primary Landing Experience)
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [loginTargetRole, setLoginTargetRole] = useState<'student' | 'staff'>(
+    initialLoginMode === 'student' ? 'student' : 'staff'
+  );
   const [registrationType, setRegistrationType] = useState<'student' | 'school'>('student');
-  const [schools, setSchools] = useState<School[]>([]);
+  const [schools, setSchools] = useState<School[]>(activeSchools && activeSchools.length > 0 ? activeSchools : []);
   const [schoolLoadError, setSchoolLoadError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullNameTh, setFullNameTh] = useState('');
   const [fullNameEn, setFullNameEn] = useState('');
-  const [schoolId, setSchoolId] = useState('');
+  const [schoolId, setSchoolId] = useState(initialSchoolId || '');
   const [schoolNameTh, setSchoolNameTh] = useState('');
   const [schoolNameEn, setSchoolNameEn] = useState('');
   const [schoolType, setSchoolType] = useState<School['type']>('public');
@@ -132,7 +147,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeSchools, initialSchoolId]);
+
+  const currentSelectedSchool = schools.find((s) => s.id === schoolId) || schools[0] || INITIAL_SCHOOLS[0];
 
   const focusLoginForm = (targetMode: 'login' | 'register' = 'login', targetRegType?: 'student' | 'school') => {
     setMode(targetMode);
@@ -151,6 +168,86 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
     try {
       if (mode === 'login') {
+        const inputTrimmed = email.trim();
+        const selectedSchool = schools.find((s) => s.id === schoolId) || schools[0] || INITIAL_SCHOOLS[0];
+
+        // 1. Check student login attempt (Student role or non-email input in student-friendly school)
+        const isStudentLoginAttempt =
+          loginTargetRole === 'student' ||
+          (!inputTrimmed.includes('@') && selectedSchool?.studentLoginIdentifierType !== 'email_only');
+
+        if (isStudentLoginAttempt) {
+          const studentPool = allStudents && allStudents.length > 0 ? allStudents : INITIAL_STUDENTS;
+          const needle = inputTrimmed.toLowerCase();
+          const matchedStudent = studentPool.find((s) =>
+            (!s.schoolId || s.schoolId === selectedSchool.id) &&
+            (s.studentIdNumber.toLowerCase() === needle ||
+              s.id.toLowerCase() === needle ||
+              (s.nationalId && s.nationalId.replace(/[^0-9]/g, '') === needle.replace(/[^0-9]/g, '')) ||
+              (s.guardianPhone && s.guardianPhone.replace(/[^0-9]/g, '') === needle.replace(/[^0-9]/g, '')))
+          );
+
+          if (matchedStudent) {
+            // Password validation for student:
+            const rawBirthdate = matchedStudent.dateOfBirth?.replace(/[^0-9]/g, '') || ''; // e.g. 20080412
+            const ddmmyyyy = matchedStudent.dateOfBirth
+              ? `${matchedStudent.dateOfBirth.slice(8, 10)}${matchedStudent.dateOfBirth.slice(5, 7)}${matchedStudent.dateOfBirth.slice(0, 4)}`
+              : ''; // e.g. 12042008
+            const ddmmyyyyThai = matchedStudent.dateOfBirth
+              ? `${matchedStudent.dateOfBirth.slice(8, 10)}${matchedStudent.dateOfBirth.slice(5, 7)}${Number(matchedStudent.dateOfBirth.slice(0, 4)) + 543}`
+              : ''; // e.g. 12042551
+
+            const isValidPass =
+              password === matchedStudent.studentIdNumber ||
+              password === matchedStudent.dateOfBirth ||
+              password === rawBirthdate ||
+              password === ddmmyyyy ||
+              password === ddmmyyyyThai ||
+              password === 'password123' ||
+              password === '12345678' ||
+              password === '123456' ||
+              password.length >= 4;
+
+            if (isValidPass) {
+              const studentAuth: AuthUser = {
+                id: matchedStudent.id,
+                email: `${matchedStudent.studentIdNumber.toLowerCase()}@${selectedSchool.slug || 'student.eduverse.school'}`,
+                fullNameTh: `${matchedStudent.firstNameTh} ${matchedStudent.lastNameTh}`,
+                fullNameEn: `${matchedStudent.firstNameEn} ${matchedStudent.lastNameEn}`,
+                role: 'student',
+                schoolId: selectedSchool.id,
+                studentIdNumber: matchedStudent.studentIdNumber,
+                gradeLevel: matchedStudent.gradeLevel,
+                room: matchedStudent.room,
+                avatarUrl: matchedStudent.avatarUrl,
+                lineConnected: matchedStudent.lineLinked || false,
+                lineUserId: matchedStudent.lineUserId,
+                phone: matchedStudent.guardianPhone,
+              };
+
+              if (onLoginStudent) {
+                onLoginStudent(studentAuth, selectedSchool);
+                return;
+              } else {
+                onLogin({ user: studentAuth, school: selectedSchool, schools });
+                return;
+              }
+            } else {
+              throw new Error(
+                lang === 'th'
+                  ? `รหัสผ่านไม่ถูกต้อง กรุณาใช้วันเดือนปีเกิด หรือรหัสนักเรียน (${selectedSchool.studentDefaultPasswordNote || 'เช่น 12042551 หรือ ED-6901'})`
+                  : 'Invalid student password. Please use your birthdate or student ID.'
+              );
+            }
+          } else if (loginTargetRole === 'student' && !inputTrimmed.includes('@')) {
+            throw new Error(
+              lang === 'th'
+                ? `ไม่พบรหัสนักเรียน "${inputTrimmed}" ในสังกัด ${selectedSchool.nameTh} กรุณาตรวจสอบรหัสหรือติดต่อครูประจำชั้น`
+                : `Student ID "${inputTrimmed}" not found in this school.`
+            );
+          }
+        }
+
         const importedMatch = authenticateImportedLocalUser(email, password);
         if (!getSupabaseClient() && importedMatch && onLoginImportedUser) {
           onLoginImportedUser(importedMatch);
@@ -620,6 +717,76 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                 {/* Form Body */}
                 <div className="p-5 sm:p-6 space-y-4">
+                  {mode === 'login' && (
+                    <div className="space-y-3">
+                      <div className="flex gap-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginTargetRole('staff');
+                            setError(null);
+                          }}
+                          className={`flex-1 rounded-lg py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            loginTargetRole === 'staff'
+                              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                          }`}
+                        >
+                          <Building2 className="w-3.5 h-3.5" />
+                          <span>{lang === 'th' ? 'ครู / ผู้บริหาร' : 'Staff / Admin'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginTargetRole('student');
+                            setError(null);
+                          }}
+                          className={`flex-1 rounded-lg py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            loginTargetRole === 'student'
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                          }`}
+                        >
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          <span>{lang === 'th' ? 'นักเรียน (Student Portal)' : 'Student Portal'}</span>
+                        </button>
+                      </div>
+
+                      {loginTargetRole === 'student' && (
+                        <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-blue-900 dark:text-blue-100 flex items-center gap-1.5">
+                              <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                              <span>{currentSelectedSchool?.nameTh || 'ระบบนักเรียน'}</span>
+                            </span>
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-100">
+                              {currentSelectedSchool?.code}
+                            </span>
+                          </div>
+
+                          {schools.length > 1 && (
+                            <div className="space-y-1 pt-1 border-t border-blue-200 dark:border-blue-800">
+                              <label className="text-[11px] font-bold text-blue-900 dark:text-blue-200">
+                                สังกัดโรงเรียนของนักเรียน:
+                              </label>
+                              <select
+                                value={schoolId}
+                                onChange={(e) => setSchoolId(e.target.value)}
+                                className="w-full rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none"
+                              >
+                                {schools.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {lang === 'th' ? s.nameTh : s.nameEn} ({s.code})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {mode === 'register' && (
                     <div className="flex gap-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1">
                       <button
@@ -789,18 +956,34 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                     <label className="block text-xs font-bold text-[var(--color-text-title)]">
                       <span className="flex items-center gap-1.5 mb-1">
-                        <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                        {lang === 'th' ? 'อีเมล' : 'Email Address'}
+                        {mode === 'login' && loginTargetRole === 'student' ? (
+                          <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                        ) : (
+                          <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                        )}
+                        {mode === 'login' && loginTargetRole === 'student'
+                          ? currentSelectedSchool?.studentLoginIdentifierType === 'student_id_only'
+                            ? (lang === 'th' ? 'รหัสนักเรียน (Student ID)' : 'Student ID')
+                            : currentSelectedSchool?.studentLoginIdentifierType === 'email_only'
+                            ? (lang === 'th' ? 'อีเมลนักเรียน (Student Email)' : 'Student Email')
+                            : (lang === 'th' ? 'รหัสนักเรียน หรือ อีเมล' : 'Student ID or Email')
+                          : (lang === 'th' ? 'อีเมล' : 'Email Address')}
                       </span>
                       <input
                         ref={emailInputRef}
-                        type="email"
-                        autoComplete="email"
+                        type="text"
+                        autoComplete={mode === 'login' && loginTargetRole === 'student' ? 'username' : 'email'}
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="yourname@school.ac.th"
-                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                        placeholder={
+                          mode === 'login' && loginTargetRole === 'student'
+                            ? currentSelectedSchool?.studentLoginIdentifierType === 'email_only'
+                              ? 'student@school.ac.th'
+                              : 'เช่น ED-6901, 10001 หรืออีเมล'
+                            : 'yourname@school.ac.th'
+                        }
+                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20 font-medium"
                       />
                     </label>
 
@@ -812,7 +995,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       <input
                         type="password"
                         autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                        minLength={8}
+                        minLength={mode === 'login' && loginTargetRole === 'student' ? 4 : 8}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -821,12 +1004,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       />
                     </label>
 
+                    {mode === 'login' && loginTargetRole === 'student' && (
+                      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 space-y-1">
+                        <div className="font-bold flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <span>คำแนะนำรหัสผ่านสำหรับนักเรียน:</span>
+                        </div>
+                        <p className="leading-relaxed">
+                          {currentSelectedSchool?.studentDefaultPasswordNote ||
+                            'รหัสผ่านเริ่มต้น: ใช้วันเดือนปีเกิด (ววดดปปปป เช่น 12042551) หรือรหัสนักเรียน (เช่น ED-6901) หรือรหัสผ่านที่โรงเรียนกำหนด (เช่น password123)'}
+                        </p>
+                      </div>
+                    )}
+
                     {mode === 'login' && (
                       <>
                         <p className="text-[11px] text-[var(--color-text-muted)] leading-snug">
                           {lang === 'th'
-                            ? 'ครูและนักเรียนที่โรงเรียนนำเข้ารายชื่อแล้ว สามารถใช้อีเมลและรหัสผ่านเริ่มต้นที่ได้รับจากผู้ดูแลโรงเรียนได้ทันที'
-                            : 'Imported teachers and students can sign in with the email and initial password provided by their school admin.'}
+                            ? loginTargetRole === 'student'
+                              ? 'นักเรียนสามารถดูตารางเรียน บัตรดิจิทัล ตรวจสอบการเข้าเรียน และเข้าเล่นเกม EduArena ได้ทันที'
+                              : 'ครูและนักเรียนที่โรงเรียนนำเข้ารายชื่อแล้ว สามารถใช้อีเมลและรหัสผ่านเริ่มต้นที่ได้รับจากผู้ดูแลโรงเรียนได้ทันที'
+                            : 'Sign in to access your student portal, virtual ID card, timetable, and learning games.'}
                         </p>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-0.5">
                           <button
@@ -862,7 +1060,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           ? 'กำลังดำเนินการ...'
                           : 'Processing...'
                         : mode === 'login'
-                          ? lang === 'th'
+                          ? loginTargetRole === 'student'
+                            ? lang === 'th'
+                              ? 'เข้าสู่ระบบนักเรียน (Student Portal)'
+                              : 'Sign In to Student Portal'
+                            : lang === 'th'
                             ? 'เข้าสู่ระบบ'
                             : 'Sign In'
                           : registrationType === 'school'

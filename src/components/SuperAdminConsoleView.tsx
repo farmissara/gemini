@@ -26,6 +26,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
+import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import {
   approvePendingSchoolRegistration,
   listPendingSchoolRegistrations,
@@ -78,7 +79,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   coordinationUnreadCount = 0,
   onOpenCoordinationDesk,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams'>('approvals');
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>('approvals');
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingSchoolRegistration[]>([]);
@@ -457,6 +458,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         >
           <BookOpen className="w-4 h-4" />
           <span>คลังข้อสอบกลาง (8 สาระ)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('exam_payment')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
+            activeSubTab === 'exam_payment'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold'
+              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span>ตั้งค่า QR PromptPay รับเงินข้อสอบ</span>
         </button>
       </div>
 
@@ -1057,6 +1070,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {/* View 4: Central Exam Bank (8 Strands) Manager */}
       {activeSubTab === 'central_exams' && (
         <SuperAdminCentralExamManager isDemoMode={isDemoMode} />
+      )}
+
+      {/* View 5: Central Exam Payment & PromptPay Settings (Requirement 2) */}
+      {activeSubTab === 'exam_payment' && (
+        <CentralExamPaymentSettingsView adminEmail="farmissara@gmail.com" />
       )}
 
       {/* Modal: Create New Promotion */}

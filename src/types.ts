@@ -52,6 +52,13 @@ export interface School {
   latitude?: number;
   longitude?: number;
   geofenceRadiusMeters?: number;
+
+  // Student Login Preferences & School Portal Link (Requirement 1)
+  studentLoginIdentifierType?: 'student_id_only' | 'email_only' | 'both';
+  customLoginSlug?: string;
+  studentDefaultPasswordType?: 'student_id' | 'birthdate' | 'custom' | 'pin';
+  studentDefaultPasswordNote?: string;
+  customSchoolLoginUrl?: string;
 }
 
 export interface RolePermissionConfig {
@@ -1118,5 +1125,21 @@ export interface SchoolExamEntitlement {
   paymentMethod: 'free' | 'promptpay' | 'invoice';
   claimedBy: string;
   claimedAt: string;
+}
+
+// 12. Central Exam Bank Payment & PromptPay Settings (Requirement 2)
+export interface CentralExamPaymentSettings {
+  promptPayId: string;
+  promptPayType: 'phone' | 'national_id' | 'tax_id' | 'e_wallet';
+  accountName: string;
+  bankName: string;
+  accountNumber?: string;
+  qrImageUrl: string; // Base64 Data URL or public image URL uploaded by Super Admin
+  transferInstructions: string;
+  notes?: string;
+  enablePromptPay: boolean;
+  enableInvoice: boolean;
+  lastUpdated: string;
+  updatedBy: string;
 }
 
