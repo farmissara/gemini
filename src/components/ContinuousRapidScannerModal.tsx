@@ -53,6 +53,9 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   const [scanMode, setScanMode] = useState<AttendanceCheckType>(initialMode);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
+  const [cameraRetry, setCameraRetry] = useState(0);
   const [manualIdInput, setManualIdInput] = useState('');
   const [flashSuccess, setFlashSuccess] = useState(false);
   const [flashWarning, setFlashWarning] = useState<string | null>(null);
@@ -66,6 +69,7 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraRequestRef = useRef(0);
   const lastScannedTimeMapRef = useRef<Map<string, number>>(new Map());
 
   // Web Audio Synthesizer for Rapid Beep
@@ -121,27 +125,69 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
     if (!isOpen) return;
 
     let active = true;
+    const requestId = ++cameraRequestRef.current;
     async function startCamera() {
+      setCameraError(null);
+      setIsCameraStarting(true);
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('CAMERA_UNAVAILABLE');
+        }
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: { ideal: facingMode },
+            facingMode: { exact: facingMode },
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
           audio: false,
         });
-        if (active) {
-          streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
+
+        if (!active || cameraRequestRef.current !== requestId) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
         }
+
+        const video = videoRef.current;
+        if (!video) {
+          stream.getTracks().forEach(track => track.stop());
+          throw new Error('CAMERA_VIEW_UNAVAILABLE');
+        }
+        streamRef.current = stream;
+        video.srcObject = stream;
+        await video.play();
+
+        if (!active || cameraRequestRef.current !== requestId) {
+          stream.getTracks().forEach(track => track.stop());
+          if (video.srcObject === stream) video.srcObject = null;
+          return;
+        }
+        setIsCameraStarting(false);
       } catch (err) {
-        console.warn('Camera access error in rapid scanner:', err);
+        if (!active || cameraRequestRef.current !== requestId) return;
+        const errorName = err instanceof Error ? err.name : '';
+        const errorMessage = err instanceof Error ? err.message : '';
+        const message = errorMessage === 'CAMERA_UNAVAILABLE'
+          ? 'เบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง'
+          : errorMessage === 'CAMERA_VIEW_UNAVAILABLE'
+          ? 'ไม่พบหน้าต่างแสดงภาพกล้อง กรุณาปิดแล้วเปิดสแกนเนอร์ใหม่'
+          : errorName === 'NotAllowedError' || errorName === 'SecurityError'
+          ? 'ไม่ได้รับอนุญาตให้ใช้กล้อง กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์'
+          : errorName === 'NotFoundError' || errorName === 'OverconstrainedError'
+          ? `ไม่พบ${facingMode === 'environment' ? 'กล้องหลัง' : 'กล้องหน้า'} กรุณาสลับกล้องหรือเชื่อมต่อกล้อง`
+          : errorName === 'NotReadableError'
+          ? 'กล้องกำลังถูกใช้งานโดยแอปหรือแท็บอื่น กรุณาปิดแอปที่ใช้กล้องแล้วลองอีกครั้ง'
+          : 'เปิดกล้องไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และลองใหม่';
+        setCameraError(message);
+        setIsCameraStarting(false);
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        if (videoRef.current) videoRef.current.srcObject = null;
       }
     }
 
@@ -149,11 +195,14 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
 
     return () => {
       active = false;
+      cameraRequestRef.current++;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
       }
+      if (videoRef.current) videoRef.current.srcObject = null;
     };
-  }, [isOpen, facingMode]);
+  }, [isOpen, facingMode, cameraRetry]);
 
   if (!isOpen) return null;
 
@@ -281,7 +330,8 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             <button
               type="button"
               onClick={() => setFacingMode(facingMode === 'environment' ? 'user' : 'environment')}
-              className="p-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer"
+              disabled={isCameraStarting}
+              className="p-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer disabled:opacity-50 disabled:cursor-wait"
               title="สลับกล้องหน้า/หลัง"
             >
               <SwitchCamera className="w-4 h-4" />
@@ -348,6 +398,23 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             muted
             className="w-full h-full object-cover"
           />
+          {cameraError && (
+            <div role="alert" className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-slate-900/95 p-3 text-center text-xs text-white shadow-xl">
+              <p className="font-bold">{cameraError}</p>
+              <button
+                type="button"
+                onClick={() => setCameraRetry(retry => retry + 1)}
+                className="mt-2 rounded-lg bg-white px-3 py-1.5 font-bold text-slate-900 hover:bg-slate-100"
+              >
+                {lang === 'th' ? 'ลองเปิดกล้องอีกครั้ง' : 'Retry camera'}
+              </button>
+            </div>
+          )}
+          {isCameraStarting && (
+            <div role="status" className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-slate-900/80 p-2 text-center text-xs font-semibold text-white">
+              {lang === 'th' ? `กำลังเปิด${facingMode === 'environment' ? 'กล้องหลัง' : 'กล้องหน้า'}...` : 'Starting camera...'}
+            </div>
+          )}
 
           {/* Scan Reticle & Guide Box */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-4">
