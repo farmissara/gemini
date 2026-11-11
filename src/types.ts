@@ -17,7 +17,15 @@ export type ThemePalette =
   | 'emerald' 
   | 'amethyst';
 
-export type StudentStatus = 'active' | 'graduated' | 'suspended' | 'transferred';
+export type StudentStatus = 
+  | 'active' 
+  | 'transferred_in'
+  | 'transferred_out'
+  | 'transferred'
+  | 'graduated' 
+  | 'suspended' 
+  | 'resigned' 
+  | 'dropped';
 
 export interface School {
   id: string;

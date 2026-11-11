@@ -1317,6 +1317,10 @@ export const App: React.FC = () => {
               setSelectedStudentForReport(stu);
             }}
             onToggleLineSync={handleToggleLineSync}
+            onUpdateStudent={(updated) => {
+              handleUpdateStudent(updated);
+              setSelectedStudentForProfile(updated);
+            }}
           />
         )}
 
@@ -1681,6 +1685,10 @@ export const App: React.FC = () => {
                     onAddStudent={handleAddStudent}
                     onUpdateStudent={handleUpdateStudent}
                     onDeleteStudent={handleDeleteStudent}
+                    onBatchUpdateStudents={(updatedList) => {
+                      const updateMap = new Map(updatedList.map((s) => [s.id, s]));
+                      setStudents((prev) => prev.map((s) => updateMap.get(s.id) || s));
+                    }}
                     onOpenImportExport={() => setShowImportExportModal(true)}
                   />
                 )}
@@ -2088,6 +2096,10 @@ export const App: React.FC = () => {
             setSelectedStudentForReport(stu);
           }}
           onToggleLineSync={handleToggleLineSync}
+          onUpdateStudent={(updated) => {
+            handleUpdateStudent(updated);
+            setSelectedStudentForProfile(updated);
+          }}
         />
       )}
 

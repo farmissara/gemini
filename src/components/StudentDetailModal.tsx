@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, Course, GradeRecord, AttendanceRecord } from '../types';
+import { Student, Course, GradeRecord, AttendanceRecord, StudentStatus } from '../types';
 import { 
   X, 
   Award, 
@@ -13,10 +13,14 @@ import {
   ShieldCheck,
   CheckCircle2,
   FileText,
-  Camera
+  Camera,
+  Edit3,
+  Check,
+  GraduationCap
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from './PagedList';
+import { STUDENT_STATUS_DETAILS, ALL_GRADE_LEVELS } from '../data/studentAcademicData';
 
 interface StudentDetailModalProps {
   student: Student;
@@ -41,8 +45,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [activeSection, setActiveSection] = useState<'overview' | 'grades'>('overview');
+  const [isEditingClass, setIsEditingClass] = useState(false);
+  const [editGradeLevel, setEditGradeLevel] = useState(student.gradeLevel);
+  const [editRoom, setEditRoom] = useState(student.room);
+  const [editStatus, setEditStatus] = useState<StudentStatus>(student.status || 'active');
+
   const studentGrades = grades.filter((g) => g.studentId === student.id);
   const studentAttendance = attendance.filter((a) => a.studentId === student.id);
+  const currentStatusConfig = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
 
   const handlePhotoUpdated = (newUrl: string) => {
     if (onUpdateStudent) {
@@ -51,6 +61,18 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         avatarUrl: newUrl,
       });
     }
+  };
+
+  const handleSaveClassEdit = () => {
+    if (onUpdateStudent) {
+      onUpdateStudent({
+        ...student,
+        gradeLevel: editGradeLevel.trim() || student.gradeLevel,
+        room: editRoom.trim() || student.room,
+        status: editStatus,
+      });
+    }
+    setIsEditingClass(false);
   };
 
   return (
@@ -81,12 +103,26 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900 text-indigo-100 border border-indigo-500/50 font-mono">
                   {student.studentIdNumber}
                 </span>
+                <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-bold ${currentStatusConfig.badgeClasses}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${currentStatusConfig.dotColor}`} />
+                  {currentStatusConfig.labelTh}
+                </span>
               </div>
               <p className="text-xs text-slate-200 font-thai">
                 {student.firstNameTh} {student.lastNameTh} • เลขประจำตัวประชาชน: {student.nationalId || 'N/A'}
               </p>
-              <p className="text-xs text-slate-200 mt-1">
-                {student.gradeLevel} • {student.room}
+              <p className="text-xs text-slate-200 mt-1 flex items-center gap-2">
+                <span>{student.gradeLevel} • {student.room}</span>
+                {onUpdateStudent && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingClass(!isEditingClass)}
+                    className="text-[11px] text-blue-300 hover:text-blue-100 underline flex items-center gap-0.5 cursor-pointer ml-1"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>แก้ไขชั้น/ห้อง/สถานะ</span>
+                  </button>
+                )}
               </p>
             </div>
           </div>
@@ -98,6 +134,85 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Inline Quick Editor for Grade Level, Room & Status */}
+        {isEditingClass && (
+          <div className="p-4 bg-indigo-50 dark:bg-indigo-950/70 border-b border-indigo-200 dark:border-indigo-800 shrink-0 space-y-2 text-xs">
+            <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+              <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              แก้ไขระดับชั้น ห้องเรียน และสถานะนักเรียน
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
+                  ระดับชั้น (Grade Level)
+                </label>
+                <input
+                  list="quick-grade-levels"
+                  value={editGradeLevel}
+                  onChange={(e) => setEditGradeLevel(e.target.value)}
+                  placeholder="พิมพ์หรือเลือกระดับชั้น"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
+                />
+                <datalist id="quick-grade-levels">
+                  {ALL_GRADE_LEVELS.map((g) => (
+                    <option key={g.value} value={g.value}>
+                      {g.labelTh}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
+                  ห้องเรียน (Room)
+                </label>
+                <input
+                  type="text"
+                  value={editRoom}
+                  onChange={(e) => setEditRoom(e.target.value)}
+                  placeholder="เช่น Room 401 หรือ ม.4/1"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
+                  สถานะนักเรียน (Status)
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as StudentStatus)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
+                >
+                  {Object.values(STUDENT_STATUS_DETAILS).map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.labelTh} ({s.labelEn})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsEditingClass(false)}
+                className="px-3 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-medium cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveClassEdit}
+                className="px-4 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>บันทึกการแก้ไข</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0 text-xs">

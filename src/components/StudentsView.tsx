@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Student } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Student, StudentStatus } from '../types';
 import { 
   Users, 
   Search, 
@@ -10,17 +10,25 @@ import {
   Phone, 
   Mail, 
   ExternalLink,
-  CheckCircle,
-  XCircle,
-  FileText,
-  UserCheck,
-  Edit3,
-  Trash2,
-  FileSpreadsheet,
-  Camera
+  CheckCircle, 
+  XCircle, 
+  FileText, 
+  UserCheck, 
+  Edit3, 
+  Trash2, 
+  FileSpreadsheet, 
+  Camera,
+  GraduationCap,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from './PagedList';
+import { 
+  ALL_GRADE_LEVELS, 
+  STUDENT_STATUS_DETAILS 
+} from '../data/studentAcademicData';
+import { StudentPromotionModal } from './StudentPromotionModal';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -43,9 +51,23 @@ const PaginatedTableRows = <T,>({
         <tr>
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
+              <button 
+                type="button" 
+                disabled={currentPage === 0} 
+                onClick={() => setPage(currentPage - 1)} 
+                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer"
+              >
+                ก่อนหน้า
+              </button>
               <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
+              <button 
+                type="button" 
+                disabled={currentPage === pageCount - 1} 
+                onClick={() => setPage(currentPage + 1)} 
+                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer"
+              >
+                ถัดไป
+              </button>
             </div>
           </td>
         </tr>
@@ -63,6 +85,7 @@ interface StudentsViewProps {
   onUpdateStudent?: (student: Student) => void;
   onDeleteStudent?: (studentId: string) => void;
   onOpenImportExport?: () => void;
+  onBatchUpdateStudents?: (updatedStudents: Student[]) => void;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -74,16 +97,28 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onUpdateStudent,
   onDeleteStudent,
   onOpenImportExport,
+  onBatchUpdateStudents,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState<'roster' | 'analytics'>('roster');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [studentFormStep, setStudentFormStep] = useState<1 | 2>(1);
 
-  // New student form state
+  // Distinct grade levels in active students for filter
+  const existingGradeLevels = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach((s) => {
+      if (s.gradeLevel) set.add(s.gradeLevel.trim());
+    });
+    return Array.from(set).sort();
+  }, [students]);
+
+  // Student form state
   const [formData, setFormData] = useState({
     firstNameEn: '',
     lastNameEn: '',
@@ -92,9 +127,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     studentIdNumber: `ED-${Math.floor(6900 + Math.random() * 90)}`,
     nationalId: '1-1002-00' + Math.floor(100 + Math.random() * 899) + '-44-1',
     gender: 'male' as 'male' | 'female' | 'other',
-    dateOfBirth: '2008-05-10',
-    gradeLevel: 'Grade 10 (M.4)',
-    room: 'Room 401 (Sci-Math)',
+    dateOfBirth: '2010-05-10',
+    gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
+    room: 'ม.4/1',
+    status: 'active' as StudentStatus,
     guardianName: '',
     guardianPhone: '081-',
     guardianEmail: '',
@@ -102,19 +138,93 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
   });
 
-  const filteredStudents = students.filter((s) => {
-    const matchesSearch =
-      s.firstNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.lastNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.firstNameTh.includes(searchTerm) ||
-      s.lastNameTh.includes(searchTerm) ||
-      s.studentIdNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.room.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      // 1. Search filter
+      const matchesSearch =
+        s.firstNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.lastNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.firstNameTh.includes(searchTerm) ||
+        s.lastNameTh.includes(searchTerm) ||
+        s.studentIdNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.room.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.nationalId && s.nationalId.includes(searchTerm));
 
-    const matchesGrade = gradeFilter === 'all' || s.gradeLevel.includes(gradeFilter);
+      // 2. Grade level filter
+      let matchesGrade = true;
+      if (gradeFilter !== 'all') {
+        const g = s.gradeLevel || '';
+        if (gradeFilter === 'cat_kindergarten') {
+          matchesGrade = g.includes('อนุบาล') || g.includes('K.') || g.includes('อ.');
+        } else if (gradeFilter === 'cat_primary') {
+          matchesGrade = g.includes('ประถมศึกษา') || g.includes('P.') || g.includes('ป.');
+        } else if (gradeFilter === 'cat_lower_sec') {
+          matchesGrade =
+            g.includes('มัธยมศึกษาปีที่ 1') ||
+            g.includes('มัธยมศึกษาปีที่ 2') ||
+            g.includes('มัธยมศึกษาปีที่ 3') ||
+            g.includes('M.1') ||
+            g.includes('M.2') ||
+            g.includes('M.3') ||
+            g.includes('ม.1') ||
+            g.includes('ม.2') ||
+            g.includes('ม.3');
+        } else if (gradeFilter === 'cat_upper_sec') {
+          matchesGrade =
+            g.includes('มัธยมศึกษาปีที่ 4') ||
+            g.includes('มัธยมศึกษาปีที่ 5') ||
+            g.includes('มัธยมศึกษาปีที่ 6') ||
+            g.includes('M.4') ||
+            g.includes('M.5') ||
+            g.includes('M.6') ||
+            g.includes('ม.4') ||
+            g.includes('ม.5') ||
+            g.includes('ม.6') ||
+            g.includes('Grade 10') ||
+            g.includes('Grade 11') ||
+            g.includes('Grade 12');
+        } else {
+          matchesGrade = g.includes(gradeFilter) || g === gradeFilter;
+        }
+      }
 
-    return matchesSearch && matchesGrade;
-  });
+      // 3. Status filter
+      let matchesStatus = true;
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'transferred') {
+          matchesStatus = s.status === 'transferred' || s.status === 'transferred_out';
+        } else {
+          matchesStatus = (s.status || 'active') === statusFilter;
+        }
+      }
+
+      return matchesSearch && matchesGrade && matchesStatus;
+    });
+  }, [students, searchTerm, gradeFilter, statusFilter]);
+
+  const handleOpenAdd = () => {
+    setStudentFormStep(1);
+    setEditingStudent(null);
+    setFormData({
+      firstNameEn: '',
+      lastNameEn: '',
+      firstNameTh: '',
+      lastNameTh: '',
+      studentIdNumber: `ED-${Math.floor(6900 + Math.random() * 90)}`,
+      nationalId: '1-1002-00' + Math.floor(100 + Math.random() * 899) + '-44-1',
+      gender: 'male',
+      dateOfBirth: '2010-05-10',
+      gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
+      room: 'ม.4/1',
+      status: 'active',
+      guardianName: '',
+      guardianPhone: '081-',
+      guardianEmail: '',
+      gpa: 3.50,
+      avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+    });
+    setShowAddModal(true);
+  };
 
   const handleOpenEdit = (student: Student) => {
     setStudentFormStep(1);
@@ -130,6 +240,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       dateOfBirth: student.dateOfBirth,
       gradeLevel: student.gradeLevel,
       room: student.room,
+      status: student.status || 'active',
       guardianName: student.guardianName,
       guardianPhone: student.guardianPhone,
       guardianEmail: student.guardianEmail,
@@ -139,26 +250,27 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     setShowAddModal(true);
   };
 
-  const handleCreateStudent = (e: React.FormEvent) => {
+  const handleSaveStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstNameEn || !formData.lastNameEn || !formData.firstNameTh) return;
+    if (!formData.firstNameTh.trim()) return;
 
     if (editingStudent) {
       const updated: Student = {
         ...editingStudent,
-        firstNameEn: formData.firstNameEn,
-        lastNameEn: formData.lastNameEn,
-        firstNameTh: formData.firstNameTh,
-        lastNameTh: formData.lastNameTh,
-        studentIdNumber: formData.studentIdNumber,
-        nationalId: formData.nationalId,
+        firstNameEn: formData.firstNameEn.trim() || formData.firstNameTh.trim(),
+        lastNameEn: formData.lastNameEn.trim() || formData.lastNameTh.trim(),
+        firstNameTh: formData.firstNameTh.trim(),
+        lastNameTh: formData.lastNameTh.trim(),
+        studentIdNumber: formData.studentIdNumber.trim(),
+        nationalId: formData.nationalId.trim() || undefined,
         gender: formData.gender,
         dateOfBirth: formData.dateOfBirth,
-        gradeLevel: formData.gradeLevel,
-        room: formData.room,
-        guardianName: formData.guardianName || 'Parent / Guardian',
-        guardianPhone: formData.guardianPhone || '081-000-0000',
-        guardianEmail: formData.guardianEmail || 'guardian@email.com',
+        gradeLevel: formData.gradeLevel.trim() || 'มัธยมศึกษาปีที่ 4 (M.4)',
+        room: formData.room.trim() || 'ม.4/1',
+        status: formData.status,
+        guardianName: formData.guardianName.trim() || 'Parent / Guardian',
+        guardianPhone: formData.guardianPhone.trim() || '081-000-0000',
+        guardianEmail: formData.guardianEmail.trim() || 'guardian@email.com',
         gpa: Number(formData.gpa),
         avatarUrl: formData.avatarUrl || editingStudent.avatarUrl,
       };
@@ -170,32 +282,40 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
     const newStudent: Student = {
       id: `stu-${Date.now()}`,
-      studentIdNumber: formData.studentIdNumber,
-      nationalId: formData.nationalId,
-      firstNameEn: formData.firstNameEn,
-      lastNameEn: formData.lastNameEn,
-      firstNameTh: formData.firstNameTh,
-      lastNameTh: formData.lastNameTh,
+      studentIdNumber: formData.studentIdNumber.trim(),
+      nationalId: formData.nationalId.trim() || undefined,
+      firstNameEn: formData.firstNameEn.trim() || formData.firstNameTh.trim(),
+      lastNameEn: formData.lastNameEn.trim() || formData.lastNameTh.trim(),
+      firstNameTh: formData.firstNameTh.trim(),
+      lastNameTh: formData.lastNameTh.trim(),
       gender: formData.gender,
       dateOfBirth: formData.dateOfBirth,
-      gradeLevel: formData.gradeLevel,
-      room: formData.room,
-      status: 'active',
-      avatarUrl: formData.gender === 'female' 
+      gradeLevel: formData.gradeLevel.trim() || 'มัธยมศึกษาปีที่ 4 (M.4)',
+      room: formData.room.trim() || 'ม.4/1',
+      status: formData.status || 'active',
+      avatarUrl: formData.avatarUrl || (formData.gender === 'female' 
         ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80',
+        : 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80'),
       gpa: Number(formData.gpa),
-      guardianName: formData.guardianName || 'Parent / Guardian',
+      guardianName: formData.guardianName.trim() || 'Parent / Guardian',
       guardianRelation: 'Guardian',
-      guardianPhone: formData.guardianPhone || '081-000-0000',
-      guardianEmail: formData.guardianEmail || 'guardian@email.com',
+      guardianPhone: formData.guardianPhone.trim() || '081-000-0000',
+      guardianEmail: formData.guardianEmail.trim() || 'guardian@email.com',
       lineLinked: false,
       lineNotifyEnabled: false,
-      enrolledDate: '2026-05-15',
+      enrolledDate: new Date().toISOString().split('T')[0],
     };
 
     onAddStudent(newStudent);
     setShowAddModal(false);
+  };
+
+  const handlePromoteBatch = (updatedStudents: Student[]) => {
+    if (onBatchUpdateStudents) {
+      onBatchUpdateStudents(updatedStudents);
+    } else if (onUpdateStudent) {
+      updatedStudents.forEach((s) => onUpdateStudent(s));
+    }
   };
 
   return (
@@ -203,19 +323,30 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* Header controls */}
       <div className="shrink-0 p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <Users className="w-5 h-5 text-[var(--color-primary-text)]" />
-            <span>ระบบทะเบียนนักเรียน (DMC / SIS)</span>
+            <span>ระบบทะเบียนนักเรียน &amp; เลื่อนชั้นเรียน (DMC / SIS)</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
-              DMC สพฐ.
+              อนุบาล – ม.6
             </span>
           </h1>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            จัดการข้อมูลทะเบียนนักเรียน เลขประจำตัวประชาชน 13 หลัก (DMC), สิทธิทุนยากจน (CCT), ผู้ปกครอง และสถานะแจ้งเตือน LINE OA
+            จัดการข้อมูลนักเรียนทุกระดับชั้น (อ.1 ถึง ม.6), เลื่อนชั้นเรียนข้ามปีการศึกษา, ติดตามสถานะย้ายเข้า/ย้ายออก/สำเร็จการศึกษา, และเชื่อมต่อ LINE OA
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap shrink-0">
+          {/* Academic Year Promotion Button */}
+          <button
+            type="button"
+            onClick={() => setShowPromotionModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+            title="ฟังก์ชันเลื่อนชั้นเรียนข้ามปีการศึกษา ส่งต่อนักเรียน หรือบันทึกสำเร็จการศึกษา"
+          >
+            <GraduationCap className="w-4 h-4 text-blue-200" />
+            <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
+          </button>
+
           {onOpenImportExport && (
             <button
               type="button"
@@ -223,37 +354,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-semibold shadow-2xs transition cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-              <span>นำเข้า/ส่งออก (Excel)</span>
+              <span>นำเข้า/ส่งออก Excel</span>
             </button>
           )}
 
           <button
-            onClick={() => {
-              setStudentFormStep(1);
-              setEditingStudent(null);
-              setFormData({
-                firstNameEn: '',
-                lastNameEn: '',
-                firstNameTh: '',
-                lastNameTh: '',
-                studentIdNumber: `ED-${Math.floor(6900 + Math.random() * 90)}`,
-                nationalId: '1-1002-00' + Math.floor(100 + Math.random() * 899) + '-44-1',
-                gender: 'male' as 'male' | 'female' | 'other',
-                dateOfBirth: '2008-05-10',
-                gradeLevel: 'Grade 10 (M.4)',
-                room: 'Room 401 (Sci-Math)',
-                guardianName: '',
-                guardianPhone: '081-',
-                guardianEmail: '',
-                gpa: 3.50,
-                avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
-              });
-              setShowAddModal(true);
-            }}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            type="button"
+            onClick={handleOpenAdd}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Student</span>
+            <span>เพิ่มนักเรียนใหม่</span>
           </button>
         </div>
       </div>
@@ -270,7 +381,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          <span>ทะเบียนรายชื่อ ({filteredStudents.length})</span>
+          <span>ทะเบียนรายชื่อ ({filteredStudents.length} คน)</span>
         </button>
         <button
           type="button"
@@ -282,7 +393,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           }`}
         >
           <Award className="w-3.5 h-3.5" />
-          <span>สรุปสถิติห้องเรียน & LINE OA</span>
+          <span>สถิติระดับชั้น &amp; สถานะนักเรียน</span>
         </button>
       </div>
 
@@ -290,35 +401,62 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         <>
           {/* Filter and Search Bar */}
           <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="relative w-full md:w-80">
+            <div className="relative w-full md:w-72">
               <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search by ID, English name, or ชื่อภาษาไทย..."
+                placeholder="ค้นหาชื่อ, รหัส, ปชช., หรือห้องเรียน..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-                <Filter className="w-3.5 h-3.5" />
-                <span>Grade Level:</span>
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+              {/* Grade Level Filter (อ.1 ถึง ม.6) */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-[var(--color-text-muted)] font-medium">ระดับชั้น:</span>
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value="all">ทุกระดับชั้น (All)</option>
+                  <optgroup label="หมวดการศึกษา">
+                    <option value="cat_kindergarten">ชั้นปฐมวัย (อนุบาล 1–3)</option>
+                    <option value="cat_primary">ชั้นประถมศึกษา (ป.1–ป.6)</option>
+                    <option value="cat_lower_sec">ชั้นมัธยมศึกษาตอนต้น (ม.1–ม.3)</option>
+                    <option value="cat_upper_sec">ชั้นมัธยมศึกษาตอนปลาย (ม.4–ม.6)</option>
+                  </optgroup>
+                  <optgroup label="ระดับชั้นที่พบในโรงเรียน">
+                    {existingGradeLevels.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
               </div>
-              <select
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-              >
-                <option value="all">All Grades</option>
-                <option value="10">Grade 10 (M.4)</option>
-                <option value="11">Grade 11 (M.5)</option>
-                <option value="12">Grade 12 (M.6)</option>
-              </select>
 
-              <span className="text-xs text-[var(--color-text-muted)] ml-auto">
-                Showing <strong className="text-[var(--color-text-title)]">{filteredStudents.length}</strong> students
+              {/* Status Filter (ย้ายเข้า, ย้ายออก, กำลังศึกษา ฯลฯ) */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-[var(--color-text-muted)] font-medium">สถานะ:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value="all">ทุกสถานะนักเรียน</option>
+                  {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
+                    <option key={st.value} value={st.value}>
+                      {st.labelTh} ({st.labelEn})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="text-xs text-[var(--color-text-muted)] ml-auto font-mono">
+                พบ <strong className="text-[var(--color-text-title)]">{filteredStudents.length}</strong> คน
               </span>
             </div>
           </div>
@@ -331,124 +469,141 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   <th className="py-3 px-4">Student</th>
                   <th className="py-3 px-4">Thai Name</th>
                   <th className="py-3 px-4">Class &amp; Room</th>
+                  <th className="py-3 px-4">สถานะ (Status)</th>
                   <th className="py-3 px-4">GPA</th>
                   <th className="py-3.5 px-4">Guardian / LINE OA</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                <PaginatedTableRows items={filteredStudents} colSpan={6} renderRow={(student) => (
-                  <tr key={student.id} className="hover:bg-[var(--color-card-subtle)] transition-colors group">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={student.avatarUrl}
-                          alt={student.firstNameEn}
-                          className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0"
-                        />
-                        <div>
-                          <div className="font-semibold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition-colors">
-                            {student.firstNameEn} {student.lastNameEn}
-                          </div>
-                          <div className="text-[11px] font-mono text-[var(--color-primary-text)]">
-                            {student.studentIdNumber}
+                <PaginatedTableRows items={filteredStudents} colSpan={7} renderRow={(student) => {
+                  const statusCfg = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
+                  return (
+                    <tr key={student.id} className="hover:bg-[var(--color-card-subtle)] transition-colors group">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={student.avatarUrl}
+                            alt={student.firstNameEn}
+                            className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                          />
+                          <div>
+                            <div className="font-semibold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition-colors">
+                              {student.firstNameEn} {student.lastNameEn}
+                            </div>
+                            <div className="text-[11px] font-mono text-[var(--color-primary-text)]">
+                              {student.studentIdNumber}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="text-[var(--color-text-title)] font-medium">
-                        {student.firstNameTh} {student.lastNameTh}
-                      </div>
-                      <div className="text-[10px] text-[var(--color-text-muted)]">
-                        ID: {student.nationalId || 'N/A'}
-                      </div>
-                    </td>
+                      <td className="py-3.5 px-4">
+                        <div className="text-[var(--color-text-title)] font-medium">
+                          {student.firstNameTh} {student.lastNameTh}
+                        </div>
+                        <div className="text-[10px] text-[var(--color-text-muted)]">
+                          ID: {student.nationalId || 'N/A'}
+                        </div>
+                      </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="text-[var(--color-text-title)] font-medium">{student.gradeLevel}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)]">{student.room}</div>
-                    </td>
+                      <td className="py-3.5 px-4">
+                        <div className="text-[var(--color-text-title)] font-semibold">{student.gradeLevel}</div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] font-medium">{student.room}</div>
+                      </td>
 
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border ${
-                        student.gpa >= 3.5 
-                          ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
-                          : student.gpa >= 3.0 
-                          ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
-                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                      }`}>
-                        {student.gpa.toFixed(2)}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="text-[var(--color-text-body)] font-medium">{student.guardianName} ({student.guardianRelation})</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <button
-                          onClick={() => onToggleLineSync(student.id)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors border cursor-pointer ${
-                            student.lineLinked
-                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                              : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
-                          }`}
-                          title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
+                      <td className="py-3.5 px-4">
+                        <span 
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusCfg.badgeClasses}`}
+                          title={statusCfg.descriptionTh}
                         >
-                          <MessageSquare className="w-2.5 h-2.5 fill-current" />
-                          {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
-                        </button>
-                        <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-0.5">
-                          <Phone className="w-2.5 h-2.5" /> {student.guardianPhone}
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
+                          {statusCfg.labelTh}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => onOpenReportCard(student)}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                          title="View Thai/English Transcript"
-                        >
-                          <Award className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Report Card</span>
-                        </button>
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border ${
+                          student.gpa >= 3.5 
+                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
+                            : student.gpa >= 3.0 
+                            ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                            : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                        }`}>
+                          {student.gpa.toFixed(2)}
+                        </span>
+                      </td>
 
-                        <button
-                          onClick={() => onSelectStudent(student)}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-medium transition-colors cursor-pointer"
-                        >
-                          Profile
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(student)}
-                          className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer"
-                          title="Edit Student"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {onDeleteStudent && (
+                      <td className="py-3.5 px-4">
+                        <div className="text-[var(--color-text-body)] font-medium">{student.guardianName} ({student.guardianRelation})</div>
+                        <div className="flex items-center gap-2 mt-1">
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`ต้องการลบข้อมูลนักเรียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) ออกจากระบบหรือไม่?`)) {
-                                onDeleteStudent(student.id);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 transition-colors cursor-pointer"
-                            title="Delete Student"
+                            onClick={() => onToggleLineSync(student.id)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors border cursor-pointer ${
+                              student.lineLinked
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
+                            }`}
+                            title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <MessageSquare className="w-2.5 h-2.5 fill-current" />
+                            {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )} />
+                          <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-0.5">
+                            <Phone className="w-2.5 h-2.5" /> {student.guardianPhone}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onOpenReportCard(student)}
+                            className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="View Thai/English Transcript"
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Report Card</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onSelectStudent(student)}
+                            className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-medium transition-colors cursor-pointer"
+                          >
+                            Profile
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(student)}
+                            className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer"
+                            title="แก้ไขข้อมูลนักเรียน ระดับชั้น หรือสถานะ"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {onDeleteStudent && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`ต้องการลบข้อมูลนักเรียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) ออกจากระบบหรือไม่?`)) {
+                                  onDeleteStudent(student.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 transition-colors cursor-pointer"
+                              title="Delete Student"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }} />
               </tbody>
             </table>
           </div>
@@ -457,36 +612,61 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {activeTab === 'analytics' && (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
               <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">นักเรียนทั้งหมด</span>
               <div className="text-2xl font-black text-[var(--color-text-title)] mt-1">{students.length} คน</div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ในโรงเรียนปัจจุบัน</p>
             </div>
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">เชื่อมต่อ LINE OA แล้ว</span>
+              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">กำลังศึกษา (Active)</span>
               <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-1">
-                {students.filter(s => s.lineLinked).length} คน
+                {students.filter(s => (s.status || 'active') === 'active').length} คน
               </div>
               <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                ย้ายเข้า: {students.filter(s => s.status === 'transferred_in').length} • ย้ายออก: {students.filter(s => s.status === 'transferred_out' || s.status === 'transferred').length}
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
+              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">เชื่อมต่อ LINE OA</span>
+              <div className="text-2xl font-black text-[var(--color-primary-text)] mt-1">
+                {students.filter(s => s.lineLinked).length} คน
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                 {students.length > 0 ? Math.round((students.filter(s => s.lineLinked).length / students.length) * 100) : 0}% อัตราเชื่อมต่อ
               </p>
             </div>
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">เปิดรับแจ้งเตือนอัตโนมัติ</span>
-              <div className="text-2xl font-black text-[var(--color-primary-text)] mt-1">
-                {students.filter(s => s.lineNotifyEnabled).length} คน
+              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">สำเร็จการศึกษาแล้ว</span>
+              <div className="text-2xl font-black text-purple-700 dark:text-purple-300 mt-1">
+                {students.filter(s => s.status === 'graduated').length} คน
               </div>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">รับข้อความเช็กชื่อ & ผลการเรียน</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">บันทึกจบการศึกษา</p>
             </div>
-            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">เกรดเฉลี่ยรวม (GPAX)</span>
-              <div className="text-2xl font-black text-amber-800 dark:text-amber-300 mt-1">
-                {students.length > 0 
-                  ? (students.reduce((acc, s) => acc + (s.gpa || 0), 0) / students.length).toFixed(2)
-                  : '0.00'}
-              </div>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ระดับผลการเรียนเฉลี่ย</p>
+          </div>
+
+          {/* Breakdown by Student Status */}
+          <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
+            <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>สรุปภาพรวมตามสถานะนักเรียน (Student Status Distribution)</span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              {Object.values(STUDENT_STATUS_DETAILS).map((st) => {
+                const count = students.filter(s => (s.status || 'active') === st.value).length;
+                return (
+                  <div key={st.value} className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-[var(--color-text-title)]">
+                      <span className={`w-2 h-2 rounded-full ${st.dotColor}`} />
+                      <span>{st.labelTh}</span>
+                    </div>
+                    <div className="text-lg font-mono font-black text-[var(--color-text-title)]">
+                      {count} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--color-text-muted)] truncate">{st.descriptionTh}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -494,17 +674,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
             <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
               <Users className="w-4 h-4 text-[var(--color-primary-text)]" />
-              <span>การกระจายตัวของนักเรียนตามระดับชั้นและห้องเรียน</span>
+              <span>การกระจายตัวของนักเรียนตามระดับชั้น (อนุบาล ถึง ม.6)</span>
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              {['Grade 10 (M.4)', 'Grade 11 (M.5)', 'Grade 12 (M.6)'].map((grade) => {
-                const count = students.filter(s => s.gradeLevel.includes(grade) || s.gradeLevel.includes(grade.split(' ')[1])).length;
-                const lineCount = students.filter(s => (s.gradeLevel.includes(grade) || s.gradeLevel.includes(grade.split(' ')[1])) && s.lineLinked).length;
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+              {existingGradeLevels.map((grade) => {
+                const count = students.filter(s => s.gradeLevel === grade).length;
+                const activeCount = students.filter(s => s.gradeLevel === grade && (s.status === 'active' || !s.status)).length;
                 return (
                   <div key={grade} className="p-3.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
                     <div className="flex items-center justify-between font-bold text-[var(--color-text-title)]">
-                      <span>{grade}</span>
-                      <span className="text-[var(--color-primary-text)]">{count} คน</span>
+                      <span className="truncate max-w-[180px]">{grade}</span>
+                      <span className="text-[var(--color-primary-text)] font-mono">{count} คน</span>
                     </div>
                     <div className="w-full bg-[var(--color-border)] h-2 rounded-full overflow-hidden">
                       <div 
@@ -513,8 +693,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       />
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
-                      <span>LINE เชื่อมต่อ:</span>
-                      <span className="text-emerald-700 dark:text-emerald-300 font-semibold">{lineCount} คน</span>
+                      <span>กำลังศึกษา: {activeCount} คน</span>
+                      <span>LINE: {students.filter(s => s.gradeLevel === grade && s.lineLinked).length} คน</span>
                     </div>
                   </div>
                 );
@@ -523,203 +703,324 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Add / Edit Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
               <div>
-                <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  {editingStudent ? 'Edit Student Profile (แก้ไขข้อมูลนักเรียน)' : 'Enroll New Student (เพิ่มนักเรียนใหม่)'}
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-blue-300" />
+                  {editingStudent ? 'แก้ไขข้อมูลนักเรียน (Edit Student Profile)' : 'เพิ่มนักเรียนใหม่ (Enroll New Student)'}
                 </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {editingStudent ? 'Update student records and guardian information.' : 'Register student with bilingual Thai and English credentials.'}
+                <p className="text-xs text-blue-100/90 mt-0.5">
+                  ระบุข้อมูลนักเรียน ระดับชั้น (อนุบาล–ม.6) สถานะนักเรียน และข้อมูลผู้ปกครอง
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-lg font-bold cursor-pointer px-2 py-0.5 rounded-lg hover:bg-[var(--color-card-subtle)]"
+                className="p-1.5 rounded-xl hover:bg-white/20 text-white transition cursor-pointer"
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
-              <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
-                <span className={studentFormStep === 1 ? 'font-bold text-[var(--color-primary-text)]' : ''}>1. Student profile</span>
-                <span>→</span>
-                <span className={studentFormStep === 2 ? 'font-bold text-[var(--color-primary-text)]' : ''}>2. Guardian</span>
+            <form onSubmit={handleSaveStudent} className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto text-xs">
+              {/* Interactive Tabs */}
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
+                <button
+                  type="button"
+                  onClick={() => setStudentFormStep(1)}
+                  className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                    studentFormStep === 1
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>1. ข้อมูลนักเรียน &amp; ระดับชั้น</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStudentFormStep(2)}
+                  className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                    studentFormStep === 2
+                      ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
+                  }`}
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>2. ผู้ปกครอง &amp; ผลการเรียน</span>
+                </button>
               </div>
+
               {studentFormStep === 1 && (
                 <div className="space-y-4">
-              {/* Photo Preview & Capture */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                <img
-                  src={formData.avatarUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200'}
-                  alt="Student Avatar"
-                  className="w-12 h-12 rounded-xl object-cover border-2 border-[var(--color-primary)] shadow-sm"
-                />
-                <div className="flex-1 space-y-1">
-                  <span className="font-semibold text-[var(--color-text-title)] block">รูปถ่ายประจำตัวนักเรียน</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPhotoModal(true)}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-sm text-xs"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>ถ่ายรูปจากกล้อง / เลือกรูปภาพ</span>
-                  </button>
-                </div>
-              </div>
+                  {/* Photo Preview & Capture */}
+                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                    <img
+                      src={formData.avatarUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200'}
+                      alt="Student Avatar"
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-[var(--color-primary)] shadow-sm"
+                    />
+                    <div className="flex-1 space-y-1">
+                      <span className="font-bold text-[var(--color-text-title)] block">รูปถ่ายประจำตัวนักเรียน</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPhotoModal(true)}
+                        className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-sm text-xs"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>ถ่ายรูปจากกล้อง / อัปโหลดไฟล์</span>
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">First Name (English)</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.firstNameEn}
-                    onChange={(e) => setFormData({ ...formData, firstNameEn: e.target.value })}
-                    placeholder="e.g. Chatri"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">Last Name (English)</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.lastNameEn}
-                    onChange={(e) => setFormData({ ...formData, lastNameEn: e.target.value })}
-                    placeholder="e.g. Suksom"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-              </div>
+                  {/* Thai Name Fields */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[var(--color-text-title)] font-bold">ชื่อจริง (ภาษาไทย) *</label>
+                        <span className="text-[10px] text-rose-600 font-semibold">จำเป็น</span>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={formData.firstNameTh}
+                        onChange={(e) => setFormData({ ...formData, firstNameTh: e.target.value })}
+                        placeholder="เช่น ด.ช.ชาตรี หรือ สมชาย"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[var(--color-text-title)] font-bold">นามสกุล (ภาษาไทย) *</label>
+                        <span className="text-[10px] text-rose-600 font-semibold">จำเป็น</span>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={formData.lastNameTh}
+                        onChange={(e) => setFormData({ ...formData, lastNameTh: e.target.value })}
+                        placeholder="เช่น สุขสมบูรณ์"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">ชื่อจริง (ภาษาไทย)</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.firstNameTh}
-                    onChange={(e) => setFormData({ ...formData, firstNameTh: e.target.value })}
-                    placeholder="เช่น ชาตรี"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">นามสกุล (ภาษาไทย)</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.lastNameTh}
-                    onChange={(e) => setFormData({ ...formData, lastNameTh: e.target.value })}
-                    placeholder="เช่น สุขสม"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-              </div>
+                  {/* English Name Fields */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">First Name (English)</label>
+                      <input
+                        type="text"
+                        value={formData.firstNameEn}
+                        onChange={(e) => setFormData({ ...formData, firstNameEn: e.target.value })}
+                        placeholder="e.g. Chatri"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">Last Name (English)</label>
+                      <input
+                        type="text"
+                        value={formData.lastNameEn}
+                        onChange={(e) => setFormData({ ...formData, lastNameEn: e.target.value })}
+                        placeholder="e.g. Suksomboon"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">Student ID</label>
-                  <input
-                    type="text"
-                    value={formData.studentIdNumber}
-                    onChange={(e) => setFormData({ ...formData, studentIdNumber: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-primary-text)] font-mono font-bold focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">Grade Level</label>
-                  <select
-                    value={formData.gradeLevel}
-                    onChange={(e) => setFormData({ ...formData, gradeLevel: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  >
-                    <option value="Grade 10 (M.4)">Grade 10 (M.4)</option>
-                    <option value="Grade 11 (M.5)">Grade 11 (M.5)</option>
-                    <option value="Grade 12 (M.6)">Grade 12 (M.6)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">Room / Program</label>
-                  <input
-                    type="text"
-                    value={formData.room}
-                    onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-              </div>
+                  {/* ID and National ID */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">รหัสนักเรียน (ID) *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.studentIdNumber}
+                        onChange={(e) => setFormData({ ...formData, studentIdNumber: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-primary-text)] font-mono font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">เลขประจำตัวประชาชน 13 หลัก</label>
+                      <input
+                        type="text"
+                        value={formData.nationalId}
+                        onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
+                        placeholder="1-XXXX-XXXXX-XX-X"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">เพศ</label>
+                      <select
+                        value={formData.gender}
+                        onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'male' | 'female' | 'other' })}
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                      >
+                        <option value="male">ชาย</option>
+                        <option value="female">หญิง</option>
+                        <option value="other">ไม่ระบุ/อื่นๆ</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Grade Level, Room & Status (Requirement 1 & 3: Editable Kindergarten to M.6 and Status) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-blue-50/60 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[var(--color-text-title)] font-bold">
+                          ระดับชั้น (Grade) *
+                        </label>
+                        <span className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold">แก้ไขได้อิสระ</span>
+                      </div>
+                      <input
+                        list="modal-all-grade-levels"
+                        required
+                        value={formData.gradeLevel}
+                        onChange={(e) => setFormData({ ...formData, gradeLevel: e.target.value })}
+                        placeholder="พิมพ์หรือเลือกระดับชั้น (อ.1 ถึง ม.6)"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-bold text-[var(--color-primary-text)]"
+                      />
+                      <datalist id="modal-all-grade-levels">
+                        {ALL_GRADE_LEVELS.map((g) => (
+                          <option key={g.value} value={g.value}>
+                            {g.labelTh} ({g.labelEn})
+                          </option>
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">
+                        ห้องเรียน (Room) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.room}
+                        onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                        placeholder="เช่น ม.4/1 หรือ Room 401"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">
+                        สถานะนักเรียน (Status) *
+                      </label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as StudentStatus })}
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-bold cursor-pointer"
+                      >
+                        {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
+                          <option key={st.value} value={st.value}>
+                            {st.labelTh} ({st.labelEn})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {studentFormStep === 2 && (
                 <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">Guardian Name</label>
-                  <input
-                    type="text"
-                    value={formData.guardianName}
-                    onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
-                    placeholder="e.g. Somsak Suksom"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">Guardian Phone</label>
-                  <input
-                    type="text"
-                    value={formData.guardianPhone}
-                    onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
-                    placeholder="08X-XXX-XXXX"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                  />
-                </div>
-              </div>
+                  {/* Guardian Information */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">ชื่อ-สกุล ผู้ปกครอง</label>
+                      <input
+                        type="text"
+                        value={formData.guardianName}
+                        onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
+                        placeholder="เช่น นายประภาส สุขสมบูรณ์"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">เบอร์โทรศัพท์ผู้ปกครอง</label>
+                      <input
+                        type="text"
+                        value={formData.guardianPhone}
+                        onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
+                        placeholder="08X-XXX-XXXX"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
+                      />
+                    </div>
+                  </div>
 
-              <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStudentFormStep(1)}
-                  className="px-4 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] font-medium cursor-pointer"
-                >
-                  Back
-                </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">อีเมลผู้ปกครอง</label>
+                      <input
+                        type="email"
+                        value={formData.guardianEmail}
+                        onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
+                        placeholder="parent@email.com"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[var(--color-text-title)] font-bold mb-1">เกรดเฉลี่ยสะสม (GPA)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="4"
+                        step="0.01"
+                        value={formData.gpa}
+                        onChange={(e) => setFormData({ ...formData, gpa: Number(e.target.value) })}
+                        placeholder="เช่น 3.50"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Actions for both steps */}
+              <div className="pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] font-medium cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
                 >
-                  Cancel
+                  ยกเลิก
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold shadow-sm cursor-pointer"
-                >
-                  {editingStudent ? 'บันทึกการแก้ไข (Save Changes)' : 'Save & Enroll'}
-                </button>
-              </div>
-                </div>
-              )}
-              {studentFormStep === 1 && (
-                <div className="flex justify-between gap-2">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] cursor-pointer">Cancel</button>
+
+                <div className="flex items-center gap-2">
+                  {studentFormStep === 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setStudentFormStep(2)}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold cursor-pointer transition"
+                    >
+                      ถัดไป: ผู้ปกครอง &amp; ผลการเรียน →
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setStudentFormStep(1)}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] border border-[var(--color-border)] font-semibold cursor-pointer transition"
+                    >
+                      ← ย้อนกลับ
+                    </button>
+                  )}
+
                   <button
-                    type="button"
-                    onClick={() => {
-                      if (formData.firstNameEn && formData.lastNameEn && formData.firstNameTh && formData.lastNameTh) setStudentFormStep(2);
-                    }}
-                    className="px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold cursor-pointer"
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer transition"
                   >
-                    Continue
+                    {editingStudent ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลนักเรียน'}
                   </button>
                 </div>
-              )}
+              </div>
             </form>
           </div>
         </div>
@@ -732,6 +1033,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         title="ถ่ายรูปสดหรือเลือกรูปถ่ายนักเรียน"
         onSelectImage={(newUrl) => setFormData((prev) => ({ ...prev, avatarUrl: newUrl }))}
         onClose={() => setShowPhotoModal(false)}
+      />
+
+      {/* Grade Promotion Modal */}
+      <StudentPromotionModal
+        isOpen={showPromotionModal}
+        onClose={() => setShowPromotionModal(false)}
+        students={students}
+        onPromoteStudents={handlePromoteBatch}
       />
     </div>
   );
