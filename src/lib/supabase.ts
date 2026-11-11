@@ -13,6 +13,7 @@ import {
   UserRole,
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
+import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
@@ -87,6 +88,7 @@ export function clearCustomSupabaseCredentials() {
 }
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
+export const SUPABASE_PATCH_MIGRATION_SQL = patchMigrationSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {
   return error.code === 'PGRST205' || error.code === '42P01' || /schema cache|could not find the table/i.test(error.message);
@@ -519,13 +521,14 @@ export async function syncDataToSupabase(payload: {
   attendance: AttendanceRecord[];
   invoices: TuitionInvoice[];
   announcements: Announcement[];
-}): Promise<{ success: boolean; message: string }> {
+}): Promise<{ success: boolean; message: string; warnings?: string[] }> {
   const client = getSupabaseClient();
   if (!client) {
     return { success: false, message: 'Supabase client is not connected' };
   }
 
   const warnings: string[] = [];
+  let syncedTeachersCount = 0;
   try {
     // School identity is provisioned by an administrator and is never upserted by the client.
     if (['super_admin', 'admin'].includes(payload.role) && payload.students.length > 0) {
@@ -592,10 +595,12 @@ export async function syncDataToSupabase(payload: {
       const { error: tErr } = await client.from('teachers').upsert(teacherRows);
       if (tErr) {
         if (isMissingTableError(tErr)) {
-          warnings.push('ตาราง teachers ยังไม่มีใน Supabase จึงยังไม่ได้บันทึกข้อมูลครู กรุณารัน migration สำหรับตาราง teachers');
+          warnings.push('ตาราง teachers ยังไม่มีใน Supabase จึงยังไม่ได้บันทึกข้อมูลครู กรุณารัน SQL Migration เพิ่มตาราง teachers');
         } else {
           throw new Error(`Teachers sync error: ${tErr.message}`);
         }
+      } else {
+        syncedTeachersCount = payload.teachers.length;
       }
     }
 
@@ -662,7 +667,12 @@ export async function syncDataToSupabase(payload: {
         photo_url: a.photoStoragePath || null,
       }));
       let { error: attErr } = await client.from('attendance').upsert(attRows);
-      if (attErr && (/photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(attErr.message))) {
+      if (
+        attErr &&
+        (attErr.code === 'PGRST204' ||
+          attErr.code === '42703' ||
+          /photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(attErr.message))
+      ) {
         console.warn('[Attendance] Retrying attendance upsert with base columns:', attErr.message);
         const baseRows = payload.attendance.map((a) => ({
           id: a.id,
@@ -739,10 +749,11 @@ export async function syncDataToSupabase(payload: {
       // Non-fatal if schema differs
     }
 
-    const syncedMessage = `Successfully synchronized ${payload.students.length} students, ${payload.teachers?.length || 0} teachers, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`;
+    const syncedMessage = `Successfully synchronized ${payload.students.length} students, ${syncedTeachersCount} teachers, ${payload.courses.length} courses, ${payload.grades.length} grades, ${payload.attendance.length} attendance records to Supabase!`;
     return {
-      success: warnings.length === 0,
-      message: warnings.length > 0 ? `${syncedMessage} ${warnings.join(' ')}` : syncedMessage,
+      success: true,
+      message: syncedMessage,
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -1,50 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppLanguage, School, ThemePalette, UserRole } from '../types';
 import {
+  AlertCircle,
   ArrowRight,
   BookOpen,
   Building2,
   Calendar,
+  Check,
   CheckCircle2,
-  ChevronRight,
+  Copy,
   CreditCard,
+  ExternalLink,
+  FileText,
   Gamepad2,
   Globe,
   GraduationCap,
   HeartPulse,
+  HelpCircle,
+  KeyRound,
   Lock,
   Mail,
   Moon,
+  PlayCircle,
   School as SchoolIcon,
+  Send,
   ShieldCheck,
-  Smartphone,
-  Sparkles,
   Sun,
   UserCheck,
   Users,
-  Award,
-  Flame,
-  LayoutGrid,
-  FileText,
   X,
-  KeyRound,
-  AlertCircle,
-  Send,
-  HelpCircle,
-  Copy,
-  Check,
-  ExternalLink
 } from 'lucide-react';
 import {
   authenticateImportedLocalUser,
   authenticateWithSupabase,
   getDemoStudentAccounts,
   listActiveSchools,
-  resendSignupConfirmation,
-  requestPasswordReset,
   MASTER_SYSTEM_EMAIL,
   registerSchoolWithSupabase,
   registerStudentWithSupabase,
+  requestPasswordReset,
+  resendSignupConfirmation,
   saveAllDemoStudentAccounts,
   type AuthContext,
   type StoredImportedCredential,
@@ -86,14 +81,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   themePalette = 'light_warm',
   setThemePalette,
 }) => {
-  // Main Portal View: 'showcase' (Demo & Capability Showcase) vs 'live_login' (Production School Portal)
-  const [activePortalTab, setActivePortalTab] = useState<'showcase' | 'live_login'>('showcase');
-  const [showcasePage, setShowcasePage] = useState(0);
-  const [personaPage, setPersonaPage] = useState(0);
-  const [featurePage, setFeaturePage] = useState(0);
-  const [loginMobilePage, setLoginMobilePage] = useState<'form' | 'information'>('form');
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
-  // Production Auth Form State
+  // Production Auth Form State (Primary Landing Experience)
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [registrationType, setRegistrationType] = useState<'student' | 'school'>('student');
   const [schools, setSchools] = useState<School[]>([]);
@@ -111,6 +101,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Secondary Modals: Demo Launcher, Forgot Password, SMTP Setup
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
@@ -140,6 +133,15 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       active = false;
     };
   }, []);
+
+  const focusLoginForm = (targetMode: 'login' | 'register' = 'login', targetRegType?: 'student' | 'school') => {
+    setMode(targetMode);
+    if (targetRegType) setRegistrationType(targetRegType);
+    setError(null);
+    const portalEl = document.getElementById('portal-auth');
+    portalEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => emailInputRef.current?.focus(), 200);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -178,11 +180,15 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           schoolType,
           province,
         });
-        setNotice(lang === 'th'
-          ? 'ลงทะเบียนโรงเรียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
-          : 'School registered successfully! Awaiting direct system approval from Super Admin.');
+        setNotice(
+          lang === 'th'
+            ? 'ลงทะเบียนโรงเรียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
+            : 'School registered successfully! Awaiting direct system approval from Super Admin.'
+        );
       } else {
-        if (!schoolId) throw new Error(lang === 'th' ? 'ไม่มีโรงเรียนที่เปิดรับสมัคร กรุณาติดต่อผู้ดูแลระบบ' : 'No active school available.');
+        if (!schoolId) {
+          throw new Error(lang === 'th' ? 'ไม่มีโรงเรียนที่เปิดรับสมัคร กรุณาติดต่อผู้ดูแลระบบ' : 'No active school available.');
+        }
         if (!getSupabaseClient()) {
           const existingAll = getDemoStudentAccounts(schoolId);
           saveAllDemoStudentAccounts([
@@ -209,26 +215,32 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             phone,
           });
         }
-        setNotice(lang === 'th'
-          ? 'ลงทะเบียนนักเรียนสำเร็จ! บัญชีของคุณถูกส่งเข้าสู่ระบบแล้ว และรอการอนุมัติเปิดใช้งานจากผู้ดูแลโรงเรียน (เมนู ทะเบียนนักเรียน DMC → คำขอสมัครเข้าโรงเรียน)'
-          : 'Student registered successfully! Awaiting school administrator approval.');
+        setNotice(
+          lang === 'th'
+            ? 'ลงทะเบียนนักเรียนสำเร็จ! บัญชีของคุณถูกส่งเข้าสู่ระบบแล้ว และรอการอนุมัติเปิดใช้งานจากผู้ดูแลโรงเรียน (เมนู ทะเบียนนักเรียน DMC → คำขอสมัครเข้าโรงเรียน)'
+            : 'Student registered successfully! Awaiting school administrator approval.'
+        );
       }
       setMode('login');
     } catch (submitError: unknown) {
       const message = submitError instanceof Error ? submitError.message : String(submitError);
       if (/confirmation email|rate limit/i.test(message)) {
-        setNotice(lang === 'th'
-          ? 'ลงทะเบียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
-          : 'Registration received! Super Admin will approve and activate your account directly from the system.');
+        setNotice(
+          lang === 'th'
+            ? 'ลงทะเบียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
+            : 'Registration received! Super Admin will approve and activate your account directly from the system.'
+        );
         setError(null);
         setMode('login');
         return;
       }
-      setError(mode === 'login' && message.toLowerCase().includes('invalid login credentials')
-        ? (lang === 'th'
-          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีอยู่ระหว่างรอ Super Admin / ผู้ดูแลโรงเรียนอนุมัติเปิดใช้งาน'
-          : 'Invalid email or password, or account is awaiting administrator approval.')
-        : getAuthErrorMessage(message, lang));
+      setError(
+        mode === 'login' && message.toLowerCase().includes('invalid login credentials')
+          ? lang === 'th'
+            ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีอยู่ระหว่างรอ Super Admin / ผู้ดูแลโรงเรียนอนุมัติเปิดใช้งาน'
+            : 'Invalid email or password, or account is awaiting administrator approval.'
+          : getAuthErrorMessage(message, lang)
+      );
     } finally {
       setIsLoading(false);
     }
@@ -243,13 +255,17 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     setIsLoading(true);
     try {
       await resendSignupConfirmation(email);
-      setNotice(lang === 'th'
-        ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
-        : 'Activation request submitted to Super Admin for system approval.');
+      setNotice(
+        lang === 'th'
+          ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
+          : 'Activation request submitted to Super Admin for system approval.'
+      );
     } catch {
-      setNotice(lang === 'th'
-        ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
-        : 'Activation request submitted to Super Admin for system approval.');
+      setNotice(
+        lang === 'th'
+          ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
+          : 'Activation request submitted to Super Admin for system approval.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -266,9 +282,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     setIsResetting(true);
     try {
       await requestPasswordReset(target);
-      setResetStatus(lang === 'th'
-        ? `ระบบได้ส่งคำขอเปลี่ยนรหัสผ่านสำหรับ ${target} แล้ว โดยมี Master System Email: ${MASTER_SYSTEM_EMAIL} เป็นผู้ดูแลยืนยันและตอบกลับ`
-        : `Password reset request submitted for ${target}. Master confirmation and replies are handled by ${MASTER_SYSTEM_EMAIL}.`);
+      setResetStatus(
+        lang === 'th'
+          ? `ระบบได้ส่งคำขอเปลี่ยนรหัสผ่านสำหรับ ${target} แล้ว โดยมี Master System Email: ${MASTER_SYSTEM_EMAIL} เป็นผู้ดูแลยืนยันและตอบกลับ`
+          : `Password reset request submitted for ${target}. Master confirmation and replies are handled by ${MASTER_SYSTEM_EMAIL}.`
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -285,70 +303,126 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
 
+  const demoPersonas: Array<{
+    role: UserRole;
+    title: string;
+    roleLabel: string;
+    desc: string;
+    icon: React.ComponentType<{ className?: string }>;
+    accentClass: string;
+  }> = [
+    {
+      role: 'admin',
+      title: lang === 'th' ? 'ผู้อำนวยการ / ผู้ดูแลระบบ' : 'Principal / School Admin',
+      roleLabel: 'Admin',
+      desc:
+        lang === 'th'
+          ? 'ดูภาพรวม KPI โรงเรียน, อนุมัติบัญชีนักเรียน, นำเข้าข้อมูล และตั้งค่าระบบ'
+          : 'School KPIs, student approval, data import, and school settings',
+      icon: Building2,
+      accentClass: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    },
+    {
+      role: 'teacher',
+      title: lang === 'th' ? 'คุณครูประจำชั้นและผู้สอน' : 'Teacher & Educator',
+      roleLabel: 'Teacher',
+      desc:
+        lang === 'th'
+          ? 'เช็กชื่อรายคาบ GPS, บันทึกคะแนนและเกรด, คัดกรอง SDQ และสั่งการบ้าน'
+          : 'GPS period attendance, gradebook scoring, SDQ screening, and homework',
+      icon: BookOpen,
+      accentClass: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    },
+    {
+      role: 'student',
+      title: lang === 'th' ? 'นักเรียน' : 'Student',
+      roleLabel: 'Student',
+      desc:
+        lang === 'th'
+          ? 'ตารางเรียน, บัตรนักเรียนดิจิทัล, เช็กชื่อเข้า-ออก, ส่งการบ้าน และเกม 3D EduArena'
+          : 'Timetable, digital student ID, attendance check-in, homework, and 3D EduArena',
+      icon: GraduationCap,
+      accentClass: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    },
+    {
+      role: 'parent',
+      title: lang === 'th' ? 'ผู้ปกครอง' : 'Parent / Guardian',
+      roleLabel: 'Parent',
+      desc:
+        lang === 'th'
+          ? 'ติดตามเวลาเข้า-ออกโรงเรียน, แจ้งใบลาออนไลน์, ชำระค่าเทอม และดูผลการเรียน'
+          : 'Attendance alerts, leave requests, tuition billing, and grade reports',
+      icon: Users,
+      accentClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    },
+  ];
+
   return (
-    <main className="relative h-screen overflow-hidden flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
-      {/* Subtle Prestige Ambient Glow Background */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className={`absolute -left-32 -top-32 h-[32rem] w-[32rem] rounded-full blur-3xl ${isLight ? 'bg-blue-200/35' : 'bg-blue-900/15'}`} />
-        <div className={`absolute -bottom-48 -right-32 h-[38rem] w-[38rem] rounded-full blur-3xl ${isLight ? 'bg-indigo-200/35' : 'bg-indigo-900/15'}`} />
-        <div className={`absolute inset-0 opacity-[0.2] ${isLight ? 'bg-[radial-gradient(#94a3b8_0.8px,transparent_0.8px)]' : 'bg-[radial-gradient(#475569_0.8px,transparent_0.8px)]'} [background-size:24px_24px]`} />
-      </div>
+    <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
+      {/* Top Bar: Clean 3-Zone Contract */}
+      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
+          {/* Zone 1: Brand Wordmark */}
+          <a href="#portal-auth" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-white shrink-0">
+              <GraduationCap className="h-4.5 w-4.5" />
+            </span>
+            <span>EduVerse</span>
+          </a>
 
-      {/* Top Header Navigation */}
-      <header className="relative z-20 shrink-0 border-b border-[var(--color-border)] bg-[var(--color-card)]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          
-          {/* Brand Lockup */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-sm shrink-0">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div>
-              <span className="block text-base sm:text-lg font-black tracking-tight text-[var(--color-text-title)] leading-none">
-                EduVerse
-              </span>
-              <span className="block text-[10px] font-semibold text-[var(--color-primary-text)] tracking-wider mt-0.5">
-                {lang === 'th' ? 'ระบบบริหารสถานศึกษาและนวัตกรรมการเรียนรู้' : 'Next-Gen School Operating System'}
-              </span>
-            </div>
-          </div>
-
-          {/* Center Mode Switcher for Desktop */}
-          <div className="hidden md:flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+          {/* Zone 2: Concise Navigation Links */}
+          <nav aria-label="Primary" className="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--color-text-muted)]">
+            <a
+              href="#portal-auth"
+              onClick={(e) => {
+                e.preventDefault();
+                focusLoginForm('login');
+              }}
+              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
+            >
+              {lang === 'th' ? 'เข้าสู่ระบบ' : 'Sign In'}
+            </a>
+            <a
+              href="#portal-auth"
+              onClick={(e) => {
+                e.preventDefault();
+                focusLoginForm('register', 'school');
+              }}
+              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
+            >
+              {lang === 'th' ? 'ลงทะเบียนโรงเรียน' : 'Register School'}
+            </a>
+            <a
+              href="#platform-overview"
+              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
+            >
+              {lang === 'th' ? 'ความสามารถระบบ' : 'Capabilities'}
+            </a>
             <button
               type="button"
-              onClick={() => setActivePortalTab('showcase')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                activePortalTab === 'showcase'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              onClick={() => setShowDemoModal(true)}
+              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'จัดแสดงความสามารถ & Demo' : 'Capabilities & Demo'}</span>
+              {lang === 'th' ? 'ทดลองใช้งาน (Demo)' : 'Try Demo'}
             </button>
+          </nav>
+
+          {/* Zone 3: Single Primary/Utility Action Area */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setActivePortalTab('live_login')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                activePortalTab === 'live_login'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              onClick={() => setShowDemoModal(true)}
+              className="md:hidden px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Lock className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เข้าสู่ระบบใช้งานจริง' : 'Official Portal Login'}</span>
+              {lang === 'th' ? 'ทดลอง Demo' : 'Demo'}
             </button>
-          </div>
 
-          {/* Action Zone: PWA, Lang, Theme */}
-          <div className="flex items-center gap-2">
             <PWAInstallButton lang={lang} variant="nav" />
 
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] px-2.5 text-xs font-bold transition cursor-pointer"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] px-2.5 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
               title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
             >
               <Globe className="h-3.5 w-3.5 text-[var(--color-primary-text)] shrink-0" />
@@ -358,7 +432,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <button
               type="button"
               onClick={() => setThemePalette?.(isLight ? 'sapphire' : 'light_warm')}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer shrink-0"
               title={lang === 'th' ? 'สลับโหมดสีถนอมสายตา' : 'Toggle Theme'}
               aria-label="Change theme"
             >
@@ -368,615 +442,144 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </header>
 
-      {/* Mobile Top Segmented Portal Switcher */}
-      <div className="md:hidden border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2">
-        <div className="flex gap-1.5 max-w-md mx-auto">
-          <button
-            type="button"
-            onClick={() => setActivePortalTab('showcase')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activePortalTab === 'showcase'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'จัดแสดง & Demo' : 'Showcase & Demo'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActivePortalTab('live_login')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activePortalTab === 'live_login'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-            }`}
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'เข้าสู่ระบบจริง' : 'Official Login'}</span>
-          </button>
-        </div>
-      </div>
-
-      {activePortalTab === 'showcase' && (
-        <nav aria-label="Showcase pages" className="relative z-10 shrink-0 flex items-center justify-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-card)] py-2 px-3">
-          {[
-            lang === 'th' ? 'ภาพรวม' : 'Overview',
-            lang === 'th' ? 'นวัตกรรม' : 'Innovations',
-            lang === 'th' ? 'ฟังก์ชัน' : 'Capabilities',
-            lang === 'th' ? 'เริ่มต้นใช้งาน' : 'Get Started',
-          ].map((label, index) => (
-            <button key={label} type="button" onClick={() => setShowcasePage(index)} aria-current={showcasePage === index ? 'page' : undefined} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${showcasePage === index ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'}`}>
-              {label}
-            </button>
-          ))}
-        </nav>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 1: CAPABILITY SHOWCASE & INTERACTIVE DEMO (จัดแสดงความสามารถ & DEMO) */}
-      {/* ========================================================================= */}
-      {activePortalTab === 'showcase' && (
-        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 overflow-y-auto">
-          
-          {/* Hero Section: Value Proposition & High-Fidelity Educational Graphic */}
-          {showcasePage === 0 && <section className="grid min-h-0 items-center gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 pb-6">
-            
-            {/* Left Content */}
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] px-3.5 py-1 text-xs font-bold text-[var(--color-primary-text)]">
-                <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                <span>{lang === 'th' ? 'นวัตกรรมการศึกษายุคใหม่ • Digital Campus 2026' : 'Next-Gen Education Intelligence 2026'}</span>
-              </div>
-
+      <main className="flex-1">
+        {/* ===================================================================== */}
+        {/* HERO & OFFICIAL LOGIN PORTAL (Production-First, Zero Demo Confusion)   */}
+        {/* ===================================================================== */}
+        <section id="portal-auth" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-12 items-start">
+            {/* Left Column: Editorial Context, Campus Visual & Active Schools */}
+            <div className="order-2 lg:order-1 space-y-6">
               <div className="space-y-3">
-                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-[1.12] tracking-tight text-[var(--color-text-title)]">
-                  {lang === 'th' ? (
-                    <>
-                      ศูนย์รวมการบริหารสถานศึกษา<br />
-                      <span className="text-[var(--color-primary-text)]">
-                        และนวัตกรรมการเรียนรู้แห่งอนาคต
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      Transforming School Operations with<br />
-                      <span className="text-[var(--color-primary-text)]">
-                        Modern Intelligence & Interactive 3D
-                      </span>
-                    </>
-                  )}
-                </h1>
-                <p className="text-xs sm:text-base leading-relaxed text-[var(--color-text-body)] max-w-xl">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
+                  <span>{lang === 'th' ? 'ระบบบริหารสถานศึกษาครบวงจร' : 'School Operations Platform'}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{lang === 'th' ? 'แยกฐานข้อมูลรายโรงเรียน (Multi-Tenant)' : 'Multi-Tenant Isolation'}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{lang === 'th' ? 'มาตรฐาน PDPA' : 'PDPA Compliant'}</span>
+                </div>
+
+                <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold leading-[1.14] tracking-tight text-[var(--color-text-title)] text-balance max-w-2xl">
                   {lang === 'th'
-                    ? 'แพลตฟอร์มการศึกษาครบวงจรที่ผสานระบบวิชาการ ตารางสอนอัจฉริยะ คัดกรอง SDQ บัตรนักเรียนเสมือน ห้องพยาบาลดิจิทัล และเกมประลองปัญญา 3 มิติ ตอบโจทย์ทุกบทบาทในโรงเรียน'
-                    : 'Comprehensive school operations & learning platform combining LMS, smart conflict-free schedules, SDQ mental health screening, virtual student cards, digital infirmary clinic, and 3D EduArena.'}
+                    ? 'เข้าสู่ระบบปฏิบัติการสถานศึกษา EduVerse'
+                    : 'Sign in to your EduVerse School Workspace'}
+                </h1>
+
+                <p className="text-sm sm:text-base leading-relaxed text-[var(--color-text-body)] max-w-xl">
+                  {lang === 'th'
+                    ? 'สำหรับผู้บริหาร ครู นักเรียน และผู้ปกครองของสถานศึกษาที่ลงทะเบียนในระบบ รวมงานวิชาการ การเช็กชื่อ GPS ตารางสอน ห้องพยาบาล และการออกเอกสาร ปพ.1/ปพ.7 ไว้ในที่เดียว'
+                    : 'Unified academic administration, GPS period attendance, conflict-free timetables, digital infirmary logs, and official grade reports for registered schools.'}
                 </p>
               </div>
 
-              {/* Dedicated Showcase Persona Launcher: 1-Click Access for Evaluators */}
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-[var(--color-primary)] text-white shrink-0">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-[var(--color-text-title)] leading-tight">
-                        {lang === 'th' ? 'ทดลองใช้งานระบบจำลองทันที (Interactive Demo Persona)' : 'Instant 1-Click Demo Persona Launchpad'}
-                      </h3>
-                      <p className="text-xs text-[var(--color-text-muted)]">
-                        {lang === 'th' ? 'เลือกบทบาทเพื่อเข้าสำรวจฟังก์ชันการทำงานได้เต็มรูปแบบโดยไม่ต้องกรอกรหัสผ่าน' : 'Experience full system functionality as any persona without signing in'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4 Dedicated Persona Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  
-                  {/* Admin Persona */}
-                  {personaPage === 0 && <><div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 shadow-2xs flex flex-col justify-between space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 shrink-0">
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-black text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'ผู้อำนวยการ / ผู้บริหาร' : 'Principal / Executive'}
-                          </h4>
-                          <span className="text-[10px] font-bold text-[var(--color-primary-text)]">Admin</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">
-                          {lang === 'th' ? 'สถิติภาพรวม KPI โรงเรียน, รายรับค่าเทอม, อนุมัติ ปพ.1/ปพ.7, และจัดการโครงสร้างสถานศึกษา' : 'Executive KPIs, tuition revenue, transcript approvals, and school permissions'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onStartDemo('admin')}
-                      className="w-full py-2 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <span>{lang === 'th' ? 'เข้าชมในฐานะ ผอ.' : 'Launch as Principal'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Teacher Persona */}
-                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 shadow-2xs flex flex-col justify-between space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                        <BookOpen className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-black text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'คุณครูประจำชั้น & ผู้สอน' : 'Teacher & Educator'}
-                          </h4>
-                          <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300">Teacher</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">
-                          {lang === 'th' ? 'เช็กชื่อรายคาบ GPS, บันทึกคะแนนและเกรด, คัดกรอง SDQ, สั่งการบ้าน, และจัดการห้องเรียน' : 'GPS attendance, gradebook grading, SDQ assessments, and homework tracker'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onStartDemo('teacher')}
-                      className="w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <span>{lang === 'th' ? 'เข้าชมในฐานะ คุณครู' : 'Launch as Teacher'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Student Persona */}
-                  </>}
-                  {personaPage === 1 && <><div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 shadow-2xs flex flex-col justify-between space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 shrink-0">
-                        <GraduationCap className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-black text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'นักเรียน' : 'Enrolled Student'}
-                          </h4>
-                          <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">Student</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">
-                          {lang === 'th' ? 'ตารางเรียนเรียลไทม์, บัตรนักเรียนดิจิทัล, ส่งการบ้าน, เล่นเกม 3D EduArena, และร้านค้าของรางวัล' : 'Real-time timetable, digital ID, homework upload, 3D EduArena, and reward shop'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onStartDemo('student')}
-                      className="w-full py-2 px-3 rounded-lg bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <span>{lang === 'th' ? 'เข้าชมในฐานะ นักเรียน' : 'Launch as Student'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Parent Persona */}
-                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 shadow-2xs flex flex-col justify-between space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800 shrink-0">
-                        <Users className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-black text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'ผู้ปกครอง' : 'Parent / Guardian'}
-                          </h4>
-                          <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300">Parent</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">
-                          {lang === 'th' ? 'ติดตามเวลาเข้า-ออกโรงเรียน, แจ้งใบลาออนไลน์, ชำระค่าเทอม, และติดตามเวชระเบียนห้องพยาบาล' : 'Live attendance alerts, online leave requests, tuition pay, and clinic logs'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onStartDemo('parent')}
-                      className="w-full py-2 px-3 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <span>{lang === 'th' ? 'เข้าชมในฐานะ ผู้ปกครอง' : 'Launch as Parent'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  </>}
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <button type="button" onClick={() => setPersonaPage(page => Math.max(0, page - 1))} disabled={personaPage === 0} className="px-3 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer font-semibold">{lang === 'th' ? 'บทบาทก่อนหน้า' : 'Previous roles'}</button>
-                  <span className="font-semibold text-[var(--color-text-title)]">{personaPage + 1} / 2</span>
-                  <button type="button" onClick={() => setPersonaPage(page => Math.min(1, page + 1))} disabled={personaPage === 1} className="px-3 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer font-semibold">{lang === 'th' ? 'บทบาทถัดไป' : 'Next roles'}</button>
-                </div>
-
-                {/* Switch to Official Portal Hint */}
-                <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-                  <span>
-                    {lang === 'th' ? 'สำหรับโรงเรียนที่ต้องการลงชื่อเข้าใช้ด้วยบัญชีจริง' : 'For schools logging in with real database credentials'}
+              {/* Clean 16:9 Classroom Hero Photography (No Floating Pill Clutter) */}
+              <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-slate-900 shadow-sm">
+                <img
+                  src={heroImage}
+                  alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนยุคใหม่ของ EduVerse' : 'Modern classroom environment powered by EduVerse'}
+                  className="w-full aspect-[16/9] object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none" />
+                <div className="absolute bottom-3.5 left-4 right-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/95">
+                  <span className="font-semibold">
+                    {lang === 'th'
+                      ? 'ระบบวิชาการ · เช็กชื่อ GPS · ตารางสอนไร้คาบชน · รายงาน ปพ.1/ปพ.7'
+                      : 'Gradebook · GPS Attendance · Smart Timetable · Official Reports'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setActivePortalTab('live_login')}
-                    className="font-bold text-[var(--color-primary-text)] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>{lang === 'th' ? 'ไปที่หน้าเข้าสู่ระบบทางการ' : 'Go to Official Login'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
 
-              {/* Install EduVerse on Android & iOS */}
+              {/* Active Registered Schools */}
+              <div className="pt-2 border-t border-[var(--color-border)] space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'สถานศึกษาที่เปิดใช้งานในระบบขณะนี้' : 'Active Schools in System'}
+                  </h2>
+                  <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                    {schools.length} {lang === 'th' ? 'แห่ง' : 'schools'}
+                  </span>
+                </div>
+                {schools.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {schools.map((s) => (
+                      <span
+                        key={s.id}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium"
+                      >
+                        {lang === 'th' ? s.nameTh : s.nameEn}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    {schoolLoadError
+                      ? lang === 'th'
+                        ? `ไม่สามารถโหลดรายชื่อโรงเรียน: ${schoolLoadError}`
+                        : `Could not load schools: ${schoolLoadError}`
+                      : lang === 'th'
+                        ? 'กำลังเชื่อมต่อรายชื่อสถานศึกษา...'
+                        : 'Loading active schools...'}
+                  </p>
+                )}
+              </div>
+
+              {/* Secondary Non-Confusing Demo Trigger */}
+              <div className="pt-4 border-t border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ยังไม่มีบัญชีโรงเรียน และต้องการทดลองดูหน้าตาระบบ?' : 'Evaluating EduVerse without a school account?'}
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'สามารถเปิดโหมดทดลองใช้ (ข้อมูลจำลอง) แยกจากระบบจริงได้โดยไม่ต้องสมัครสมาชิก'
+                      : 'Open an isolated Demo Sandbox with sample data without registering.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDemoModal(true)}
+                  className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition shrink-0 whitespace-nowrap cursor-pointer"
+                >
+                  <PlayCircle className="w-4 h-4 text-[var(--color-primary-text)]" />
+                  <span>{lang === 'th' ? 'เปิดโหมดทดลองใช้ (Demo)' : 'Open Demo Sandbox'}</span>
+                </button>
+              </div>
+
               <PWAInstallButton lang={lang} variant="mobile_card" />
             </div>
 
-            {/* Right Educational Hero Visual */}
-            <div className="relative group hidden lg:block">
-              <div className="relative overflow-hidden rounded-3xl border border-[var(--color-border)] bg-slate-900 shadow-2xl">
-                <img
-                  src={heroImage}
-                  alt="EduVerse Happy Students and Teacher in Modern Classroom"
-                  className="w-full h-auto aspect-[16/10] object-cover transition-transform duration-700 group-hover:scale-102"
-                  referrerPolicy="no-referrer"
-                />
-                
-                {/* High Contrast Gradient Overlay for Legibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent pointer-events-none" />
-
-                {/* Floating Highlights Badges */}
-                <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center gap-2">
-                  <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-600 text-white text-xs font-semibold flex items-center gap-2 shadow-md">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                    <span>{lang === 'th' ? 'ระบบตรวจจับคาบซ้ำซ้อน 100%' : '100% Conflict-Free Scheduling'}</span>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-600 text-white text-xs font-semibold flex items-center gap-2 shadow-md">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-300 shrink-0" />
-                    <span>{lang === 'th' ? 'แยกฐานข้อมูลตามโรงเรียน (Multi-Tenant)' : 'Multi-Tenant Encrypted'}</span>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-600 text-white text-xs font-semibold flex items-center gap-2 shadow-md">
-                    <Smartphone className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span>{lang === 'th' ? 'รองรับ PWA ติดตั้งลงมือถือ' : 'Offline PWA Ready'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>}
-
-          {/* Feature Showcase Gallery: Visual Deep-Dive into 3 Flagship Pillars */}
-          {showcasePage === 1 && <section className="h-full min-h-0 space-y-3 pt-1">
-            <div className="text-center max-w-3xl mx-auto space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text-title)] tracking-tight">
-                {lang === 'th' ? 'จัดแสดงนวัตกรรมการเรียนรู้และระบบปฏิบัติการสถานศึกษา' : 'Explore EduVerse Core Innovation Modules'}
-              </h2>
-              <p className="text-xs sm:text-sm text-[var(--color-text-muted)]">
-                {lang === 'th'
-                  ? 'ผสมผสานงานวิชาการ การดูแลสุขภาวะนักเรียน และเทคโนโลยี Gamification เข้าด้วยกันอย่างไร้รอยต่อ'
-                  : 'Seamlessly unifying academic administration, student health & counseling, and immersive gamification'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Feature 1: Smart Classroom & LMS */}
-              <div className={`${featurePage === 0 ? '' : 'hidden'} rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden shadow-md flex flex-col group transition`}>
-                <div className="relative h-48 overflow-hidden bg-slate-950">
-                  <img
-                    src={featureLmsImage}
-                    alt="Digital LMS Classroom"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-blue-800/95 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-sm">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>LMS & Academic</span>
-                  </div>
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div>
-                    <h3 className="font-bold text-base text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ห้องเรียนออนไลน์ & ตัดเกรดอัตโนมัติ' : 'Smart LMS & Auto Gradebook'}
-                    </h3>
-                    <p className="text-xs text-[var(--color-text-body)] mt-1.5 leading-relaxed">
-                      {lang === 'th'
-                        ? 'บทเรียนดิจิทัล มอบหมายงาน ตรวจการบ้านออนไลน์ พร้อมระบบตัดเกรด อิงเกณฑ์ สพฐ. และออกใบ ปพ.1/ปพ.7 ทั้งภาษาไทยและอังกฤษ'
-                        : 'Interactive coursework, digital assignments, automated GPA grading, and bilingual transcript generation.'}
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-[var(--color-border)] flex items-center text-[11px] font-semibold text-[var(--color-primary-text)]">
-                    <span>{lang === 'th' ? 'รองรับตัดเกรด A-F และ 0-4' : 'Grade calculation 0.0 - 4.0'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature 2: 3D EduArena Gamification */}
-              <div className={`${featurePage === 1 ? '' : 'hidden'} rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden shadow-md flex flex-col group transition`}>
-                <div className="relative h-48 overflow-hidden bg-slate-950">
-                  <img
-                    src={featureArenaImage}
-                    alt="EduArena 3D Learning Arena"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-amber-800/95 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-sm">
-                    <Gamepad2 className="w-3.5 h-3.5" />
-                    <span>3D EduArena</span>
-                  </div>
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div>
-                    <h3 className="font-bold text-base text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'สนามประลองปัญญา 3 มิติ (EduArena)' : 'Immersive 3D EduArena'}
-                    </h3>
-                    <p className="text-xs text-[var(--color-text-body)] mt-1.5 leading-relaxed">
-                      {lang === 'th'
-                        ? 'ขับเคลื่อนด้วย Three.js จำลองสนามรบ 3D วิ่งเปิดหีบสมบัติความรู้ ตอบคำถามชิงคะแนน วงบีบ Safe Zone สกินชุดนักเรียน และแอร์ดรอป 2x EXP'
-                        : 'Interactive real-time 3D learning arena with knowledge loot chests, shrinking safe zone, student skins, and standard question banks.'}
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-[var(--color-border)] flex items-center text-[11px] font-semibold text-amber-800 dark:text-amber-300">
-                    <span>{lang === 'th' ? 'รวม 8 หมวดสาระ & ข้อสอบมาตรฐาน' : '8 core question banks + custom'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature 3: Infirmary Health & SDQ */}
-              <div className={`${featurePage === 2 ? '' : 'hidden'} rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden shadow-md flex flex-col group transition`}>
-                <div className="relative h-48 overflow-hidden bg-slate-950">
-                  <img
-                    src={featureClinicImage}
-                    alt="Digital Infirmary & Wellness"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-emerald-800/95 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-sm">
-                    <HeartPulse className="w-3.5 h-3.5" />
-                    <span>Infirmary & SDQ</span>
-                  </div>
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div>
-                    <h3 className="font-bold text-base text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'เวชระเบียนห้องพยาบาล & คัดกรอง SDQ' : 'Digital Infirmary & SDQ Clinic'}
-                    </h3>
-                    <p className="text-xs text-[var(--color-text-body)] mt-1.5 leading-relaxed">
-                      {lang === 'th'
-                        ? 'บันทึกการเข้าพักรักษา จ่ายยา ติดตามอุณหภูมิ พร้อมแบบประเมิน SDQ 5 ด้าน และระบบตัด/เพิ่มคะแนนความประพฤตินักเรียน'
-                        : 'Student clinic visit logs, medication dispensary, 5-domain SDQ mental health screening, and behavior points.'}
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-[var(--color-border)] flex items-center text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
-                    <span>{lang === 'th' ? 'แจ้งเตือนผู้ปกครองผ่าน LINE' : 'Parent notifications via LINE'}</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <button type="button" onClick={() => setFeaturePage(page => Math.max(0, page - 1))} disabled={featurePage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer font-semibold">{lang === 'th' ? 'ก่อนหน้า' : 'Previous'}</button>
-              <span className="font-semibold text-[var(--color-text-title)]">{featurePage + 1} / 3</span>
-              <button type="button" onClick={() => setFeaturePage(page => Math.min(2, page + 1))} disabled={featurePage === 2} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer font-semibold">{lang === 'th' ? 'ถัดไป' : 'Next'}</button>
-            </div>
-          </section>}
-
-          {/* Quick Technical Pillars Strip */}
-          {showcasePage === 2 && <section className="h-full grid content-center grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              {
-                icon: UserCheck,
-                title: lang === 'th' ? 'เช็กชื่อ QR & ประตูสแกน' : 'Smart Gate Attendance',
-                desc: lang === 'th' ? 'ป้องกันการลงชื่อแทนด้วยพิกัด GPS' : 'Geofenced selfie & turnstile gate'
-              },
-              {
-                icon: Calendar,
-                title: lang === 'th' ? 'ตารางสอนไร้คาบชน' : 'Conflict-Free Timetable',
-                desc: lang === 'th' ? 'ตรวจจับครูสอนซ้ำและห้องซ้อน' : 'Instant room & teacher overlap alerts'
-              },
-              {
-                icon: CreditCard,
-                title: lang === 'th' ? 'บัตรนักเรียนเสมือนจริง' : 'Digital Student ID',
-                desc: lang === 'th' ? 'บาร์โค้ดห้องสมุด & ยอดเงินกระเป๋า' : 'Virtual card with canteen wallet'
-              },
-              {
-                icon: FileText,
-                title: lang === 'th' ? 'รายงานและเอกสารทางการ' : 'Academic Reporting',
-                desc: lang === 'th' ? 'พิมพ์ใบ ปพ. ใบเสร็จ A4 คมชัด' : 'Printable bilingual A4 transcripts'
-              },
-            ].map((pillar) => (
-              <div
-                key={pillar.title}
-                className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs flex items-start gap-3"
-              >
-                <div className="p-2 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0 mt-0.5">
-                  <pillar.icon className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {pillar.title}
-                  </h4>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 leading-snug">
-                    {pillar.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </section>}
-
-          {/* Bottom Banner: Call to Action to Switch to Real Portal or Launch Demo */}
-          {showcasePage === 3 && <section className="h-full rounded-3xl border border-blue-700 bg-gradient-to-r from-blue-800 via-indigo-800 to-blue-900 p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-center gap-6">
-            <div className="space-y-1.5 text-center md:text-left">
-              <h3 className="text-xl sm:text-2xl font-black text-white">
-                {lang === 'th' ? 'พร้อมยกระดับสถานศึกษาของคุณแล้วหรือยัง?' : 'Ready to Elevate Your School Operations?'}
-              </h3>
-              <p className="text-xs sm:text-sm text-blue-100 max-w-xl">
-                {lang === 'th'
-                  ? 'ลงทะเบียนโรงเรียนใหม่เข้าสู่ระบบคลาวด์ หรือเปิดเข้าสู่ระบบใช้งานจริงสำหรับครูและนักเรียนที่มีบัญชีอยู่แล้ว'
-                  : 'Register a new school or sign in to your official institution workspace.'}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setActivePortalTab('live_login');
-                  setMode('register');
-                  setRegistrationType('school');
-                }}
-                className="px-5 py-2.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 font-bold text-xs shadow-md transition cursor-pointer"
-              >
-                {lang === 'th' ? 'ลงทะเบียนโรงเรียนใหม่' : 'Register New School'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActivePortalTab('live_login');
-                  setMode('login');
-                }}
-                className="px-5 py-2.5 rounded-xl bg-blue-950 hover:bg-slate-900 border border-blue-400 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'เข้าสู่ระบบทางการ' : 'Official Portal Login'}</span>
-              </button>
-            </div>
-          </section>}
-
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 2: OFFICIAL PRODUCTION SCHOOL LOGIN (เข้าสู่ระบบใช้งานจริงสำหรับโรงเรียน) */}
-      {/* ========================================================================= */}
-      {activePortalTab === 'live_login' && (
-        <div className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col gap-3 overflow-y-auto pb-8">
-          
-          {/* Header Distinction Banner */}
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[var(--color-primary)] text-white shrink-0">
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'ระบบลงชื่อเข้าใช้งานจริงของสถานศึกษา (Production Gateway)' : 'Official School Production Portal'}
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {lang === 'th'
-                    ? 'สำหรับผู้บริหาร, ครู, นักเรียน และเจ้าหน้าที่ที่มีบัญชีสังกัดโรงเรียนจริงในระบบ'
-                    : 'For verified school personnel, educators, enrolled students, and guardians.'}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setActivePortalTab('showcase')}
-              className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
-              <span>{lang === 'th' ? 'สลับไปโหมดสาธิต (Demo Showcase)' : 'Switch to Demo Showcase'}</span>
-            </button>
-          </div>
-
-          <div className="lg:hidden flex gap-2 shrink-0">
-            <button type="button" onClick={() => setLoginMobilePage('form')} className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${loginMobilePage === 'form' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>{lang === 'th' ? 'เข้าสู่ระบบ / สมัครสมาชิก' : 'Sign in / Register'}</button>
-            <button type="button" onClick={() => setLoginMobilePage('information')} className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${loginMobilePage === 'information' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>{lang === 'th' ? 'ความปลอดภัยและโรงเรียน' : 'Security & Schools'}</button>
-          </div>
-
-          {/* Form & Security Columns */}
-          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-3 lg:gap-8 items-start">
-            
-            {/* Left Column: Security Architecture & School Directory Info */}
-            <div className={`${loginMobilePage === 'information' ? 'block' : 'hidden'} lg:block min-h-0 space-y-3`}>
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5 text-[var(--color-primary-text)] font-bold text-sm">
-                  <ShieldCheck className="w-5 h-5" />
-                  <span>{lang === 'th' ? 'มาตรฐานความปลอดภัยระดับสถานศึกษา' : 'Enterprise School Security'}</span>
-                </div>
-                <div className="space-y-3 text-xs text-[var(--color-text-body)] leading-relaxed">
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
-                    <span><strong>Multi-Tenant Data Isolation:</strong> ฐานข้อมูลแยกสิทธิ์ตามโรงเรียน ครูและนักเรียนเข้าถึงได้เฉพาะโรงเรียนต้นสังกัดตนเองเท่านั้น</span>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
-                    <span><strong>PDPA & Data Privacy Compliant:</strong> ข้อมูลระเบียนประวัติ บัตรประชาชน และสุขภาพผ่านการเข้ารหัส 256-bit AES</span>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
-                    <span><strong>Automatic Cloud Sync:</strong> บันทึกข้อมูลและสำรองข้อมูลอัตโนมัติบน Supabase Cloud Platform</span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-[var(--color-border)]">
-                  <h4 className="text-xs font-bold text-[var(--color-text-title)] mb-1.5">
-                    {lang === 'th' ? 'โรงเรียนที่เปิดระบบพร้อมใช้งานขณะนี้:' : 'Active Schools in System:'}
-                  </h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {schools.length > 0 ? (
-                      schools.map(s => (
-                        <span key={s.id} className="text-[11px] px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium">
-                          {lang === 'th' ? s.nameTh : s.nameEn}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-[var(--color-text-muted)]">
-                        {schoolLoadError ? `(ข้อผิดพลาด: ${schoolLoadError})` : 'กำลังโหลดรายชื่อสถานศึกษา...'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Instant Demo Shortcut Card in Real Login View */}
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 space-y-3 shadow-xs">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <h4 className="text-xs font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'หากคุณเป็นกรรมการประเมินหรือผู้เข้าเยี่ยมชม' : 'For System Evaluators & Visitors'}
-                  </h4>
-                </div>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {lang === 'th'
-                    ? 'สามารถกดสลับไปที่โหมดทดลองเล่น (Demo) เพื่อทดสอบทุกระบบได้ทันทีโดยไม่ต้องลงทะเบียนบัญชีใหม่'
-                    : 'Switch to Demo mode to immediately experience all modules without creating a new database account.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setActivePortalTab('showcase')}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <span>{lang === 'th' ? 'เปิดโหมดทดลองเล่น (Demo Showcase)' : 'Open Demo Showcase'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column: Sleek Authentication Form */}
-            <div className={`${loginMobilePage === 'form' ? 'block' : 'hidden'} lg:block w-full max-w-md mx-auto min-h-0 overflow-hidden`}>
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl overflow-hidden">
-                
-                {/* Header Switcher: Sign In vs Sign Up */}
+            {/* Right Column (First on Mobile): Official Sign In / Sign Up Card */}
+            <div className="order-1 lg:order-2 w-full max-w-md mx-auto lg:ml-auto lg:mr-0">
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-md overflow-hidden">
+                {/* Card Header & Sign In / Sign Up Switcher */}
                 <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)]">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-sm shrink-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
                       {mode === 'login' ? <SchoolIcon className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-[var(--color-text-title)] leading-tight">
+                      <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight">
                         {mode === 'login'
-                          ? (lang === 'th' ? 'เข้าสู่ระบบบัญชีโรงเรียน' : 'Sign in to EduVerse')
-                          : (registrationType === 'school'
-                              ? (lang === 'th' ? 'ลงทะเบียนสถานศึกษาใหม่' : 'Register New School')
-                              : (lang === 'th' ? 'ลงทะเบียนบัญชีนักเรียน' : 'Student Registration'))}
-                      </h3>
+                          ? lang === 'th'
+                            ? 'เข้าสู่ระบบบัญชีโรงเรียน'
+                            : 'Sign in to EduVerse'
+                          : registrationType === 'school'
+                            ? lang === 'th'
+                              ? 'ลงทะเบียนสถานศึกษาใหม่'
+                              : 'Register New School'
+                            : lang === 'th'
+                              ? 'สมัครบัญชีนักเรียนเข้าโรงเรียน'
+                              : 'Student Account Registration'}
+                      </h2>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                         {mode === 'login'
-                          ? (lang === 'th' ? 'กรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งาน' : 'Enter registered email and password')
-                          : (lang === 'th' ? 'กรอกข้อมูลเพื่อเปิดใช้งานบัญชี' : 'Provide details to create account')}
+                          ? lang === 'th'
+                            ? 'กรอกอีเมล (หรือบัญชีที่โรงเรียนออกให้) และรหัสผ่าน'
+                            : 'Enter your school email/username and password'
+                          : lang === 'th'
+                            ? 'กรอกข้อมูลเพื่อยื่นคำขอเปิดใช้งานในระบบจริง'
+                            : 'Submit your details for school activation'}
                       </p>
                     </div>
                   </div>
@@ -984,10 +587,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   <div className="flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1">
                     <button
                       type="button"
-                      onClick={() => { setMode('login'); setError(null); setNotice(null); }}
+                      onClick={() => {
+                        setMode('login');
+                        setError(null);
+                        setNotice(null);
+                      }}
                       className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
                         mode === 'login'
-                          ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                          ? 'bg-[var(--color-primary)] text-white'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                       }`}
                     >
@@ -995,10 +602,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setMode('register'); setError(null); setNotice(null); }}
+                      onClick={() => {
+                        setMode('register');
+                        setError(null);
+                        setNotice(null);
+                      }}
                       className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
                         mode === 'register'
-                          ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                          ? 'bg-[var(--color-primary)] text-white'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                       }`}
                     >
@@ -1013,10 +624,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <div className="flex gap-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1">
                       <button
                         type="button"
-                        onClick={() => { setRegistrationType('student'); setError(null); setNotice(null); }}
+                        onClick={() => {
+                          setRegistrationType('student');
+                          setError(null);
+                          setNotice(null);
+                        }}
                         className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
                           registrationType === 'student'
-                            ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                            ? 'bg-[var(--color-primary)] text-white'
                             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                         }`}
                       >
@@ -1024,27 +639,31 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setRegistrationType('school'); setError(null); setNotice(null); }}
+                        onClick={() => {
+                          setRegistrationType('school');
+                          setError(null);
+                          setNotice(null);
+                        }}
                         className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
                           registrationType === 'school'
-                            ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                            ? 'bg-[var(--color-primary)] text-white'
                             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                         }`}
                       >
-                        {lang === 'th' ? 'ลงทะเบียนโรงเรียนใหม่' : 'School Registration'}
+                        {lang === 'th' ? 'ลงทะเบียนโรงเรียนใหม่' : 'New School'}
                       </button>
                     </div>
                   )}
 
                   {error && (
-                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-100 dark:bg-rose-950 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
+                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                       <span className="leading-relaxed">{error}</span>
                     </div>
                   )}
 
                   {notice && (
-                    <div role="status" className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-950 p-3 text-xs font-medium text-emerald-900 dark:text-emerald-200">
+                    <div role="status" className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs font-medium text-emerald-900 dark:text-emerald-200">
                       {notice}
                     </div>
                   )}
@@ -1174,6 +793,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         {lang === 'th' ? 'อีเมล' : 'Email Address'}
                       </span>
                       <input
+                        ref={emailInputRef}
                         type="email"
                         autoComplete="email"
                         required
@@ -1202,82 +822,249 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     </label>
 
                     {mode === 'login' && (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setResetEmail(email);
-                            setResetStatus(null);
-                            setShowForgotPasswordModal(true);
-                          }}
-                          className="text-[var(--color-primary-text)] hover:underline font-semibold transition cursor-pointer"
-                        >
-                          {lang === 'th' ? 'ลืมรหัสผ่าน? (ขอเปลี่ยน Password)' : 'Forgot Password?'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleResendConfirmation}
-                          disabled={isLoading || !email.trim()}
-                          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline font-medium transition cursor-pointer disabled:opacity-50"
-                        >
-                          {lang === 'th' ? 'ขอให้ Super Admin อนุมัติเปิดใช้งาน' : 'Request Super Admin approval'}
-                        </button>
-                      </div>
+                      <>
+                        <p className="text-[11px] text-[var(--color-text-muted)] leading-snug">
+                          {lang === 'th'
+                            ? 'ครูและนักเรียนที่โรงเรียนนำเข้ารายชื่อแล้ว สามารถใช้อีเมลและรหัสผ่านเริ่มต้นที่ได้รับจากผู้ดูแลโรงเรียนได้ทันที'
+                            : 'Imported teachers and students can sign in with the email and initial password provided by their school admin.'}
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetEmail(email);
+                              setResetStatus(null);
+                              setShowForgotPasswordModal(true);
+                            }}
+                            className="text-[var(--color-primary-text)] hover:underline font-semibold transition cursor-pointer"
+                          >
+                            {lang === 'th' ? 'ลืมรหัสผ่าน? (ขอเปลี่ยน Password)' : 'Forgot Password?'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleResendConfirmation}
+                            disabled={isLoading || !email.trim()}
+                            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline font-medium transition cursor-pointer disabled:opacity-50"
+                          >
+                            {lang === 'th' ? 'ขอให้ Super Admin อนุมัติเปิดใช้งาน' : 'Request Super Admin approval'}
+                          </button>
+                        </div>
+                      </>
                     )}
 
                     <button
                       type="submit"
                       disabled={isLoading || (mode === 'register' && registrationType === 'student' && schools.length === 0)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-2"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1"
                     >
                       {isLoading
-                        ? (lang === 'th' ? 'กำลังดำเนินการ...' : 'Processing...')
-                        : (mode === 'login'
-                            ? (lang === 'th' ? 'เข้าสู่ระบบ' : 'Sign In')
-                            : (registrationType === 'school'
-                                ? (lang === 'th' ? 'ยืนยันลงทะเบียนโรงเรียน' : 'Register School')
-                                : (lang === 'th' ? 'ยืนยันสมัครบัญชีนักเรียน' : 'Create Student Account')))}
+                        ? lang === 'th'
+                          ? 'กำลังดำเนินการ...'
+                          : 'Processing...'
+                        : mode === 'login'
+                          ? lang === 'th'
+                            ? 'เข้าสู่ระบบ'
+                            : 'Sign In'
+                          : registrationType === 'school'
+                            ? lang === 'th'
+                              ? 'ยืนยันลงทะเบียนโรงเรียน'
+                              : 'Register School'
+                            : lang === 'th'
+                              ? 'ยืนยันสมัครบัญชีนักเรียน'
+                              : 'Create Student Account'}
                       <ArrowRight className="w-4 h-4" />
                     </button>
 
-                    {/* Master System Authority Contact Card */}
-                    <div className="mt-4 p-3 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-[11px] text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
-                      <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                      <div className="leading-snug min-w-0">
-                        <div className="font-semibold text-blue-950 dark:text-blue-100 flex items-center gap-1.5 flex-wrap">
-                          <span>{lang === 'th' ? 'อีเมล Master ยืนยันระบบ:' : 'Master Authority Email:'}</span>
-                          <a
-                            href={`mailto:${MASTER_SYSTEM_EMAIL}`}
-                            className="font-mono font-bold text-blue-700 dark:text-blue-300 hover:underline"
-                          >
-                            {MASTER_SYSTEM_EMAIL}
-                          </a>
-                        </div>
-                        <div className="text-[10px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
-                          {lang === 'th'
-                            ? 'ใช้สำหรับส่ง/ตอบกลับยืนยันตัวตน, รีเซ็ตรหัสผ่าน และประสานงานผู้ดูแลระบบกลาง'
-                            : 'Used for confirmation replies, password resets, and master administrator support'}
-                        </div>
-                      </div>
+                    <div className="pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2 flex-wrap">
+                      <span>{lang === 'th' ? 'ติดต่อผู้ดูแลระบบกลาง:' : 'Master Admin Email:'}</span>
+                      <a
+                        href={`mailto:${MASTER_SYSTEM_EMAIL}`}
+                        className="font-mono font-semibold text-[var(--color-primary-text)] hover:underline"
+                      >
+                        {MASTER_SYSTEM_EMAIL}
+                      </a>
                     </div>
                   </form>
                 </div>
 
-                {/* Footer Security Notice */}
-                <div className="flex items-center justify-center gap-2 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] px-6 py-3.5 text-[11px] text-[var(--color-text-muted)]">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-                  <span>{lang === 'th' ? 'เชื่อมต่อฐานข้อมูลความปลอดภัยสูง (Supabase Encrypted Multi-Tenant)' : 'Secured via Supabase multi-tenant isolation'}</span>
+                {/* Card Footer Security Notice */}
+                <div className="flex items-center justify-center gap-2 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] px-6 py-3 text-[11px] text-[var(--color-text-muted)]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span>{lang === 'th' ? 'เชื่อมต่อฐานข้อมูลแยกสิทธิ์รายโรงเรียน (Supabase Multi-Tenant)' : 'Secured via Supabase multi-tenant isolation'}</span>
                 </div>
               </div>
             </div>
-
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Global Minimal Footer */}
-      <footer className="relative z-10 border-t border-[var(--color-border)] bg-[var(--color-card)] py-4 text-center text-xs text-[var(--color-text-muted)] shrink-0">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* ===================================================================== */}
+        {/* BELOW THE FOLD: CORE CAPABILITIES OVERVIEW                            */}
+        {/* ===================================================================== */}
+        <section id="platform-overview" className="border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] py-12 lg:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div className="space-y-2 max-w-2xl">
+                <p className="text-xs font-semibold text-[var(--color-primary-text)]">
+                  {lang === 'th' ? 'โครงสร้างระบบปฏิบัติการสถานศึกษา' : 'Platform Architecture'}
+                </p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--color-text-title)] text-balance">
+                  {lang === 'th'
+                    ? 'ครบทุกงานโรงเรียน ตั้งแต่ฝ่ายวิชาการจนถึงการดูแลนักเรียน'
+                    : 'Everything your school needs from academics to student care'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(true)}
+                className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 transition self-start md:self-auto cursor-pointer whitespace-nowrap"
+              >
+                <PlayCircle className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>{lang === 'th' ? 'ทดลองใช้งานตัวอย่างตามบทบาท' : 'Explore Role-Based Demo'}</span>
+              </button>
+            </div>
+
+            {/* Asymmetric Bento Showcase (No Pagination Clutter) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Featured Marquee Pillar (col-span-6) */}
+              <article className="lg:col-span-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
+                <div className="relative aspect-[16/9] overflow-hidden bg-slate-900">
+                  <img
+                    src={featureLmsImage}
+                    alt={lang === 'th' ? 'ห้องเรียนออนไลน์และระบบตัดเกรดอัตโนมัติ' : 'Smart LMS & Auto Gradebook'}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                      <span>01. {lang === 'th' ? 'งานวิชาการ' : 'Academics'}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{lang === 'th' ? 'LMS & ตัดเกรดอัตโนมัติ' : 'LMS & Auto Gradebook'}</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'ห้องเรียนดิจิทัล ตัดเกรด สพฐ. และออก ปพ.1 / ปพ.7' : 'Smart LMS, Automated GPA & Official Transcripts'}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[var(--color-text-body)] leading-relaxed">
+                      {lang === 'th'
+                        ? 'บริหารรายวิชา บทเรียนออนไลน์ ตรวจการบ้าน คำนวณเกรด 0–4 และ A–F อัตโนมัติ พร้อมพิมพ์ใบรายงานผลการศึกษา ปพ.1/ปพ.7 แบบ A4 ทั้งภาษาไทยและอังกฤษ'
+                        : 'Manage courses, lessons, homework grading, automated 0-4 / A-F calculation, and printable bilingual A4 transcripts.'}
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-2 text-xs font-semibold text-[var(--color-primary-text)]">
+                    <BookOpen className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'th' ? 'รองรับนำเข้าข้อมูล DMC / School MIS และออกรหัสผู้ใช้ทันที' : 'Supports DMC / School MIS import & instant credential export'}</span>
+                  </div>
+                </div>
+              </article>
+
+              {/* Secondary Pillars (col-span-3 each) */}
+              <article className="lg:col-span-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
+                <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+                  <img
+                    src={featureArenaImage}
+                    alt={lang === 'th' ? 'สนามประลองปัญญา 3 มิติ EduArena' : 'EduArena 3D Learning'}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="text-xs text-[var(--color-text-muted)]">
+                      02. {lang === 'th' ? 'การเรียนรู้ 3 มิติ' : '3D Learning'}
+                    </div>
+                    <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'สนามประลองปัญญา 3D EduArena' : '3D EduArena & AI Diagnostic'}
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                      {lang === 'th'
+                        ? 'ห้องทดลองวิทยาศาสตร์เสมือนจริง และเกมตอบคำถาม 3 มิติ ครบ 8 กลุ่มสาระการเรียนรู้'
+                        : 'Virtual STEM labs and interactive 3D quiz arenas across 8 core subject banks.'}
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    <Gamepad2 className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'th' ? 'คลังข้อสอบ 8 สาระวิชา' : '8 Core Subject Banks'}</span>
+                  </div>
+                </div>
+              </article>
+
+              <article className="lg:col-span-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
+                <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+                  <img
+                    src={featureClinicImage}
+                    alt={lang === 'th' ? 'ห้องพยาบาลดิจิทัลและการคัดกรอง SDQ' : 'Digital Infirmary & SDQ'}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="text-xs text-[var(--color-text-muted)]">
+                      03. {lang === 'th' ? 'ระบบดูแลนักเรียน' : 'Student Wellness'}
+                    </div>
+                    <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'ห้องพยาบาลดิจิทัล & คัดกรอง SDQ' : 'Infirmary Clinic & SDQ'}
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                      {lang === 'th'
+                        ? 'บันทึกอาการและจ่ายยาห้องพยาบาล ประเมินพฤติกรรม SDQ 5 ด้าน และแจ้งเตือนผู้ปกครอง'
+                        : 'Infirmary visit records, 5-domain SDQ screening, behavior tracking, and parent alerts.'}
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                    <HeartPulse className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'th' ? 'แจ้งเตือนผู้ปกครองผ่าน LINE' : 'Parent LINE Notifications'}</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            {/* 4 Operational Highlights */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+              {[
+                {
+                  icon: UserCheck,
+                  title: lang === 'th' ? 'เช็กชื่อ QR & พิกัด GPS' : 'GPS & QR Attendance',
+                  desc: lang === 'th' ? 'ป้องกันการลงชื่อแทนด้วยขอบเขตพิกัดโรงเรียนและภาพถ่าย' : 'Geofenced selfie & rapid gate QR check-in',
+                },
+                {
+                  icon: Calendar,
+                  title: lang === 'th' ? 'ตารางสอนไร้คาบชน' : 'Conflict-Free Timetable',
+                  desc: lang === 'th' ? 'ตรวจจับครูสอนซ้ำและห้องเรียนซ้อนอัตโนมัติทันที' : 'Automatic teacher & room conflict detection',
+                },
+                {
+                  icon: CreditCard,
+                  title: lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital Student ID',
+                  desc: lang === 'th' ? 'พกพาง่ายบนมือถือ พร้อมใบแจ้งค่าเทอมและใบเสร็จรับเงิน' : 'Mobile ID card with tuition billing & receipts',
+                },
+                {
+                  icon: FileText,
+                  title: lang === 'th' ? 'แดชบอร์ดผู้บริหาร & จอทีวี' : 'Executive & TV Monitor',
+                  desc: lang === 'th' ? 'สรุปสถิติประจำวันสำหรับผู้อำนวยการและแสดงผลขึ้นจอทีวีโรงเรียน' : 'Director analytics report & live school TV display',
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-start gap-3"
+                >
+                  <div className="p-2 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
+                    <item.icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[var(--color-text-title)]">{item.title}</h4>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Quiet Minimal Footer */}
+      <footer className="border-t border-[var(--color-border)] bg-[var(--color-card)] py-5 text-xs text-[var(--color-text-muted)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
             <span className="font-semibold text-[var(--color-text-title)]">EduVerse Academic Operations</span>
@@ -1288,7 +1075,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <button
               type="button"
               onClick={() => setShowSmtpGuideModal(true)}
-              className="text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800"
+              className="text-[var(--color-primary-text)] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
             >
               <HelpCircle className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'คู่มือตั้งค่า Supabase SMTP' : 'Supabase SMTP Guide'}</span>
@@ -1296,16 +1083,103 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <span>·</span>
             <span>PDPA Standard</span>
             <span>·</span>
-            <span>WCAG 2.1 AA Compliant</span>
-            <span>·</span>
             <span>PWA Offline Capable</span>
           </div>
         </div>
       </footer>
 
+      {/* ===================================================================== */}
+      {/* MODAL: ISOLATED DEMO SANDBOX PICKER (No Confusion with Real Login)     */}
+      {/* ===================================================================== */}
+      {showDemoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4">
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4 bg-[var(--color-card-subtle)] shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
+                  <PlayCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'โหมดทดลองใช้งานระบบจำลอง (Demo Sandbox)' : 'Interactive Demo Sandbox'}
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'เลือกบทบาทเพื่อเข้าชมระบบตัวอย่างแบบครบทุกเมนู' : 'Select a role to preview all modules with sample data'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(false)}
+                className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                aria-label="Close demo modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4">
+              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-3 text-xs text-amber-950 dark:text-amber-100 leading-relaxed">
+                <strong>{lang === 'th' ? 'หมายเหตุ:' : 'Note:'}</strong>{' '}
+                {lang === 'th'
+                  ? 'โหมดนี้ใช้ข้อมูลตัวอย่างจำลองในเบราว์เซอร์เท่านั้น ไม่เชื่อมกับข้อมูลจริงของโรงเรียน หากคุณเป็นครู นักเรียน หรือผู้ดูแลโรงเรียนจริง กรุณาปิดหน้าต่างนี้แล้วลงชื่อเข้าใช้ที่ฟอร์มหน้าหลัก'
+                  : 'This sandbox uses sample browser data only and does not connect to your school database. Real school users should sign in using the main form.'}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {demoPersonas.map((persona) => (
+                  <div
+                    key={persona.role}
+                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-xl border shrink-0 ${persona.accentClass}`}>
+                        <persona.icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-[var(--color-text-muted)]">{persona.roleLabel}</div>
+                        <h4 className="text-xs font-bold text-[var(--color-text-title)] mt-0.5">{persona.title}</h4>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">{persona.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDemoModal(false);
+                        onStartDemo(persona.role);
+                      }}
+                      className="w-full py-2 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>{lang === 'th' ? 'เข้าชมโหมดทดลอง' : 'Launch Demo'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-[var(--color-border)] px-5 py-3 bg-[var(--color-card-subtle)] flex items-center justify-between gap-3 text-xs shrink-0">
+              <span className="text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'มีบัญชีโรงเรียนจริงแล้ว?' : 'Already have a school account?'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDemoModal(false);
+                  focusLoginForm('login');
+                }}
+                className="font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                {lang === 'th' ? 'กลับไปหน้าเข้าสู่ระบบจริง' : 'Return to Official Sign In'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Forgot / Reset Password with Master Authority Email */}
       {showForgotPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="relative w-full max-w-md rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 overflow-hidden">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -1333,7 +1207,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </button>
             </div>
 
-            {/* Master Contact Notice */}
             <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
                 <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -1349,7 +1222,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
             </div>
 
-            {/* Status alerts */}
             {resetStatus && (
               <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -1406,7 +1278,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
             </form>
 
-            {/* Direct Mailto Fallback */}
             <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
               <span>{lang === 'th' ? 'ต้องการความช่วยเหลือด่วน?' : 'Need immediate help?'}</span>
               <a
@@ -1423,9 +1294,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
       {/* Modal: Supabase SMTP & Email Confirmation Setup Guide */}
       {showSmtpGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--color-border)] p-4 shrink-0 bg-[var(--color-card-subtle)]">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
@@ -1449,7 +1319,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </button>
             </div>
 
-            {/* Navigation Tabs */}
             <div className="flex border-b border-[var(--color-border)] bg-[var(--color-card)] px-4 pt-2 gap-1 overflow-x-auto shrink-0">
               <button
                 type="button"
@@ -1497,7 +1366,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </button>
             </div>
 
-            {/* Tab Body */}
             <div className="p-5 overflow-y-auto space-y-4 text-xs text-[var(--color-text-body)] flex-1">
               {smtpTab === 'gmail_smtp' && (
                 <div className="space-y-4">
@@ -1513,7 +1381,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <ol className="list-decimal list-inside space-y-1.5 pl-2 leading-relaxed text-[11px] text-[var(--color-text-body)]">
                       <li>เข้าสู่บัญชี Google ที่ <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">myaccount.google.com/security <ExternalLink className="w-3 h-3" /></a></li>
                       <li>เปิดใช้งาน <strong>การยืนยันแบบ 2 ขั้นตอน (2-Step Verification)</strong> ให้เรียบร้อย</li>
-                      <li>พิมพ์ค้นหาที่ช่องค้นหาด้านบนว่า <strong>"App passwords"</strong> หรือ <strong>"รหัสผ่านสำหรับแอป"</strong></li>
+                      <li>พิมพ์ค้นหาที่ช่องค้นหาด้านบนว่า <strong>&quot;App passwords&quot;</strong> หรือ <strong>&quot;รหัสผ่านสำหรับแอป&quot;</strong></li>
                       <li>ตั้งชื่อแอป เช่น <code>EduVerse Supabase</code> แล้วกดปุ่ม <strong>สร้าง (Create)</strong></li>
                       <li>คัดลอกรหัสผ่าน 16 ตัวอักษร (เช่น <code>abcd efgh ijkl mnop</code>)</li>
                     </ol>
@@ -1573,14 +1441,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       <li>เข้าสู่ <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">Supabase Dashboard <ExternalLink className="w-3 h-3" /></a> แล้วเลือกโปรเจกต์ของคุณ</li>
                       <li>ในแถบเมนูด้านซ้าย คลิกที่ไอคอน <strong>Authentication</strong></li>
                       <li>เลือกเมนูย่อย <strong>Providers</strong> แล้วคลิกที่แถบ <strong>Email</strong></li>
-                      <li>เลื่อนลงมาที่ตัวเลือก <strong>"Confirm email"</strong></li>
+                      <li>เลื่อนลงมาที่ตัวเลือก <strong>&quot;Confirm email&quot;</strong></li>
                       <li><strong>คลิกสวิตช์เป็น ปิด (Disable / Turn Off)</strong></li>
-                      <li>คลิกปุ่มสีเขียว <strong>"Save"</strong> ที่มุมขวาล่าง</li>
+                      <li>คลิกปุ่มสีเขียว <strong>&quot;Save&quot;</strong> ที่มุมขวาล่าง</li>
                     </ol>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] leading-relaxed">
-                    💡 <strong>ผลลัพธ์:</strong> หลังจากปิด Confirm email แล้ว การสมัครโรงเรียนและสมัครบัญชีนักเรียนใหม่จะได้รับการยืนยันทันที 100% โดยจะไม่เกิดข้อผิดพลาด "Supabase ส่งอีเมลยืนยันไม่สำเร็จ" อีกต่อไป
                   </div>
                 </div>
               )}
@@ -1596,7 +1460,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       <span>SQL Script (รันใน Supabase → SQL Editor):</span>
                       <button
                         type="button"
-                        onClick={() => handleCopySnippet(`-- 1. ยืนยันอีเมลบัญชีที่สมัครไว้ทั้งหมดทันที
+                        onClick={() =>
+                          handleCopySnippet(
+                            `-- 1. ยืนยันอีเมลบัญชีที่สมัครไว้ทั้งหมดทันที
 UPDATE auth.users 
 SET email_confirmed_at = NOW() 
 WHERE email_confirmed_at IS NULL;
@@ -1609,10 +1475,13 @@ WHERE status = 'pending';
 -- 3. เปิดใช้งานโรงเรียนที่สมัครใหม่
 UPDATE public.schools 
 SET status = 'active' 
-WHERE status = 'pending';`, 'sql_all')}
+WHERE status = 'pending';`,
+                            'sql_all'
+                          )
+                        }
                         className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] flex items-center gap-1 transition cursor-pointer"
                       >
-                        {copiedSnippet === 'sql_all' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        {copiedSnippet === 'sql_all' ? <Check className="w-3 h-3 text-emerald-200" /> : <Copy className="w-3 h-3" />}
                         <span>{copiedSnippet === 'sql_all' ? 'คัดลอกโค้ดแล้ว' : 'คัดลอกโค้ด SQL ทั้งหมด'}</span>
                       </button>
                     </div>
@@ -1640,22 +1509,20 @@ WHERE status = 'pending';`}
               {smtpTab === 'superadmin' && (
                 <div className="space-y-3">
                   <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs leading-relaxed">
-                    <span className="font-bold">อนุมัติด้วยตนเองผ่านระบบ (Manual Super Admin Approval):</span> 
-                    Super Admin สามารถเข้าสู่ระบบและกดอนุมัติการสมัครโรงเรียนได้โดยตรง แม้ว่าอีเมลจะยังไม่ได้รับการยืนยันก็ตาม
+                    <span className="font-bold">อนุมัติด้วยตนเองผ่านระบบ (Manual Super Admin Approval):</span> Super Admin สามารถเข้าสู่ระบบและกดอนุมัติการสมัครโรงเรียนได้โดยตรง แม้ว่าอีเมลจะยังไม่ได้รับการยืนยันก็ตาม
                   </div>
 
                   <ol className="list-decimal list-inside space-y-2 pl-2 text-xs leading-relaxed">
                     <li>เข้าสู่ระบบด้วยบัญชี Super Admin: <span className="font-mono font-bold text-purple-700 dark:text-purple-300">{MASTER_SYSTEM_EMAIL}</span></li>
                     <li>ไปที่เมนู <strong>ศูนย์ควบคุมระบบ (Super Admin Console)</strong></li>
-                    <li>เลือกแท็บ <strong>"อนุมัติการสมัครโรงเรียน" (School Approvals)</strong></li>
-                    <li>จะพบรายการโรงเรียนที่สมัครค้างอยู่ คลิกปุ่ม <strong>"อนุมัติ"</strong></li>
+                    <li>เลือกแท็บ <strong>&quot;อนุมัติการสมัครโรงเรียน&quot; (School Approvals)</strong></li>
+                    <li>จะพบรายการโรงเรียนที่สมัครค้างอยู่ คลิกปุ่ม <strong>&quot;อนุมัติ&quot;</strong></li>
                     <li>ระบบจะทำการยืนยันอีเมลและเปิดใช้งานโรงเรียนให้โดยอัตโนมัติทันที</li>
                   </ol>
                 </div>
               )}
             </div>
 
-            {/* Footer */}
             <div className="border-t border-[var(--color-border)] p-4 bg-[var(--color-card-subtle)] flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
                 <Mail className="w-3.5 h-3.5 text-blue-600" />
@@ -1672,6 +1539,6 @@ WHERE status = 'pending';`}
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 };

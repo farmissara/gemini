@@ -75,7 +75,7 @@ import {
 } from './lib/authDb';
 import type { AuthContext, StoredImportedCredential } from './lib/authDb';
 import { fetchCoordinationMessages } from './lib/coordinationDesk';
-import { loadSchoolData, saveSchoolCampusGates, saveSchoolGpsCoordinates, saveSchoolPeriodTimes, syncDataToSupabase } from './lib/supabase';
+import { loadSchoolData, saveSchoolCampusGates, saveSchoolGpsCoordinates, saveSchoolPeriodTimes, syncDataToSupabase, SUPABASE_PATCH_MIGRATION_SQL } from './lib/supabase';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
@@ -126,7 +126,7 @@ import { AdminSuperAdminDeskView } from './components/AdminSuperAdminDeskView';
 import { ExecutiveMonitorView } from './components/ExecutiveMonitorView';
 import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
 import { getLocalDateString } from './lib/date';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles } from 'lucide-react';
+import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Multi-School & Auth State
@@ -143,7 +143,32 @@ export const App: React.FC = () => {
   const [loadedSchoolId, setLoadedSchoolId] = useState<string | null>(null);
   const [dataLoadError, setDataLoadError] = useState<string | null>(null);
   const [dataSyncError, setDataSyncError] = useState<string | null>(null);
+  const [dataSyncWarnings, setDataSyncWarnings] = useState<string[]>([]);
+  const [dataSyncSummary, setDataSyncSummary] = useState<string | null>(null);
+  const [showSchemaMigrationModal, setShowSchemaMigrationModal] = useState(false);
+  const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const handleCopyMigrationSql = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(SUPABASE_PATCH_MIGRATION_SQL);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = SUPABASE_PATCH_MIGRATION_SQL;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedMigrationSql(true);
+      window.setTimeout(() => setCopiedMigrationSql(false), 2500);
+    } catch (err) {
+      console.warn('Could not copy SQL migration:', err);
+    }
+  };
 
   // Super Admin Management State (RBAC, Promotions, Subscription Plans)
   const [rolePermissions, setRolePermissions] = useState<RolePermissionConfig[]>(INITIAL_ROLE_PERMISSIONS);
@@ -683,6 +708,8 @@ export const App: React.FC = () => {
           announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
         });
         setDataSyncError(result.success ? null : result.message);
+        setDataSyncWarnings(result.warnings || []);
+        setDataSyncSummary(result.warnings && result.warnings.length > 0 ? result.message : null);
       }).catch((error: unknown) => {
         setDataSyncError(error instanceof Error ? error.message : String(error));
       });
@@ -1636,9 +1663,57 @@ export const App: React.FC = () => {
         </div>
       )}
       {!useImmersiveGameLayout && dataSyncError && (
-        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between">
-          <span>ระบบยังไม่พร้อมดำเนินการ: {dataSyncError}</span>
-          <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2">✕</button>
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
+          <span>{lang === 'th' ? 'เกิดข้อผิดพลาดในการซิงก์ข้อมูล Supabase:' : 'Supabase sync error:'} {dataSyncError}</span>
+          <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
+        </div>
+      )}
+      {!useImmersiveGameLayout && dataSyncWarnings.length > 0 && (
+        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/50 text-[11px] text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0 space-y-0.5">
+              <div className="font-bold">
+                {lang === 'th'
+                  ? 'บันทึกข้อมูลหลักเข้าสู่ Supabase สำเร็จแล้ว — แต่ฐานข้อมูลยังขาดการอัปเดตโครงสร้าง (SQL Migration)'
+                  : 'Core data synced to Supabase — database schema migration needed'}
+              </div>
+              {dataSyncSummary && (
+                <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
+                  ✓ {dataSyncSummary}
+                </div>
+              )}
+              <div className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
+                {dataSyncWarnings.join(' • ')}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleCopyMigrationSql}
+              className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] inline-flex items-center gap-1 transition cursor-pointer"
+            >
+              {copiedMigrationSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอก SQL แล้ว' : 'SQL Copied') : (lang === 'th' ? 'คัดลอก SQL Migration' : 'Copy SQL Migration')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSchemaMigrationModal(true)}
+              className="px-2.5 py-1 rounded-md border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-amber-950 dark:text-amber-100 font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ดูคำสั่ง & วิธีรัน' : 'View SQL & Steps'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDataSyncWarnings([])}
+              aria-label="Close warning"
+              className="p-1 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -2457,6 +2532,83 @@ export const App: React.FC = () => {
           }}
           lang={lang}
         />
+      )}
+
+      {/* Supabase Schema Migration Patch Modal */}
+      {showSchemaMigrationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-xs">
+          <div className="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between gap-3 bg-[var(--color-card-subtle)]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                    {lang === 'th'
+                      ? 'อัปเดตโครงสร้างฐานข้อมูล Supabase (SQL Migration Patch)'
+                      : 'Supabase Database Schema Migration Patch'}
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'รันครั้งเดียวเพื่อสร้างตาราง teachers, เพิ่มคอลัมน์ attendance.photo_url และรีเฟรช Schema Cache'
+                      : 'Run once in Supabase SQL Editor to create teachers, add attendance.photo_url, and reload schema cache'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSchemaMigrationModal(false)}
+                className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4 text-xs text-[var(--color-text-body)]">
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-1.5">
+                <div className="font-bold text-amber-900 dark:text-amber-200">
+                  {lang === 'th' ? 'ขั้นตอนการแก้ไข (ใช้เวลา 30 วินาที):' : 'How to apply (takes 30 seconds):'}
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-amber-900/90 dark:text-amber-100/90">
+                  <li>{lang === 'th' ? 'กดปุ่ม "คัดลอก SQL Migration ทั้งหมด" ด้านล่าง' : 'Click "Copy Full SQL Migration" below'}</li>
+                  <li>{lang === 'th' ? 'เปิดหน้า Supabase Dashboard ของโปรเจกต์คุณ → เมนูซ้ายเลือก SQL Editor → กด New query' : 'Open your Supabase Dashboard → SQL Editor → New query'}</li>
+                  <li>{lang === 'th' ? 'วางโค้ด SQL ลงไป แล้วกดปุ่ม Run (ด้านล่างขวา) จนขึ้น Success' : 'Paste the SQL and click Run until Success appears'}</li>
+                  <li>{lang === 'th' ? 'กลับมาที่หน้าเว็บ EduVerse แล้วกดรีเฟรช (F5) ข้อมูลครูและรูปเช็กชื่อจะซิงก์ครบถ้วนทันที' : 'Return to EduVerse and refresh the page; teachers and attendance photos will sync immediately'}</li>
+                </ol>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[var(--color-text-muted)]">
+                    supabase/migrations/20261111_patch_all_latest_migrations.sql
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyMigrationSql}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    {copiedMigrationSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอกโค้ด SQL แล้ว!' : 'Copied SQL!') : (lang === 'th' ? 'คัดลอก SQL Migration ทั้งหมด' : 'Copy Full SQL Migration')}</span>
+                  </button>
+                </div>
+                <pre className="p-3.5 rounded-xl bg-slate-900 text-emerald-300 font-mono text-[11px] max-h-72 overflow-auto leading-relaxed border border-slate-800 select-all">
+                  {SUPABASE_PATCH_MIGRATION_SQL}
+                </pre>
+              </div>
+            </div>
+
+            <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSchemaMigrationModal(false)}
+                className="px-4 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Offline Status Connectivity Banner */}
