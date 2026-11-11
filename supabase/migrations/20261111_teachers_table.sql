@@ -25,9 +25,13 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     teaching_experience_years NUMERIC(4,1) DEFAULT 0,
     pa_score NUMERIC(5,2) DEFAULT 0,
     self_development_plan TEXT,
+    pa_portfolio JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT teachers_id_school_unique UNIQUE (id, school_id)
 );
+
+ALTER TABLE public.teachers
+    ADD COLUMN IF NOT EXISTS pa_portfolio JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.teachers ENABLE ROW LEVEL SECURITY;
 

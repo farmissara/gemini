@@ -3,6 +3,11 @@ import { AttendanceRecord, AuthUser, LeaveRequest, PeriodAttendanceRecord, Stude
 export function resolveOwnStudent(currentUser: AuthUser | null | undefined, students: Student[]): Student | undefined {
   if (!currentUser || students.length === 0) return undefined;
 
+  if (currentUser.studentRecordId) {
+    const linkedStudent = students.find((s) => s.id === currentUser.studentRecordId);
+    if (linkedStudent) return linkedStudent;
+  }
+
   const byId = students.find((s) => s.id === currentUser.id);
   if (byId) return byId;
 
@@ -17,21 +22,18 @@ export function resolveOwnStudent(currentUser: AuthUser | null | undefined, stud
     if (child) return child;
   }
 
-  const thName = (currentUser.fullNameTh || '').trim().toLowerCase();
-  const enName = (currentUser.fullNameEn || '').trim().toLowerCase();
+  const thName = (currentUser.fullNameTh || '').trim().toLocaleLowerCase();
+  const enName = (currentUser.fullNameEn || '').trim().toLocaleLowerCase();
   const byName = students.find((s) => {
-    const fullTh = `${s.firstNameTh} ${s.lastNameTh}`.trim().toLowerCase();
-    const fullEn = `${s.firstNameEn} ${s.lastNameEn}`.trim().toLowerCase();
+    const fullTh = `${s.firstNameTh} ${s.lastNameTh}`.trim().toLocaleLowerCase();
+    const fullEn = `${s.firstNameEn} ${s.lastNameEn}`.trim().toLocaleLowerCase();
     return (
-      (thName && (thName.includes(fullTh) || fullTh.includes(thName))) ||
-      (enName && (enName.includes(fullEn) || fullEn.includes(enName)))
+      (thName && thName === fullTh) ||
+      (enName && enName === fullEn)
     );
   });
   if (byName) return byName;
 
-  if (currentUser.role === 'student') {
-    return students[0];
-  }
   return undefined;
 }
 
@@ -53,16 +55,13 @@ export function resolveOwnTeacher(currentUser: AuthUser | null | undefined, teac
     if (byEmail) return byEmail;
   }
 
-  const thName = (currentUser.fullNameTh || '').trim().toLowerCase();
+  const thName = (currentUser.fullNameTh || '').trim().toLocaleLowerCase();
   const byName = teachers.find((t) => {
-    const tName = t.fullNameTh.trim().toLowerCase();
-    return thName && (thName.includes(tName) || tName.includes(thName));
+    const tName = t.fullNameTh.trim().toLocaleLowerCase();
+    return thName && thName === tName;
   });
   if (byName) return byName;
 
-  if (currentUser.role === 'teacher') {
-    return teachers[0];
-  }
   return undefined;
 }
 

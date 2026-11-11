@@ -794,6 +794,8 @@ export const App: React.FC = () => {
       userAvatar?: string;
       userDepartmentOrRoom?: string;
       date?: string;
+      recordId?: string;
+      photoStoragePath?: string;
     }
   ) => {
     const todayStr = extra?.date || getLocalDateString();
@@ -811,7 +813,7 @@ export const App: React.FC = () => {
       const resolvedDeptOrRoom = extra?.userDepartmentOrRoom || (st ? st.room : (tc ? tc.department : ''));
 
       const newRecord: AttendanceRecord = {
-        id: `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         schoolId: activeSchool.id,
         studentId,
         teacherId: extra?.teacherId || (resolvedUserType === 'teacher' ? studentId : undefined),
@@ -827,6 +829,7 @@ export const App: React.FC = () => {
         remarks,
         checkinMethod: method || (extra?.photoUrl ? 'selfie_geofence' : 'qr_scanner'),
         photoUrl: extra?.photoUrl,
+        photoStoragePath: extra?.photoStoragePath,
         location: extra?.location,
         lineNotificationSent: true
       };
@@ -1628,6 +1631,7 @@ export const App: React.FC = () => {
                     students={schoolStudents}
                     currentRole={currentRole}
                     lang={lang}
+                    isDemoMode={isDemoMode}
                     campusGates={campusGates}
                     onUpdateCampusGates={handleUpdateCampusGates}
                     onSaveCampusGates={handleSaveCampusGates}

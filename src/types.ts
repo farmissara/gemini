@@ -116,6 +116,7 @@ export interface AuthUser {
   avatarUrl: string;
   lineConnected: boolean;
   phone?: string;
+  studentRecordId?: string;
 
   // General & Personal Information
   nickname?: string;
@@ -280,6 +281,7 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   checkinMethod: 'qr_scanner' | 'rfid' | 'manual' | 'mobile_geofence' | 'teacher_proxy' | 'selfie_geofence';
   photoUrl?: string; // Captured selfie image from phone
+  photoStoragePath?: string;
   location?: {
     lat: number;
     lng: number;

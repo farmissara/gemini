@@ -21,6 +21,15 @@ export interface PendingSchoolRegistration {
   email_confirmed: boolean;
 }
 
+export interface StudentAccountLink {
+  id: string;
+  school_id: string;
+  student_id: string | null;
+  full_name_th: string;
+  full_name_en: string;
+  status: 'pending' | 'active' | 'suspended';
+}
+
 interface SchoolRow {
   id: string;
   code: string;
@@ -47,6 +56,7 @@ interface UserProfileRow {
   id: string;
   email?: string;
   school_id: string | null;
+  student_id: string | null;
   role: UserRole;
   status: 'pending' | 'active' | 'suspended';
   full_name_th: string;
@@ -89,7 +99,7 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
 
   const { data: profile, error: profileError } = await client
     .from('user_profiles')
-    .select('id, school_id, role, status, full_name_th, full_name_en, avatar_url, phone')
+    .select('id, school_id, student_id, role, status, full_name_th, full_name_en, avatar_url, phone')
     .eq('id', userId)
     .single();
 
@@ -142,6 +152,7 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
     avatarUrl: profileRow.avatar_url,
     lineConnected: false,
     phone: profileRow.phone || undefined,
+    studentRecordId: profileRow.student_id || undefined,
   };
 
   return {
@@ -375,6 +386,37 @@ export async function updateUserProfileInSupabase(user: AuthUser): Promise<void>
     })
     .eq('id', user.id);
   if (error) throw new Error(`Could not update your profile: ${error.message}`);
+}
+
+export async function listStudentAccountLinks(schoolId: string): Promise<StudentAccountLink[]> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client
+    .from('user_profiles')
+    .select('id, school_id, student_id, full_name_th, full_name_en, status')
+    .eq('school_id', schoolId)
+    .eq('role', 'student')
+    .order('full_name_th');
+  if (error) throw new Error(`Could not load student account links: ${error.message}`);
+  return (data || []) as StudentAccountLink[];
+}
+
+export async function linkStudentAccountToStudent(
+  schoolId: string,
+  userId: string,
+  studentId: string
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.rpc('link_student_account', {
+    target_school_id: schoolId,
+    target_user_id: userId,
+    target_student_id: studentId,
+  });
+  if (error) throw new Error(`Could not link student account: ${error.message}`);
+  if (data === false) throw new Error('No matching student account was updated.');
 }
 
 export async function listPendingSchoolRegistrations(): Promise<PendingSchoolRegistration[]> {

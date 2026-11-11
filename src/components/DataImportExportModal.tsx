@@ -332,23 +332,29 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         const imported: Teacher[] = dataRows.map((r, idx) => ({
           id: `tch-hrms-${Date.now()}-${idx}`,
           teacherIdNumber: r[0] || `TCH-${100 + idx}`,
-          fullNameTh: r[1] || 'ครูผู้สอน',
-          fullNameEn: r[2] || 'Teacher',
+          fullNameTh: r[1] || '',
+          fullNameEn: r[2] || '',
           gender: ((r[3] === 'female' || r[3] === 'หญิง') ? 'female' : 'male') as 'female' | 'male' | 'other',
-          email: r[4] || `teacher${idx + 1}@school.ac.th`,
-          phone: r[5] || '081-000-0000',
-          avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=200',
-          academicDegree: r[6] || 'ปริญญาตรี (กศ.บ.)',
-          major: r[7] || 'การสอน',
-          academicStanding: r[8] || 'ครูชำนาญการ (คศ.2)',
-          department: r[9] || 'กลุ่มสาระการเรียนรู้คณิตศาสตร์',
-          teacherLicenseNo: r[10] || 'คส.6510001',
-          teachingSubjects: r[11] ? r[11].split(';') : ['คณิตศาสตร์'],
-          homeroomClasses: r[12] ? r[12].split(';') : ['ห้อง 401'],
-          teachingGrades: ['มัธยมศึกษาปีที่ 4'],
-          isSchoolAdmin: false,
-          teachingExperienceYears: parseFloat(r[13]) || 5,
-          paScore: parseFloat(r[14]) || 85,
+          email: r[4] || '',
+          phone: r[5] || '',
+          avatarUrl: '',
+          academicDegree: r[6] || '',
+          major: r[7] || '',
+          academicStanding: r[8] || '',
+          department: r[9] || '',
+          teacherLicenseNo: r[10] || '',
+          teachingSubjects: r[11] ? r[11].split(';').map((item) => item.trim()).filter(Boolean) : [],
+          homeroomClasses: r[12] ? r[12].split(';').map((item) => item.trim()).filter(Boolean) : [],
+          teachingGrades: r[15] ? r[15].split(';').map((item) => item.trim()).filter(Boolean) : [],
+          isSchoolAdmin: ['true', 'yes', 'ใช่'].includes((r[20] || '').trim().toLowerCase()),
+          teachingExperienceYears: r[13]?.trim() ? Number(r[13]) : undefined,
+          paScore: r[14]?.trim() ? Number(r[14]) : undefined,
+          otherSkills: r[16] ? r[16].split(';').map((item) => item.trim()).filter(Boolean) : [],
+          certifications: r[17] ? r[17].split(';').map((item) => item.trim()).filter(Boolean) : [],
+          selfDevelopmentPlan: r[18] || undefined,
+          lineUserId: r[19] || undefined,
+          lineLinked: ['true', 'yes', 'ใช่'].includes((r[21] || '').trim().toLowerCase()),
+          paPortfolio: [],
         })).filter(t => t.fullNameTh);
 
         setPage(0);
@@ -363,7 +369,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   };
 
   const handleExportTeachers = () => {
-    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA'];
+    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA', 'ระดับชั้นที่สอน', 'ความสามารถพิเศษ', 'วุฒิบัตร/ใบรับรอง', 'แผนพัฒนาตนเอง', 'LINE User ID', 'ผู้ดูแลโรงเรียน', 'เชื่อมต่อ LINE'];
     const rows = teachers.map(t => [
       t.teacherIdNumber,
       `"${t.fullNameTh}"`,
@@ -378,16 +384,23 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       t.teacherLicenseNo,
       `"${t.teachingSubjects?.join(';') || ''}"`,
       `"${t.homeroomClasses?.join(';') || ''}"`,
-      t.teachingExperienceYears || 0,
-      t.paScore || 0
+      t.teachingExperienceYears ?? '',
+      t.paScore ?? '',
+      `"${t.teachingGrades?.join(';') || ''}"`,
+      `"${t.otherSkills?.join(';') || ''}"`,
+      `"${t.certifications?.join(';') || ''}"`,
+      `"${t.selfDevelopmentPlan || ''}"`,
+      t.lineUserId || '',
+      t.isSchoolAdmin ? 'true' : 'false',
+      t.lineLinked ? 'true' : 'false',
     ]);
     downloadFile(`hrms_teachers_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
     showToast('ส่งออกข้อมูลบุคลากร HRMS สำเร็จ (CSV)');
   };
 
   const handleDownloadTeacherTemplate = () => {
-    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore'];
-    const sample = ['TCH-201', 'ดร.ชาญชัย เกียรติสกุล', 'Dr. Chanchai Kiatsakul', 'male', 'chanchai@school.ac.th', '081-999-8877', 'ปริญญาเอก (ศศ.ด.)', 'คณิตศาสตร์ศึกษา', 'ครูชำนาญการพิเศษ (คศ.3)', 'กลุ่มสาระการเรียนรู้คณิตศาสตร์', 'คส.6010001234', 'คณิตศาสตร์ ม.4;แคลคูลัส', 'ห้อง 401', '12', '92.5'];
+    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked'];
+    const sample = ['TCH-201', 'ดร.ชาญชัย เกียรติสกุล', 'Dr. Chanchai Kiatsakul', 'male', 'chanchai@school.ac.th', '081-999-8877', 'ปริญญาเอก (ศศ.ด.)', 'คณิตศาสตร์ศึกษา', 'ครูชำนาญการพิเศษ (คศ.3)', 'กลุ่มสาระการเรียนรู้คณิตศาสตร์', 'คส.6010001234', 'คณิตศาสตร์ ม.4;แคลคูลัส', 'ห้อง 401', '12', '92.5', 'ม.4;ม.5', 'คณิตศาสตร์;หุ่นยนต์', 'Active Learning', 'พัฒนาสื่อการเรียนรู้', '', 'false', 'false'];
     downloadFile('template_hrms_teachers.csv', [headers.join(','), sample.join(',')].join('\n'));
     showToast('ดาวน์โหลดแบบฟอร์มครู HRMS แล้ว');
   };

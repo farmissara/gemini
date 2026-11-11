@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BellRing, 
   MessageSquare, 
@@ -33,6 +33,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
+import { linkStudentAccountToStudent, listStudentAccountLinks, StudentAccountLink } from '../lib/authDb';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 
 interface SystemSettingsViewProps {
@@ -41,6 +42,7 @@ interface SystemSettingsViewProps {
   students: Student[];
   currentRole: UserRole;
   lang: AppLanguage;
+  isDemoMode?: boolean;
   campusGates?: CampusGateGeofence[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
@@ -54,19 +56,90 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   students,
   currentRole,
   lang,
+  isDemoMode = false,
   campusGates = [],
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
   onUpdateConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps'>('line_events');
+  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts'>('line_events');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
   const [simulatedSendState, setSimulatedSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [eventCategoryPage, setEventCategoryPage] = useState(0);
   const [subscriberPage, setSubscriberPage] = useState(0);
+  const [studentAccounts, setStudentAccounts] = useState<StudentAccountLink[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [studentAccountsLoading, setStudentAccountsLoading] = useState(false);
+  const [studentAccountSaving, setStudentAccountSaving] = useState(false);
+  const [studentAccountError, setStudentAccountError] = useState<string | null>(null);
+  const [studentAccountSuccess, setStudentAccountSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      activeTab !== 'student_accounts' ||
+      isDemoMode ||
+      !['admin', 'super_admin'].includes(currentRole)
+    ) return;
+
+    let active = true;
+    setStudentAccountsLoading(true);
+    setStudentAccountError(null);
+    listStudentAccountLinks(activeSchool.id)
+      .then((accounts) => {
+        if (!active) return;
+        setStudentAccounts(accounts);
+        const defaultAccount = accounts.find((account) => !account.student_id) || accounts[0];
+        setSelectedAccountId(defaultAccount?.id || '');
+        setSelectedStudentId(defaultAccount?.student_id || '');
+      })
+      .catch((error: unknown) => {
+        if (active) setStudentAccountError(error instanceof Error ? error.message : 'โหลดบัญชีนักเรียนไม่สำเร็จ');
+      })
+      .finally(() => {
+        if (active) setStudentAccountsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, activeSchool.id, currentRole, isDemoMode]);
+
+  const handleLinkStudentAccount = async () => {
+    if (!selectedAccountId || !selectedStudentId) {
+      setStudentAccountError('กรุณาเลือกบัญชีและรายชื่อนักเรียน');
+      return;
+    }
+
+    setStudentAccountSaving(true);
+    setStudentAccountError(null);
+    setStudentAccountSuccess(null);
+    try {
+      await linkStudentAccountToStudent(activeSchool.id, selectedAccountId, selectedStudentId);
+    } catch (error) {
+      setStudentAccountError(error instanceof Error ? error.message : 'ผูกบัญชีนักเรียนไม่สำเร็จ');
+      setStudentAccountSaving(false);
+      return;
+    }
+
+    setStudentAccountSuccess('ผูกบัญชีกับระเบียนนักเรียนเรียบร้อยแล้ว');
+    try {
+      const accounts = await listStudentAccountLinks(activeSchool.id);
+      setStudentAccounts(accounts);
+      const nextId = accounts.find((account) => !account.student_id)?.id || accounts[0]?.id || '';
+      setSelectedAccountId(nextId);
+      setSelectedStudentId(accounts.find((account) => account.id === nextId)?.student_id || '');
+    } catch (error) {
+      setStudentAccountError(error instanceof Error
+        ? `ผูกบัญชีสำเร็จแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ: ${error.message}`
+        : 'ผูกบัญชีสำเร็จแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ');
+    } finally {
+      setStudentAccountSaving(false);
+    }
+  };
 
   // Form State
   const defaultLineSettings: LineNotificationSettings = systemConfig.lineNotificationSettings || {
@@ -449,6 +522,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           <MapPin className="w-4 h-4" />
           <span>{lang === 'th' ? 'พิกัด GPS & Geofence ประตูโรงเรียน' : 'School GPS & Geofence'}</span>
         </button>
+
+        {!isDemoMode && ['admin', 'super_admin'].includes(currentRole) && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('student_accounts')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+              activeTab === 'student_accounts'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>ผูกบัญชีนักเรียน</span>
+          </button>
+        )}
       </div>
 
       {/* Tab Panels Container */}
@@ -1449,6 +1537,119 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           />
         </div>
       )}
+
+      {activeTab === 'student_accounts' &&
+        !isDemoMode &&
+        ['admin', 'super_admin'].includes(currentRole) && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">ผูกบัญชีล็อกอินกับรายชื่อนักเรียน</h3>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  เลือกบัญชีนักเรียนและระเบียนที่โรงเรียนยืนยันแล้ว ระบบจะใช้การผูกนี้ระบุชื่อและสิทธิ์เช็กอิน
+                </p>
+              </div>
+
+              {studentAccountError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                  {studentAccountError}
+                </p>
+              )}
+              {studentAccountSuccess && (
+                <p role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                  {studentAccountSuccess}
+                </p>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                <label className="space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
+                  <span>บัญชีล็อกอิน</span>
+                  <select
+                    value={selectedAccountId}
+                    onChange={(event) => {
+                      const accountId = event.target.value;
+                      setSelectedAccountId(accountId);
+                      setSelectedStudentId(studentAccounts.find((account) => account.id === accountId)?.student_id || '');
+                      setStudentAccountError(null);
+                      setStudentAccountSuccess(null);
+                    }}
+                    disabled={studentAccountsLoading || studentAccounts.length === 0}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                  >
+                    <option value="">เลือกบัญชี</option>
+                    {studentAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'} · {account.id.slice(0, 8)}
+                        {account.student_id ? ' (ผูกแล้ว)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
+                  <span>ระเบียนนักเรียน</span>
+                  <select
+                    value={selectedStudentId}
+                    onChange={(event) => setSelectedStudentId(event.target.value)}
+                    disabled={studentAccountsLoading || !selectedAccountId}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                  >
+                    <option value="">เลือกรายชื่อนักเรียน</option>
+                    {students.map((student) => {
+                      const assignedElsewhere = studentAccounts.some(
+                        (account) => account.id !== selectedAccountId && account.student_id === student.id
+                      );
+                      return (
+                        <option key={student.id} value={student.id} disabled={assignedElsewhere}>
+                          {student.firstNameTh} {student.lastNameTh} · {student.studentIdNumber}
+                          {assignedElsewhere ? ' (ผูกกับบัญชีอื่นแล้ว)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleLinkStudentAccount}
+                  disabled={studentAccountsLoading || studentAccountSaving || !selectedAccountId || !selectedStudentId}
+                  className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {studentAccountSaving ? 'กำลังบันทึก...' : 'บันทึกการผูกบัญชี'}
+                </button>
+              </div>
+
+              {studentAccountsLoading ? (
+                <p className="text-xs text-[var(--color-text-muted)]">กำลังโหลดบัญชีนักเรียน...</p>
+              ) : studentAccounts.length === 0 ? (
+                <p className="text-xs text-[var(--color-text-muted)]">ไม่พบบัญชีนักเรียนของโรงเรียนนี้</p>
+              ) : (
+                <div className="divide-y divide-[var(--color-border)]">
+                  {studentAccounts.map((account) => {
+                    const linkedStudent = students.find((student) => student.id === account.student_id);
+                    return (
+                      <div key={account.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+                        <div>
+                          <p className="font-semibold text-[var(--color-text-title)]">
+                            {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'}
+                          </p>
+                          <p className="font-mono text-[10px] text-[var(--color-text-muted)]">
+                            บัญชี {account.id.slice(0, 8)} · {account.status === 'active' ? 'ใช้งาน' : account.status}
+                          </p>
+                        </div>
+                        <p className={linkedStudent ? 'text-emerald-700' : 'text-amber-700'}>
+                          {linkedStudent
+                            ? `${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
+                            : 'ยังไม่ผูกกับรายชื่อนักเรียน'}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

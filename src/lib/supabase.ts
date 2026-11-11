@@ -254,9 +254,10 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     lineLinked: Boolean(row.line_linked),
     otherSkills: Array.isArray(row.other_skills) ? row.other_skills : [],
     certifications: Array.isArray(row.certifications) ? row.certifications : [],
-    teachingExperienceYears: Number(row.teaching_experience_years || 0),
-    paScore: Number(row.pa_score || 0),
+    teachingExperienceYears: row.teaching_experience_years == null ? undefined : Number(row.teaching_experience_years),
+    paScore: row.pa_score == null ? undefined : Number(row.pa_score),
     selfDevelopmentPlan: row.self_development_plan || undefined,
+    paPortfolio: Array.isArray(row.pa_portfolio) ? row.pa_portfolio : [],
   }));
 
   const [studentResult, courseResult, gradeResult, attendanceResult, invoiceResult, announcementResult] = results;
@@ -319,16 +320,32 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     letterGrade: row.letter_grade,
     gradePoint: Number(row.grade_point || 0),
   }));
-  const attendance: AttendanceRecord[] = (attendanceResult.data || []).map((row) => ({
-    id: row.id,
-    schoolId: row.school_id,
-    studentId: row.student_id,
-    date: row.date,
-    time: row.time,
-    status: row.status,
-    checkinMethod: row.checkin_method,
-    remarks: row.remarks || undefined,
-    lineNotificationSent: Boolean(row.line_notification_sent),
+  const attendance: AttendanceRecord[] = await Promise.all((attendanceResult.data || []).map(async (row) => {
+    const photoStoragePath: string | undefined = row.photo_url || undefined;
+    let photoUrl = photoStoragePath;
+    if (photoStoragePath) {
+      const { data, error } = await client.storage
+        .from('attendance-selfies')
+        .createSignedUrl(photoStoragePath, 3600);
+      if (error) throw new Error(`Could not load attendance photo: ${error.message}`);
+      photoUrl = data.signedUrl;
+    }
+
+    return {
+      id: row.id,
+      schoolId: row.school_id,
+      studentId: row.student_id,
+      userName: row.user_name || undefined,
+      recordType: row.record_type || 'check_in',
+      date: row.date,
+      time: row.time,
+      status: row.status,
+      checkinMethod: row.checkin_method,
+      photoUrl,
+      photoStoragePath,
+      remarks: row.remarks || undefined,
+      lineNotificationSent: Boolean(row.line_notification_sent),
+    };
   }));
   const invoices: TuitionInvoice[] = (invoiceResult.data || []).map((row) => ({
     id: row.id,
@@ -425,6 +442,50 @@ export async function saveSchoolCampusGates(
   return true;
 }
 
+export async function saveStudentSelfAttendance(record: AttendanceRecord, userId: string): Promise<string> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  if (!record.schoolId || !record.studentId || !record.id || !record.userName) {
+    throw new Error('Attendance record is missing the linked student identity.');
+  }
+  if (!record.photoUrl?.startsWith('data:image/jpeg;base64,')) {
+    throw new Error('A real camera photo is required to save this check-in.');
+  }
+
+  const photoBlob = await (await fetch(record.photoUrl)).blob();
+  const photoStoragePath = `${record.schoolId}/${userId}/${record.id}.jpg`;
+  const { error: uploadError } = await client.storage
+    .from('attendance-selfies')
+    .upload(photoStoragePath, photoBlob, { contentType: 'image/jpeg', upsert: false });
+  if (uploadError) throw new Error(`Could not save attendance photo: ${uploadError.message}`);
+
+  const { error: insertError } = await client.from('attendance').insert({
+    id: record.id,
+    school_id: record.schoolId,
+    student_id: record.studentId,
+    date: record.date,
+    time: record.time,
+    status: record.status,
+    checkin_method: record.checkinMethod,
+    remarks: record.remarks || null,
+    line_notification_sent: false,
+    record_type: record.recordType || 'check_in',
+    user_name: record.userName,
+    photo_url: photoStoragePath,
+  });
+  if (insertError) {
+    const { error: cleanupError } = await client.storage
+      .from('attendance-selfies')
+      .remove([photoStoragePath]);
+    if (cleanupError) {
+      throw new Error(`Could not save attendance: ${insertError.message}; uploaded photo cleanup failed: ${cleanupError.message}`);
+    }
+    throw new Error(`Could not save attendance: ${insertError.message}`);
+  }
+
+  return photoStoragePath;
+}
+
 // Convert camelCase models to snake_case Postgres columns and back
 export async function syncDataToSupabase(payload: {
   school: School;
@@ -501,9 +562,10 @@ export async function syncDataToSupabase(payload: {
         line_linked: Boolean(t.lineLinked),
         other_skills: t.otherSkills || [],
         certifications: t.certifications || [],
-        teaching_experience_years: t.teachingExperienceYears || 0,
-        pa_score: t.paScore || 0,
+        teaching_experience_years: t.teachingExperienceYears ?? null,
+        pa_score: t.paScore ?? null,
         self_development_plan: t.selfDevelopmentPlan || null,
+        pa_portfolio: t.paPortfolio || [],
       }));
       const { error: tErr } = await client.from('teachers').upsert(teacherRows);
       if (tErr) {
@@ -573,6 +635,9 @@ export async function syncDataToSupabase(payload: {
         checkin_method: a.checkinMethod,
         remarks: a.remarks || null,
         line_notification_sent: a.lineNotificationSent,
+        record_type: a.recordType || 'check_in',
+        user_name: a.userName || null,
+        photo_url: a.photoStoragePath || null,
       }));
       const { error: attErr } = await client.from('attendance').upsert(attRows);
       if (attErr) throw new Error(`Attendance sync error: ${attErr.message}`);

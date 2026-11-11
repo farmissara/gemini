@@ -129,6 +129,8 @@ interface MobileAppShellProps {
       userAvatar?: string;
       userDepartmentOrRoom?: string;
       date?: string;
+      recordId?: string;
+      photoStoragePath?: string;
     }
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;

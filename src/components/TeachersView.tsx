@@ -115,25 +115,31 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     gender: 'male',
     email: '',
     phone: '',
-    academicDegree: 'ปริญญาตรี กศ.บ. การศึกษาศาสตร์',
-    major: 'การสอนและพัฒนาหลักสูตร',
-    minor: 'เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)',
-    academicStanding: 'ครูชำนาญการ (คศ.2)',
-    department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
-    teacherLicenseNo: 'คส. 63109000' + Math.floor(1000 + Math.random() * 9000),
+    academicDegree: '',
+    major: '',
+    minor: '',
+    academicStanding: '',
+    department: '',
+    teacherLicenseNo: '',
     teachingSubjects: [],
     homeroomClasses: [],
-    teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)'],
+    teachingGrades: [],
     isSchoolAdmin: false,
-    lineLinked: true,
-    teachingExperienceYears: 5,
-    otherSkills: ['Active Learning', 'การใช้สื่อดิจิทัลเพื่อการศึกษา'],
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    lineLinked: false,
+    teachingExperienceYears: undefined,
+    otherSkills: [],
+    certifications: [],
+    paScore: undefined,
+    selfDevelopmentPlan: '',
+    avatarUrl: '',
   });
 
   const [subjectInput, setSubjectInput] = useState('');
   const [homeroomInput, setHomeroomInput] = useState('');
   const [newSkillInput, setNewSkillInput] = useState('');
+  const [gradeInput, setGradeInput] = useState('');
+  const [certificationInput, setCertificationInput] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const departments = [
     'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
@@ -173,6 +179,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
   const handleOpenAdd = () => {
     setTeacherFormStep(1);
+    setFormError(null);
     setFormData({
       teacherIdNumber: `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       fullNameTh: '',
@@ -180,42 +187,79 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       gender: 'male',
       email: '',
       phone: '',
-      academicDegree: 'ปริญญาตรี กศ.บ. การศึกษาศาสตร์',
-      major: 'การสอนและนวัตกรรมการศึกษา',
-      minor: 'เทคโนโลยีสารสนเทศและการสื่อสาร',
-      academicStanding: 'ครูชำนาญการ (คศ.2)',
-      department: departments[0],
-      teacherLicenseNo: 'คส. 63109000' + Math.floor(1000 + Math.random() * 9000),
-      teachingSubjects: ['คณิตศาสตร์พื้นฐาน ม.4'],
-      homeroomClasses: ['ห้อง 401'],
-      teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)'],
+      academicDegree: '',
+      major: '',
+      minor: '',
+      academicStanding: '',
+      department: '',
+      teacherLicenseNo: '',
+      teachingSubjects: [],
+      homeroomClasses: [],
+      teachingGrades: [],
       isSchoolAdmin: false,
-      lineLinked: true,
-      teachingExperienceYears: 6,
-      otherSkills: ['Active Learning', 'Canva for Education', 'AI for Teachers'],
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+      lineLinked: false,
+      teachingExperienceYears: undefined,
+      otherSkills: [],
+      certifications: [],
+      paScore: undefined,
+      selfDevelopmentPlan: '',
+      avatarUrl: '',
     });
+    setSubjectInput('');
+    setHomeroomInput('');
+    setNewSkillInput('');
+    setGradeInput('');
+    setCertificationInput('');
     setEditingTeacher(null);
     setShowAddModal(true);
   };
 
   const handleOpenEdit = (teacher: Teacher) => {
     setTeacherFormStep(1);
+    setFormError(null);
     setEditingTeacher(teacher);
     setFormData({
       ...teacher,
     });
+    setSubjectInput('');
+    setHomeroomInput('');
+    setNewSkillInput('');
+    setGradeInput('');
+    setCertificationInput('');
     setShowAddModal(true);
   };
 
   const handleSaveTeacher = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullNameTh || !formData.email) return;
+    const experience = formData.teachingExperienceYears;
+    if (
+      !formData.fullNameTh?.trim() ||
+      !formData.email?.trim() ||
+      experience === undefined ||
+      !Number.isFinite(experience) ||
+      experience < 0
+    ) {
+      setFormError('กรุณากรอกชื่อ อีเมล และประสบการณ์สอนเป็นจำนวนปีตั้งแต่ 0 ขึ้นไป');
+      setTeacherFormStep(1);
+      return;
+    }
+    setFormError(null);
 
     if (editingTeacher) {
       const updated: Teacher = {
         ...editingTeacher,
-        ...(formData as Teacher),
+        ...formData,
+        fullNameTh: formData.fullNameTh.trim(),
+        fullNameEn: formData.fullNameEn?.trim() || '',
+        email: formData.email.trim(),
+        phone: formData.phone?.trim() || '',
+        academicDegree: formData.academicDegree?.trim() || '',
+        major: formData.major?.trim() || '',
+        minor: formData.minor?.trim() || undefined,
+        academicStanding: formData.academicStanding?.trim() || '',
+        department: formData.department?.trim() || '',
+        teacherLicenseNo: formData.teacherLicenseNo?.trim() || '',
+        teachingExperienceYears: experience,
       };
       onUpdateTeacher(updated);
       if (selectedTeacherForDetail && selectedTeacherForDetail.id === updated.id) {
@@ -230,24 +274,24 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         gender: formData.gender || 'male',
         email: formData.email || '',
         phone: formData.phone || '',
-        avatarUrl: formData.avatarUrl || (formData.gender === 'female'
-          ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80'),
-        academicDegree: formData.academicDegree || 'ปริญญาตรี',
-        major: formData.major || 'การศึกษา',
-        minor: formData.minor || 'ทั่วไป',
-        academicStanding: formData.academicStanding || 'ครูชำนาญการ (คศ.2)',
-        department: formData.department || departments[0],
-        teacherLicenseNo: formData.teacherLicenseNo || 'คส. 631090001234',
+        avatarUrl: formData.avatarUrl || '',
+        academicDegree: formData.academicDegree?.trim() || '',
+        major: formData.major?.trim() || '',
+        minor: formData.minor?.trim() || '',
+        academicStanding: formData.academicStanding?.trim() || '',
+        department: formData.department?.trim() || '',
+        teacherLicenseNo: formData.teacherLicenseNo?.trim() || '',
         teachingSubjects: formData.teachingSubjects || [],
         homeroomClasses: formData.homeroomClasses || [],
-        teachingGrades: formData.teachingGrades || ['มัธยมศึกษาปีที่ 4 (M.4)'],
+        teachingGrades: formData.teachingGrades || [],
         isSchoolAdmin: Boolean(formData.isSchoolAdmin),
-        lineLinked: true,
-        teachingExperienceYears: Number(formData.teachingExperienceYears) || 1,
-        otherSkills: formData.otherSkills || ['Active Learning'],
-        paScore: 85.0,
-        paPortfolio: [],
+        lineLinked: Boolean(formData.lineLinked),
+        teachingExperienceYears: experience,
+        otherSkills: formData.otherSkills || [],
+        certifications: formData.certifications || [],
+        paScore: formData.paScore,
+        selfDevelopmentPlan: formData.selfDevelopmentPlan?.trim() || undefined,
+        paPortfolio: formData.paPortfolio || [],
       };
       onAddTeacher(newTeacher);
     }
@@ -297,7 +341,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     const updatedTeacher: Teacher = {
       ...selectedTeacherForDetail,
       paPortfolio: updatedPortfolio,
-      paScore: Math.min(100, Math.round(((selectedTeacherForDetail.paScore || 85) + 2) * 10) / 10),
+      paScore: Math.min(100, Math.round(((selectedTeacherForDetail.paScore ?? 0) + 2) * 10) / 10),
     };
 
     setSelectedTeacherForDetail(updatedTeacher);
@@ -534,7 +578,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     )}
                     <div className="flex justify-between items-center text-[11px]">
                       <span className="text-[var(--color-text-muted)]">ประสบการณ์:</span>
-                      <span className="font-mono text-[var(--color-text-body)]">{teacher.teachingExperienceYears || 1} ปี</span>
+                      <span className="font-mono text-[var(--color-text-body)]">
+                        {teacher.teachingExperienceYears === undefined ? 'ไม่ระบุ' : `${teacher.teachingExperienceYears} ปี`}
+                      </span>
                     </div>
                   </div>
 
@@ -618,7 +664,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       </span>
                     </td>
                     <td className="px-4 py-3 font-mono text-[var(--color-text-body)]">
-                      {teacher.teachingExperienceYears || 1} ปี
+                      {teacher.teachingExperienceYears === undefined ? 'ไม่ระบุ' : `${teacher.teachingExperienceYears} ปี`}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -775,17 +821,23 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
                     <div className="p-3.5 rounded-2xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-300 dark:border-indigo-800">
                       <span className="text-[10px] text-indigo-900 dark:text-indigo-200 font-bold uppercase block">วิชาโท (Minor)</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.minor || 'ทั่วไป/บูรณาการ'}</p>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.minor || 'ไม่ระบุ'}</p>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800">
                       <span className="text-[10px] text-amber-900 dark:text-amber-200 font-bold uppercase block">ประสบการณ์สอน</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.teachingExperienceYears || 1} ปี</p>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">
+                        {selectedTeacherForDetail.teachingExperienceYears === undefined
+                          ? 'ไม่ระบุ'
+                          : `${selectedTeacherForDetail.teachingExperienceYears} ปี`}
+                      </p>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800">
                       <span className="text-[10px] text-emerald-900 dark:text-emerald-200 font-bold uppercase block">คะแนนประเมิน PA</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.paScore || 88.5}/100</p>
+                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">
+                        {selectedTeacherForDetail.paScore === undefined ? 'ไม่ระบุ' : `${selectedTeacherForDetail.paScore}/100`}
+                      </p>
                     </div>
                   </div>
 
@@ -997,8 +1049,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <span>แผนพัฒนาตนเองรายบุคคล (Individual Development Plan: ID Plan)</span>
                     </h5>
                     <p className="text-[var(--color-text-body)]">
-                      {selectedTeacherForDetail.selfDevelopmentPlan ||
-                        'มุ่งเน้นการจัดทำวิจัยปฏิบัติการในชั้นเรียน การพัฒนาสื่อนวัตกรรมดิจิทัล 3D และการสร้างเครือข่าย PLC เพื่อยกระดับผลสัมฤทธิ์ของผู้เรียน'}
+                      {selectedTeacherForDetail.selfDevelopmentPlan || 'ยังไม่ได้ระบุแผนพัฒนาตนเอง'}
                     </p>
                   </div>
                 </div>
@@ -1054,6 +1105,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveTeacher} className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto text-xs">
+              {formError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                  {formError}
+                </p>
+              )}
               <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
                 <span className={teacherFormStep === 1 ? 'font-bold text-[var(--color-primary-text)]' : ''}>1. Profile</span>
                 <span>→</span>
@@ -1061,6 +1117,30 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </div>
               {teacherFormStep === 1 && (
                 <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">รหัสครู/บุคลากร *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.teacherIdNumber || ''}
+                    onChange={(e) => setFormData({ ...formData, teacherIdNumber: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">เพศ</label>
+                  <select
+                    value={formData.gender || 'other'}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as Teacher['gender'] })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  >
+                    <option value="male">ชาย</option>
+                    <option value="female">หญิง</option>
+                    <option value="other">ไม่ระบุ/อื่นๆ</option>
+                  </select>
+                </div>
+              </div>
               {/* Photo Upload / Capture preview */}
               <div className="flex items-center gap-4 p-3.5 bg-[var(--color-card-subtle)] rounded-2xl border border-[var(--color-border)]">
                 <img
@@ -1137,12 +1217,17 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ประสบการณ์สอน (ปี)</label>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ประสบการณ์สอน (ปี) *</label>
                   <input
                     type="number"
+                    required
                     min="0"
-                    value={formData.teachingExperienceYears || 1}
-                    onChange={(e) => setFormData({ ...formData, teachingExperienceYears: Number(e.target.value) })}
+                    step="0.5"
+                    value={formData.teachingExperienceYears ?? ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      teachingExperienceYears: e.target.value === '' ? undefined : Number(e.target.value),
+                    })}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
                 </div>
@@ -1161,7 +1246,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     required
                     value={formData.major || ''}
                     onChange={(e) => setFormData({ ...formData, major: e.target.value })}
-                    placeholder="เช่น วิทยาการคำนวณและเทคโนโลยีศึกษา"
+                    placeholder="กรอกข้อมูลวิชาเอก"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   />
                 </div>
@@ -1183,31 +1268,57 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">
                     วิทยฐานะ (มาตรฐาน ว.PA)
                   </label>
-                  <select
-                    value={formData.academicStanding}
+                  <input
+                    list="teacher-academic-standings"
+                    value={formData.academicStanding || ''}
                     onChange={(e) => setFormData({ ...formData, academicStanding: e.target.value })}
+                    placeholder="เลือกหรือพิมพ์วิทยฐานะ"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
-                  >
+                  />
+                  <datalist id="teacher-academic-standings">
                     {academicStandings.map((std) => (
                       <option key={std} value={std}>
-                        {std}
                       </option>
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">กลุ่มสาระการเรียนรู้</label>
-                  <select
-                    value={formData.department}
+                  <input
+                    list="teacher-departments"
+                    value={formData.department || ''}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    placeholder="เลือกหรือพิมพ์กลุ่มสาระ/หน่วยงาน"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                  >
+                  />
+                  <datalist id="teacher-departments">
                     {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
+                      <option key={dept} value={dept} />
                     ))}
-                  </select>
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">วุฒิการศึกษาสูงสุด</label>
+                  <input
+                    type="text"
+                    value={formData.academicDegree || ''}
+                    onChange={(e) => setFormData({ ...formData, academicDegree: e.target.value })}
+                    placeholder="กรอกวุฒิการศึกษา"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">เลขที่ใบอนุญาตประกอบวิชาชีพ</label>
+                  <input
+                    type="text"
+                    value={formData.teacherLicenseNo || ''}
+                    onChange={(e) => setFormData({ ...formData, teacherLicenseNo: e.target.value })}
+                    placeholder="กรอกเลขที่ใบอนุญาต"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
                 </div>
               </div>
 
@@ -1271,6 +1382,164 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     </span>
                   )} />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ห้องที่ปรึกษา/ห้องประจำชั้น</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={homeroomInput}
+                      onChange={(e) => setHomeroomInput(e.target.value)}
+                      placeholder="พิมพ์ชื่อห้องแล้วกดเพิ่ม"
+                      className="min-w-0 flex-1 px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const value = homeroomInput.trim();
+                        if (!value) return;
+                        setFormData({ ...formData, homeroomClasses: [...(formData.homeroomClasses || []), value] });
+                        setHomeroomInput('');
+                      }}
+                      className="px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-semibold cursor-pointer"
+                    >
+                      เพิ่ม
+                    </button>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {(formData.homeroomClasses || []).map((room, idx) => (
+                      <span key={`${room}-${idx}`} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1">
+                        {room}
+                        <button type="button" aria-label={`ลบ ${room}`} onClick={() => setFormData({
+                          ...formData,
+                          homeroomClasses: (formData.homeroomClasses || []).filter((_, i) => i !== idx),
+                        })} className="font-bold text-rose-700 cursor-pointer">×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ระดับชั้นที่สอน</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={gradeInput}
+                      onChange={(e) => setGradeInput(e.target.value)}
+                      placeholder="พิมพ์ระดับชั้นแล้วกดเพิ่ม"
+                      className="min-w-0 flex-1 px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const value = gradeInput.trim();
+                        if (!value) return;
+                        setFormData({ ...formData, teachingGrades: [...(formData.teachingGrades || []), value] });
+                        setGradeInput('');
+                      }}
+                      className="px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-semibold cursor-pointer"
+                    >
+                      เพิ่ม
+                    </button>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {(formData.teachingGrades || []).map((grade, idx) => (
+                      <span key={`${grade}-${idx}`} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1">
+                        {grade}
+                        <button type="button" aria-label={`ลบ ${grade}`} onClick={() => setFormData({
+                          ...formData,
+                          teachingGrades: (formData.teachingGrades || []).filter((_, i) => i !== idx),
+                        })} className="font-bold text-rose-700 cursor-pointer">×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">วุฒิบัตร/ใบรับรอง</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={certificationInput}
+                    onChange={(e) => setCertificationInput(e.target.value)}
+                    placeholder="พิมพ์ชื่อวุฒิบัตรแล้วกดเพิ่ม"
+                    className="min-w-0 flex-1 px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const value = certificationInput.trim();
+                      if (!value) return;
+                      setFormData({ ...formData, certifications: [...(formData.certifications || []), value] });
+                      setCertificationInput('');
+                    }}
+                    className="px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-semibold cursor-pointer"
+                  >
+                    เพิ่ม
+                  </button>
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {(formData.certifications || []).map((certification, idx) => (
+                    <span key={`${certification}-${idx}`} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1">
+                      {certification}
+                      <button type="button" aria-label={`ลบ ${certification}`} onClick={() => setFormData({
+                        ...formData,
+                        certifications: (formData.certifications || []).filter((_, i) => i !== idx),
+                      })} className="font-bold text-rose-700 cursor-pointer">×</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">คะแนน PA (0–100)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={formData.paScore ?? ''}
+                    onChange={(e) => setFormData({ ...formData, paScore: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">LINE User ID</label>
+                  <input
+                    type="text"
+                    value={formData.lineUserId || ''}
+                    onChange={(e) => setFormData({ ...formData, lineUserId: e.target.value || undefined })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-[var(--color-text-body)]">
+                <input
+                  type="checkbox"
+                  checked={Boolean(formData.lineLinked)}
+                  onChange={(e) => setFormData({ ...formData, lineLinked: e.target.checked })}
+                />
+                เชื่อมต่อ LINE แล้ว
+              </label>
+              <label className="flex items-center gap-2 text-xs text-[var(--color-text-body)]">
+                <input
+                  type="checkbox"
+                  checked={Boolean(formData.isSchoolAdmin)}
+                  onChange={(e) => setFormData({ ...formData, isSchoolAdmin: e.target.checked })}
+                />
+                กำหนดให้เป็นผู้ดูแลโรงเรียน
+              </label>
+              <div>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">แผนพัฒนาตนเอง (ID Plan)</label>
+                <textarea
+                  rows={3}
+                  value={formData.selfDevelopmentPlan || ''}
+                  onChange={(e) => setFormData({ ...formData, selfDevelopmentPlan: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                />
               </div>
 
               {/* Teaching Subjects */}
@@ -1351,7 +1620,19 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      if (formData.fullNameTh && formData.email && formData.major) setTeacherFormStep(2);
+                      if (
+                        formData.fullNameTh?.trim() &&
+                        formData.email?.trim() &&
+                        formData.major?.trim() &&
+                        formData.teachingExperienceYears !== undefined &&
+                        Number.isFinite(formData.teachingExperienceYears) &&
+                        formData.teachingExperienceYears >= 0
+                      ) {
+                        setFormError(null);
+                        setTeacherFormStep(2);
+                      } else {
+                        setFormError('กรุณากรอกชื่อ อีเมล วิชาเอก และประสบการณ์สอนก่อนดำเนินการต่อ');
+                      }
                     }}
                     className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer"
                   >

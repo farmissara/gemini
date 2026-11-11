@@ -66,6 +66,7 @@ import {
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { PagedList } from './PagedList';
 import { ContinuousRapidScannerModal } from './ContinuousRapidScannerModal';
+import { saveStudentSelfAttendance } from '../lib/supabase';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -94,6 +95,8 @@ interface MobileAttendanceViewProps {
       userAvatar?: string;
       userDepartmentOrRoom?: string;
       date?: string;
+      recordId?: string;
+      photoStoragePath?: string;
     }
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
@@ -168,6 +171,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   );
   const [checkType, setCheckType] = useState<AttendanceCheckType>('check_in');
   const [selfieActionError, setSelfieActionError] = useState<string | null>(null);
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false);
 
   useEffect(() => {
     if (isRestrictedViewer) {
@@ -281,10 +285,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     : students.map(s => s.id);
 
   const selectedStudent = isStudentOnly
-    ? (ownStudent || students[0])
+    ? ownStudent
     : (scopedStudents.find(s => s.id === selectedStudentId) || scopedStudents[0] || students[0]);
   const selectedTeacher = currentUser?.role === 'teacher'
-    ? (ownTeacher || teachers[0])
+    ? ownTeacher
     : (teachers.find(t => t.id === selectedTeacherId) || teachers[0]);
 
   const effectiveUserType: AttendanceUserType = isRestrictedViewer
@@ -293,9 +297,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       ? 'teacher'
       : activeUserType;
 
-  const activePersonName = effectiveUserType === 'teacher' 
-    ? selectedTeacher?.fullNameTh || 'อาจารย์' 
-    : `${selectedStudent?.firstNameTh || 'นักเรียน'} ${selectedStudent?.lastNameTh || ''}`.trim();
+  const activePersonName = effectiveUserType === 'teacher'
+    ? (currentUser?.role === 'teacher' ? currentUser.fullNameTh : selectedTeacher?.fullNameTh) || 'อาจารย์'
+    : (isStudentOnly ? currentUser?.fullNameTh : undefined) ||
+      `${selectedStudent?.firstNameTh || 'นักเรียน'} ${selectedStudent?.lastNameTh || ''}`.trim();
   const activePersonRole = effectiveUserType === 'teacher' 
     ? selectedTeacher?.academicStanding || 'ครูผู้สอน' 
     : `นักเรียน (${selectedStudent?.gradeLevel || 'ม.4'} ห้อง ${selectedStudent?.room || '401'})`;
@@ -465,8 +470,36 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
 
   // Submit and Save Attendance Record with Selfie Snapshot
-  const handleConfirmCheckin = () => {
+  const handleConfirmCheckin = async () => {
+    if (isSavingAttendance) return;
     setSelfieActionError(null);
+    if (effectiveUserType === 'student' && !selectedStudent) {
+      setSelfieActionError('ไม่พบข้อมูลนักเรียนที่เชื่อมกับบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบเพื่อผูกบัญชีกับระเบียนนักเรียนก่อนเช็กอิน');
+      return;
+    }
+    if (
+      currentUser?.role === 'student' &&
+      (!selectedStudent ||
+        (currentUser.studentRecordId
+          ? selectedStudent.id !== currentUser.studentRecordId
+          : selectedStudent.id !== currentUser.id))
+    ) {
+      setSelfieActionError('บัญชีนี้ยังไม่ได้ผูกกับระเบียนนักเรียนที่ยืนยันได้ กรุณาติดต่อผู้ดูแลระบบก่อนเช็กอิน');
+      return;
+    }
+    if (effectiveUserType === 'teacher' && !selectedTeacher) {
+      setSelfieActionError('ไม่พบข้อมูลครูที่เชื่อมกับบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบข้อมูลครูก่อนเช็กอิน');
+      return;
+    }
+    const attendancePerson = effectiveUserType === 'teacher' ? selectedTeacher : selectedStudent;
+    if (!attendancePerson) {
+      setSelfieActionError('ไม่พบข้อมูลผู้ใช้งานสำหรับเช็กอิน กรุณาติดต่อผู้ดูแลระบบ');
+      return;
+    }
+    if (currentUser?.role === 'student' && !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,')) {
+      setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็กอิน');
+      return;
+    }
     if (!isInGeofence) {
       setSelfieActionError(`คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร) กรุณาเข้ามาในบริเวณโรงเรียน หรือกดจำลองระยะห่างให้อยู่ในพื้นที่`);
       return;
@@ -474,13 +507,54 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
     const photoToSave = capturedPhotoUrl || activePersonDefaultAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500';
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const targetId = effectiveUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1');
+    const targetId = attendancePerson.id;
     const remarks = `${effectiveUserType === 'teacher' ? 'ครู' : 'นักเรียน'}ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก'}ผ่านมือถือ ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`;
 
     const [h, m] = nowTime.split(':').map(Number);
     const minutes = (h || 0) * 60 + (m || 0);
     const isLate = checkType === 'check_in' && minutes > 8 * 60;
     const status: AttendanceStatus = isLate ? 'late' : 'present';
+
+    const recordId = `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const attendanceRecord: AttendanceRecord = {
+      id: recordId,
+      schoolId: _school?.id,
+      studentId: targetId,
+      teacherId: effectiveUserType === 'teacher' ? targetId : undefined,
+      userType: effectiveUserType,
+      userName: activePersonName,
+      userRole: activePersonRole,
+      userAvatar: photoToSave,
+      userDepartmentOrRoom: effectiveUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
+      recordType: checkType,
+      date: getLocalDateString(),
+      time: nowTime,
+      status,
+      remarks,
+      checkinMethod: 'selfie_geofence',
+      photoUrl: photoToSave,
+      location: {
+        lat: realGpsCoords?.lat || selectedGate.lat,
+        lng: realGpsCoords?.lng || selectedGate.lng,
+        distanceMeters: currentGpsDistance,
+        inGeofence: true,
+        geofenceZoneName: selectedGate.nameTh
+      },
+      lineNotificationSent: false
+    };
+
+    let photoStoragePath: string | undefined;
+    if (currentUser?.role === 'student' && currentUser.studentRecordId) {
+      setIsSavingAttendance(true);
+      try {
+        photoStoragePath = await saveStudentSelfAttendance(attendanceRecord, currentUser.id);
+      } catch (error) {
+        setSelfieActionError(error instanceof Error ? error.message : 'บันทึกการเช็กอินไม่สำเร็จ');
+        setIsSavingAttendance(false);
+        return;
+      }
+      setIsSavingAttendance(false);
+    }
 
     onRecordAttendance(
       targetId,
@@ -496,6 +570,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         userRole: activePersonRole,
         userAvatar: photoToSave,
         userDepartmentOrRoom: effectiveUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
+        recordId,
+        photoStoragePath,
         location: {
           lat: realGpsCoords?.lat || selectedGate.lat,
           lng: realGpsCoords?.lng || selectedGate.lng,
@@ -1015,7 +1091,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       </button>
                       <button
                         type="button"
-                        disabled={!isInGeofence}
+                        disabled={!isInGeofence || isSavingAttendance}
                         onClick={handleConfirmCheckin}
                         className={`flex-[2] py-2 rounded-xl text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer ${
                           isInGeofence 
@@ -1026,7 +1102,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         }`}
                       >
                         <Check className="w-4 h-4" />
-                        <span>ยืนยัน {checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}</span>
+                        <span>{isSavingAttendance ? 'กำลังบันทึก...' : `ยืนยัน ${checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}`}</span>
                       </button>
                     </div>
                     <p className="text-[10px] text-center text-slate-300">

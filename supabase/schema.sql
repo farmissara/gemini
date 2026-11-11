@@ -159,9 +159,13 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     teaching_experience_years NUMERIC(4,1) DEFAULT 0,
     pa_score NUMERIC(5,2) DEFAULT 0,
     self_development_plan TEXT,
+    pa_portfolio JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT teachers_id_school_unique UNIQUE (id, school_id)
 );
+
+ALTER TABLE public.teachers
+    ADD COLUMN IF NOT EXISTS pa_portfolio JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 -- School-wide bell schedule, including the lunch break (period_number = 0).
 CREATE TABLE IF NOT EXISTS public.school_period_times (
@@ -236,11 +240,19 @@ CREATE TABLE IF NOT EXISTS public.attendance (
     checkin_method TEXT DEFAULT 'qr_scanner',
     remarks TEXT,
     line_notification_sent BOOLEAN DEFAULT false,
+    record_type TEXT NOT NULL DEFAULT 'check_in',
+    user_name TEXT,
+    photo_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT attendance_student_school_fk
         FOREIGN KEY (student_id, school_id)
         REFERENCES public.students(id, school_id) ON DELETE CASCADE
 );
+
+ALTER TABLE public.attendance
+    ADD COLUMN IF NOT EXISTS record_type TEXT NOT NULL DEFAULT 'check_in',
+    ADD COLUMN IF NOT EXISTS user_name TEXT,
+    ADD COLUMN IF NOT EXISTS photo_url TEXT;
 
 -- 6. INVOICES TABLE
 CREATE TABLE IF NOT EXISTS public.invoices (
@@ -446,6 +458,46 @@ AS $$
     )
 $$;
 
+CREATE OR REPLACE FUNCTION public.link_student_account(
+    target_school_id TEXT,
+    target_user_id UUID,
+    target_student_id TEXT
+)
+RETURNS VOID
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF NOT public.has_school_role(target_school_id, ARRAY['super_admin', 'admin']) THEN
+        RAISE EXCEPTION 'Only school administrators can link student accounts';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.user_profiles profile
+        WHERE profile.id = target_user_id
+          AND profile.school_id = target_school_id
+          AND profile.role = 'student'
+    ) THEN
+        RAISE EXCEPTION 'Student account does not belong to this school';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.students student
+        WHERE student.id = target_student_id
+          AND student.school_id = target_school_id
+    ) THEN
+        RAISE EXCEPTION 'Student record does not belong to this school';
+    END IF;
+
+    UPDATE public.user_profiles
+    SET student_id = target_student_id
+    WHERE id = target_user_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.handle_auth_user_signup()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
@@ -589,6 +641,9 @@ CREATE INDEX IF NOT EXISTS idx_attendance_student_date ON public.attendance(stud
 CREATE INDEX IF NOT EXISTS idx_invoices_student ON public.invoices(student_id);
 CREATE INDEX IF NOT EXISTS idx_announcements_school ON public.announcements(school_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_school ON public.user_profiles(school_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_unique_student_link
+    ON public.user_profiles(student_id)
+    WHERE role = 'student' AND student_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_parent_links_student ON public.parent_student_links(student_id);
 
 -- Enable Row Level Security (RLS) on all tables
@@ -747,6 +802,25 @@ DROP POLICY IF EXISTS "School staff can manage attendance" ON public.attendance;
 CREATE POLICY "School staff can manage attendance" ON public.attendance
     FOR ALL USING (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
     WITH CHECK (school_id IS NOT NULL AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+DROP POLICY IF EXISTS "Students can record their own selfie attendance" ON public.attendance;
+CREATE POLICY "Students can record their own selfie attendance" ON public.attendance
+    FOR INSERT WITH CHECK (
+        public.current_user_role() = 'student'
+        AND school_id = public.current_user_school_id()
+        AND public.can_access_student(student_id)
+        AND record_type IN ('check_in', 'check_out')
+        AND checkin_method = 'selfie_geofence'
+        AND status IN ('present', 'late')
+        AND date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date::text
+        AND user_name = (
+            SELECT profile.full_name_th
+            FROM public.user_profiles profile
+            WHERE profile.id = auth.uid()
+        )
+        AND split_part(photo_url, '/', 1) = public.current_user_school_id()
+        AND split_part(photo_url, '/', 2) = auth.uid()::text
+        AND split_part(photo_url, '/', 3) = id || '.jpg'
+    );
 
 DROP POLICY IF EXISTS "Users can read permitted invoices" ON public.invoices;
 CREATE POLICY "Users can read permitted invoices" ON public.invoices
@@ -818,12 +892,68 @@ REVOKE EXECUTE ON FUNCTION public.current_user_role() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.current_user_school_id() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.has_school_role(TEXT, TEXT[]) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.can_access_student(TEXT) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.link_student_account(TEXT, UUID, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.current_user_school_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.has_school_role(TEXT, TEXT[]) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.can_access_student(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.link_student_account(TEXT, UUID, TEXT) TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.school_period_times TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_campus_gates TO authenticated;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('attendance-selfies', 'attendance-selfies', false, 5242880, ARRAY['image/jpeg'])
+ON CONFLICT (id) DO UPDATE
+SET public = false,
+    file_size_limit = 5242880,
+    allowed_mime_types = ARRAY['image/jpeg'];
+
+DROP POLICY IF EXISTS "Students can upload own attendance selfies" ON storage.objects;
+CREATE POLICY "Students can upload own attendance selfies" ON storage.objects
+    FOR INSERT TO authenticated WITH CHECK (
+        bucket_id = 'attendance-selfies'
+        AND storage.foldername(name)[1] = public.current_user_school_id()
+        AND storage.foldername(name)[2] = auth.uid()::text
+        AND public.current_user_role() = 'student'
+        AND EXISTS (
+            SELECT 1
+            FROM public.user_profiles profile
+            WHERE profile.id = auth.uid()
+              AND profile.status = 'active'
+              AND profile.role = 'student'
+              AND profile.school_id = storage.foldername(name)[1]
+              AND profile.student_id IS NOT NULL
+        )
+    );
+DROP POLICY IF EXISTS "Students can remove unattached attendance selfies" ON storage.objects;
+CREATE POLICY "Students can remove unattached attendance selfies" ON storage.objects
+    FOR DELETE TO authenticated USING (
+        bucket_id = 'attendance-selfies'
+        AND storage.foldername(name)[2] = auth.uid()::text
+        AND NOT EXISTS (
+            SELECT 1
+            FROM public.attendance record
+            WHERE record.photo_url = name
+        )
+    );
+DROP POLICY IF EXISTS "Users can read permitted attendance selfies" ON storage.objects;
+CREATE POLICY "Users can read permitted attendance selfies" ON storage.objects
+    FOR SELECT TO authenticated USING (
+        bucket_id = 'attendance-selfies'
+        AND (
+            storage.foldername(name)[2] = auth.uid()::text
+            OR public.has_school_role(
+                storage.foldername(name)[1],
+                ARRAY['super_admin', 'admin', 'teacher']
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM public.attendance record
+                WHERE record.photo_url = name
+                  AND public.can_access_student(record.student_id)
+            )
+        )
+    );
 
 -- Super Admin registration review. Run the corresponding migration on
 -- databases that already have this schema installed.
