@@ -300,6 +300,8 @@ export interface AttendanceRecord {
   };
   remarks?: string;
   lineNotificationSent: boolean;
+  recordedBy?: string;
+  recordedByRole?: string;
 }
 
 export type LeaveType = 'sick' | 'personal' | 'official' | 'vacation';

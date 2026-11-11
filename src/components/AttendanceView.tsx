@@ -43,6 +43,7 @@ import {
   getAllowedStudentScope,
   isRestrictedAttendanceViewer,
   resolveOwnStudent,
+  resolveCurrentUserAttendanceProfile,
 } from '../lib/attendanceScope';
 import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
@@ -133,6 +134,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     [leaveRequests, currentUser, students]
   );
 
+  const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
   const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'school_gps'>('gate_scanner');
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
 
@@ -141,6 +143,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [status, setStatus] = useState<AttendanceStatus>('present');
   const [remarks, setRemarks] = useState('ประตูใหญ่ด้านหน้า (Smart Turnstile Scanner)');
   const [isScanning, setIsScanning] = useState(false);
+  const [isSelfCheckingIn, setIsSelfCheckingIn] = useState(false);
   const [scannerResult, setScannerResult] = useState<string | null>(null);
 
   const trimmedScannerId = scannerStudentIdInput.trim();
@@ -150,14 +153,26 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       ? students.find((s) => s.studentIdNumber.trim().toLowerCase() === trimmedScannerId.toLowerCase())
       : undefined;
 
-  // Filter logs by date
+  // Filter logs by date and scope
   const [dateFilter, setDateFilter] = useState(getLocalDateString());
+  const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<AttendanceRecord | null>(null);
 
   // Filtered logs (scoped to own student when logged in as student/parent)
   const filteredLogs = useMemo(() => {
     return scopedAttendance.filter(a => a.date === dateFilter);
   }, [scopedAttendance, dateFilter]);
+
+  const displayedFilteredLogs = useMemo(() => {
+    if (logScopeFilter === 'mine') {
+      return filteredLogs.filter(a =>
+        a.studentId === loggedInProfile.targetId ||
+        a.userName === loggedInProfile.userName ||
+        (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))
+      );
+    }
+    return filteredLogs;
+  }, [filteredLogs, logScopeFilter, loggedInProfile, currentUser]);
 
   // Leave approval remarks input
   const [approvalNote, setApprovalNote] = useState<Record<string, string>>({});
@@ -187,6 +202,35 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     });
   }, [scopedStudents, scopedAttendance]);
 
+  // Quick Self Check-in for the logged-in staff/teacher/admin
+  const handleSelfCheckIn = () => {
+    setIsSelfCheckingIn(true);
+    setScannerResult(null);
+
+    setTimeout(() => {
+      onRecordAttendance(
+        loggedInProfile.targetId,
+        status,
+        remarks || 'เช็กชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
+        'qr_scanner',
+        {
+          recordType: 'check_in',
+          userType: loggedInProfile.userType,
+          userName: loggedInProfile.userName,
+          userRole: loggedInProfile.userRoleLabel,
+          userAvatar: loggedInProfile.avatarUrl,
+          userDepartmentOrRoom: loggedInProfile.departmentOrRoom,
+          teacherId: loggedInProfile.userType === 'teacher' ? loggedInProfile.targetId : undefined,
+          recordedBy: currentUser?.fullNameTh,
+          recordedByRole: currentUser?.role,
+        }
+      );
+      setIsSelfCheckingIn(false);
+      setScannerResult(`เช็กชื่อบัญชีของคุณสำเร็จ: ${loggedInProfile.userName} (${loggedInProfile.userRoleLabel}) - บันทึกเวลาแล้ว`);
+      setTimeout(() => setScannerResult(null), 4000);
+    }, 400);
+  };
+
   // Simulate Turnstile Scan
   const handleSimulateScan = () => {
     if (!matchedScannerStudent) return;
@@ -194,7 +238,21 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     setScannerResult(null);
 
     setTimeout(() => {
-      onRecordAttendance(matchedScannerStudent.id, status, remarks, 'qr_scanner');
+      onRecordAttendance(
+        matchedScannerStudent.id, 
+        status, 
+        remarks, 
+        'qr_scanner',
+        {
+          recordType: 'check_in',
+          userName: `${matchedScannerStudent.firstNameTh} ${matchedScannerStudent.lastNameTh}`,
+          userRole: `นักเรียน (${matchedScannerStudent.gradeLevel})`,
+          userDepartmentOrRoom: matchedScannerStudent.room,
+          userAvatar: matchedScannerStudent.avatarUrl,
+          recordedBy: currentUser?.fullNameTh,
+          recordedByRole: currentUser?.role,
+        }
+      );
       setIsScanning(false);
       setScannerResult(`สแกนสำเร็จ: ${matchedScannerStudent.firstNameTh} (${matchedScannerStudent.studentIdNumber}) - สถานะ ${status.toUpperCase()} บันทึกลงระบบแล้ว`);
       if (!isRestrictedViewer) {
@@ -392,9 +450,46 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <span>
                 {isRestrictedViewer
                   ? 'เช็กชื่อผ่านประตูด้วยบัญชีของคุณ'
-                  : 'เช็กชื่อให้นักเรียน (ใส่รหัสนักเรียนก่อนเช็กชื่อ)'}
+                  : 'ศูนย์สแกนประตู & เช็กชื่อประจำจุด'}
               </span>
             </h2>
+
+            {/* Operator Identification & Quick Self Check-in */}
+            {!isRestrictedViewer && (
+              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                    ผู้ปฏิบัติงาน / บัญชีปัจจุบัน
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
+                    {currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'เจ้าหน้าที่'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={loggedInProfile.avatarUrl}
+                      alt={loggedInProfile.userName}
+                      className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-[var(--color-text-title)] truncate text-xs">{loggedInProfile.userName}</p>
+                      <p className="text-[10px] text-[var(--color-text-muted)] truncate">{loggedInProfile.userRoleLabel}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSelfCheckIn}
+                    disabled={isSelfCheckingIn}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
+                    title="บันทึกเวลาเข้าโรงเรียน/ปฏิบัติหน้าที่สำหรับตัวคุณเอง"
+                  >
+                    {isSelfCheckingIn ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                    <span>เช็กชื่อบัญชีฉัน</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3 text-xs">
               {isRestrictedViewer ? (
@@ -416,9 +511,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   </div>
                 )
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 pt-1 border-t border-[var(--color-border)]">
                   <label className="text-[var(--color-text-body)] font-bold block">
-                    กรอกรหัสนักเรียน (Student ID) <span className="text-rose-700 dark:text-rose-300">*</span>
+                    สแกนเช็กชื่อให้นักเรียน (กรอกรหัส Student ID) <span className="text-rose-700 dark:text-rose-300">*</span>
                   </label>
                   <input
                     type="text"
@@ -517,7 +612,35 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
                   <span>บันทึกการเข้า-ออกโรงเรียนประจำวัน ({dateFilter})</span>
                 </h2>
-                <span className="text-[11px] text-[var(--color-text-muted)]">พบ {filteredLogs.length} รายการ</span>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="text-[11px] text-[var(--color-text-muted)]">พบ {displayedFilteredLogs.length} รายการ</span>
+                  {!isRestrictedViewer && (
+                    <div className="flex items-center gap-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setLogScopeFilter('all')}
+                        className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
+                          logScopeFilter === 'all'
+                            ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                            : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                        }`}
+                      >
+                        ทั้งหมด ({filteredLogs.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLogScopeFilter('mine')}
+                        className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
+                          logScopeFilter === 'mine'
+                            ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                            : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                        }`}
+                      >
+                        เฉพาะบัญชีฉัน ({filteredLogs.filter(a => a.studentId === loggedInProfile.targetId || a.userName === loggedInProfile.userName || (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))).length})
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -539,13 +662,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </div>
 
             <div className="divide-y divide-[var(--color-border)]">
-              {filteredLogs.length === 0 ? (
-                <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">ไม่พบบันทึกการเข้าเรียนในวันที่เลือก</p>
+              {displayedFilteredLogs.length === 0 ? (
+                <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">
+                  {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็กชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
+                </p>
               ) : (
-                <PagedList items={filteredLogs} pageSize={6} renderItem={(log) => {
+                <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
                   const student = students.find(s => s.id === log.studentId);
                   const name = log.userName || (student ? `${student.firstNameTh} ${student.lastNameTh}` : log.studentId);
                   const photoSrc = log.photoUrl || log.userAvatar || student?.avatarUrl;
+                  const isMyRecord = log.studentId === loggedInProfile.targetId ||
+                    log.userName === loggedInProfile.userName ||
+                    (currentUser && (log.studentId === currentUser.id || log.studentId === currentUser.studentRecordId));
 
                   return (
                     <div key={log.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
@@ -567,6 +695,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-[var(--color-text-title)]">{name}</span>
+                            {isMyRecord && (
+                              <span className="px-1.5 py-0.2 rounded-sm bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[9px] border border-emerald-300 dark:border-emerald-700">
+                                บัญชีของคุณ
+                              </span>
+                            )}
                             {log.recordType === 'check_out' ? (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 font-bold">ออก</span>
                             ) : (
@@ -577,6 +710,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           <div className="text-[11px] text-[var(--color-text-muted)]">
                             เวลา {log.time} น. • {log.location?.geofenceZoneName || log.remarks || 'สแกนประตู'}
                             {log.location?.distanceMeters !== undefined && ` (GPS ${log.location.distanceMeters} ม.)`}
+                            {log.recordedBy && ` • บันทึกโดย: ${log.recordedBy}`}
                           </div>
                         </div>
                       </div>
@@ -894,6 +1028,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         isOpen={showRapidScannerModal}
         onClose={() => setShowRapidScannerModal(false)}
         students={students}
+        currentUser={currentUser}
         onRecordAttendance={onRecordAttendance}
         lang={lang}
       />

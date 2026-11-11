@@ -44,6 +44,7 @@ import {
   isRestrictedAttendanceViewer,
   resolveOwnStudent,
   resolveOwnTeacher,
+  resolveCurrentUserAttendanceProfile,
 } from '../lib/attendanceScope';
 import { QrCodeMatrix } from './QrCodeMatrix';
 import { 
@@ -97,6 +98,8 @@ interface MobileAttendanceViewProps {
       date?: string;
       recordId?: string;
       photoStoragePath?: string;
+      recordedBy?: string;
+      recordedByRole?: string;
     }
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
@@ -160,8 +163,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // -------------------------------------------------------------
   // 1. MOBILE SELFIE CHECK-IN/OUT & MULTI-GATE STATE
   // -------------------------------------------------------------
+  const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
+
+  // 'self': Check in as the logged-in user (admin/teacher/student/parent)
+  // 'proxy': Staff/duty teacher proxy mode checking in for students or other personnel
+  const [attendanceMode, setAttendanceMode] = useState<'self' | 'proxy'>('self');
+
   const [activeUserType, setActiveUserType] = useState<AttendanceUserType>(
-    isRestrictedViewer ? 'student' : currentUser?.role === 'teacher' ? 'teacher' : 'student'
+    currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin' ? 'teacher' : 'student'
   );
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
     ownStudent?.id || scopedStudents[0]?.id || students[0]?.id || 'stu-1'
@@ -175,13 +184,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   useEffect(() => {
     if (isRestrictedViewer) {
+      setAttendanceMode('self');
       setActiveUserType('student');
       if (ownStudent && !scopedStudents.some((s) => s.id === selectedStudentId)) {
         setSelectedStudentId(ownStudent.id);
       }
-    } else if (currentUser?.role === 'teacher' && ownTeacher) {
+    } else if (currentUser?.role === 'teacher') {
       setActiveUserType('teacher');
-      setSelectedTeacherId(ownTeacher.id);
+      if (ownTeacher) setSelectedTeacherId(ownTeacher.id);
     }
   }, [isRestrictedViewer, currentUser?.role, ownStudent, ownTeacher, scopedStudents, selectedStudentId]);
 
@@ -284,32 +294,48 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     ? selectedCourse.enrolledStudentIds
     : students.map(s => s.id);
 
+  const isSelfCheckin = isRestrictedViewer || attendanceMode === 'self';
+
   const selectedStudent = isStudentOnly
-    ? ownStudent
+    ? (ownStudent || loggedInProfile.linkedStudent)
     : (scopedStudents.find(s => s.id === selectedStudentId) || scopedStudents[0] || students[0]);
   const selectedTeacher = currentUser?.role === 'teacher'
-    ? ownTeacher
+    ? (ownTeacher || loggedInProfile.linkedTeacher)
     : (teachers.find(t => t.id === selectedTeacherId) || teachers[0]);
 
-  const effectiveUserType: AttendanceUserType = isRestrictedViewer
-    ? 'student'
-    : currentUser?.role === 'teacher'
-      ? 'teacher'
-      : activeUserType;
+  const effectiveUserType: AttendanceUserType = isSelfCheckin
+    ? loggedInProfile.userType
+    : activeUserType;
 
-  const activePersonName = effectiveUserType === 'teacher'
-    ? (currentUser?.role === 'teacher' ? currentUser.fullNameTh : selectedTeacher?.fullNameTh) || 'อาจารย์'
-    : (isStudentOnly ? currentUser?.fullNameTh : undefined) ||
-      `${selectedStudent?.firstNameTh || 'นักเรียน'} ${selectedStudent?.lastNameTh || ''}`.trim();
-  const activePersonRole = effectiveUserType === 'teacher' 
-    ? selectedTeacher?.academicStanding || 'ครูผู้สอน' 
-    : `นักเรียน (${selectedStudent?.gradeLevel || 'ม.4'} ห้อง ${selectedStudent?.room || '401'})`;
-  const activePersonId = effectiveUserType === 'teacher' 
-    ? selectedTeacher?.teacherIdNumber || selectedTeacher?.id 
-    : selectedStudent?.studentIdNumber || selectedStudent?.id;
-  const activePersonDefaultAvatar = effectiveUserType === 'teacher' 
-    ? selectedTeacher?.avatarUrl 
-    : selectedStudent?.avatarUrl;
+  const activePersonName = isSelfCheckin
+    ? loggedInProfile.userName
+    : (effectiveUserType === 'teacher'
+      ? (selectedTeacher?.fullNameTh || 'อาจารย์')
+      : `${selectedStudent?.firstNameTh || 'นักเรียน'} ${selectedStudent?.lastNameTh || ''}`.trim());
+
+  const activePersonRole = isSelfCheckin
+    ? loggedInProfile.userRoleLabel
+    : (effectiveUserType === 'teacher' 
+      ? (selectedTeacher?.academicStanding || 'ครูผู้สอน') 
+      : `นักเรียน (${selectedStudent?.gradeLevel || 'ม.4'} ห้อง ${selectedStudent?.room || '401'})`);
+
+  const activePersonId = isSelfCheckin
+    ? loggedInProfile.idNumber
+    : (effectiveUserType === 'teacher' 
+      ? (selectedTeacher?.teacherIdNumber || selectedTeacher?.id) 
+      : (selectedStudent?.studentIdNumber || selectedStudent?.id));
+
+  const activePersonDefaultAvatar = isSelfCheckin
+    ? loggedInProfile.avatarUrl
+    : (effectiveUserType === 'teacher' 
+      ? selectedTeacher?.avatarUrl 
+      : selectedStudent?.avatarUrl);
+
+  const activeDepartmentOrRoom = isSelfCheckin
+    ? loggedInProfile.departmentOrRoom
+    : (effectiveUserType === 'teacher'
+      ? selectedTeacher?.department
+      : selectedStudent?.room);
 
   const isInGeofence = currentGpsDistance <= selectedGate.radiusMeters;
 
@@ -473,25 +499,25 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const handleConfirmCheckin = async () => {
     if (isSavingAttendance) return;
     setSelfieActionError(null);
-    if (effectiveUserType === 'student' && !selectedStudent) {
-      setSelfieActionError('ไม่พบข้อมูลนักเรียนที่เชื่อมกับบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบเพื่อผูกบัญชีกับระเบียนนักเรียนก่อนเช็กอิน');
+    if (!isSelfCheckin && effectiveUserType === 'student' && !selectedStudent) {
+      setSelfieActionError('ไม่พบข้อมูลนักเรียนสำหรับบันทึกเช็กชื่อ กรุณาเลือกนักเรียนก่อน');
       return;
     }
     if (
+      isSelfCheckin &&
       currentUser?.role === 'student' &&
-      (!selectedStudent ||
-        (currentUser.studentRecordId
-          ? selectedStudent.id !== currentUser.studentRecordId
-          : selectedStudent.id !== currentUser.id))
+      (!selectedStudent && !loggedInProfile.isLinkedToStudentRecord)
     ) {
       setSelfieActionError('บัญชีนี้ยังไม่ได้ผูกกับระเบียนนักเรียนที่ยืนยันได้ กรุณาติดต่อผู้ดูแลระบบก่อนเช็กอิน');
       return;
     }
-    if (effectiveUserType === 'teacher' && !selectedTeacher) {
-      setSelfieActionError('ไม่พบข้อมูลครูที่เชื่อมกับบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบข้อมูลครูก่อนเช็กอิน');
+    if (!isSelfCheckin && effectiveUserType === 'teacher' && !selectedTeacher) {
+      setSelfieActionError('ไม่พบข้อมูลครูสำหรับบันทึกเช็กชื่อ กรุณาเลือกครูก่อน');
       return;
     }
-    const attendancePerson = effectiveUserType === 'teacher' ? selectedTeacher : selectedStudent;
+    const attendancePerson = isSelfCheckin
+      ? { id: loggedInProfile.targetId }
+      : (effectiveUserType === 'teacher' ? selectedTeacher : selectedStudent);
     if (!attendancePerson) {
       setSelfieActionError('ไม่พบข้อมูลผู้ใช้งานสำหรับเช็กอิน กรุณาติดต่อผู้ดูแลระบบ');
       return;
@@ -508,7 +534,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     const photoToSave = capturedPhotoUrl || activePersonDefaultAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500';
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const targetId = attendancePerson.id;
-    const remarks = `${effectiveUserType === 'teacher' ? 'ครู' : 'นักเรียน'}ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก'}ผ่านมือถือ ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`;
+    const remarks = isSelfCheckin
+      ? `${activePersonRole} (${activePersonName}) ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก'}ผ่านมือถือ ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`
+      : `เจ้าหน้าที่ ${currentUser?.fullNameTh || 'ครูเวร'} บันทึกเช็กชื่อแทน${effectiveUserType === 'teacher' ? 'ครู' : 'นักเรียน'} (${activePersonName}) ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`;
 
     const [h, m] = nowTime.split(':').map(Number);
     const minutes = (h || 0) * 60 + (m || 0);
@@ -525,7 +553,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       userName: activePersonName,
       userRole: activePersonRole,
       userAvatar: photoToSave,
-      userDepartmentOrRoom: effectiveUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
+      userDepartmentOrRoom: activeDepartmentOrRoom,
       recordType: checkType,
       date: getLocalDateString(),
       time: nowTime,
@@ -540,7 +568,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         inGeofence: true,
         geofenceZoneName: selectedGate.nameTh
       },
-      lineNotificationSent: false
+      lineNotificationSent: false,
+      recordedBy: isSelfCheckin ? undefined : (currentUser?.fullNameTh || 'เจ้าหน้าที่'),
+      recordedByRole: isSelfCheckin ? undefined : (currentUser?.role || 'staff')
     };
 
     let photoStoragePath: string | undefined;
@@ -569,9 +599,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         userName: activePersonName,
         userRole: activePersonRole,
         userAvatar: photoToSave,
-        userDepartmentOrRoom: effectiveUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
+        userDepartmentOrRoom: activeDepartmentOrRoom,
         recordId,
         photoStoragePath,
+        recordedBy: isSelfCheckin ? undefined : (currentUser?.fullNameTh || 'เจ้าหน้าที่'),
+        recordedByRole: isSelfCheckin ? undefined : (currentUser?.role || 'staff'),
         location: {
           lat: realGpsCoords?.lat || selectedGate.lat,
           lng: realGpsCoords?.lng || selectedGate.lng,
@@ -608,10 +640,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
     const newLeave: LeaveRequest = {
       id: `leave-${Date.now()}`,
-      userId: effectiveUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1'),
-      userName: activePersonName,
-      userRole: effectiveUserType,
-      gradeLevelOrDepartment: effectiveUserType === 'teacher' ? selectedTeacher?.department : selectedStudent?.room,
+      userId: isSelfCheckin ? loggedInProfile.targetId : (effectiveUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1')),
+      userName: isSelfCheckin ? loggedInProfile.userName : activePersonName,
+      userRole: isSelfCheckin ? (loggedInProfile.userType === 'student' ? 'student' : 'teacher') : effectiveUserType,
+      gradeLevelOrDepartment: isSelfCheckin ? loggedInProfile.departmentOrRoom : activeDepartmentOrRoom,
       leaveType,
       startDate: leaveStartDate,
       endDate: leaveEndDate,
@@ -1148,7 +1180,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               <div className="text-center py-1">
                 <p className={`text-[11px] text-slate-300 ${embeddedMobile ? 'hidden' : ''}`}>
-                  ผู้ใช้งาน: <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
+                  {isSelfCheckin ? 'กำลังเช็กชื่อบัญชีของคุณ: ' : 'กำลังบันทึกเช็กชื่อแทน: '}
+                  <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
                 </p>
               </div>
             </div>
@@ -1156,22 +1189,63 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
           {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & Identity */}
           {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'h-full min-h-0 overflow-hidden' : 'lg:col-span-5 space-y-5'}`}>
-            {/* User Profile Card: Strictly locked for students/teachers; switchable only for admin */}
+            {/* User Profile Card: Accurately references loggedIn user in self mode; allows proxy mode for staff */}
             {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 flex flex-col justify-center' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs`}>
               <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <Smartphone className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
                   <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                    {isRestrictedViewer ? 'ข้อมูลผู้เช็กชื่อของคุณ' : 'ระบุตัวตนผู้ใช้โทรศัพท์'}
+                    {isRestrictedViewer ? 'ข้อมูลบัญชีเช็กชื่อของคุณ' : 'ตัวตนผู้ใช้งาน & บัญชีเช็กชื่อ'}
                   </h3>
                 </div>
-                {!isRestrictedViewer && currentUser?.role !== 'teacher' ? (
+                {!isRestrictedViewer ? (
                   <div className="flex rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-xs font-semibold shrink-0">
                     <button
                       type="button"
+                      onClick={() => setAttendanceMode('self')}
+                      className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1.5 ${
+                        isSelfCheckin ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <span>👤 บัญชีของฉัน</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAttendanceMode('proxy')}
+                      className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1.5 ${
+                        !isSelfCheckin ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <span>👥 สแกนแทน</span>
+                    </button>
+                  </div>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0">
+                    {currentUser?.role === 'student' ? 'บัญชีนักเรียน (ผูกตรง)' : 'บัญชีของฉัน'}
+                  </span>
+                )}
+              </div>
+
+              {isSelfCheckin ? (
+                <div className="space-y-2">
+                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <span className="truncate">
+                      อ้างอิงบัญชีที่เข้าสู่ระบบ: <strong>{currentUser?.fullNameTh || loggedInProfile.userName}</strong> ({currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'})
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    ระบบบันทึกเวลาเข้า-ออกและหลักฐานภาพถ่ายสำหรับตัวคุณโดยตรง ไม่สุ่มหรือสลับกับรายชื่อบุคคลอื่น
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  <div className="flex rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-xs font-semibold">
+                    <button
+                      type="button"
                       onClick={() => setActiveUserType('student')}
-                      className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                        effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)]'
+                      className={`flex-1 py-1 rounded-md transition cursor-pointer ${
+                        effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'
                       }`}
                     >
                       นักเรียน
@@ -1179,59 +1253,51 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveUserType('teacher')}
-                      className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                        effectiveUserType === 'teacher' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)]'
+                      className={`flex-1 py-1 rounded-md transition cursor-pointer ${
+                        effectiveUserType === 'teacher' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'
                       }`}
                     >
                       ครู / บุคลากร
                     </button>
                   </div>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0">
-                    {currentUser?.role === 'teacher' ? 'บัญชีครู' : 'บัญชีของฉัน'}
-                  </span>
-                )}
-              </div>
-
-              {isStudentOnly || currentUser?.role === 'teacher' ? (
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  {isStudentOnly
-                    ? 'แสดงเฉพาะข้อมูลบัญชีนักเรียนของคุณ เพื่อความเป็นส่วนตัวขณะเช็กชื่อ'
-                    : 'ผูกข้อมูลการเช็กชื่อกับบัญชีครูผู้ใช้งานปัจจุบัน'}
-                </p>
-              ) : effectiveUserType === 'student' ? (
-                scopedStudents.length > 1 ? (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--color-text-title)]">
-                      {currentUser?.role === 'parent' ? 'เลือกบุตรหลานในความดูแล:' : 'เลือกรายชื่อนักเรียน:'}
-                    </label>
-                    <select
-                      value={selectedStudentId}
-                      onChange={(e) => setSelectedStudentId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
-                    >
-                      {scopedStudents.map((st) => (
-                        <option key={st.id} value={st.id}>
-                          {st.firstNameTh} {st.lastNameTh} ({st.studentIdNumber}) - ชั้น {st.gradeLevel} {st.room}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : null
-              ) : (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกรายชื่อครู:</label>
-                  <select
-                    value={selectedTeacherId}
-                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
-                  >
-                    {teachers.map((tc) => (
-                      <option key={tc.id} value={tc.id}>
-                        {tc.fullNameTh} ({tc.teacherIdNumber}) - {tc.academicStanding} ({tc.department})
-                      </option>
-                    ))}
-                  </select>
+                  {effectiveUserType === 'student' ? (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[var(--color-text-title)]">
+                        เลือกรายชื่อนักเรียนที่ต้องการเช็กชื่อแทน:
+                      </label>
+                      <select
+                        value={selectedStudentId}
+                        onChange={(e) => setSelectedStudentId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                      >
+                        {scopedStudents.map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.firstNameTh} {st.lastNameTh} ({st.studentIdNumber}) - ชั้น {st.gradeLevel} {st.room}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-[var(--color-text-title)]">
+                        เลือกรายชื่อครูที่ต้องการเช็กชื่อแทน:
+                      </label>
+                      <select
+                        value={selectedTeacherId}
+                        onChange={(e) => setSelectedTeacherId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                      >
+                        {teachers.map((tc) => (
+                          <option key={tc.id} value={tc.id}>
+                            {tc.fullNameTh} ({tc.teacherIdNumber}) - {tc.academicStanding} ({tc.department})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                    * บันทึกโดยเจ้าหน้าที่: {currentUser?.fullNameTh || 'ผู้ดูแลระบบ'}
+                  </p>
                 </div>
               )}
 
@@ -1242,9 +1308,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   className="w-12 h-12 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
                 />
                 <div className="min-w-0 flex-1 space-y-0.5 text-xs">
-                  <p className="font-bold text-[var(--color-text-title)] truncate">{activePersonName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-[var(--color-text-title)] truncate">{activePersonName}</p>
+                    {isSelfCheckin && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[9px] border border-emerald-300 dark:border-emerald-700">
+                        บัญชีของคุณ
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[var(--color-text-body)] truncate text-[11px]">{activePersonRole}</p>
-                  <p className="font-mono text-[var(--color-text-muted)] text-[10px]">รหัสประจำตัว: {activePersonId}</p>
+                  <p className="font-mono text-[var(--color-text-muted)] text-[10px]">
+                    รหัสประจำตัว: {activePersonId} {activeDepartmentOrRoom ? `• ${activeDepartmentOrRoom}` : ''}
+                  </p>
                 </div>
               </div>
             </div>}
@@ -1402,7 +1477,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {/* Person Summary / Switcher (Admin only; Student & Teacher locked to own profile) */}
               <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
                 <span className="text-[11px] font-bold text-[var(--color-text-title)] block">ผู้ขอยื่นใบลา:</span>
-                {!isRestrictedViewer && currentUser?.role !== 'teacher' ? (
+                {isSelfCheckin ? (
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
+                    <span className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white truncate">
+                      {activePersonName} ({activePersonRole})
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
+                      บัญชีของคุณ
+                    </span>
+                  </div>
+                ) : (
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -1422,12 +1506,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     >
                       ครู: {selectedTeacher?.fullNameTh}
                     </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
-                    <span className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white truncate">
-                      {activePersonName} ({activePersonId})
-                    </span>
                   </div>
                 )}
               </div>
@@ -2350,6 +2428,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         isOpen={showRapidScanner}
         onClose={() => setShowRapidScanner(false)}
         students={students}
+        currentUser={currentUser}
         onRecordAttendance={onRecordAttendance}
         lang={lang}
       />

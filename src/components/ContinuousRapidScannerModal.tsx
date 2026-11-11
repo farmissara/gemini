@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
-import { Student, AttendanceRecord, AttendanceStatus, AttendanceCheckType, AppLanguage } from '../types';
+import { Student, AttendanceRecord, AttendanceStatus, AttendanceCheckType, AppLanguage, AuthUser } from '../types';
 import { getLocalDateString } from '../lib/date';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 
@@ -24,6 +24,7 @@ interface ContinuousRapidScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
   students: Student[];
+  currentUser?: AuthUser | null;
   onRecordAttendance: (
     studentId: string,
     status: AttendanceStatus,
@@ -36,6 +37,8 @@ interface ContinuousRapidScannerModalProps {
       userName?: string;
       userRole?: string;
       userDepartmentOrRoom?: string;
+      recordedBy?: string;
+      recordedByRole?: string;
     }
   ) => void;
   lang?: AppLanguage;
@@ -46,6 +49,7 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   isOpen,
   onClose,
   students,
+  currentUser,
   onRecordAttendance,
   lang = 'th',
   mode: initialMode = 'check_in',
@@ -253,6 +257,8 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
         userName: `${matched.firstNameTh} ${matched.lastNameTh}`,
         userRole: `นักเรียน (${matched.gradeLevel})`,
         userDepartmentOrRoom: matched.room,
+        recordedBy: currentUser?.fullNameTh,
+        recordedByRole: currentUser?.role,
       }
     );
 

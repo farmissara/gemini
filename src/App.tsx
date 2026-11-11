@@ -796,6 +796,8 @@ export const App: React.FC = () => {
       date?: string;
       recordId?: string;
       photoStoragePath?: string;
+      recordedBy?: string;
+      recordedByRole?: string;
     }
   ) => {
     const todayStr = extra?.date || getLocalDateString();
@@ -803,14 +805,17 @@ export const App: React.FC = () => {
     
     setAttendance((prev) => {
       const isCheckOut = extra?.recordType === 'check_out';
+      const isCurrentUser = currentUser && (currentUser.id === studentId || currentUser.studentRecordId === studentId);
       const st = schoolStudents.find(s => s.id === studentId);
       const tc = schoolTeachers.find(t => t.id === studentId || t.id === extra?.teacherId);
 
-      const resolvedUserType: AttendanceUserType = extra?.userType || (tc ? 'teacher' : 'student');
-      const resolvedName = extra?.userName || (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'ผู้ใช้งาน'));
-      const resolvedRole = extra?.userRole || (st ? `นักเรียน (${st.gradeLevel})` : (tc ? tc.academicStanding : 'ครู/บุคลากร'));
-      const resolvedAvatar = extra?.photoUrl || extra?.userAvatar || (st ? st.avatarUrl : (tc ? tc.avatarUrl : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'));
-      const resolvedDeptOrRoom = extra?.userDepartmentOrRoom || (st ? st.room : (tc ? tc.department : ''));
+      const resolvedUserType: AttendanceUserType = extra?.userType || (tc || (isCurrentUser && currentUser?.role !== 'student') ? 'teacher' : 'student');
+      const resolvedName = extra?.userName || (isCurrentUser ? currentUser.fullNameTh : (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'ผู้ใช้งาน')));
+      const resolvedRole = extra?.userRole || (isCurrentUser
+        ? (currentUser.role === 'super_admin' ? 'ผู้ดูแลระบบสูงสุด (Super Admin)' : currentUser.role === 'admin' ? 'ผู้บริหาร/ผู้ดูแลระบบ (Admin)' : currentUser.role === 'teacher' ? (currentUser.academicStanding || 'ครูผู้สอน') : `นักเรียน (${currentUser.gradeLevel || 'ม.4'})`)
+        : (st ? `นักเรียน (${st.gradeLevel})` : (tc ? tc.academicStanding : 'ครู/บุคลากร')));
+      const resolvedAvatar = extra?.photoUrl || extra?.userAvatar || (isCurrentUser ? currentUser.avatarUrl : (st ? st.avatarUrl : (tc ? tc.avatarUrl : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200')));
+      const resolvedDeptOrRoom = extra?.userDepartmentOrRoom || (isCurrentUser ? (currentUser.department || currentUser.room || '') : (st ? st.room : (tc ? tc.department : '')));
 
       const newRecord: AttendanceRecord = {
         id: extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -831,7 +836,9 @@ export const App: React.FC = () => {
         photoUrl: extra?.photoUrl,
         photoStoragePath: extra?.photoStoragePath,
         location: extra?.location,
-        lineNotificationSent: true
+        lineNotificationSent: true,
+        recordedBy: extra?.recordedBy,
+        recordedByRole: extra?.recordedByRole
       };
 
       if (isCheckOut) {
