@@ -429,7 +429,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <button
             type="button"
             onClick={() => setShowRapidScannerModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] text-white font-semibold text-xs shadow-xs transition cursor-pointer"
           >
             <Camera className="w-3.5 h-3.5" />
             <span>📷 สแกนรัวต่อเนื่อง 1วิ/คน</span>
@@ -701,7 +701,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                               </span>
                             )}
                             {log.recordType === 'check_out' ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 font-bold">ออก</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold">ออก</span>
                             ) : (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">เข้า</span>
                             )}
@@ -785,7 +785,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
                           req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' :
-                          req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                          req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
                         }`}>
                           {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
                         </span>
@@ -919,7 +919,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         <td className="p-3 text-center text-amber-800 dark:text-amber-300 font-bold">{m.lateDays}</td>
                         <td className="p-3 text-center text-[var(--color-primary-text)] font-bold">{m.sickDays}</td>
                         <td className="p-3 text-center text-rose-700 dark:text-rose-300 font-bold">{m.absentDays}</td>
-                        <td className="p-3 text-center font-mono font-black text-[var(--color-text-title)]">{m.rate}%</td>
+                        <td className="p-3 text-center font-mono font-bold text-[var(--color-text-title)]">{m.rate}%</td>
                         <td className="p-3 text-center">
                           {m.isQualified ? (
                             <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold">
