@@ -148,7 +148,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     void loadPacks();
     void loadAuditList();
     const handleUpdate = () => {
-      void fetchCentralExamPacks(isDemoMode).then(setPacks);
+      void loadPacks();
       void loadAuditList();
     };
     window.addEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);

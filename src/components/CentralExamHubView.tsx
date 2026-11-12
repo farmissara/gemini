@@ -42,6 +42,8 @@ interface CentralExamPurchaseModalProps {
   onClose: () => void;
 }
 
+const getPackQuestionCount = (pack: CentralExamPack) => pack.questionCount ?? pack.questions.length;
+
 const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
   pack,
   schoolName,
@@ -71,8 +73,8 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
   const handleSlipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setSlipUploadError('กรุณาเลือกไฟล์ภาพสลิป');
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(file.type.toLowerCase())) {
+      setSlipUploadError('กรุณาเลือกไฟล์สลิปชนิด PNG, JPG, WEBP หรือ GIF');
       setSlipFilePreview(null);
       return;
     }
@@ -171,7 +173,7 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
           </div>
           <div className="text-sm font-extrabold text-[var(--color-text-title)]">{pack.titleTh}</div>
           <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)] text-xs">
-            <span className="text-[var(--color-text-body)]">จำนวน {pack.questions.length} ข้อ (ใช้ได้ทั้งโรงเรียน)</span>
+            <span className="text-[var(--color-text-body)]">จำนวน {getPackQuestionCount(pack)} ข้อ (ใช้ได้ทั้งโรงเรียน)</span>
             <span className="text-base font-extrabold text-amber-700 dark:text-amber-300 tabular-nums">
               ฿{pack.priceThb.toLocaleString()}
             </span>
@@ -376,7 +378,7 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
 
   const freePacks = unclaimedPacks.filter((p) => p.pricingType === 'free');
   const paidPacks = unclaimedPacks.filter((p) => p.pricingType === 'paid');
-  const totalNewQuestions = unclaimedPacks.reduce((sum, p) => sum + p.questions.length, 0);
+  const totalNewQuestions = unclaimedPacks.reduce((sum, p) => sum + getPackQuestionCount(p), 0);
 
   const handleSingleFree = async (pack: CentralExamPack) => {
     setProcessingPackId(pack.id);
@@ -473,7 +475,7 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
                           {strandMeta.code} · {strandMeta.nameTh}
                         </span>
                         <span className="text-[var(--color-text-muted)]">· {pack.gradeLevel}</span>
-                        <span className="text-[var(--color-text-muted)] tabular-nums">· {pack.questions.length} ข้อ</span>
+                        <span className="text-[var(--color-text-muted)] tabular-nums">· {getPackQuestionCount(pack)} ข้อ</span>
                       </div>
                       <h3 className="text-sm font-extrabold text-[var(--color-text-title)]">{pack.titleTh}</h3>
                       <p className="text-xs text-[var(--color-text-body)] line-clamp-2">{pack.descriptionTh}</p>
@@ -624,7 +626,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
     return LEARNING_STRANDS.map((strand) => {
       const matchingPacks = publishedPacks.filter((p) => p.strand === strand.id);
       const claimedPackCount = matchingPacks.filter((p) => entitlementByPackId.has(p.id)).length;
-      const totalPackQuestions = matchingPacks.reduce((sum, p) => sum + p.questions.length, 0);
+      const totalPackQuestions = matchingPacks.reduce((sum, p) => sum + getPackQuestionCount(p), 0);
       return {
         ...strand,
         packCount: matchingPacks.length,
@@ -657,7 +659,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
     setProcessingPackId(pack.id);
     try {
       await onClaimFreePack(pack);
-      setToastMessage(`รับชุดข้อสอบ "${pack.titleTh}" (+${pack.questions.length} ข้อ) เข้าคลังโรงเรียนแล้ว`);
+      setToastMessage(`รับชุดข้อสอบ "${pack.titleTh}" (+${getPackQuestionCount(pack)} ข้อ) เข้าคลังโรงเรียนแล้ว`);
     } finally {
       setProcessingPackId(null);
     }
@@ -819,7 +821,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                   <span>ระดับชั้น: {pack.gradeLevel}</span>
                   <span>·</span>
                   <span className="tabular-nums font-semibold text-[var(--color-text-title)]">
-                    {pack.questions.length} ข้อ
+                    {getPackQuestionCount(pack)} ข้อ
                   </span>
                 </div>
               </div>
@@ -917,9 +919,9 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                   </div>
                 </div>
               ))}
-              {!entitlementByPackId.has(previewPack.id) && previewPack.questions.length > 3 && (
+              {!entitlementByPackId.has(previewPack.id) && getPackQuestionCount(previewPack) > 3 && (
                 <div className="p-3 rounded-xl border border-dashed border-[var(--color-border)] text-center text-xs text-[var(--color-text-muted)]">
-                  แสดงตัวอย่าง 3 ข้อแรก · กดรับ/สั่งซื้อเพื่อปลดล็อกครบทั้ง {previewPack.questions.length} ข้อ พร้อมเฉลยละเอียด
+                  แสดงตัวอย่าง 3 ข้อแรก · กดรับ/สั่งซื้อเพื่อปลดล็อกครบทั้ง {getPackQuestionCount(previewPack)} ข้อ พร้อมเฉลยละเอียด
                 </div>
               )}
             </div>
@@ -939,7 +941,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
               await onPurchasePack(pack, method, slipUrl);
               setCheckoutPack(null);
               setToastMessage(
-                `⚡ ปลดล็อก "${pack.titleTh}" (+${pack.questions.length} ข้อ) เข้าคลังโรงเรียนทันที (รอ Super Admin ตรวจสอบสลิปย้อนหลัง)`
+                `⚡ ปลดล็อก "${pack.titleTh}" (+${getPackQuestionCount(pack)} ข้อ) เข้าคลังโรงเรียนทันที (รอ Super Admin ตรวจสอบสลิปย้อนหลัง)`
               );
             } finally {
               setProcessingPackId(null);

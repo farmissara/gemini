@@ -44,7 +44,12 @@ CREATE POLICY "Authenticated users read published central exam packs"
         AND auth.uid() IS NOT NULL
     );
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.central_exam_packs TO authenticated;
+REVOKE SELECT ON public.central_exam_packs FROM PUBLIC, anon, authenticated;
+GRANT SELECT (
+    id, title_th, title_en, strand, grade_level, description_th,
+    pricing_type, price_thb, status, created_by, published_at, created_at, updated_at
+) ON public.central_exam_packs TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.central_exam_packs TO authenticated;
 
 -- School Entitlements (Tracks which central exam packs each school claimed for free or purchased)
 CREATE TABLE IF NOT EXISTS public.school_exam_entitlements (
@@ -81,11 +86,6 @@ CREATE POLICY "School members read school exam entitlements"
     );
 
 DROP POLICY IF EXISTS "School admins claim or buy central exam packs" ON public.school_exam_entitlements;
-CREATE POLICY "School admins claim or buy central exam packs"
-    ON public.school_exam_entitlements
-    FOR INSERT WITH CHECK (
-        public.has_school_role(school_id, ARRAY['super_admin', 'admin'])
-    );
 
 DROP POLICY IF EXISTS "Super admins audit exam entitlements" ON public.school_exam_entitlements;
 CREATE POLICY "Super admins audit exam entitlements"
@@ -97,7 +97,11 @@ CREATE POLICY "Super admins audit exam entitlements"
         public.has_school_role(school_id, ARRAY['super_admin'])
     );
 
-GRANT SELECT, INSERT, UPDATE ON public.school_exam_entitlements TO authenticated;
+REVOKE INSERT, UPDATE ON public.school_exam_entitlements FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.school_exam_entitlements TO authenticated;
+GRANT UPDATE (
+    audit_status, verified_at, verified_by, revoked_at, revoked_by, revocation_reason
+) ON public.school_exam_entitlements TO authenticated;
 
 -- School Question Bank (Claimed central exams + teacher-created/imported questions)
 CREATE TABLE IF NOT EXISTS public.school_questions (

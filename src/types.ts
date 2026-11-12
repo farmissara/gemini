@@ -1110,6 +1110,7 @@ export interface CentralExamPack {
   priceThb: number;
   status: 'draft' | 'published';
   questions: QuizQuestion[];
+  questionCount?: number;
   createdBy: string;
   publishedAt?: string;
   createdAt: string;

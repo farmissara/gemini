@@ -135,6 +135,7 @@ interface DbCentralExamPackRow {
   price_thb: number;
   status: 'draft' | 'published';
   questions: QuizQuestion[];
+  question_count?: number;
   created_by: string;
   published_at: string | null;
   created_at: string;
@@ -153,6 +154,7 @@ function mapPackFromDb(row: DbCentralExamPackRow): CentralExamPack {
     priceThb: Number(row.price_thb) || 0,
     status: row.status,
     questions: Array.isArray(row.questions) ? row.questions : [],
+    questionCount: Number(row.question_count) || (Array.isArray(row.questions) ? row.questions.length : 0),
     createdBy: row.created_by || 'Super Admin',
     publishedAt: row.published_at || undefined,
     createdAt: row.created_at,
@@ -180,43 +182,17 @@ function mapPackToDb(pack: CentralExamPack): DbCentralExamPackRow {
 }
 
 export async function fetchCentralExamPacks(isDemoMode: boolean): Promise<CentralExamPack[]> {
-  const localPacks = readLocalPacks();
-  if (isDemoMode) return localPacks;
+  if (isDemoMode) return readLocalPacks();
 
   const client = getSupabaseClient();
-  if (!client) return localPacks;
+  if (!client) throw new Error('Supabase is not configured.');
 
-  try {
-    const { data, error } = await client
-      .from('central_exam_packs')
-      .select('*')
-      .order('updated_at', { ascending: false });
+  const { data, error } = await client.rpc('list_central_exam_packs');
+  if (error) throw new Error(`Could not load central exam packs: ${error.message}`);
 
-    if (error) {
-      if (isMissingTableOrSchemaError(error)) {
-        return localPacks;
-      }
-      return localPacks;
-    }
-
-    if (!data || data.length === 0) {
-      // Seed defaults cleanly into local cache; Super Admin actions will persist DB rows
-      return localPacks;
-    }
-
-    const dbPacks = (data as DbCentralExamPackRow[]).map(mapPackFromDb);
-    const dbIds = new Set(dbPacks.map((p) => p.id));
-    const merged = [...dbPacks];
-    for (const defPack of DEFAULT_CENTRAL_EXAM_PACKS) {
-      if (!dbIds.has(defPack.id)) {
-        merged.push(defPack);
-      }
-    }
-    writeLocalPacks(merged);
-    return merged;
-  } catch {
-    return localPacks;
-  }
+  const packs = ((data || []) as DbCentralExamPackRow[]).map(mapPackFromDb);
+  writeLocalPacks(packs);
+  return packs;
 }
 
 export async function upsertCentralExamPack(
@@ -496,52 +472,54 @@ export async function claimCentralExamPack(params: {
     throw new Error('กรุณาแนบภาพสลิปหลักฐานการโอนเงิน 100% (ตามโมเดลที่ 2 ปลดล็อกทันทีและตรวจสอบสลิปย้อนหลัง)');
   }
 
-  const entitlement: SchoolExamEntitlement = {
-    id: `ent-${schoolId}-${pack.id}`,
-    schoolId,
-    packId: pack.id,
-    claimType: isPaid ? 'purchased' : 'free',
-    amountPaidThb: isPaid ? pack.priceThb : 0,
-    paymentMethod: isPaid ? (paymentMethod === 'free' ? 'promptpay' : paymentMethod) : 'free',
-    claimedBy,
-    claimedAt: now,
-    slipUrl: slipUrl || undefined,
-    slipAttachedAt: slipUrl ? now : undefined,
-    auditStatus: isPaid ? 'pending_audit' : 'verified',
-  };
+  let entitlement: SchoolExamEntitlement;
+  let claimedPack = pack;
 
-  // ปลดล็อกข้อสอบให้โรงเรียนใช้สอนได้ทันที (Instant Access with Audit)
-  const taggedQuestions: QuizQuestion[] = pack.questions.map((q, index) => ({
+  if (isDemoMode) {
+    entitlement = {
+      id: `ent-${schoolId}-${pack.id}`,
+      schoolId,
+      packId: pack.id,
+      claimType: isPaid ? 'purchased' : 'free',
+      amountPaidThb: isPaid ? pack.priceThb : 0,
+      paymentMethod: isPaid ? (paymentMethod === 'free' ? 'promptpay' : paymentMethod) : 'free',
+      claimedBy,
+      claimedAt: now,
+      slipUrl: slipUrl || undefined,
+      slipAttachedAt: slipUrl ? now : undefined,
+      auditStatus: isPaid ? 'pending_audit' : 'verified',
+    };
+  } else {
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase is not configured.');
+    const { data, error } = await client.rpc('claim_central_exam_pack', {
+      target_school_id: schoolId,
+      target_pack_id: pack.id,
+      target_payment_method: paymentMethod,
+      target_slip_data: slipUrl || null,
+    });
+    if (error) throw new Error(`Could not save exam entitlement: ${error.message}`);
+
+    const claimResult = data as { entitlement?: DbEntitlementRow; questions?: QuizQuestion[] } | null;
+    if (!claimResult?.entitlement) throw new Error('The entitlement request returned no record.');
+    if (!Array.isArray(claimResult.questions)) {
+      throw new Error('The unlocked exam pack was not returned.');
+    }
+    entitlement = mapEntitlementFromDb(claimResult.entitlement);
+    claimedPack = { ...pack, questions: claimResult.questions };
+    if (claimedPack.questions.length < (pack.questionCount || pack.questions.length)) {
+      throw new Error('The full exam pack was not returned after entitlement was granted.');
+    }
+  }
+
+  // Instant access is granted only after the database confirms the entitlement.
+  const taggedQuestions: QuizQuestion[] = claimedPack.questions.map((q, index) => ({
     ...q,
     id: `${schoolId}-${pack.id}-${q.id || index}`,
     schoolId,
     packId: pack.id,
     strand: q.strand || pack.strand,
   }));
-
-  if (!isDemoMode) {
-    const client = getSupabaseClient();
-    if (!client) throw new Error('Supabase is not configured.');
-    const { error } = await client
-      .from('school_exam_entitlements')
-      .upsert(
-        {
-          id: entitlement.id,
-          school_id: schoolId,
-          pack_id: pack.id,
-          claim_type: entitlement.claimType,
-          amount_paid_thb: entitlement.amountPaidThb,
-          payment_method: entitlement.paymentMethod,
-          claimed_by: claimedBy,
-          claimed_at: now,
-          slip_url: entitlement.slipUrl || null,
-          slip_attached_at: entitlement.slipAttachedAt || null,
-          audit_status: entitlement.auditStatus || 'verified',
-        },
-        { onConflict: 'school_id,pack_id' }
-      );
-    if (error) throw new Error(`Could not save exam entitlement: ${error.message}`);
-  }
 
   await saveSchoolQuestionsBatch(schoolId, taggedQuestions, isDemoMode);
 

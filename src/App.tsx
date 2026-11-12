@@ -413,23 +413,31 @@ export const App: React.FC = () => {
     let active = true;
 
     const loadCentralExamState = async () => {
-      const [packs, entitlements, persistedSchoolQs] = await Promise.all([
-        fetchCentralExamPacks(isDemoMode),
-        fetchSchoolExamEntitlements(activeSchool.id, isDemoMode),
-        fetchSchoolPersistedQuestions(activeSchool.id, isDemoMode),
-      ]);
-      if (!active) return;
-      setCentralExamPacks(packs);
-      setSchoolExamEntitlements(entitlements);
+      try {
+        const [packs, entitlements, persistedSchoolQs] = await Promise.all([
+          fetchCentralExamPacks(isDemoMode),
+          fetchSchoolExamEntitlements(activeSchool.id, isDemoMode),
+          fetchSchoolPersistedQuestions(activeSchool.id, isDemoMode),
+        ]);
+        if (!active) return;
+        setCentralExamPacks(packs);
+        setSchoolExamEntitlements(entitlements);
 
-      if (persistedSchoolQs.length > 0) {
-        setQuestions((prev) => {
-          const byId = new Map<string, QuizQuestion>();
-          for (const q of [...persistedSchoolQs, ...prev]) {
-            byId.set(q.id, q);
-          }
-          return Array.from(byId.values());
-        });
+        if (persistedSchoolQs.length > 0) {
+          setQuestions((prev) => {
+            const byId = new Map<string, QuizQuestion>();
+            for (const q of [...persistedSchoolQs, ...prev]) {
+              byId.set(q.id, q);
+            }
+            return Array.from(byId.values());
+          });
+        }
+      } catch (error) {
+        if (active) {
+          setDataSyncError(
+            error instanceof Error ? `Central exam data error: ${error.message}` : 'Could not load central exam data.'
+          );
+        }
       }
     };
 
