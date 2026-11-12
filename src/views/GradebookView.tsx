@@ -337,7 +337,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handleExportOnetCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>ส่งออกไฟล์ สทศ. (CSV O-NET)</span>
@@ -414,8 +414,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           onClick={() => setActiveTab('onet_niets')}
           className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'onet_niets'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40'
+              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              : 'text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)]'
           }`}
         >
           <span>สทศ. O-NET (นำส่ง/ผลสอบ)</span>
@@ -587,7 +587,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                               grade.letterGrade === 'A'
                                 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                                 : grade.letterGrade.startsWith('B')
-                                ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
                                 : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                             }`}
                           >
@@ -645,7 +645,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                       {/* Total Score & Grade Badge */}
                       <div className="text-right shrink-0">
-                        <div className="text-base font-black font-mono text-[var(--color-text-title)]">
+                        <div className="text-base font-bold font-mono text-[var(--color-text-title)]">
                           {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100</span>
                         </div>
                         <span
@@ -653,7 +653,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             grade.letterGrade === 'A'
                               ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                               : grade.letterGrade.startsWith('B')
-                              ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                              ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
                               : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                           }`}
                         >
@@ -742,9 +742,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       {activeTab === 'pp5' && selectedCourse && (
         <div className="bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4 print:m-0 print:p-0 print:border-none print:shadow-none print:overflow-visible">
           <div className="flex flex-wrap gap-2 print:hidden">
-            <button type="button" onClick={() => setPp5Section('criteria')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'criteria' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลและเกณฑ์</button>
-            <button type="button" onClick={() => setPp5Section('grades')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'grades' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ตารางคะแนน</button>
-            <button type="button" onClick={() => setPp5Section('signatures')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'signatures' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ลงนาม</button>
+            <button type="button" onClick={() => setPp5Section('criteria')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'criteria' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลและเกณฑ์</button>
+            <button type="button" onClick={() => setPp5Section('grades')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'grades' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ตารางคะแนน</button>
+            <button type="button" onClick={() => setPp5Section('signatures')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'signatures' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ลงนาม</button>
           </div>
           <div className={pp5Section === 'criteria' ? 'space-y-4' : 'hidden print:block print:space-y-4'}>
           {/* Official Document Header */}
@@ -799,7 +799,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th colSpan={4} className="border border-slate-400 py-1 px-1">คะแนนระหว่างเรียน (๗๐)</th>
                   <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-12">ปลายภาค (๓๐)</th>
                   <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-14 bg-amber-50">รวม (๑๐๐)</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-12 bg-blue-50">เกรด</th>
+                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-12 bg-[var(--color-primary-light)]">เกรด</th>
                   <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-20">คุณลักษณะ (๑-๘)</th>
                   <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-20">อ่านคิดวิเคราะห์</th>
                 </tr>
@@ -839,7 +839,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       <td className="border border-slate-300 py-2 font-mono">{g.midtermScore}</td>
                       <td className="border border-slate-300 py-2 font-mono">{g.finalScore}</td>
                       <td className="border border-slate-300 py-2 font-mono font-bold bg-amber-50 text-slate-900">{g.totalScore}</td>
-                      <td className="border border-slate-300 py-2 font-mono font-bold bg-blue-50 text-blue-800 text-sm">{g.letterGrade}</td>
+                      <td className="border border-slate-300 py-2 font-mono font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-sm">{g.letterGrade}</td>
                       <td className="border border-slate-300 py-2 text-emerald-700 font-medium text-[11px]">ดีเยี่ยม (๓)</td>
                       <td className="border border-slate-300 py-2 text-emerald-700 font-medium text-[11px]">ดีเยี่ยม (๓)</td>
                     </tr>
@@ -915,13 +915,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {selectedStudentForPp6 && (
             <div className="bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4 print:m-0 print:p-0 print:border-none print:shadow-none">
               <div className="flex flex-wrap gap-2 print:hidden">
-                <button type="button" onClick={() => setPp6Section('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'identity' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลนักเรียน</button>
-                <button type="button" onClick={() => setPp6Section('courses')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'courses' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>ผลการเรียน</button>
-                <button type="button" onClick={() => setPp6Section('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'summary' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700'}`}>สรุปพฤติกรรม</button>
+                <button type="button" onClick={() => setPp6Section('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'identity' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลนักเรียน</button>
+                <button type="button" onClick={() => setPp6Section('courses')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'courses' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ผลการเรียน</button>
+                <button type="button" onClick={() => setPp6Section('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'summary' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>สรุปพฤติกรรม</button>
               </div>
               {/* P.P. 6 Header */}
               <div className={pp6Section === 'identity' ? 'text-center space-y-1 border-b border-slate-300 pb-4' : 'hidden print:block print:text-center print:space-y-1 print:border-b print:border-slate-300 print:pb-4'}>
-                <div className="w-12 h-12 mx-auto rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-lg mb-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center font-bold text-lg mb-2">
                   <Award className="w-6 h-6" />
                 </div>
                 <h2 className="text-xl font-bold tracking-tight text-slate-900 font-serif">
@@ -953,7 +953,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       <th className="border border-slate-400 py-2.5 px-2 w-16">หน่วยกิต</th>
                       <th className="border border-slate-400 py-2.5 px-2 w-20">คะแนนเต็ม</th>
                       <th className="border border-slate-400 py-2.5 px-2 w-20 bg-amber-50">คะแนนที่ได้</th>
-                      <th className="border border-slate-400 py-2.5 px-2 w-20 bg-blue-50">ระดับผลการเรียน</th>
+                      <th className="border border-slate-400 py-2.5 px-2 w-20 bg-[var(--color-primary-light)]">ระดับผลการเรียน</th>
                       <th className="border border-slate-400 py-2.5 px-2 w-24">ผลการประเมิน</th>
                     </tr>
                   </thead>
@@ -972,7 +972,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           <td className="border border-slate-300 py-2 font-mono">{course.credits.toFixed(1)}</td>
                           <td className="border border-slate-300 py-2 font-mono">100</td>
                           <td className="border border-slate-300 py-2 font-mono font-bold bg-amber-50">{totalScore}</td>
-                          <td className="border border-slate-300 py-2 font-mono font-bold bg-blue-50 text-blue-900">{letterGrade}</td>
+                          <td className="border border-slate-300 py-2 font-mono font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">{letterGrade}</td>
                           <td className="border border-slate-300 py-2 text-emerald-700 font-medium">ผ่านเกณฑ์</td>
                         </tr>
                       );
@@ -982,7 +982,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400">
                       <td className="py-2.5 px-3 text-left">ผลการเรียนเฉลี่ยประจำภาคเรียน (GPA)</td>
                       <td colSpan={2}></td>
-                      <td colSpan={3} className="py-2.5 px-3 text-right font-mono text-sm text-blue-900">
+                      <td colSpan={3} className="py-2.5 px-3 text-right font-mono text-sm text-[var(--color-primary-text)]">
                         GPA: {selectedStudentForPp6.gpa.toFixed(2)}
                       </td>
                     </tr>
@@ -1094,7 +1094,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20">
               <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">ผู้สำเร็จการศึกษา</div>
-              <div className="text-xl font-black text-emerald-900 dark:text-emerald-100 mt-0.5">
+              <div className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mt-0.5">
                 {students.filter(s => {
                   if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
                   if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
@@ -1105,7 +1105,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการอนุมัติ</div>
-              <div className="text-xl font-black text-emerald-600 mt-0.5">อนุมัติครบ 100%</div>
+              <div className="text-xl font-bold text-emerald-600 mt-0.5">อนุมัติครบ 100%</div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">วันที่อนุมัติจบการศึกษา</div>
@@ -1113,7 +1113,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">รหัสชุด ปพ.3 สพฐ.</div>
-              <div className="text-sm font-mono font-bold text-blue-700 dark:text-blue-300 mt-1">ศธ 04001/ปพ.3-67</div>
+              <div className="text-sm font-mono font-bold text-[var(--color-primary-text)] mt-1">ศธ 04001/ปพ.3-67</div>
             </div>
           </div>
 
@@ -1154,7 +1154,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[11px] font-medium">
+                          <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-medium">
                             {stu.gradeLevel} ({stu.room})
                           </span>
                         </td>
@@ -1198,7 +1198,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">
                   สทศ. (NIETS)
                 </span>
                 <h2 className="text-base font-bold text-[var(--color-text-title)]">
@@ -1218,7 +1218,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 onClick={() => setOnetLevelFilter('p6')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   onetLevelFilter === 'p6'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
                     : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                 }`}
               >
@@ -1229,7 +1229,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 onClick={() => setOnetLevelFilter('m3')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   onetLevelFilter === 'm3'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
                     : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                 }`}
               >
@@ -1240,7 +1240,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 onClick={() => setOnetLevelFilter('m6')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   onetLevelFilter === 'm6'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
                     : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                 }`}
               >
@@ -1251,9 +1251,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
-              <div className="text-[11px] font-bold text-blue-800 dark:text-blue-300">ผู้มีสิทธิ์สอบ {onetLevelFilter.toUpperCase()}</div>
-              <div className="text-xl font-black text-blue-900 dark:text-blue-100 mt-0.5">
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)]">
+              <div className="text-[11px] font-bold text-[var(--color-primary-text)]">ผู้มีสิทธิ์สอบ {onetLevelFilter.toUpperCase()}</div>
+              <div className="text-xl font-bold text-[var(--color-primary-text)] dark:text-blue-100 mt-0.5">
                 {students.filter(s => {
                   if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
                   if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
@@ -1268,7 +1268,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">คะแนนเฉลี่ยรวมทุกวิชา</div>
-              <div className="text-xl font-black text-blue-600 mt-0.5">78.4%</div>
+              <div className="text-xl font-bold text-[var(--color-primary-text)] mt-0.5">78.4%</div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการส่งข้อมูล สทศ.</div>
@@ -1287,10 +1287,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-2.5 px-3">เลขที่นั่งสอบ</th>
                   <th className="py-2.5 px-3">เลขประจำตัวประชาชน (13 หลัก)</th>
                   <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
-                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">ภาษาไทย (100)</th>
-                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">คณิตศาสตร์ (100)</th>
-                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">วิทยาศาสตร์ (100)</th>
-                  <th className="py-2.5 px-3 text-center bg-blue-50/50 dark:bg-blue-950/20">ภาษาอังกฤษ (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-[var(--color-primary-light)]">ภาษาไทย (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-[var(--color-primary-light)]">คณิตศาสตร์ (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-[var(--color-primary-light)]">วิทยาศาสตร์ (100)</th>
+                  <th className="py-2.5 px-3 text-center bg-[var(--color-primary-light)]">ภาษาอังกฤษ (100)</th>
                   <th className="py-2.5 px-3 text-center font-bold">เฉลี่ยรวม</th>
                   <th className="py-2.5 px-3 text-center">สถานะ สทศ.</th>
                 </tr>
@@ -1313,7 +1313,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     const avg = ((thScore + mathScore + sciScore + engScore) / 4).toFixed(1);
                     return (
                       <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
-                        <td className="py-2.5 px-3 font-mono font-bold text-blue-700 dark:text-blue-300">{seatNo}</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{seatNo}</td>
                         <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{nationalId}</td>
                         <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
                           {stu.firstNameTh} {stu.lastNameTh}
@@ -1323,12 +1323,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         <td className="py-2.5 px-3 text-center font-mono font-semibold">{mathScore}</td>
                         <td className="py-2.5 px-3 text-center font-mono font-semibold">{sciScore}</td>
                         <td className="py-2.5 px-3 text-center font-mono font-semibold">{engScore}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-blue-700 dark:text-blue-400 bg-blue-50/30 dark:bg-blue-950/10">
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-[var(--color-primary-text)] bg-[var(--color-primary-light)]">
                           {avg}%
                         </td>
                         <td className="py-2.5 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[10px] font-bold">
-                            <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px] font-bold">
+                            <CheckCircle2 className="w-3 h-3 text-[var(--color-primary-text)]" />
                             นำส่ง สทศ. แล้ว
                           </span>
                         </td>
