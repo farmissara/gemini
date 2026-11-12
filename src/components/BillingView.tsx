@@ -23,7 +23,7 @@ interface BillingViewProps {
   invoices: TuitionInvoice[];
   systemConfig: SystemConfig;
   onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
-  onSendLineReminder: (invoice: TuitionInvoice) => void;
+  onSendPrivateAppReminder: (invoice: TuitionInvoice) => Promise<{ stored: number; delivered: number }>;
   currentRole?: string;
   onOpenExamPaymentSettings?: () => void;
 }
@@ -33,7 +33,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
   invoices,
   systemConfig,
   onPayInvoice,
-  onSendLineReminder,
+  onSendPrivateAppReminder,
   currentRole,
   onOpenExamPaymentSettings,
 }) => {
@@ -41,17 +41,32 @@ export const BillingView: React.FC<BillingViewProps> = ({
   const [activeInvoice, setActiveInvoice] = useState<TuitionInvoice | null>(invoices[0] || null);
   const [showPromptPayModal, setShowPromptPayModal] = useState(false);
   const [reminderToast, setReminderToast] = useState<string | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
+  const [reminderBusy, setReminderBusy] = useState(false);
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filterStatus === 'all') return true;
     return inv.status === filterStatus;
   });
 
-  const handleTriggerReminder = (inv: TuitionInvoice) => {
-    onSendLineReminder(inv);
+  const handleTriggerReminder = async (inv: TuitionInvoice) => {
+    setReminderBusy(true);
+    setReminderError(null);
     const stu = students.find((s) => s.id === inv.studentId);
-    setReminderToast(`LINE Payment Reminder dispatched to guardian of ${stu?.firstNameEn} (${inv.invoiceNumber})`);
-    setTimeout(() => setReminderToast(null), 4000);
+    try {
+      const result = await onSendPrivateAppReminder(inv);
+      if (result.stored === 0) {
+        throw new Error('ไม่มีบัญชีผู้ปกครองที่เชื่อมกับนักเรียนนี้ หรือปิดหมวดค่าใช้จ่ายไว้');
+      }
+      setReminderToast(result.delivered > 0
+        ? `ส่งแจ้งเตือนผ่านแอปถึงผู้ปกครองของ ${stu?.firstNameTh || stu?.firstNameEn} (${inv.invoiceNumber})`
+        : `บันทึกแจ้งเตือนในแอปของผู้ปกครองแล้ว (${inv.invoiceNumber})`);
+      setTimeout(() => setReminderToast(null), 4000);
+    } catch (error) {
+      setReminderError(error instanceof Error ? error.message : 'ส่งแจ้งเตือนผ่านแอปไม่สำเร็จ');
+    } finally {
+      setReminderBusy(false);
+    }
   };
 
   const activeStudent = activeInvoice ? students.find((s) => s.id === activeInvoice.studentId) : null;
@@ -65,7 +80,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
             Tuition Fees &amp; Payment Invoicing
           </h1>
           <p className="text-xs text-[var(--color-text-body)] mt-0.5">
-            Manage school fee schedules, Thai PromptPay QR reconciliation, and automated LINE OA guardian reminders.
+            Manage school fee schedules, Thai PromptPay QR reconciliation, and private app reminders to linked guardians.
           </p>
         </div>
 
@@ -73,6 +88,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
           <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-600 text-emerald-100 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
             <MessageSquare className="w-4 h-4 text-emerald-300 fill-current" />
             <span>{reminderToast}</span>
+          </div>
+        )}
+        {reminderError && (
+          <div className="px-3 py-1.5 rounded-xl bg-rose-100 border border-rose-300 text-rose-900 text-xs flex items-center gap-2 shrink-0">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{reminderError}</span>
           </div>
         )}
       </div>
@@ -197,12 +218,13 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleTriggerReminder(inv);
+                          void handleTriggerReminder(inv);
                         }}
+                        disabled={reminderBusy}
                         className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <MessageSquare className="w-3 h-3 fill-current" />
-                        LINE Reminder
+                        App Reminder
                       </button>
                     )}
                   </div>
@@ -293,11 +315,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   </button>
 
                   <button
-                    onClick={() => handleTriggerReminder(activeInvoice)}
+                    onClick={() => void handleTriggerReminder(activeInvoice)}
+                    disabled={reminderBusy}
                     className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <MessageSquare className="w-3.5 h-3.5 fill-current" />
-                    <span>Send LINE OA Push Alert to Guardian</span>
+                    <span>Send private app alert to guardian</span>
                   </button>
                 </div>
               )}

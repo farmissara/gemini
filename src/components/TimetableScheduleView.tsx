@@ -52,17 +52,7 @@ const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
   { key: 'fri', th: 'วันศุกร์', en: 'Friday', color: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-200' }
 ];
 
-const PERIOD_LAYOUT = [
-  { num: 1 },
-  { num: 2 },
-  { num: 3 },
-  { num: 4 },
-  { num: 'lunch', isBreak: true },
-  { num: 5 },
-  { num: 6 },
-  { num: 7 }
-];
-const PERIOD_ORDER = [1, 2, 3, 4, 0, 5, 6, 7];
+const MAX_LESSON_PERIODS = 7;
 
 const COLOR_CLASSES: Record<string, string> = {
   sky: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:bg-sky-200 dark:hover:bg-sky-900',
@@ -131,6 +121,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newCredits, setNewCredits] = useState<number>(1.5);
   const [newColor, setNewColor] = useState<TimetableSlot['colorTag']>('sky');
   const getPeriodTime = (periodNumber: number) => schoolPeriods.find((period) => period.periodNumber === periodNumber);
+  const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
 
   // Filter slots based on active view mode
   const activeSlots = viewMode === 'teacher'
@@ -254,13 +246,32 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const handleSavePeriodSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     const orderedPeriods = [...periodDraft].sort(
-      (a, b) => PERIOD_ORDER.indexOf(a.periodNumber) - PERIOD_ORDER.indexOf(b.periodNumber)
+      (a, b) => a.startTime.localeCompare(b.startTime)
     );
+    const periodNumbers = orderedPeriods.map((period) => period.periodNumber);
     if (
-      orderedPeriods.length !== PERIOD_ORDER.length ||
-      orderedPeriods.some((period, index) => period.periodNumber !== PERIOD_ORDER[index] || Boolean(period.isBreak) !== (period.periodNumber === 0))
+      new Set(periodNumbers).size !== periodNumbers.length ||
+      orderedPeriods.filter((period) => !period.isBreak).length === 0 ||
+      orderedPeriods.filter((period) => period.isBreak).length !== 1 ||
+      orderedPeriods.some((period) => (
+        period.periodNumber < 0 ||
+        period.periodNumber > MAX_LESSON_PERIODS ||
+        Boolean(period.isBreak) !== (period.periodNumber === 0)
+      ))
     ) {
-      setPeriodSettingsError('ต้องกำหนดเวลาให้ครบทุกคาบและช่วงพักกลางวัน');
+      setPeriodSettingsError('ต้องมีคาบเรียนอย่างน้อย 1 คาบ หมายเลขไม่ซ้ำ และมีช่วงพักกลางวัน 1 ช่วง');
+      return;
+    }
+
+    const removedPeriods = schoolPeriods.filter(
+      (period) => !periodDraft.some((draft) => draft.periodNumber === period.periodNumber)
+    );
+    const usedRemovedPeriods = slots.filter((slot) => removedPeriods.some(
+      (period) => period.periodNumber === slot.periodNumber
+    ));
+    if (usedRemovedPeriods.length > 0) {
+      const periodNumbersInUse = [...new Set(usedRemovedPeriods.map((slot) => slot.periodNumber))].join(', ');
+      setPeriodSettingsError(`ลบคาบที่ ${periodNumbersInUse} ไม่ได้ เพราะยังมีตารางสอนใช้อยู่ ${usedRemovedPeriods.length} รายการ กรุณาย้ายหรือลบตารางสอนก่อน`);
       return;
     }
     const timeToMinutes = (time: string) => {
@@ -294,6 +305,47 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     } finally {
       setIsSavingPeriods(false);
     }
+  };
+
+  const handleAddPeriod = () => {
+    const nextPeriodNumber = Array.from({ length: MAX_LESSON_PERIODS }, (_, index) => index + 1)
+      .find((number) => !periodDraft.some((period) => period.periodNumber === number));
+    if (!nextPeriodNumber) {
+      setPeriodSettingsError(`เพิ่มได้สูงสุด ${MAX_LESSON_PERIODS} คาบ`);
+      return;
+    }
+
+    const previousPeriod = periodDraft
+      .filter((period) => !period.isBreak && period.periodNumber < nextPeriodNumber)
+      .sort((a, b) => b.periodNumber - a.periodNumber)[0];
+    let startTime = previousPeriod?.endTime || '08:30';
+    const lunchBreak = periodDraft.find((period) => period.isBreak);
+    if (lunchBreak && startTime >= lunchBreak.startTime && startTime < lunchBreak.endTime) {
+      startTime = lunchBreak.endTime;
+    }
+
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + 50;
+    if (endMinutes >= 24 * 60) {
+      setPeriodSettingsError('ไม่สามารถเพิ่มคาบหลังเที่ยงคืนได้');
+      return;
+    }
+    const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+    setPeriodDraft((previous) => [
+      ...previous,
+      { periodNumber: nextPeriodNumber, startTime, endTime },
+    ]);
+    setPeriodSettingsError(null);
+  };
+
+  const handleRemovePeriod = (periodNumber: number) => {
+    const scheduledSlots = slots.filter((slot) => slot.periodNumber === periodNumber);
+    if (scheduledSlots.length > 0) {
+      setPeriodSettingsError(`ลบคาบที่ ${periodNumber} ไม่ได้ เพราะยังมีตารางสอนใช้อยู่ ${scheduledSlots.length} รายการ กรุณาย้ายหรือลบตารางสอนก่อน`);
+      return;
+    }
+    setPeriodDraft((previous) => previous.filter((period) => period.periodNumber !== periodNumber));
+    setPeriodSettingsError(null);
   };
 
   // Compute academic hours breakdown per course in this classroom
@@ -413,6 +465,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   if (courses.length > 0) {
                     handleSelectCourse(courses[0].id);
                   }
+                  setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
                   setShowAddModal(true);
                 }}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
@@ -708,19 +761,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
                   <th className="p-3 w-28 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
-                  {PERIOD_LAYOUT.map((period, idx) => {
-                    const time = getPeriodTime(period.isBreak ? 0 : Number(period.num));
-                    return (
-                      <th key={idx} className={`p-2.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
+                  {orderedSchoolPeriods.map((period) => (
+                      <th key={period.periodNumber} className={`p-2.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
                         <div className={`font-bold ${period.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
-                          {period.isBreak ? 'พัก' : `คาบ ${period.num}`}
+                          {period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`}
                         </div>
                         <div className={`text-[10px] font-mono mt-0.5 ${period.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>
-                          {time ? `${time.startTime} - ${time.endTime}` : 'ยังไม่ตั้งเวลา'}
+                          {`${period.startTime} - ${period.endTime}`}
                         </div>
                       </th>
-                    );
-                  })}
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-xs">
@@ -734,10 +784,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     </td>
 
                     {/* Periods */}
-                    {PERIOD_LAYOUT.map((period, pIdx) => {
+                    {orderedSchoolPeriods.map((period) => {
                       if (period.isBreak) {
                         return (
-                          <td key={pIdx} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
+                          <td key={period.periodNumber} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
                             <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 writing-vertical rotate-180">
                               พักกลางวัน
                             </span>
@@ -747,14 +797,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
                       // Find matching slot
                       const slot = activeSlots.find(
-                        (s) => s.dayOfWeek === day.key && s.periodNumber === Number(period.num)
+                        (s) => s.dayOfWeek === day.key && s.periodNumber === period.periodNumber
                       );
 
                       const hasConflict = slot && conflicts.some((c) => c.slotId === slot.id);
 
                       if (!slot) {
                         return (
-                          <td key={pIdx} className="p-1.5 text-center border-r border-[var(--color-border)]">
+                          <td key={period.periodNumber} className="p-1.5 text-center border-r border-[var(--color-border)]">
                             <div className="h-22 rounded-xl border border-dashed border-[var(--color-border)] flex items-center justify-center text-[10px] text-[var(--color-text-muted)] transition">
                               ว่าง
                             </div>
@@ -765,7 +815,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
 
                       return (
-                        <td key={pIdx} className="p-1.5 border-r border-[var(--color-border)] align-top">
+                        <td key={period.periodNumber} className="p-1.5 border-r border-[var(--color-border)] align-top">
                           <div 
                             onClick={() => setSelectedSlotForDetail(slot)}
                             className={`p-2 rounded-xl border transition group relative flex flex-col justify-between h-22 cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
@@ -838,10 +888,24 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </p>
             </div>
             <form onSubmit={handleSavePeriodSettings} className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  เพิ่มหรือลบคาบได้สูงสุด {MAX_LESSON_PERIODS} คาบ; ช่วงพักกลางวันยังคงอยู่เสมอ
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAddPeriod}
+                  disabled={isSavingPeriods || lessonPeriods.length >= MAX_LESSON_PERIODS}
+                  className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  เพิ่มคาบ
+                </button>
+              </div>
               {periodDraft.slice().sort(
-                (a, b) => PERIOD_ORDER.indexOf(a.periodNumber) - PERIOD_ORDER.indexOf(b.periodNumber)
+                (a, b) => a.startTime.localeCompare(b.startTime)
               ).map((period) => (
-                <div key={period.periodNumber} className={`grid grid-cols-[minmax(90px,1fr)_1fr_1fr] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
+                <div key={period.periodNumber} className={`grid grid-cols-[minmax(90px,1fr)_1fr_1fr_auto] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
                   <span className="text-xs font-bold">{period.isBreak ? 'พักกลางวัน' : `คาบที่ ${period.periodNumber}`}</span>
                   <label className="text-[10px] text-[var(--color-text-muted)]">
                     เริ่ม
@@ -863,6 +927,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
                     />
                   </label>
+                  {period.isBreak ? (
+                    <span className="w-8" />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePeriod(period.periodNumber)}
+                      disabled={isSavingPeriods}
+                      aria-label={`ลบคาบที่ ${period.periodNumber}`}
+                      className="rounded-lg p-2 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
               {periodSettingsError && (
@@ -1056,11 +1133,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     onChange={(e) => setNewPeriod(Number(e.target.value))}
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7].map((num) => {
-                      const time = getPeriodTime(num);
+                    {lessonPeriods.map((period) => {
                       return (
-                        <option key={num} value={num}>
-                          คาบที่ {num} ({time ? `${time.startTime} - ${time.endTime}` : 'ยังไม่ตั้งเวลา'})
+                        <option key={period.periodNumber} value={period.periodNumber}>
+                          คาบที่ {period.periodNumber} ({period.startTime} - {period.endTime})
                         </option>
                       );
                     })}

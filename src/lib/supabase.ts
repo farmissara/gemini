@@ -424,6 +424,25 @@ export async function saveSchoolPeriodTimes(
   }));
   const { error } = await client.from('school_period_times').upsert(rows);
   if (error) throw new Error(`Could not save school period times: ${error.message}`);
+
+  const { data: savedPeriods, error: loadError } = await client
+    .from('school_period_times')
+    .select('period_number')
+    .eq('school_id', schoolId);
+  if (loadError) throw new Error(`Could not verify school period times: ${loadError.message}`);
+
+  const retainedPeriodNumbers = new Set(periods.map((period) => period.periodNumber));
+  const removedPeriodNumbers = (savedPeriods || [])
+    .map((period) => period.period_number)
+    .filter((periodNumber) => !retainedPeriodNumbers.has(periodNumber));
+  if (removedPeriodNumbers.length > 0) {
+    const { error: deleteError } = await client
+      .from('school_period_times')
+      .delete()
+      .eq('school_id', schoolId)
+      .in('period_number', removedPeriodNumbers);
+    if (deleteError) throw new Error(`Could not remove deleted school periods: ${deleteError.message}`);
+  }
 }
 
 export async function saveSchoolCampusGates(

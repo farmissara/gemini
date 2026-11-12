@@ -262,7 +262,7 @@ CREATE POLICY "School staff can manage school period times" ON public.school_per
         public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
     );
 
-GRANT SELECT, INSERT, UPDATE ON public.school_period_times TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_period_times TO authenticated;
 
 CREATE TABLE IF NOT EXISTS public.school_campus_gates (
     id TEXT NOT NULL,

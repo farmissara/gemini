@@ -31,6 +31,8 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 3. รัน `supabase/migrations/20261112_school_logo_storage.sql` เพื่อให้ผู้ดูแลโรงเรียนอัปโหลดโลโก้ PNG, JPEG หรือ WebP (ไม่เกิน 2 MB) ไปยัง Supabase Storage ได้
 4. สำหรับทั้งโปรเจกต์ใหม่และโปรเจกต์ที่มีอยู่ ให้นำ `supabase/migrations/20261113_secure_student_invites.sql` ไปรันใน SQL Editor หลัง schema เพื่อบังคับการสร้างบัญชีนักเรียนผ่านคำเชิญจากผู้ดูแลเท่านั้น
+5. รัน `supabase/migrations/20261114_parent_private_push.sql` เพื่อเปิดกล่องแจ้งเตือนส่วนตัวและบันทึกอุปกรณ์ Push ของผู้ปกครอง
+6. รัน `supabase/migrations/20261114_timetable_period_management.sql` เพื่ออนุญาตให้ผู้ดูแลลบคาบที่ไม่มีตารางสอนใช้งานได้
 
 หากต้องการเปิดใช้คิวอนุมัติการสมัครโรงเรียนในหน้า Super Admin ให้รัน `supabase/super_admin_registration_approval_migration.sql` เพิ่มใน SQL Editor ด้วย Migration นี้จำกัดสิทธิ์แก้ไขโปรไฟล์ไม่ให้ผู้ใช้เปลี่ยน role/สถานะของตนเอง และสร้าง RPC ที่ตรวจ role `super_admin` ฝั่งฐานข้อมูลก่อนอ่านหรืออนุมัติคำขอ
 
@@ -78,6 +80,25 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
    WHERE p.id = (SELECT id FROM auth.users WHERE email = 'parent@example.com')
    ON CONFLICT DO NOTHING;
    ```
+
+#### ตั้งค่าการแจ้งเตือนส่วนตัวบนแอปผู้ปกครอง (PWA Push)
+
+การแจ้งเตือนจะส่งถึงบัญชีผู้ปกครองที่เชื่อมอยู่ใน `parent_student_links` ของนักเรียนคนนั้นเท่านั้น ไม่มีการส่งเข้า LINE กลุ่ม และ Push บนหน้าจอล็อกจะแสดงข้อความทั่วไปโดยไม่ใส่ชื่อหรือรายละเอียดนักเรียน ปัจจุบันมีการแจ้งเตือนการเข้า/ออกโรงเรียนและการกดส่งแจ้งเตือนใบแจ้งหนี้รายนักเรียน
+
+1. สร้าง VAPID keys บนเครื่องผู้ดูแลด้วย `npx --yes web-push generate-vapid-keys` เก็บค่า public/private ไว้ให้ตรงคู่กัน ห้ามส่ง private key ในแชตหรือ commit ลง Git
+2. ตั้ง secrets ฝั่ง Supabase Edge Functions แล้ว deploy ฟังก์ชัน:
+
+   ```bash
+   supabase secrets set \
+     VAPID_PUBLIC_KEY='PASTE_PUBLIC_KEY' \
+     VAPID_PRIVATE_KEY='PASTE_PRIVATE_KEY' \
+     VAPID_SUBJECT='mailto:admin@example.com'
+   supabase functions deploy parent-private-push
+   ```
+
+3. ตั้งค่า `VITE_VAPID_PUBLIC_KEY` เป็นค่า public key คู่เดียวกันใน Render และ `.env.local` สำหรับพัฒนาในเครื่อง จากนั้น build/deploy frontend ใหม่
+4. ผู้ปกครองติดตั้ง EduVerse เป็นแอปบนอุปกรณ์ เข้าสู่ระบบบัญชี role `parent` ที่โรงเรียนเชื่อมกับนักเรียนแล้ว เปิดศูนย์การแจ้งเตือน → ตั้งค่า → เปิดการแจ้งเตือนบนอุปกรณ์นี้ การเปิด Push เป็นตัวเลือกและปิดได้ภายหลัง
+5. iPhone/iPad ต้องเพิ่มเว็บลงหน้าจอโฮมก่อนจึงจะใช้ Web Push ได้ (iOS/iPadOS 16.4 ขึ้นไป) และต้องอนุญาตการแจ้งเตือนในระบบปฏิบัติการด้วย
 
 #### ตั้ง Gmail เป็นผู้ส่งอีเมล Supabase Auth
 

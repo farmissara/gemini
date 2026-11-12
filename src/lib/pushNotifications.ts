@@ -30,7 +30,7 @@ const STORAGE_KEY_NOTIFICATIONS = 'eduverse_notifications_history';
 const STORAGE_KEY_SETTINGS = 'eduverse_notification_settings';
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  enabled: true,
+  enabled: false,
   sound: true,
   vibrate: true,
   categories: {

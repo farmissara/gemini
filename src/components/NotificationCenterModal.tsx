@@ -29,44 +29,101 @@ import {
   isPushNotificationSupported
 } from '../lib/pushNotifications';
 import { AppLanguage } from '../types';
+import { AuthUser } from '../types';
+import {
+  DEFAULT_PARENT_NOTIFICATION_PREFERENCES,
+  ParentNotificationPreferences,
+  clearParentNotifications,
+  disableParentPushNotifications,
+  enableParentPushNotifications,
+  listParentNotifications,
+  loadParentNotificationPreferences,
+  markParentNotificationsRead,
+  saveParentNotificationPreferences,
+} from '../lib/parentNotifications';
 
 interface NotificationCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentUser: AuthUser;
+  onUnreadCountChange?: (count: number) => void;
   lang?: AppLanguage;
 }
 
 export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({
   isOpen,
   onClose,
+  currentUser,
+  onUnreadCountChange,
   lang = 'th',
 }) => {
   const [notifications, setNotifications] = useState<EduVerseNotification[]>([]);
   const [settings, setSettings] = useState<NotificationSettings>(getNotificationSettings());
+  const [parentPreferences, setParentPreferences] = useState<ParentNotificationPreferences>(DEFAULT_PARENT_NOTIFICATION_PREFERENCES);
+  const [parentError, setParentError] = useState('');
+  const [parentBusy, setParentBusy] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [activeTab, setActiveTab] = useState<'list' | 'settings'>('list');
   const [testSentNotice, setTestSentNotice] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setNotifications(getStoredNotifications());
-      setSettings(getNotificationSettings());
       setPermission(getPushPermissionState());
+      if (currentUser.role === 'parent') {
+        setParentError('');
+        void Promise.all([listParentNotifications(), loadParentNotificationPreferences()])
+          .then(([items, preferences]) => {
+            setNotifications(items);
+            setParentPreferences(preferences);
+            onUnreadCountChange?.(items.filter((item) => !item.read).length);
+          })
+          .catch((error: unknown) => {
+            setParentError(error instanceof Error ? error.message : 'โหลดการแจ้งเตือนของนักเรียนไม่สำเร็จ');
+          });
+      } else {
+        setNotifications(getStoredNotifications());
+        setSettings(getNotificationSettings());
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser.role, onUnreadCountChange]);
+
+  useEffect(() => {
+    if (!isOpen || currentUser.role !== 'parent') return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const items = await listParentNotifications();
+        if (!active) return;
+        setNotifications(items);
+        onUnreadCountChange?.(items.filter((item) => !item.read).length);
+      } catch (error) {
+        if (active) setParentError(error instanceof Error ? error.message : 'โหลดการแจ้งเตือนของนักเรียนไม่สำเร็จ');
+      }
+    };
+    const interval = window.setInterval(() => void refresh(), 15000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [isOpen, currentUser.role, onUnreadCountChange]);
 
   // Listen to new notifications while modal is open
   useEffect(() => {
+    if (currentUser.role === 'parent') return;
     const handler = () => {
       setNotifications(getStoredNotifications());
     };
     window.addEventListener('eduverse:notification', handler);
     return () => window.removeEventListener('eduverse:notification', handler);
-  }, []);
+  }, [currentUser.role]);
 
   if (!isOpen) return null;
 
   const handleRequestPermission = async () => {
+    if (currentUser.role === 'parent') {
+      await handleToggleParentPush();
+      return;
+    }
     const res = await requestPushPermission();
     setPermission(res);
     if (res === 'granted') {
@@ -131,14 +188,84 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   };
 
   const handleMarkAllRead = () => {
+    if (currentUser.role === 'parent') {
+      setParentBusy(true);
+      void markParentNotificationsRead()
+        .then(async () => {
+          const items = await listParentNotifications();
+          setNotifications(items);
+          onUnreadCountChange?.(0);
+        })
+        .catch((error: unknown) => {
+          setParentError(error instanceof Error ? error.message : 'อัปเดตสถานะการอ่านไม่สำเร็จ');
+        })
+        .finally(() => setParentBusy(false));
+      return;
+    }
     const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
     saveStoredNotifications(updated);
   };
 
   const handleClearAll = () => {
+    if (currentUser.role === 'parent') {
+      setParentBusy(true);
+      void clearParentNotifications()
+        .then(() => {
+          setNotifications([]);
+          onUnreadCountChange?.(0);
+        })
+        .catch((error: unknown) => {
+          setParentError(error instanceof Error ? error.message : 'ล้างประวัติไม่สำเร็จ');
+        })
+        .finally(() => setParentBusy(false));
+      return;
+    }
     setNotifications([]);
     saveStoredNotifications([]);
+  };
+
+  const handleToggleParentPush = async () => {
+    setParentBusy(true);
+    setParentError('');
+    try {
+      if (parentPreferences.pushEnabled) {
+        await disableParentPushNotifications();
+        setParentPreferences((previous) => ({ ...previous, pushEnabled: false }));
+      } else {
+        await enableParentPushNotifications();
+        setPermission('granted');
+        setParentPreferences((previous) => ({ ...previous, pushEnabled: true }));
+      }
+    } catch (error) {
+      let message = error instanceof Error ? error.message : 'ปรับการแจ้งเตือนไม่สำเร็จ';
+      if (parentPreferences.pushEnabled) {
+        try {
+          setParentPreferences(await loadParentNotificationPreferences());
+        } catch (refreshError) {
+          message += ` (${refreshError instanceof Error ? refreshError.message : 'ไม่สามารถโหลดสถานะล่าสุดได้'})`;
+        }
+      }
+      setParentError(message);
+    } finally {
+      setParentBusy(false);
+    }
+  };
+
+  const handleToggleParentCategory = async (
+    key: keyof Omit<ParentNotificationPreferences, 'pushEnabled'>
+  ) => {
+    const updated = { ...parentPreferences, [key]: !parentPreferences[key] };
+    setParentBusy(true);
+    setParentError('');
+    try {
+      await saveParentNotificationPreferences(updated);
+      setParentPreferences(updated);
+    } catch (error) {
+      setParentError(error instanceof Error ? error.message : 'บันทึกหมวดการแจ้งเตือนไม่สำเร็จ');
+    } finally {
+      setParentBusy(false);
+    }
   };
 
   const handleToggleSetting = (key: keyof NotificationSettings | 'category', subKey?: keyof NotificationSettings['categories']) => {
@@ -184,7 +311,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 )}
               </h3>
               <p className="text-[11px] text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'แจ้งเตือนเรียลไทม์บนหน้าจอล็อก (Android / iOS / PC)' : 'Real-time Push Alerts on Lock Screen'}
+                {currentUser.role === 'parent'
+                  ? (lang === 'th' ? 'แสดงเฉพาะการแจ้งเตือนของบุตรหลานที่ผูกกับบัญชีนี้' : 'Only notifications for children linked to this account')
+                  : (lang === 'th' ? 'แจ้งเตือนเรียลไทม์บนหน้าจอล็อก (Android / iOS / PC)' : 'Real-time Push Alerts on Lock Screen')}
               </p>
             </div>
           </div>
@@ -213,7 +342,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Permission Request Banner if not yet granted */}
-        {permission !== 'granted' && isPushNotificationSupported() && (
+        {currentUser.role !== 'parent' && permission !== 'granted' && isPushNotificationSupported() && (
           <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between gap-3 text-xs shrink-0">
             <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
               <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
@@ -233,8 +362,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           </div>
         )}
 
+        {currentUser.role === 'parent' && parentError && (
+          <div className="px-4 py-2 border-b border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200 text-xs">
+            {parentError}
+          </div>
+        )}
+
         {/* Test Alert Banner Feedback */}
-        {testSentNotice && (
+        {currentUser.role !== 'parent' && testSentNotice && (
           <div className="p-2.5 bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 animate-bounce shrink-0">
             <CheckCircle2 className="w-4 h-4" />
             <span>{lang === 'th' ? 'ส่งการแจ้งเตือนทดสอบเรียบร้อยแล้ว!' : 'Test notification dispatched!'}</span>
@@ -273,6 +408,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             </div>
 
             {/* Quick Test & Simulation Suite */}
+            {currentUser.role !== 'parent' && (
             <div className="px-3 py-2 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-1.5 shrink-0 text-xs">
               <span className="text-[10px] font-bold text-[var(--color-text-muted)] flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-500" />
@@ -316,6 +452,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 </button>
               </div>
             </div>
+            )}
 
             {/* List */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2.5">
@@ -332,14 +469,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                       ? 'เมื่อมีนักเรียนสแกนเข้าเรียน การบ้านใหม่ หรือประกาศ จะปรากฏที่นี่'
                       : 'Attendance check-ins, new homework, and school bulletins will appear here.'}
                   </p>
-                  <button
+                  {currentUser.role !== 'parent' && <button
                     type="button"
                     onClick={handleTestNotification}
                     className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold hover:opacity-90 cursor-pointer"
                   >
                     <Send className="w-3 h-3" />
                     <span>{lang === 'th' ? 'ลองส่งแจ้งเตือนทดสอบ' : 'Send Test Notification'}</span>
-                  </button>
+                  </button>}
                 </div>
               ) : (
                 notifications.map((notif) => {
@@ -389,7 +526,81 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         )}
 
         {/* TAB 2: SETTINGS */}
-        {activeTab === 'settings' && (
+        {activeTab === 'settings' && currentUser.role === 'parent' && (
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+            <section className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3">
+              <div className="flex items-start gap-3">
+                <Smartphone className="w-5 h-5 text-[var(--color-primary-text)] shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'แจ้งเตือนส่วนตัวผ่านแอป' : 'Private app notifications'}
+                  </h4>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'ระบบจะแจ้งเฉพาะข้อมูลของนักเรียนที่โรงเรียนผูกกับบัญชีนี้ ไม่มีการส่งเข้าไลน์กลุ่ม และข้อความบนหน้าจอล็อกจะไม่แสดงรายละเอียดของนักเรียน'
+                      : 'Only students linked by the school to this account are included. No group LINE messages are sent, and lock-screen alerts hide student details.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={parentBusy}
+                onClick={() => void handleToggleParentPush()}
+                className={`w-full px-4 py-2.5 rounded-xl font-bold text-xs transition disabled:opacity-50 ${
+                  parentPreferences.pushEnabled
+                    ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800'
+                    : 'bg-[var(--color-primary)] text-white'
+                }`}
+              >
+                {parentBusy
+                  ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+                  : parentPreferences.pushEnabled
+                    ? (lang === 'th' ? 'ปิดการแจ้งเตือนผ่านแอปสำหรับบัญชีนี้' : 'Turn off app notifications for this account')
+                    : (lang === 'th' ? 'เปิดการแจ้งเตือนผ่านแอปสำหรับบัญชีนี้' : 'Enable app notifications for this account')}
+              </button>
+              {permission === 'denied' && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  {lang === 'th'
+                    ? 'เบราว์เซอร์ปิดกั้นการแจ้งเตือนไว้ โปรดอนุญาตจากการตั้งค่าเว็บไซต์ของอุปกรณ์'
+                    : 'Notifications are blocked by the browser. Enable them in this site’s device settings.'}
+                </p>
+              )}
+            </section>
+
+            <section className="space-y-2.5">
+              <h4 className="font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'เลือกหมวดแจ้งเตือนในแอป' : 'Choose in-app notification categories'}
+              </h4>
+              {[
+                { key: 'attendanceEnabled', labelTh: 'การเข้าเรียน มาสาย และการลา', labelEn: 'Attendance, late arrivals, and leave' },
+                { key: 'billingEnabled', labelTh: 'ค่าใช้จ่ายและใบเสร็จ', labelEn: 'Billing and receipts' },
+              ].map((item) => {
+                const key = item.key as keyof Omit<ParentNotificationPreferences, 'pushEnabled'>;
+                return (
+                  <div key={item.key} className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3">
+                    <span>{lang === 'th' ? item.labelTh : item.labelEn}</span>
+                    <button
+                      type="button"
+                      disabled={parentBusy}
+                      aria-label={lang === 'th' ? item.labelTh : item.labelEn}
+                      aria-pressed={parentPreferences[key]}
+                      onClick={() => void handleToggleParentCategory(key)}
+                      className={`w-10 h-5 rounded-full transition-colors relative disabled:opacity-50 ${
+                        parentPreferences[key] ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded-full bg-white shadow-md absolute top-0.5 transition-transform ${
+                        parentPreferences[key] ? 'right-0.5' : 'left-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                );
+              })}
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'settings' && currentUser.role !== 'parent' && (
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
             {/* Main Toggle */}
             <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-3">

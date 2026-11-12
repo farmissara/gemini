@@ -898,7 +898,7 @@ GRANT EXECUTE ON FUNCTION public.current_user_school_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.has_school_role(TEXT, TEXT[]) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.can_access_student(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.link_student_account(TEXT, UUID, TEXT) TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.school_period_times TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_period_times TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_campus_gates TO authenticated;
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

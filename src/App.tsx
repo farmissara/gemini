@@ -128,6 +128,7 @@ import {
   saveSchoolQuestionsBatch,
 } from './lib/centralExamBank';
 import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
+import { getParentUnreadNotificationCount, sendPrivateParentNotification } from './lib/parentNotifications';
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database } from 'lucide-react';
 
@@ -348,6 +349,24 @@ export const App: React.FC = () => {
   const [eduBattleInitialSubTab, setEduBattleInitialSubTab] = useState<'battle_royale_3d' | 'bank' | undefined>(undefined);
 
   useEffect(() => {
+    if (currentUser?.role === 'parent') {
+      let active = true;
+      const updateUnread = async () => {
+        try {
+          const count = await getParentUnreadNotificationCount();
+          if (active) setUnreadNotifCount(count);
+        } catch (error) {
+          console.error('Could not refresh private child notification count:', error);
+        }
+      };
+      void updateUnread();
+      const interval = window.setInterval(updateUnread, 30000);
+      return () => {
+        active = false;
+        window.clearInterval(interval);
+      };
+    }
+
     const updateUnread = () => {
       const items = getStoredNotifications();
       setUnreadNotifCount(items.filter(n => !n.read).length);
@@ -357,7 +376,7 @@ export const App: React.FC = () => {
     return () => {
       window.removeEventListener('eduverse:notification', updateUnread);
     };
-  }, []);
+  }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     if (!currentUser || !['admin', 'super_admin'].includes(currentRole)) {
@@ -990,6 +1009,7 @@ export const App: React.FC = () => {
   ) => {
     const todayStr = extra?.date || getLocalDateString();
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const attendanceRecordId = extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     
     setAttendance((prev) => {
       const isCheckOut = extra?.recordType === 'check_out';
@@ -1006,7 +1026,7 @@ export const App: React.FC = () => {
       const resolvedDeptOrRoom = extra?.userDepartmentOrRoom || (isCurrentUser ? (currentUser.department || currentUser.room || '') : (st ? st.room : (tc ? tc.department : '')));
 
       const newRecord: AttendanceRecord = {
-        id: extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: attendanceRecordId,
         schoolId: activeSchool.id,
         studentId,
         teacherId: extra?.teacherId || (resolvedUserType === 'teacher' ? studentId : undefined),
@@ -1057,6 +1077,25 @@ export const App: React.FC = () => {
       tag: `att-${studentId}-${todayStr}`,
       data: { studentId, status, date: todayStr }
     });
+
+    if (
+      !isDemoMode &&
+      st &&
+      currentUser &&
+      ['admin', 'super_admin', 'teacher'].includes(currentUser.role)
+    ) {
+      const privateTitle = isCheckOut ? 'บันทึกการออกจากโรงเรียนแล้ว' : 'บันทึกการเข้าโรงเรียนแล้ว';
+      void sendPrivateParentNotification({
+        schoolId: activeSchool.id,
+        studentId: st.id,
+        eventId: attendanceRecordId,
+        category: 'attendance',
+        title: privateTitle,
+        body: `${st.firstNameTh} ${st.lastNameTh} • ${statusLabel} เวลา ${nowTime}`,
+      }).catch((error: unknown) => {
+        console.error('Could not send private attendance notification to linked parents:', error);
+      });
+    }
 
     if (!isCheckOut && (status === 'present' || status === 'late')) {
       setPlayerScores((prev) =>
@@ -1208,6 +1247,7 @@ export const App: React.FC = () => {
   // 5. Afternoon departure reminder (15:30 - 16:30)
   // -------------------------------------------------------------
   useEffect(() => {
+    if (!currentUser || currentUser.role === 'parent') return;
     const firedAlerts = new Set<string>();
 
     const checkScheduleAndAttendance = () => {
@@ -1426,8 +1466,22 @@ export const App: React.FC = () => {
     setDataSyncError(null);
   };
 
-  const handleSendLineReminder = (_invoice: TuitionInvoice) => {
+  const handleSendPrivateAppReminder = async (invoice: TuitionInvoice) => {
+    const student = schoolStudents.find((item) => item.id === invoice.studentId);
+    if (!student) throw new Error('ไม่พบข้อมูลนักเรียนที่ผูกกับใบแจ้งหนี้นี้');
+    if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
+      throw new Error('เฉพาะผู้ดูแลหรือครูที่มีสิทธิ์เท่านั้นที่ส่งแจ้งเตือนได้');
+    }
+    const result = await sendPrivateParentNotification({
+      schoolId: activeSchool.id,
+      studentId: student.id,
+      eventId: `${invoice.id}-reminder-${getLocalDateString()}`,
+      category: 'billing',
+      title: 'มีรายการค่าใช้จ่ายของบุตรหลาน',
+      body: `${student.firstNameTh} ${student.lastNameTh} • ใบแจ้งหนี้ ${invoice.invoiceNumber} • ครบกำหนด ${invoice.dueDate} • ${invoice.totalAmount.toLocaleString('th-TH')} บาท`,
+    });
     setDataSyncError(null);
+    return result;
   };
 
   const handleAddAnnouncement = (newAnn: Announcement) => {
@@ -1631,6 +1685,20 @@ export const App: React.FC = () => {
 
   const handleSaveSchoolPeriods = async (periods: SchoolPeriodTime[]) => {
     if (!currentUser) throw new Error('กรุณาเข้าสู่ระบบก่อนบันทึกเวลาเรียน');
+    const retainedPeriodNumbers = new Set(periods.map((period) => period.periodNumber));
+    const removedPeriodNumbers = new Set(
+      schoolPeriods
+        .filter((period) => !retainedPeriodNumbers.has(period.periodNumber))
+        .map((period) => period.periodNumber)
+    );
+    const scheduledSlotsInRemovedPeriods = timetableSlots.filter((slot) => (
+      (!slot.schoolId || slot.schoolId === activeSchool.id) &&
+      removedPeriodNumbers.has(slot.periodNumber)
+    ));
+    if (scheduledSlotsInRemovedPeriods.length > 0) {
+      const periodNumbers = [...new Set(scheduledSlotsInRemovedPeriods.map((slot) => slot.periodNumber))].join(', ');
+      throw new Error(`ลบคาบที่ ${periodNumbers} ไม่ได้ เพราะยังมีตารางสอนใช้อยู่ ${scheduledSlotsInRemovedPeriods.length} รายการ`);
+    }
     if (!isDemoMode) {
       await saveSchoolPeriodTimes(activeSchool.id, periods);
     }
@@ -1822,12 +1890,16 @@ export const App: React.FC = () => {
           />
         )}
 
-        {showNotificationModal && (
+        {showNotificationModal && currentUser && (
           <NotificationCenterModal
             isOpen={showNotificationModal}
+            currentUser={currentUser}
+            onUnreadCountChange={setUnreadNotifCount}
             onClose={() => {
               setShowNotificationModal(false);
-              setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+              if (currentUser.role !== 'parent') {
+                setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+              }
             }}
             lang={lang}
           />
@@ -2522,7 +2594,7 @@ export const App: React.FC = () => {
                     invoices={schoolInvoices}
                     systemConfig={systemConfig}
                     onPayInvoice={handlePayInvoice}
-                    onSendLineReminder={handleSendLineReminder}
+                    onSendPrivateAppReminder={handleSendPrivateAppReminder}
                     currentRole={currentRole}
                     onOpenExamPaymentSettings={handleOpenExamPaymentSettings}
                   />
@@ -2790,12 +2862,16 @@ export const App: React.FC = () => {
         />
       )}
       {/* Push Notification Center Modal */}
-      {showNotificationModal && (
+      {showNotificationModal && currentUser && (
         <NotificationCenterModal
           isOpen={showNotificationModal}
+          currentUser={currentUser}
+          onUnreadCountChange={setUnreadNotifCount}
           onClose={() => {
             setShowNotificationModal(false);
-            setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+            if (currentUser.role !== 'parent') {
+              setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+            }
           }}
           lang={lang}
         />
