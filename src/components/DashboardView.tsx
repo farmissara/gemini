@@ -54,6 +54,7 @@ import { getLocalDateString } from '../lib/date';
 import { filterAttendanceForUser } from '../lib/attendanceScope';
 import { PagedList } from './PagedList';
 import { MilestoneAchievementsPanel } from './MilestoneAchievementsPanel';
+import { MonthlyAttendanceChart } from './MonthlyAttendanceChart';
 
 interface DashboardViewProps {
   students: Student[];
@@ -903,6 +904,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
+            {/* Daily Student Attendance Trends Chart (Current Month) */}
+            <MonthlyAttendanceChart
+              attendance={scopedAttendance}
+              students={students}
+              lang={lang}
+              selectedDate={selectedDate}
+              onSelectDate={(date) => setSelectedDate(date)}
+            />
+
             {playerScores.length > 0 && (
               <MilestoneAchievementsPanel
                 playerScores={playerScores}
@@ -1195,105 +1205,116 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Interactive Graph 1: Hourly Arrival & Departure Curve */}
           {attendanceStep === 'analytics' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Hourly Distribution Bar Chart */}
-            <div className="lg:col-span-2 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Hourly Distribution Bar Chart */}
+              <div className="lg:col-span-2 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-[var(--color-primary)]" />
+                      <span>{lang === 'th' ? 'กราฟแสดงการเดินทางเข้า-ออกโรงเรียนรายช่วงเวลา' : 'Traffic Distribution by Time Window'}</span>
+                    </h3>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      {lang === 'th'
+                        ? `วิเคราะห์ความหนาแน่นของการผ่านเขตพื้นที่และประตูโรงเรียนในวันที่ ${selectedDate}`
+                        : `Hourly traffic load at school perimeter on ${selectedDate}`}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold text-[var(--color-text-body)]">
+                    {lang === 'th' ? `รวม ${totalForDate} รายการ` : `Total ${totalForDate}`}
+                  </span>
+                </div>
+
+                {/* Bar visualization */}
+                <div className="space-y-2.5 pt-1">
+                  {hourlyBuckets.map((bucket, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-[var(--color-text-body)] flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-[var(--color-text-muted)] inline-block" />
+                          <span>{bucket.label}</span>
+                        </span>
+                        <span className="font-mono font-bold text-[var(--color-text-title)]">
+                          {bucket.count} {lang === 'th' ? 'คน' : 'people'} ({bucket.percent}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${bucket.color} transition-all duration-500`}
+                          style={{ width: `${bucket.barPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Analytics Card: Roles & Quality Index */}
+              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-4 flex flex-col justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[var(--color-primary)]" />
-                    <span>{lang === 'th' ? 'กราฟแสดงการเดินทางเข้า-ออกโรงเรียนรายช่วงเวลา' : 'Traffic Distribution by Time Window'}</span>
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                    <span>{lang === 'th' ? 'ดัชนีความตรงเวลา & ความปลอดภัย GPS' : 'Punctuality & GPS Integrity'}</span>
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th'
-                      ? `วิเคราะห์ความหนาแน่นของการผ่านเขตพื้นที่และประตูโรงเรียนในวันที่ ${selectedDate}`
-                      : `Hourly traffic load at school perimeter on ${selectedDate}`}
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                    {lang === 'th' ? 'ตรวจสอบระยะห่างจากใจกลางสถานศึกษา' : 'Geofence proximity index verification'}
                   </p>
                 </div>
-                <span className="text-[11px] font-bold text-[var(--color-text-body)]">
-                  {lang === 'th' ? `รวม ${totalForDate} รายการ` : `Total ${totalForDate}`}
-                </span>
-              </div>
 
-              {/* Bar visualization */}
-              <div className="space-y-2.5 pt-1">
-                {hourlyBuckets.map((bucket, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-[var(--color-text-body)] flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-[var(--color-text-muted)] inline-block" />
-                        <span>{bucket.label}</span>
-                      </span>
-                      <span className="font-mono font-bold text-[var(--color-text-title)]">
-                        {bucket.count} {lang === 'th' ? 'คน' : 'people'} ({bucket.percent}%)
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${bucket.color} transition-all duration-500`}
-                        style={{ width: `${bucket.barPercent}%` }}
-                      />
-                    </div>
+                {/* Quality Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--color-text-body)] font-bold">{lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา:' : 'On-Time Rate:'}</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-300 font-mono">{onTimePercent}%</span>
                   </div>
-                ))}
+                  <div className="w-full h-3 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] overflow-hidden flex">
+                    <div
+                      className="h-full bg-emerald-600 transition-all"
+                      style={{ width: `${onTimePercent}%` }}
+                      title={`ตรงเวลา ${presentCount} คน`}
+                    />
+                    <div
+                      className="h-full bg-amber-500 transition-all"
+                      style={{ width: `${latePercent}%` }}
+                      title={`มาสาย ${lateCount} คน`}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
+                      <span>{lang === 'th' ? `ตรงเวลา (${presentCount})` : `On-time (${presentCount})`}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                      <span>{lang === 'th' ? `มาสาย (${lateCount})` : `Late (${lateCount})`}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Geofence verification summary */}
+                <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 space-y-1.5 text-[11px]">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
+                    <MapPin className="w-3.5 h-3.5 text-blue-800 dark:text-blue-300" />
+                    <span>{lang === 'th' ? 'รั้วเสมือน GPS Geofence (รัศมี 300 ม.)' : 'GPS Geofence Perimeter (300m)'}</span>
+                  </div>
+                  <p className="text-blue-900 dark:text-blue-200 leading-relaxed text-[11px]">
+                    {lang === 'th'
+                      ? 'ทุกคนที่ลงชื่อผ่านมือถือในระบบนี้ ได้รับการบันทึกภาพถ่ายเซลฟี่จริง พร้อมประทับตราพิกัดระยะห่าง และเวลาที่ตรวจสอบย้อนหลังได้'
+                      : 'All mobile check-ins capture facial selfies with verified timestamp and proximity coordinates.'}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Quick Analytics Card: Roles & Quality Index */}
-            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-4 flex flex-col justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                  <span>{lang === 'th' ? 'ดัชนีความตรงเวลา & ความปลอดภัย GPS' : 'Punctuality & GPS Integrity'}</span>
-                </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                  {lang === 'th' ? 'ตรวจสอบระยะห่างจากใจกลางสถานศึกษา' : 'Geofence proximity index verification'}
-                </p>
-              </div>
-
-              {/* Quality Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--color-text-body)] font-bold">{lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา:' : 'On-Time Rate:'}</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300 font-mono">{onTimePercent}%</span>
-                </div>
-                <div className="w-full h-3 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] overflow-hidden flex">
-                  <div
-                    className="h-full bg-emerald-600 transition-all"
-                    style={{ width: `${onTimePercent}%` }}
-                    title={`ตรงเวลา ${presentCount} คน`}
-                  />
-                  <div
-                    className="h-full bg-amber-500 transition-all"
-                    style={{ width: `${latePercent}%` }}
-                    title={`มาสาย ${lateCount} คน`}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
-                    <span>{lang === 'th' ? `ตรงเวลา (${presentCount})` : `On-time (${presentCount})`}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                    <span>{lang === 'th' ? `มาสาย (${lateCount})` : `Late (${lateCount})`}</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Geofence verification summary */}
-              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 space-y-1.5 text-[11px]">
-                <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
-                  <MapPin className="w-3.5 h-3.5 text-blue-800 dark:text-blue-300" />
-                  <span>{lang === 'th' ? 'รั้วเสมือน GPS Geofence (รัศมี 300 ม.)' : 'GPS Geofence Perimeter (300m)'}</span>
-                </div>
-                <p className="text-blue-900 dark:text-blue-200 leading-relaxed text-[11px]">
-                  {lang === 'th'
-                    ? 'ทุกคนที่ลงชื่อผ่านมือถือในระบบนี้ ได้รับการบันทึกภาพถ่ายเซลฟี่จริง พร้อมประทับตราพิกัดระยะห่าง และเวลาที่ตรวจสอบย้อนหลังได้'
-                    : 'All mobile check-ins capture facial selfies with verified timestamp and proximity coordinates.'}
-                </p>
-              </div>
-            </div>
+            {/* Monthly Trend Analytics */}
+            <MonthlyAttendanceChart
+              attendance={scopedAttendance}
+              students={students}
+              lang={lang}
+              selectedDate={selectedDate}
+              onSelectDate={(date) => setSelectedDate(date)}
+            />
           </div>
           )}
         </div>

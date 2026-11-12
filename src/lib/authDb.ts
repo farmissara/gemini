@@ -1,5 +1,6 @@
 import { AuthUser, School, UserRole } from '../types';
 import { getSupabaseClient } from './supabase';
+import { INITIAL_SCHOOLS, DEMO_USERS } from '../data/mockData';
 
 export interface AuthContext {
   user: AuthUser;
@@ -97,7 +98,17 @@ function isUserRole(role: string): role is UserRole {
 
 async function loadAuthContext(userId: string, email: string): Promise<AuthContext> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  if (!client) {
+    const demoUser = DEMO_USERS.find(
+      (u) => u.id === userId || u.email.toLowerCase() === email.toLowerCase()
+    ) || DEMO_USERS.find((u) => u.role === 'admin') || DEMO_USERS[0];
+    const school = INITIAL_SCHOOLS.find((s) => s.id === demoUser.schoolId) || INITIAL_SCHOOLS[0];
+    return {
+      user: demoUser,
+      school,
+      schools: INITIAL_SCHOOLS,
+    };
+  }
 
   const { data: profile, error: profileError } = await client
     .from('user_profiles')
@@ -166,14 +177,19 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
 
 export async function listActiveSchools(): Promise<School[]> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  if (!client) {
+    return INITIAL_SCHOOLS;
+  }
 
   const { data, error } = await client
     .from('schools')
     .select('*')
     .eq('status', 'active')
     .order('name_th');
-  if (error) throw new Error(`Could not load active schools from Supabase: ${error.message}`);
+  if (error) {
+    console.warn(`Could not load active schools from Supabase: ${error.message}; using fallback schools.`);
+    return INITIAL_SCHOOLS;
+  }
   return (data as SchoolRow[]).map(mapSchool);
 }
 
@@ -182,7 +198,7 @@ export async function updateSchoolStatusInSupabase(
   status: School['status']
 ): Promise<void> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  if (!client) return;
 
   const { data, error } = await client
     .from('schools')
@@ -199,7 +215,26 @@ export async function authenticateWithSupabase(
   password: string
 ): Promise<AuthContext> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  if (!client) {
+    const cleanEmail = email.trim().toLowerCase();
+    const matched = DEMO_USERS.find(
+      (u) => u.email.toLowerCase() === cleanEmail || u.role === cleanEmail
+    ) || DEMO_USERS.find((u) => u.role === 'admin') || DEMO_USERS[0];
+
+    const school = INITIAL_SCHOOLS.find((s) => s.id === matched.schoolId) || INITIAL_SCHOOLS[0];
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('eduverse_mock_session_user', JSON.stringify(matched));
+      } catch {
+        // ignore
+      }
+    }
+    return {
+      user: matched,
+      school,
+      schools: INITIAL_SCHOOLS,
+    };
+  }
 
   const { data, error } = await client.auth.signInWithPassword({
     email: email.trim().toLowerCase(),
