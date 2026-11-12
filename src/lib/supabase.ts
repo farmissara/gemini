@@ -656,21 +656,57 @@ export async function syncDataToSupabase(payload: {
 
     // 4. Upsert Grades
     if (payload.grades.length > 0) {
-      const gradeRows = payload.grades.map((g) => ({
-        id: g.id,
-        school_id: payload.school.id,
-        student_id: g.studentId,
-        course_id: g.courseId,
-        academic_year: g.academicYear,
-        semester: g.semester,
-        midterm_score: g.midtermScore,
-        final_score: g.finalScore,
-        assignment_score: g.assignmentScore,
-        quiz_score: g.quizScore,
-        total_score: g.totalScore,
-        letter_grade: g.letterGrade,
-        grade_point: g.gradePoint,
-      }));
+      const studentIds = new Set(payload.students.map((student) => student.id));
+      const studentIdsByNumber = new Map<string, string>();
+      const ambiguousStudentNumbers = new Set<string>();
+      payload.students.forEach((student) => {
+        const studentNumber = student.studentIdNumber.trim().toLowerCase();
+        if (!studentNumber || ambiguousStudentNumbers.has(studentNumber)) return;
+        const existingId = studentIdsByNumber.get(studentNumber);
+        if (existingId && existingId !== student.id) {
+          studentIdsByNumber.delete(studentNumber);
+          ambiguousStudentNumbers.add(studentNumber);
+        } else {
+          studentIdsByNumber.set(studentNumber, student.id);
+        }
+      });
+
+      const resolvedStudentIds: (string | undefined)[] = [];
+      const unresolvedStudentIds = new Set<string>();
+      payload.grades.forEach((grade) => {
+        const gradeStudentId = grade.studentId.trim();
+        const studentId = studentIds.has(gradeStudentId)
+          ? gradeStudentId
+          : studentIdsByNumber.get(gradeStudentId.toLowerCase());
+        resolvedStudentIds.push(studentId);
+        if (!studentId) unresolvedStudentIds.add(gradeStudentId || '(ว่าง)');
+      });
+      if (unresolvedStudentIds.size > 0) {
+        const examples = Array.from(unresolvedStudentIds).slice(0, 5).join(', ');
+        throw new Error(
+          `Grades sync error: ${unresolvedStudentIds.size} student reference(s) do not match a unique student in this school's roster: ${examples}. Verify the grade student IDs and remove stale grades for deleted students.`
+        );
+      }
+
+      const gradeRows = payload.grades.map((g, index) => {
+        const studentId = resolvedStudentIds[index];
+        if (!studentId) throw new Error(`Missing student ID for grade ${g.id}`);
+        return {
+          id: g.id,
+          school_id: payload.school.id,
+          student_id: studentId,
+          course_id: g.courseId,
+          academic_year: g.academicYear,
+          semester: g.semester,
+          midterm_score: g.midtermScore,
+          final_score: g.finalScore,
+          assignment_score: g.assignmentScore,
+          quiz_score: g.quizScore,
+          total_score: g.totalScore,
+          letter_grade: g.letterGrade,
+          grade_point: g.gradePoint,
+        };
+      });
       const { error: gradeErr } = await client.from('grades').upsert(gradeRows);
       if (gradeErr) throw new Error(`Grades sync error: ${gradeErr.message}`);
     }
