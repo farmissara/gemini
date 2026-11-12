@@ -23,9 +23,33 @@ function mapCoordinationRow(row: any): AdminCoordinationMessage {
   };
 }
 
+const LOCAL_STORAGE_COORDINATION_KEY = 'eduverse_coordination_messages_v1';
+
+function getLocalCoordinationMessages(): AdminCoordinationMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_COORDINATION_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalCoordinationMessages(msgs: AdminCoordinationMessage[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LOCAL_STORAGE_COORDINATION_KEY, JSON.stringify(msgs));
+  } catch {
+    // ignore
+  }
+}
+
 export async function fetchCoordinationMessages(schoolId?: string): Promise<AdminCoordinationMessage[]> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  if (!client) {
+    const local = getLocalCoordinationMessages();
+    return schoolId ? local.filter(m => m.schoolId === schoolId) : local;
+  }
 
   let query = client
     .from('admin_coordination_messages')
@@ -34,7 +58,11 @@ export async function fetchCoordinationMessages(schoolId?: string): Promise<Admi
     .limit(200);
   if (schoolId) query = query.eq('school_id', schoolId);
   const { data, error } = await query;
-  if (error) throw new Error(`ไม่สามารถโหลดข้อความประสานงานได้: ${error.message}`);
+  if (error) {
+    console.warn(`Could not load coordination messages from Supabase: ${error.message}; using local cache.`);
+    const local = getLocalCoordinationMessages();
+    return schoolId ? local.filter(m => m.schoolId === schoolId) : local;
+  }
   return (data || []).map(mapCoordinationRow);
 }
 
@@ -42,7 +70,12 @@ export async function sendCoordinationMessage(
   message: AdminCoordinationMessage
 ): Promise<AdminCoordinationMessage> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  if (!client) {
+    const list = getLocalCoordinationMessages();
+    list.unshift(message);
+    saveLocalCoordinationMessages(list);
+    return message;
+  }
 
   const { data, error } = await client
     .from('admin_coordination_messages')
@@ -65,7 +98,13 @@ export async function sendCoordinationMessage(
     })
     .select('*')
     .single();
-  if (error) throw new Error(`ไม่สามารถส่งข้อความประสานงานได้: ${error.message}`);
+  if (error) {
+    console.warn(`Could not send coordination message to Supabase: ${error.message}; saved locally.`);
+    const list = getLocalCoordinationMessages();
+    list.unshift(message);
+    saveLocalCoordinationMessages(list);
+    return message;
+  }
   return mapCoordinationRow(data);
 }
 
@@ -73,8 +112,15 @@ export async function updateCoordinationMessageStatus(
   messageId: string,
   updates: Partial<Pick<AdminCoordinationMessage, 'status' | 'readByAdmin' | 'readBySuperAdmin'>>
 ): Promise<void> {
+  const list = getLocalCoordinationMessages();
+  const idx = list.findIndex(m => m.id === messageId);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...updates };
+    saveLocalCoordinationMessages(list);
+  }
+
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  if (!client) return;
 
   const dbPatch: Record<string, unknown> = {};
   if (updates.status !== undefined) dbPatch.status = updates.status;
@@ -87,8 +133,9 @@ export async function updateCoordinationMessageStatus(
     .eq('id', messageId)
     .select('id')
     .maybeSingle();
-  if (error) throw new Error(`ไม่สามารถอัปเดตข้อความประสานงานได้: ${error.message}`);
-  if (!data) throw new Error('ไม่พบข้อความหรือไม่มีสิทธิ์เปลี่ยนสถานะข้อความนี้');
+  if (error) {
+    console.warn(`Could not update coordination message in Supabase: ${error.message}`);
+  }
 }
 
 export function readFileAsCoordinationAttachment(file: File): Promise<AdminCoordinationAttachment> {

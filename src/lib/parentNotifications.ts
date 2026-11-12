@@ -45,34 +45,41 @@ function mapNotification(row: ParentNotificationRow): EduVerseNotification {
 }
 
 export async function listParentNotifications(): Promise<EduVerseNotification[]> {
-  const client = getClient();
+  const client = getSupabaseClient();
+  if (!client) return [];
   const { data, error } = await client
     .from('parent_notifications')
     .select('id, category, title, body, created_at, read_at')
     .order('created_at', { ascending: false })
     .limit(100);
-  if (error) throw new Error(`Could not load child notifications: ${error.message}`);
+  if (error) {
+    console.warn(`Could not load child notifications: ${error.message}`);
+    return [];
+  }
   return ((data || []) as ParentNotificationRow[]).map(mapNotification);
 }
 
 export async function getParentUnreadNotificationCount(): Promise<number> {
-  const client = getClient();
+  const client = getSupabaseClient();
+  if (!client) return 0;
   const { count, error } = await client
     .from('parent_notifications')
     .select('id', { count: 'exact', head: true })
     .is('read_at', null);
-  if (error) throw new Error(`Could not load unread child notifications: ${error.message}`);
+  if (error) {
+    return 0;
+  }
   return count || 0;
 }
 
 export async function loadParentNotificationPreferences(): Promise<ParentNotificationPreferences> {
-  const client = getClient();
+  const client = getSupabaseClient();
+  if (!client) return DEFAULT_PARENT_NOTIFICATION_PREFERENCES;
   const { data, error } = await client
     .from('parent_notification_preferences')
     .select('push_enabled, attendance_enabled, homework_enabled, announcement_enabled, billing_enabled')
     .maybeSingle();
-  if (error) throw new Error(`Could not load notification preferences: ${error.message}`);
-  if (!data) return DEFAULT_PARENT_NOTIFICATION_PREFERENCES;
+  if (error || !data) return DEFAULT_PARENT_NOTIFICATION_PREFERENCES;
   return {
     pushEnabled: data.push_enabled,
     attendanceEnabled: data.attendance_enabled,

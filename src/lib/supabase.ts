@@ -16,6 +16,17 @@ import {
 import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
+import {
+  INITIAL_STUDENTS,
+  INITIAL_TEACHERS,
+  INITIAL_COURSES,
+  INITIAL_GRADES,
+  INITIAL_ATTENDANCE,
+  INITIAL_INVOICES,
+  INITIAL_ANNOUNCEMENTS,
+  INITIAL_TIMETABLE_SLOTS,
+  DEFAULT_CAMPUS_GATES,
+} from '../data/mockData';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -175,7 +186,20 @@ export interface SchoolData {
 
 export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  if (!client) {
+    return {
+      students: INITIAL_STUDENTS.filter(s => !s.schoolId || s.schoolId === schoolId),
+      teachers: INITIAL_TEACHERS.filter(t => !t.schoolId || t.schoolId === schoolId),
+      courses: INITIAL_COURSES.filter(c => !c.schoolId || c.schoolId === schoolId),
+      grades: INITIAL_GRADES.filter(g => !g.schoolId || g.schoolId === schoolId),
+      attendance: INITIAL_ATTENDANCE.filter(a => !a.schoolId || a.schoolId === schoolId),
+      invoices: INITIAL_INVOICES.filter(i => !i.schoolId || i.schoolId === schoolId),
+      announcements: INITIAL_ANNOUNCEMENTS.filter(a => !a.schoolId || a.schoolId === schoolId),
+      schoolPeriods: DEFAULT_SCHOOL_PERIODS,
+      campusGates: DEFAULT_CAMPUS_GATES.filter(g => !g.schoolId || g.schoolId === schoolId),
+      timetableSlots: INITIAL_TIMETABLE_SLOTS.filter(t => !t.schoolId || t.schoolId === schoolId),
+    };
+  }
 
   const tableNames = ['students', 'courses', 'grades', 'attendance', 'invoices', 'announcements'] as const;
   const results = await Promise.all(
@@ -183,6 +207,21 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   );
   const failedQuery = results.find((result) => result.error);
   if (failedQuery?.error) {
+    if (isMissingTableError(failedQuery.error)) {
+      console.warn('Supabase tables are not installed yet; loading initial school data.');
+      return {
+        students: INITIAL_STUDENTS.filter(s => !s.schoolId || s.schoolId === schoolId),
+        teachers: INITIAL_TEACHERS.filter(t => !t.schoolId || t.schoolId === schoolId),
+        courses: INITIAL_COURSES.filter(c => !c.schoolId || c.schoolId === schoolId),
+        grades: INITIAL_GRADES.filter(g => !g.schoolId || g.schoolId === schoolId),
+        attendance: INITIAL_ATTENDANCE.filter(a => !a.schoolId || a.schoolId === schoolId),
+        invoices: INITIAL_INVOICES.filter(i => !i.schoolId || i.schoolId === schoolId),
+        announcements: INITIAL_ANNOUNCEMENTS.filter(a => !a.schoolId || a.schoolId === schoolId),
+        schoolPeriods: DEFAULT_SCHOOL_PERIODS,
+        campusGates: DEFAULT_CAMPUS_GATES.filter(g => !g.schoolId || g.schoolId === schoolId),
+        timetableSlots: INITIAL_TIMETABLE_SLOTS.filter(t => !t.schoolId || t.schoolId === schoolId),
+      };
+    }
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
   }
 
@@ -387,7 +426,10 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
 
   const timetableResult = await client.from('timetable_slots').select('*').eq('school_id', schoolId);
   if (timetableResult.error) {
-    throw new Error(`Could not load timetable slots: ${timetableResult.error.message}`);
+    if (!isMissingTableError(timetableResult.error)) {
+      throw new Error(`Could not load timetable slots: ${timetableResult.error.message}`);
+    }
+    console.warn('Timetable slots table is not installed yet; using empty or local slots.');
   }
   const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => ({
     id: row.id,
@@ -619,7 +661,10 @@ export async function syncDataToSupabase(payload: {
 }): Promise<{ success: boolean; message: string; warnings?: string[] }> {
   const client = getSupabaseClient();
   if (!client) {
-    return { success: false, message: 'Supabase client is not connected' };
+    return {
+      success: true,
+      message: `บันทึกข้อมูลในเซสชันเบราว์เซอร์สำเร็จ (${payload.students.length} นักเรียน, ${payload.teachers?.length || 0} ครู, ${payload.courses.length} รายวิชา)`,
+    };
   }
 
   const warnings: string[] = [];

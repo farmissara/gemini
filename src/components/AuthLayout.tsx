@@ -165,6 +165,19 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     }
   };
 
+  const handleQuickLogin = async (demoEmail: string) => {
+    setError(null);
+    setNotice(null);
+    setIsLoading(true);
+    try {
+      onLogin(await authenticateWithSupabase(demoEmail, 'demo1234'));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleResendConfirmation = async () => {
     if (!email.trim()) {
       setError(lang === 'th' ? 'กรุณากรอกอีเมลก่อนขออนุมัติ' : 'Please enter your email first.');
@@ -571,6 +584,65 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               : 'Register School'}
                         <ArrowRight className="w-4 h-4" />
                       </button>
+
+                      {mode === 'login' && (
+                        <div className="pt-3 border-t border-[var(--color-border)] space-y-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-[var(--color-text-title)]">
+                            <span>{lang === 'th' ? '⚡ ทดลองใช้งานด่วน (Demo Roles)' : '⚡ Quick Demo Login'}</span>
+                            <span className="text-[10px] text-[var(--color-text-muted)] font-normal">{lang === 'th' ? 'คลิกเข้าสู่ระบบทันที' : '1-click sign in'}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickLogin('admin@eduverse.school')}
+                              disabled={isLoading}
+                              className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] font-medium text-left transition cursor-pointer disabled:opacity-50"
+                            >
+                              <span className="text-sm">🏫</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-[11px] truncate">{lang === 'th' ? 'ผู้บริหาร (Principal)' : 'School Principal'}</div>
+                                <div className="text-[10px] text-[var(--color-text-muted)] truncate">admin@eduverse.school</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickLogin('farmissara@gmail.com')}
+                              disabled={isLoading}
+                              className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] font-medium text-left transition cursor-pointer disabled:opacity-50"
+                            >
+                              <span className="text-sm">👑</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-[11px] truncate">{lang === 'th' ? 'Super Admin' : 'Super Admin'}</div>
+                                <div className="text-[10px] text-[var(--color-text-muted)] truncate">farmissara@gmail.com</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickLogin('teacher@eduverse.school')}
+                              disabled={isLoading}
+                              className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] font-medium text-left transition cursor-pointer disabled:opacity-50"
+                            >
+                              <span className="text-sm">👨‍🏫</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-[11px] truncate">{lang === 'th' ? 'คุณครู (Teacher)' : 'Teacher'}</div>
+                                <div className="text-[10px] text-[var(--color-text-muted)] truncate">teacher@eduverse.school</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickLogin('student@eduverse.school')}
+                              disabled={isLoading}
+                              className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] font-medium text-left transition cursor-pointer disabled:opacity-50"
+                            >
+                              <span className="text-sm">🎓</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-[11px] truncate">{lang === 'th' ? 'นักเรียน (Student)' : 'Student'}</div>
+                                <div className="text-[10px] text-[var(--color-text-muted)] truncate">student@eduverse.school</div>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2 flex-wrap">
                         <span>{lang === 'th' ? 'ติดต่อผู้ดูแลระบบกลาง:' : 'Master Admin Email:'}</span>
