@@ -33,7 +33,6 @@ import {
   BarChart3,
   BellRing,
   Monitor,
-  Mail,
   BookOpen
 } from 'lucide-react';
 import { 
@@ -319,22 +318,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>{lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}</span>
             </button>
           )}
-          {['admin', 'super_admin'].includes(currentUser?.role || 'admin') && (
-            <button
-              type="button"
-              onClick={() => onNavigate('admin_superadmin_desk')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 transition cursor-pointer"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'แชต/จดหมาย Super Admin' : 'Super Admin Desk'}</span>
-            </button>
-          )}
-          <span className="px-3 py-1.5 rounded-xl bg-white/10 text-white/90 text-xs font-semibold backdrop-blur-md border border-white/15">
-            {currentUser?.role === 'teacher' ? (lang === 'th' ? '👨‍🏫 บัญชีครูผู้สอน' : '👨‍🏫 Teacher Account') :
-             currentUser?.role === 'student' ? (lang === 'th' ? '🎓 บัญชีนักเรียน' : '🎓 Student Account') :
-             currentUser?.role === 'parent' ? (lang === 'th' ? '👨‍👩‍👧 บัญชีผู้ปกครอง' : '👨‍👩‍👧 Parent Account') :
-             (lang === 'th' ? '🛡️ ผู้บริหาร / แอดมิน' : '🛡️ Admin Console')}
-          </span>
         </div>
       </div>
 

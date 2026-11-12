@@ -18,7 +18,8 @@ import {
   Sparkles,
   Bell,
   Mail,
-  CreditCard
+  CreditCard,
+  SlidersHorizontal
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -192,93 +193,96 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
           </button>
 
-          {/* Switch to Compact Mobile Mode (for mobile users or responsive testing) */}
-          {onSwitchToMobileMode && (
-            <button
-              type="button"
-              onClick={onSwitchToMobileMode}
-              className="hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition cursor-pointer bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-200 dark:hover:bg-emerald-900"
-              title={lang === 'th' ? 'สลับไปยังมุมมองมือถือแบบกระชับ' : 'Switch to Compact Mobile View'}
+          <details
+            className="relative"
+            onClick={(event) => {
+              if (event.target instanceof Element && event.target.closest('button')) {
+                event.currentTarget.removeAttribute('open');
+              }
+            }}
+          >
+            <summary
+              aria-label={lang === 'th' ? 'เปิดเมนูเครื่องมือ' : 'Open tools menu'}
+              className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-primary-light)]"
             >
-              <Smartphone className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-              <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
-            </button>
-          )}
-
-          {/* PWA Install Button (Prompt to install app on home screen for Android & iOS) */}
-          <div className="flex">
-            <PWAInstallButton lang={lang} variant="nav" />
-          </div>
-
-          {/* User Guide Modal Trigger */}
-          {canAccessSchoolOperations && onOpenGuide && (
-            <button
-              type="button"
-              onClick={onOpenGuide}
-              className="hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition cursor-pointer bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100 dark:bg-amber-950 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900"
-              title={lang === 'th' ? 'คู่มือการใช้งานระบบ' : 'System Guide'}
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
-              <span>{lang === 'th' ? 'คู่มือระบบ' : 'Guide'}</span>
-            </button>
-          )}
-
-          {/* Bulk Import / Export Data Trigger (For Admin & Teacher) */}
-          {currentTab !== 'teachers' && canAccessSchoolOperations && onOpenImportExport && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
-            <button
-              type="button"
-              onClick={onOpenImportExport}
-              className="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition cursor-pointer bg-indigo-50 border-indigo-300 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-950 dark:border-indigo-700 dark:text-indigo-200 dark:hover:bg-indigo-900"
-              title={lang === 'th' ? 'นำเข้า/ส่งออกข้อมูล Excel & CSV' : 'Import / Export Excel'}
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
-              <span className="hidden xl:inline">{lang === 'th' ? 'นำเข้า/ส่งออก' : 'Import/Export'}</span>
-            </button>
-          )}
-
-          {/* Admin <-> Super Admin Urgent Coordination Desk Trigger */}
-          {onOpenCoordinationDesk && ['admin', 'super_admin'].includes(currentRole) && (
-            <button
-              type="button"
-              onClick={onOpenCoordinationDesk}
-              className="relative inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900 dark:border-sky-700 dark:bg-sky-950 dark:hover:bg-sky-900 dark:text-sky-200 text-[11px] font-bold transition cursor-pointer shrink-0"
-              title={lang === 'th' ? 'แชตและจดหมายประสานงานด่วน Admin ↔ Super Admin' : 'Admin ↔ Super Admin Urgent Desk'}
-            >
-              <Mail className="w-3.5 h-3.5 text-sky-700 dark:text-sky-300" />
-              <span className="hidden lg:inline">{lang === 'th' ? 'ประสานงาน Super Admin' : 'Urgent Desk'}</span>
-              {coordinationUnreadCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[9px] font-bold tabular-nums">
-                  {coordinationUnreadCount}
-                </span>
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+              <span>{lang === 'th' ? 'เครื่องมือ' : 'Tools'}</span>
+              <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
+            </summary>
+            <div className="absolute right-0 top-full z-50 mt-2 max-h-[75vh] w-60 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-lg">
+              {onSwitchToMobileMode && (
+                <button
+                  type="button"
+                  onClick={onSwitchToMobileMode}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                >
+                  <Smartphone className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+                  <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
+                </button>
               )}
-            </button>
-          )}
-
-          {/* Super Admin Direct Exam Payment QR Settings Trigger */}
-          {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
-            <button
-              type="button"
-              onClick={onOpenExamPaymentSettings}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:text-emerald-200 text-xs font-extrabold transition cursor-pointer shadow-xs shrink-0"
-              title={lang === 'th' ? 'ตั้งค่า QR PromptPay / อัปโหลด QR รับเงินขายข้อสอบกลาง' : 'Central Exam Payment Settings'}
-            >
-              <CreditCard className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-              <span>{lang === 'th' ? '💳 ตั้งค่า QR ขายข้อสอบ' : 'Exam Payment QR'}</span>
-            </button>
-          )}
-
-          {/* School Onboarding Tutor Trigger (สพฐ. / ศธ. Guide & Sandbox) */}
-          {canAccessSchoolOperations && onOpenOnboardingTutor && (
-            <button
-              type="button"
-              onClick={onOpenOnboardingTutor}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer bg-purple-50 border-purple-300 text-purple-900 hover:bg-purple-100 dark:bg-purple-950 dark:border-purple-700 dark:text-purple-200 shadow-xs"
-              title={lang === 'th' ? 'ติวเตอร์แนะนำการเริ่มต้นใช้งาน 8 ระบบ สพฐ./ศธ.' : 'School Onboarding Tutor'}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-purple-700 dark:text-purple-300" />
-              <span className="hidden sm:inline">{lang === 'th' ? 'ติวเตอร์ระบบ' : 'Tutor'}</span>
-            </button>
-          )}
+              <PWAInstallButton lang={lang} variant="sidebar" className="my-1" />
+              {canAccessSchoolOperations && onOpenGuide && (
+                <button
+                  type="button"
+                  onClick={onOpenGuide}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                >
+                  <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                  <span>{lang === 'th' ? 'คู่มือระบบ' : 'System guide'}</span>
+                </button>
+              )}
+              {currentTab !== 'students' && currentTab !== 'teachers' && currentTab !== 'courses'
+                && canAccessSchoolOperations
+                && onOpenImportExport
+                && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                  <button
+                    type="button"
+                    onClick={onOpenImportExport}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 text-indigo-700 dark:text-indigo-300" />
+                    <span>{lang === 'th' ? 'นำเข้า/ส่งออกข้อมูล' : 'Import / Export data'}</span>
+                  </button>
+                )}
+              {onOpenCoordinationDesk && ['admin', 'super_admin'].includes(currentRole) && (
+                <button
+                  type="button"
+                  onClick={onOpenCoordinationDesk}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                >
+                  <span className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-sky-700 dark:text-sky-300" />
+                    <span>{lang === 'th' ? 'ประสานงาน Super Admin' : 'Super Admin desk'}</span>
+                  </span>
+                  {coordinationUnreadCount > 0 && (
+                    <span className="min-w-5 rounded-full bg-rose-600 px-1.5 py-0.5 text-center text-[10px] font-bold text-white tabular-nums">
+                      {coordinationUnreadCount > 9 ? '9+' : coordinationUnreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
+              {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
+                <button
+                  type="button"
+                  onClick={onOpenExamPaymentSettings}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                >
+                  <CreditCard className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+                  <span>{lang === 'th' ? 'ตั้งค่า QR ขายข้อสอบ' : 'Exam payment settings'}</span>
+                </button>
+              )}
+              {canAccessSchoolOperations && onOpenOnboardingTutor && (
+                <button
+                  type="button"
+                  onClick={onOpenOnboardingTutor}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                >
+                  <Sparkles className="h-4 w-4 text-purple-700 dark:text-purple-300" />
+                  <span>{lang === 'th' ? 'ติวเตอร์ระบบ' : 'System tutor'}</span>
+                </button>
+              )}
+            </div>
+          </details>
 
           {/* Notification Center Trigger (Web Push & In-App) */}
           {onOpenNotifications && (
