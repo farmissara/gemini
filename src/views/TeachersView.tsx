@@ -569,7 +569,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       )}
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-sm text-[var(--color-text-title)] tracking-tight">
+                      <h3 className="font-semibold text-sm text-[var(--color-text-title)] tracking-tight">
                         {teacher.fullNameTh}
                       </h3>
                       {teacher.fullNameEn.trim() && (
@@ -777,7 +777,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh]">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3.5">
                 <div 
                   onClick={() => {
@@ -792,13 +792,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     alt={selectedTeacherForDetail.fullNameTh}
                     className="w-13 h-13 rounded-2xl object-cover border-2 border-blue-400 shadow-md group-hover:ring-2 group-hover:ring-blue-300 transition"
                   />
-                  <span className="absolute -bottom-1 -right-1 p-1 bg-blue-600 group-hover:bg-blue-500 rounded-full text-white shadow transition">
+                  <span className="absolute -bottom-1 -right-1 p-1 bg-[var(--color-primary)] group-hover:opacity-90 rounded-full text-white shadow transition">
                     <Camera className="w-3 h-3" />
                   </span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-extrabold text-base sm:text-lg tracking-tight text-white">
+                    <h2 className="font-semibold text-base sm:text-lg tracking-tight text-white">
                       {selectedTeacherForDetail.fullNameTh}
                     </h2>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/40 uppercase font-bold">
@@ -818,7 +818,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     onClick={() => {
                       handleOpenEdit(selectedTeacherForDetail);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-bold border border-blue-400/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-blue-600/80 hover:opacity-90 text-white text-xs font-bold border border-blue-400/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>แก้ไขข้อมูล</span>
@@ -874,7 +874,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <BrainCircuit className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                <BrainCircuit className="w-4 h-4 text-[var(--color-primary-text)]" />
                 <span>วิเคราะห์การสอน &amp; ID Plan</span>
               </button>
             </div>
@@ -886,19 +886,19 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 <div className="space-y-6 text-xs">
                   {/* Quick Highlight Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-2xl bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800">
-                      <span className="text-[10px] text-blue-900 dark:text-blue-200 font-bold uppercase block">วิชาเอก (Major)</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.major}</p>
+                    <div className="p-3.5 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-border)]">
+                      <span className="text-[10px] text-[var(--color-primary-text)] font-bold uppercase block">วิชาเอก (Major)</span>
+                      <p className="font-semibold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.major}</p>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-300 dark:border-indigo-800">
-                      <span className="text-[10px] text-indigo-900 dark:text-indigo-200 font-bold uppercase block">วิชาโท (Minor)</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.minor || 'ไม่ระบุ'}</p>
+                    <div className="p-3.5 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-border)]">
+                      <span className="text-[10px] text-[var(--color-primary-text)] font-bold uppercase block">วิชาโท (Minor)</span>
+                      <p className="font-semibold text-[var(--color-text-title)] mt-1 leading-snug">{selectedTeacherForDetail.minor || 'ไม่ระบุ'}</p>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800">
                       <span className="text-[10px] text-amber-900 dark:text-amber-200 font-bold uppercase block">ประสบการณ์สอน</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">
+                      <p className="font-semibold text-[var(--color-text-title)] mt-1 leading-snug">
                         {selectedTeacherForDetail.teachingExperienceYears === undefined
                           ? 'ไม่ระบุ'
                           : `${selectedTeacherForDetail.teachingExperienceYears} ปี`}
@@ -907,7 +907,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
                     <div className="p-3.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800">
                       <span className="text-[10px] text-emerald-900 dark:text-emerald-200 font-bold uppercase block">คะแนนประเมิน PA</span>
-                      <p className="font-extrabold text-[var(--color-text-title)] mt-1 leading-snug">
+                      <p className="font-semibold text-[var(--color-text-title)] mt-1 leading-snug">
                         {selectedTeacherForDetail.paScore === undefined ? 'ไม่ระบุ' : `${selectedTeacherForDetail.paScore}/100`}
                       </p>
                     </div>
@@ -984,11 +984,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {detailTab === 'pa_portfolio' && (
                 <div className="space-y-6 text-xs">
                   {/* PA Header Card */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/40 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="p-4 rounded-2xl bg-[var(--color-primary)] border border-emerald-500/40 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
                         <FileCheck2 className="w-5 h-5 text-emerald-400" />
-                        <h4 className="font-extrabold text-sm text-emerald-300">
+                        <h4 className="font-semibold text-sm text-emerald-300">
                           แฟ้มสะสมผลงานข้อตกลงในการพัฒนางาน (ว.PA / PA Agreement)
                         </h4>
                       </div>
@@ -1061,11 +1061,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {detailTab === 'teaching_analytics' && (
                 <div className="space-y-6 text-xs">
                   {/* Analysis Banner */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/40 text-white space-y-2">
+                  <div className="p-4 rounded-2xl bg-[var(--color-primary)] border border-indigo-500/40 text-white space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <BrainCircuit className="w-5 h-5 text-indigo-300" />
-                        <h4 className="font-extrabold text-sm text-indigo-200">
+                        <h4 className="font-semibold text-sm text-indigo-200">
                           การวิเคราะห์ศักยภาพและการจัดการเรียนรู้เชิงลึก (Teaching Analytics)
                         </h4>
                       </div>
@@ -1082,7 +1082,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* 1. Alignment */}
                     <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-2">
-                      <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold">
+                      <div className="flex items-center gap-2 text-[var(--color-primary-text)] font-bold">
                         <Target className="w-4 h-4" />
                         <h5>ความตรงของสายวิชาที่สอน</h5>
                       </div>
@@ -1160,9 +1160,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-800 to-indigo-900 text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
               <div>
-                <h3 className="font-extrabold text-base text-white">
+                <h3 className="font-semibold text-base text-white">
                   {editingTeacher ? 'แก้ไขข้อมูลคณาจารย์ &amp; วิทยฐานะ' : 'เพิ่มข้อมูลคณาจารย์ใหม่'}
                 </h3>
                 <p className="text-xs text-blue-100">ระบุข้อมูลวิชาเอก วิชาโท ประสบการณ์ และถ่ายรูปโปรไฟล์</p>
@@ -1778,7 +1778,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
                 <FileCheck2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">เพิ่มชิ้นงานข้อตกลงพัฒนางาน (ว.PA)</h4>
+                <h4 className="font-semibold text-sm text-[var(--color-text-title)]">เพิ่มชิ้นงานข้อตกลงพัฒนางาน (ว.PA)</h4>
               </div>
               <button
                 type="button"

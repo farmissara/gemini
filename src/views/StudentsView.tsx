@@ -533,7 +533,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <Users className="w-5 h-5 text-[var(--color-primary-text)]" />
             <span>ระบบทะเบียนนักเรียน &amp; เลื่อนชั้นเรียน (DMC / SIS)</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold">
               อนุบาล – ม.6
             </span>
           </h1>
@@ -547,7 +547,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <button
             type="button"
             onClick={() => setShowPromotionModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
             title="ฟังก์ชันเลื่อนชั้นเรียนข้ามปีการศึกษา ส่งต่อนักเรียน หรือบันทึกสำเร็จการศึกษา"
           >
             <GraduationCap className="w-4 h-4 text-blue-200" />
@@ -765,7 +765,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           student.gpa >= 3.5 
                             ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
                             : student.gpa >= 3.0 
-                            ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700'
+                            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
                             : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
                         }`}>
                           {student.gpa.toFixed(2)}
@@ -828,7 +828,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               type="button"
                               onClick={() => void handleInviteStudent(student)}
                               disabled={invitingStudentId === student.id}
-                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+                              className="p-1.5 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer disabled:opacity-50"
                               title="ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี"
                             >
                               <Mail className="w-3.5 h-3.5" />
@@ -865,12 +865,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
               <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">นักเรียนทั้งหมด</span>
-              <div className="text-2xl font-black text-[var(--color-text-title)] mt-1">{students.length} คน</div>
+              <div className="text-2xl font-bold text-[var(--color-text-title)] mt-1">{students.length} คน</div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ในโรงเรียนปัจจุบัน</p>
             </div>
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
               <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">กำลังศึกษา (Active)</span>
-              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-1">
+              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
                 {students.filter(s => (s.status || 'active') === 'active').length} คน
               </div>
               <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
@@ -879,7 +879,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
               <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">เชื่อมต่อ LINE OA</span>
-              <div className="text-2xl font-black text-[var(--color-primary-text)] mt-1">
+              <div className="text-2xl font-bold text-[var(--color-primary-text)] mt-1">
                 {students.filter(s => s.lineLinked).length} คน
               </div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
@@ -888,7 +888,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
             <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
               <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">สำเร็จการศึกษาแล้ว</span>
-              <div className="text-2xl font-black text-purple-700 dark:text-purple-300 mt-1">
+              <div className="text-2xl font-bold text-[var(--color-primary-text)] mt-1">
                 {students.filter(s => s.status === 'graduated').length} คน
               </div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">บันทึกจบการศึกษา</p>
@@ -910,7 +910,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <span className={`w-2 h-2 rounded-full ${st.dotColor}`} />
                       <span>{st.labelTh}</span>
                     </div>
-                    <div className="text-lg font-mono font-black text-[var(--color-text-title)]">
+                    <div className="text-lg font-mono font-bold text-[var(--color-text-title)]">
                       {count} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
                     </div>
                     <p className="text-[10px] text-[var(--color-text-muted)] truncate">{st.descriptionTh}</p>
@@ -959,7 +959,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
               <div className="space-y-1">
-                <h3 className="text-sm font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[var(--color-primary-text)]" />
                   <span>อนุมัติการสมัครเข้าโรงเรียนของนักเรียน &amp; ผูกระเบียน DMC</span>
                 </h3>
@@ -1090,7 +1090,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-blue-300" />
@@ -1253,13 +1253,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
 
                   {/* Grade Level, Room & Status (Requirement 1 & 3: Editable Kindergarten to M.6 and Status) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-blue-50/60 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-[var(--color-primary-light)] rounded-2xl border border-[var(--color-border)]">
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block text-[var(--color-text-title)] font-bold">
                           ระดับชั้น (Grade) *
                         </label>
-                        <span className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold">แก้ไขได้อิสระ</span>
+                        <span className="text-[10px] text-[var(--color-primary-text)] font-semibold">แก้ไขได้อิสระ</span>
                       </div>
                       <input
                         list="modal-all-grade-levels"
@@ -1320,7 +1320,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <div>
                         <h4 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                           <span>👨‍👩‍👧 ข้อมูลผู้ปกครอง (Guardians)</span>
-                          <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 text-[10px] font-bold border border-blue-300 dark:border-blue-700">
+                          <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px] font-bold border border-[var(--color-border)]">
                             {guardiansList.length} คน
                           </span>
                         </h4>
@@ -1332,7 +1332,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <button
                         type="button"
                         onClick={handleAddGuardian}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>เพิ่มผู้ปกครอง</span>
@@ -1450,9 +1450,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     <button
                       type="button"
                       onClick={handleAddGuardian}
-                      className="w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-indigo-400 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 hover:bg-indigo-100/60 text-indigo-900 dark:text-indigo-200 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+                      className="w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-indigo-400 dark:border-indigo-600 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
                     >
-                      <Plus className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
+                      <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>+ เพิ่มผู้ปกครองคนที่ {guardiansList.length + 1} (มีผู้ปกครองมากกว่า 1 คน)</span>
                     </button>
                   </div>
