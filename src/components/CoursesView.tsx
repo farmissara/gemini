@@ -373,6 +373,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           <PagedList items={filteredCourses} pageSize={3} renderItem={(course) => {
             const isSelected = activeCourse?.id === course.id;
             const credits = course.credits || 1.5;
+            const weeklyHours = course.weeklyHours ?? Math.round(credits * 2);
             const totalHours = course.totalHours || (course.weeklyHours ? course.weeklyHours * 20 : credits * 40);
             const minAtt = course.minAttendanceHours || Math.round(totalHours * 0.8);
 
@@ -392,11 +393,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       <span className="font-mono font-bold text-sm text-indigo-800 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-300 dark:border-indigo-700">
                         {course.code}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getCategoryBadgeClass(course.category)}`}>
-                        {getCategoryLabel(course.category)}
-                      </span>
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
                         {credits} หน่วยกิต
+                      </span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
+                        {weeklyHours} ชั่วโมง/สัปดาห์
                       </span>
                     </div>
 
@@ -500,8 +501,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-text-muted)]">คาบ/สัปดาห์</div>
-                      <div className="font-bold text-[var(--color-text-title)]">{activeCourse.weeklyHours || Math.round(activeCourse.credits * 2)} คาบ</div>
+                      <div className="text-[10px] text-[var(--color-text-muted)]">ชั่วโมง/สัปดาห์</div>
+                      <div className="font-bold text-[var(--color-text-title)]">{activeCourse.weeklyHours ?? Math.round(activeCourse.credits * 2)} ชั่วโมง</div>
                     </div>
                     <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
                       <div className="text-[10px] text-[var(--color-text-muted)]">ชั่วโมงรวม/เทอม</div>
@@ -751,7 +752,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[var(--color-text-body)] font-medium mb-1">คาบ/สัปดาห์</label>
+                    <label className="block text-[var(--color-text-body)] font-medium mb-1">ชั่วโมง/สัปดาห์</label>
                     <input
                       type="number"
                       min={1}
