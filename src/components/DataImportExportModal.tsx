@@ -48,7 +48,7 @@ interface DataImportExportModalProps {
   activeSchoolId?: string;
   lang: AppLanguage;
   onImportStudents: (newStudents: Student[]) => void;
-  onImportTeachers: (newTeachers: Teacher[]) => void;
+  onImportTeachers: (newTeachers: Teacher[]) => Promise<void> | void;
   onImportQuestions: (newQuestions: QuizQuestion[]) => void;
   onImportCourses?: (newCourses: Course[]) => void;
   onImportEnrollment?: (courseId: string, studentIds: string[]) => void;
@@ -351,11 +351,19 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     showToast('ดาวน์โหลดแบบฟอร์มครู HRMS แล้ว');
   };
 
-  const handleConfirmImportTeachers = () => {
+  const handleConfirmImportTeachers = async () => {
     if (previewTeachers.length === 0) return;
-    onImportTeachers(previewTeachers);
-    showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่านเรียบร้อยแล้ว`);
-    setPreviewTeachers([]);
+    try {
+      await onImportTeachers(previewTeachers);
+      showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่านเรียบร้อยแล้ว`);
+      setPreviewTeachers([]);
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? `บันทึกข้อมูลครูไม่สำเร็จ: ${error.message}`
+          : 'บันทึกข้อมูลครูไม่สำเร็จ กรุณาลองอีกครั้ง'
+      );
+    }
   };
 
   // ==========================================
@@ -922,7 +930,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   <div className="flex justify-end pt-2">
                     <button
                       type="button"
-                      onClick={handleConfirmImportTeachers}
+                      onClick={() => void handleConfirmImportTeachers()}
                       className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
                       <Upload className="w-4 h-4" />

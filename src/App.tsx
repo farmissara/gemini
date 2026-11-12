@@ -63,6 +63,7 @@ import {
   SUPABASE_PATCH_MIGRATION_SQL,
   deleteStudentFromDb,
   deleteTeacherFromDb,
+  saveTeachersToDb,
   saveTimetableSlotsToDb,
   deleteTimetableSlotFromDb
 } from './lib/supabase';
@@ -920,11 +921,21 @@ export const App: React.FC = () => {
     ]);
   };
 
-  const handleImportTeachers = (newTeachers: Teacher[]) => {
-    setTeachers((prev) => [
-      ...newTeachers.map((t) => ({ ...t, schoolId: activeSchool.id })),
-      ...prev,
-    ]);
+  const handleImportTeachers = async (newTeachers: Teacher[]) => {
+    const importedTeachers = newTeachers.map((teacher) => ({ ...teacher, schoolId: activeSchool.id }));
+    try {
+      if (!isDemoMode) {
+        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+          throw new Error('เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่นำเข้ารายชื่อครูได้');
+        }
+        await saveTeachersToDb(activeSchool.id, importedTeachers);
+      }
+      setTeachers((prev) => [...importedTeachers, ...prev]);
+      setDataSyncError(null);
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
   };
 
   const handleAddCourse = (newCourse: Course) => {

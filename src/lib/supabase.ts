@@ -554,6 +554,54 @@ export async function saveStudentSelfAttendance(record: AttendanceRecord, userId
   return photoStoragePath;
 }
 
+function mapTeacherToDb(teacher: Teacher, schoolId: string) {
+  return {
+    id: teacher.id,
+    school_id: schoolId,
+    teacher_id_number: teacher.teacherIdNumber,
+    full_name_th: teacher.fullNameTh,
+    full_name_en: teacher.fullNameEn,
+    gender: teacher.gender,
+    email: teacher.email,
+    phone: teacher.phone,
+    avatar_url: teacher.avatarUrl,
+    academic_degree: teacher.academicDegree,
+    major: teacher.major,
+    minor: teacher.minor || null,
+    academic_standing: teacher.academicStanding,
+    department: teacher.department,
+    teacher_license_no: teacher.teacherLicenseNo,
+    teaching_subjects: teacher.teachingSubjects || [],
+    homeroom_classes: teacher.homeroomClasses || [],
+    teaching_grades: teacher.teachingGrades || [],
+    is_school_admin: Boolean(teacher.isSchoolAdmin),
+    line_user_id: teacher.lineUserId || null,
+    line_linked: Boolean(teacher.lineLinked),
+    other_skills: teacher.otherSkills || [],
+    certifications: teacher.certifications || [],
+    teaching_experience_years: teacher.teachingExperienceYears ?? null,
+    pa_score: teacher.paScore ?? null,
+    self_development_plan: teacher.selfDevelopmentPlan || null,
+    pa_portfolio: teacher.paPortfolio || [],
+  };
+}
+
+export async function saveTeachersToDb(schoolId: string, teachers: Teacher[]): Promise<void> {
+  if (teachers.length === 0) return;
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client
+    .from('teachers')
+    .upsert(teachers.map((teacher) => mapTeacherToDb(teacher, schoolId)), { onConflict: 'id' });
+  if (error) {
+    if (isMissingTableError(error)) {
+      throw new Error('ตาราง teachers ยังไม่มีใน Supabase กรุณารัน SQL Migration เพิ่มตาราง teachers');
+    }
+    throw new Error(`ไม่สามารถบันทึกข้อมูลครูลง Supabase ได้: ${error.message}`);
+  }
+}
+
 // Convert camelCase models to snake_case Postgres columns and back
 export async function syncDataToSupabase(payload: {
   school: School;
@@ -607,35 +655,7 @@ export async function syncDataToSupabase(payload: {
 
     // 2.5 Upsert Teachers (HRMS & DPA)
     if (['super_admin', 'admin'].includes(payload.role) && payload.teachers && payload.teachers.length > 0) {
-      const teacherRows = payload.teachers.map((t) => ({
-        id: t.id,
-        school_id: payload.school.id,
-        teacher_id_number: t.teacherIdNumber,
-        full_name_th: t.fullNameTh,
-        full_name_en: t.fullNameEn,
-        gender: t.gender,
-        email: t.email,
-        phone: t.phone,
-        avatar_url: t.avatarUrl,
-        academic_degree: t.academicDegree,
-        major: t.major,
-        minor: t.minor || null,
-        academic_standing: t.academicStanding,
-        department: t.department,
-        teacher_license_no: t.teacherLicenseNo,
-        teaching_subjects: t.teachingSubjects || [],
-        homeroom_classes: t.homeroomClasses || [],
-        teaching_grades: t.teachingGrades || [],
-        is_school_admin: Boolean(t.isSchoolAdmin),
-        line_user_id: t.lineUserId || null,
-        line_linked: Boolean(t.lineLinked),
-        other_skills: t.otherSkills || [],
-        certifications: t.certifications || [],
-        teaching_experience_years: t.teachingExperienceYears ?? null,
-        pa_score: t.paScore ?? null,
-        self_development_plan: t.selfDevelopmentPlan || null,
-        pa_portfolio: t.paPortfolio || [],
-      }));
+      const teacherRows = payload.teachers.map((teacher) => mapTeacherToDb(teacher, payload.school.id));
       const { error: tErr } = await client.from('teachers').upsert(teacherRows);
       if (tErr) {
         if (isMissingTableError(tErr)) {
