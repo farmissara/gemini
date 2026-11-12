@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppLanguage, AuthUser, School, Student, ThemePalette, UserRole } from '../types';
-import { INITIAL_STUDENTS, INITIAL_SCHOOLS } from '../data/mockData';
+import { AppLanguage, School, ThemePalette } from '../types';
 import {
   AlertCircle,
   ArrowRight,
@@ -34,19 +33,13 @@ import {
 } from 'lucide-react';
 import {
   authenticateWithSupabase,
-  authenticateImportedLocalUser,
-  getDemoStudentAccounts,
   listActiveSchools,
   MASTER_SYSTEM_EMAIL,
   registerSchoolWithSupabase,
-  registerStudentWithSupabase,
   requestPasswordReset,
   resendSignupConfirmation,
-  saveAllDemoStudentAccounts,
-  type StoredImportedCredential,
   type AuthContext,
 } from '../lib/authDb';
-import { getSupabaseClient } from '../lib/supabase';
 import { PWAInstallButton } from './PWAInstallButton';
 import heroImage from '../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 import featureLmsImage from '../assets/images/classroom_teaching_learning_1793958766838.jpg';
@@ -55,14 +48,8 @@ import featureClinicImage from '../assets/images/feature_smart_student_health_cl
 
 interface AuthLayoutProps {
   onLogin: (context: AuthContext) => void;
-  onLoginImportedUser?: (cred: StoredImportedCredential) => void;
-  onLoginStudent?: (studentUser: AuthUser, school: School) => void;
-  onStartDemo: (role?: UserRole) => void;
   initialError?: string | null;
-  initialSchoolId?: string;
-  initialLoginMode?: 'student' | 'staff';
   activeSchools?: School[];
-  allStudents?: Student[];
   lang: AppLanguage;
   setLang: (lang: AppLanguage) => void;
   themePalette?: ThemePalette;
@@ -78,20 +65,10 @@ function getAuthErrorMessage(message: string, lang: AppLanguage): string {
   return message;
 }
 
-function isLoginRequest(mode: 'login' | 'register'): boolean {
-  return mode === 'login';
-}
-
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onLogin,
-  onLoginImportedUser,
-  onLoginStudent,
-  onStartDemo,
   initialError,
-  initialSchoolId,
-  initialLoginMode,
   activeSchools,
-  allStudents,
   lang,
   setLang,
   themePalette = 'light_warm',
@@ -101,15 +78,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   // Production Auth Form State (Primary Landing Experience)
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [loginTargetRole, setLoginTargetRole] = useState<'student' | 'staff'>(
-    'staff'
-  );
-  const [registrationType, setRegistrationType] = useState<'student' | 'school'>('school');
   const [schools, setSchools] = useState<School[]>(activeSchools && activeSchools.length > 0 ? activeSchools : []);
   const [schoolLoadError, setSchoolLoadError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [schoolId, setSchoolId] = useState(initialSchoolId || '');
   const [fullNameTh, setFullNameTh] = useState('');
   const [fullNameEn, setFullNameEn] = useState('');
   const [schoolNameTh, setSchoolNameTh] = useState('');
@@ -122,7 +94,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Secondary Modals: Forgot Password, SMTP Setup
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
@@ -141,7 +112,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       .then((availableSchools) => {
         if (!active) return;
         setSchools(availableSchools);
-        setSchoolId(initialSchoolId || availableSchools[0]?.id || '');
         setSchoolLoadError(null);
       })
       .catch((loadError: unknown) => {
@@ -151,13 +121,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     return () => {
       active = false;
     };
-  }, [activeSchools, initialSchoolId]);
+  }, [activeSchools]);
 
-  const currentSelectedSchool = schools.find((s) => s.id === schoolId) || schools[0] || INITIAL_SCHOOLS[0];
-
-  const focusLoginForm = (targetMode: 'login' | 'register' = 'login', targetRegType?: 'student' | 'school') => {
+  const focusLoginForm = (targetMode: 'login' | 'register' = 'login') => {
     setMode(targetMode);
-    if (targetRegType) setRegistrationType(targetRegType);
     setError(null);
     const portalEl = document.getElementById('portal-auth');
     portalEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -171,162 +138,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     setIsLoading(true);
 
     try {
-      if (isLoginRequest(mode)) {
+      if (mode === 'login') {
         onLogin(await authenticateWithSupabase(email, password));
         return;
       }
 
-      if (mode === 'login') {
-        const inputTrimmed = email.trim();
-        const selectedSchool = schools.find((s) => s.id === schoolId) || schools[0] || INITIAL_SCHOOLS[0];
-
-        // 1. Check student login attempt (Student role or non-email input in student-friendly school)
-        const isStudentLoginAttempt =
-          loginTargetRole === 'student' ||
-          (!inputTrimmed.includes('@') && selectedSchool?.studentLoginIdentifierType !== 'email_only');
-
-        if (isStudentLoginAttempt) {
-          const studentPool = allStudents && allStudents.length > 0 ? allStudents : INITIAL_STUDENTS;
-          const needle = inputTrimmed.toLowerCase();
-          const matchedStudent = studentPool.find((s) =>
-            (!s.schoolId || s.schoolId === selectedSchool.id) &&
-            (s.studentIdNumber.toLowerCase() === needle ||
-              s.id.toLowerCase() === needle ||
-              (s.nationalId && s.nationalId.replace(/[^0-9]/g, '') === needle.replace(/[^0-9]/g, '')) ||
-              (s.guardianPhone && s.guardianPhone.replace(/[^0-9]/g, '') === needle.replace(/[^0-9]/g, '')))
-          );
-
-          if (matchedStudent) {
-            // Password validation for student:
-            const rawBirthdate = matchedStudent.dateOfBirth?.replace(/[^0-9]/g, '') || ''; // e.g. 20080412
-            const ddmmyyyy = matchedStudent.dateOfBirth
-              ? `${matchedStudent.dateOfBirth.slice(8, 10)}${matchedStudent.dateOfBirth.slice(5, 7)}${matchedStudent.dateOfBirth.slice(0, 4)}`
-              : ''; // e.g. 12042008
-            const ddmmyyyyThai = matchedStudent.dateOfBirth
-              ? `${matchedStudent.dateOfBirth.slice(8, 10)}${matchedStudent.dateOfBirth.slice(5, 7)}${Number(matchedStudent.dateOfBirth.slice(0, 4)) + 543}`
-              : ''; // e.g. 12042551
-
-            const isValidPass =
-              password === matchedStudent.studentIdNumber ||
-              password === matchedStudent.dateOfBirth ||
-              password === rawBirthdate ||
-              password === ddmmyyyy ||
-              password === ddmmyyyyThai ||
-              password === 'password123' ||
-              password === '12345678' ||
-              password === '123456' ||
-              password.length >= 4;
-
-            if (isValidPass) {
-              const studentAuth: AuthUser = {
-                id: matchedStudent.id,
-                email: `${matchedStudent.studentIdNumber.toLowerCase()}@${selectedSchool.slug || 'student.eduverse.school'}`,
-                fullNameTh: `${matchedStudent.firstNameTh} ${matchedStudent.lastNameTh}`,
-                fullNameEn: `${matchedStudent.firstNameEn} ${matchedStudent.lastNameEn}`,
-                role: 'student',
-                schoolId: selectedSchool.id,
-                studentIdNumber: matchedStudent.studentIdNumber,
-                gradeLevel: matchedStudent.gradeLevel,
-                room: matchedStudent.room,
-                avatarUrl: matchedStudent.avatarUrl,
-                lineConnected: matchedStudent.lineLinked || false,
-                lineUserId: matchedStudent.lineUserId,
-                phone: matchedStudent.guardianPhone,
-              };
-
-              if (onLoginStudent) {
-                onLoginStudent(studentAuth, selectedSchool);
-                return;
-              } else {
-                onLogin({ user: studentAuth, school: selectedSchool, schools });
-                return;
-              }
-            } else {
-              throw new Error(
-                lang === 'th'
-                  ? `รหัสผ่านไม่ถูกต้อง กรุณาใช้วันเดือนปีเกิด หรือรหัสนักเรียน (${selectedSchool.studentDefaultPasswordNote || 'เช่น 12042551 หรือ ED-6901'})`
-                  : 'Invalid student password. Please use your birthdate or student ID.'
-              );
-            }
-          } else if (loginTargetRole === 'student' && !inputTrimmed.includes('@')) {
-            throw new Error(
-              lang === 'th'
-                ? `ไม่พบรหัสนักเรียน "${inputTrimmed}" ในสังกัด ${selectedSchool.nameTh} กรุณาตรวจสอบรหัสหรือติดต่อครูประจำชั้น`
-                : `Student ID "${inputTrimmed}" not found in this school.`
-            );
-          }
-        }
-
-        const importedMatch = authenticateImportedLocalUser(email, password);
-        if (!getSupabaseClient() && importedMatch && onLoginImportedUser) {
-          onLoginImportedUser(importedMatch);
-          return;
-        }
-        try {
-          onLogin(await authenticateWithSupabase(email, password));
-          return;
-        } catch (supaErr) {
-          if (importedMatch && onLoginImportedUser) {
-            onLoginImportedUser(importedMatch);
-            return;
-          }
-          throw supaErr;
-        }
-      }
-
-      if (registrationType === 'school') {
-        await registerSchoolWithSupabase({
-          email,
-          password,
-          fullNameTh,
-          fullNameEn,
-          phone,
-          schoolNameTh,
-          schoolNameEn,
-          schoolType,
-          province,
-        });
-        setNotice(
-          lang === 'th'
-            ? 'ลงทะเบียนโรงเรียนเรียบร้อยแล้ว! ข้อมูลส่งเข้าสู่ระบบแล้ว โดย Super Admin (farmissara@gmail.com) จะเป็นผู้อนุมัติเปิดใช้งานจากระบบโดยตรง'
-            : 'School registered successfully! Awaiting direct system approval from Super Admin.'
-        );
-      } else {
-        if (!schoolId) {
-          throw new Error(lang === 'th' ? 'ไม่มีโรงเรียนที่เปิดรับสมัคร กรุณาติดต่อผู้ดูแลระบบ' : 'No active school available.');
-        }
-        if (!getSupabaseClient()) {
-          const existingAll = getDemoStudentAccounts(schoolId);
-          saveAllDemoStudentAccounts([
-            {
-              id: `demo-stu-reg-${Date.now()}`,
-              school_id: schoolId,
-              student_id: null,
-              full_name_th: fullNameTh.trim(),
-              full_name_en: (fullNameEn || fullNameTh).trim(),
-              email: email.trim().toLowerCase(),
-              phone: phone.trim() || undefined,
-              status: 'pending',
-              created_at: new Date().toISOString(),
-            },
-            ...existingAll,
-          ]);
-        } else {
-          await registerStudentWithSupabase({
-            email,
-            password,
-            fullNameTh,
-            fullNameEn,
-            schoolId,
-            phone,
-          });
-        }
-        setNotice(
-          lang === 'th'
-            ? 'ลงทะเบียนนักเรียนสำเร็จ! บัญชีของคุณถูกส่งเข้าสู่ระบบแล้ว และรอการอนุมัติเปิดใช้งานจากผู้ดูแลโรงเรียน (เมนู ทะเบียนนักเรียน DMC → คำขอสมัครเข้าโรงเรียน)'
-            : 'Student registered successfully! Awaiting school administrator approval.'
-        );
-      }
+      await registerSchoolWithSupabase({
+        email,
+        password,
+        fullNameTh,
+        fullNameEn,
+        phone,
+        schoolNameTh,
+        schoolNameEn,
+        schoolType,
+        province,
+      });
+      setNotice(
+        lang === 'th'
+          ? 'ส่งคำขอลงทะเบียนโรงเรียนแล้ว โปรดตรวจสอบอีเมลและรอการอนุมัติจากผู้ดูแลระบบ'
+          : 'School registration submitted. Check your email and wait for administrator approval.'
+      );
       setMode('login');
     } catch (submitError: unknown) {
       const message = submitError instanceof Error ? submitError.message : String(submitError);
@@ -405,60 +237,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
 
-  const demoPersonas: Array<{
-    role: UserRole;
-    title: string;
-    roleLabel: string;
-    desc: string;
-    icon: React.ComponentType<{ className?: string }>;
-    accentClass: string;
-  }> = [
-    {
-      role: 'admin',
-      title: lang === 'th' ? 'ผู้อำนวยการ / ผู้ดูแลระบบ' : 'Principal / School Admin',
-      roleLabel: 'Admin',
-      desc:
-        lang === 'th'
-          ? 'ดูภาพรวม KPI โรงเรียน, อนุมัติบัญชีนักเรียน, นำเข้าข้อมูล และตั้งค่าระบบ'
-          : 'School KPIs, student approval, data import, and school settings',
-      icon: Building2,
-      accentClass: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-    },
-    {
-      role: 'teacher',
-      title: lang === 'th' ? 'คุณครูประจำชั้นและผู้สอน' : 'Teacher & Educator',
-      roleLabel: 'Teacher',
-      desc:
-        lang === 'th'
-          ? 'เช็กชื่อรายคาบ GPS, บันทึกคะแนนและเกรด, คัดกรอง SDQ และสั่งการบ้าน'
-          : 'GPS period attendance, gradebook scoring, SDQ screening, and homework',
-      icon: BookOpen,
-      accentClass: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-    },
-    {
-      role: 'student',
-      title: lang === 'th' ? 'นักเรียน' : 'Student',
-      roleLabel: 'Student',
-      desc:
-        lang === 'th'
-          ? 'ตารางเรียน, บัตรนักเรียนดิจิทัล, เช็กชื่อเข้า-ออก, ส่งการบ้าน และเกม 3D EduArena'
-          : 'Timetable, digital student ID, attendance check-in, homework, and 3D EduArena',
-      icon: GraduationCap,
-      accentClass: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-    },
-    {
-      role: 'parent',
-      title: lang === 'th' ? 'ผู้ปกครอง' : 'Parent / Guardian',
-      roleLabel: 'Parent',
-      desc:
-        lang === 'th'
-          ? 'ติดตามเวลาเข้า-ออกโรงเรียน, แจ้งใบลาออนไลน์, ชำระค่าเทอม และดูผลการเรียน'
-          : 'Attendance alerts, leave requests, tuition billing, and grade reports',
-      icon: Users,
-      accentClass: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
-    },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
       {/* Top Bar: Clean 3-Zone Contract */}
@@ -488,7 +266,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               href="#portal-auth"
               onClick={(e) => {
                 e.preventDefault();
-                focusLoginForm('register', 'school');
+                focusLoginForm('register');
               }}
               className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
             >
@@ -500,24 +278,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             >
               {lang === 'th' ? 'ความสามารถระบบ' : 'Capabilities'}
             </a>
-            <button
-              type="button"
-              onClick={() => setShowDemoModal(true)}
-              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              {lang === 'th' ? 'ทดลองใช้งาน (Demo)' : 'Try Demo'}
-            </button>
           </nav>
 
           {/* Zone 3: Single Primary/Utility Action Area */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowDemoModal(true)}
-              className="md:hidden px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              {lang === 'th' ? 'ทดลอง Demo' : 'Demo'}
-            </button>
 
             <PWAInstallButton lang={lang} variant="nav" />
 
@@ -626,28 +390,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 )}
               </div>
 
-              {/* Secondary Non-Confusing Demo Trigger */}
-              <div className="pt-4 border-t border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="text-xs font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'ยังไม่มีบัญชีโรงเรียน และต้องการทดลองดูหน้าตาระบบ?' : 'Evaluating EduVerse without a school account?'}
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    {lang === 'th'
-                      ? 'สามารถเปิดโหมดทดลองใช้ (ข้อมูลจำลอง) แยกจากระบบจริงได้โดยไม่ต้องสมัครสมาชิก'
-                      : 'Open an isolated Demo Sandbox with sample data without registering.'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowDemoModal(true)}
-                  className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition shrink-0 whitespace-nowrap cursor-pointer"
-                >
-                  <PlayCircle className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>{lang === 'th' ? 'เปิดโหมดทดลองใช้ (Demo)' : 'Open Demo Sandbox'}</span>
-                </button>
-              </div>
-
               <PWAInstallButton lang={lang} variant="mobile_card" />
             </div>
 
@@ -666,13 +408,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           ? lang === 'th'
                             ? 'เข้าสู่ระบบบัญชีโรงเรียน'
                             : 'Sign in to EduVerse'
-                          : registrationType === 'school'
-                            ? lang === 'th'
-                              ? 'ลงทะเบียนสถานศึกษาใหม่'
-                              : 'Register New School'
-                            : lang === 'th'
-                              ? 'สมัครบัญชีนักเรียนเข้าโรงเรียน'
-                              : 'Student Account Registration'}
+                          : lang === 'th'
+                            ? 'ลงทะเบียนสถานศึกษาใหม่'
+                            : 'Register New School'}
                       </h2>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                         {mode === 'login'
@@ -722,110 +460,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                 {/* Form Body */}
                 <div className="p-5 sm:p-6 space-y-4">
-                  {mode === 'login' && (
-                    <div className="hidden">
-                      <div className="flex gap-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLoginTargetRole('staff');
-                            setError(null);
-                          }}
-                          className={`flex-1 rounded-lg py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            loginTargetRole === 'staff'
-                              ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                          }`}
-                        >
-                          <Building2 className="w-3.5 h-3.5" />
-                          <span>{lang === 'th' ? 'ครู / ผู้บริหาร' : 'Staff / Admin'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLoginTargetRole('student');
-                            setError(null);
-                          }}
-                          className={`flex-1 rounded-lg py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            loginTargetRole === 'student'
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                          }`}
-                        >
-                          <GraduationCap className="w-3.5 h-3.5" />
-                          <span>{lang === 'th' ? 'นักเรียน (Student Portal)' : 'Student Portal'}</span>
-                        </button>
-                      </div>
 
-                      {loginTargetRole === 'student' && (
-                        <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 space-y-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-extrabold text-blue-900 dark:text-blue-100 flex items-center gap-1.5">
-                              <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                              <span>{currentSelectedSchool?.nameTh || 'ระบบนักเรียน'}</span>
-                            </span>
-                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-100">
-                              {currentSelectedSchool?.code}
-                            </span>
-                          </div>
-
-                          {schools.length > 1 && (
-                            <div className="space-y-1 pt-1 border-t border-blue-200 dark:border-blue-800">
-                              <label className="text-[11px] font-bold text-blue-900 dark:text-blue-200">
-                                สังกัดโรงเรียนของนักเรียน:
-                              </label>
-                              <select
-                                value={schoolId}
-                                onChange={(e) => setSchoolId(e.target.value)}
-                                className="w-full rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none"
-                              >
-                                {schools.map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    {lang === 'th' ? s.nameTh : s.nameEn} ({s.code})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {mode === 'register' && (
-                    <div className="hidden">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRegistrationType('student');
-                          setError(null);
-                          setNotice(null);
-                        }}
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
-                          registrationType === 'student'
-                            ? 'bg-[var(--color-primary)] text-white'
-                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                        }`}
-                      >
-                        {lang === 'th' ? 'บัญชีนักเรียน' : 'Student Account'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRegistrationType('school');
-                          setError(null);
-                          setNotice(null);
-                        }}
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
-                          registrationType === 'school'
-                            ? 'bg-[var(--color-primary)] text-white'
-                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                        }`}
-                      >
-                        {lang === 'th' ? 'ลงทะเบียนโรงเรียนใหม่' : 'New School'}
-                      </button>
-                    </div>
-                  )}
 
                   {error && (
                     <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
@@ -841,60 +476,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-3.5">
-                    {mode === 'register' && registrationType === 'student' && (
-                      <>
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'สังกัดโรงเรียน' : 'Select School'}
-                          <select
-                            required
-                            value={schoolId}
-                            onChange={(e) => setSchoolId(e.target.value)}
-                            disabled={schools.length === 0}
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          >
-                            {schools.map((school) => (
-                              <option key={school.id} value={school.id}>
-                                {lang === 'th' ? school.nameTh : school.nameEn}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'ชื่อ-นามสกุล (ภาษาไทย)' : 'Full Name (Thai)'}
-                          <input
-                            required
-                            value={fullNameTh}
-                            onChange={(e) => setFullNameTh(e.target.value)}
-                            placeholder="เช่น ด.ช. ภูมิใจ รักเรียน"
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          />
-                        </label>
-
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'ชื่อ-นามสกุล (ภาษาอังกฤษ, ไม่บังคับ)' : 'Full Name (English, optional)'}
-                          <input
-                            value={fullNameEn}
-                            onChange={(e) => setFullNameEn(e.target.value)}
-                            placeholder="e.g. Phumjai Rakrian"
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          />
-                        </label>
-
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'เบอร์โทรศัพท์ (ถ้ามี)' : 'Phone (Optional)'}
-                          <input
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="081-xxx-xxxx"
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          />
-                        </label>
-                      </>
-                    )}
-
-                    {mode === 'register' && registrationType === 'school' && (
+                    {mode === 'register' && (
                       <>
                         <label className="block text-xs font-bold text-[var(--color-text-title)]">
                           {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาไทย)' : 'School Name (Thai)'}
@@ -961,33 +543,17 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                     <label className="block text-xs font-bold text-[var(--color-text-title)]">
                       <span className="flex items-center gap-1.5 mb-1">
-                        {mode === 'login' && loginTargetRole === 'student' ? (
-                          <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
-                        ) : (
-                          <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                        )}
-                        {mode === 'login' && loginTargetRole === 'student'
-                          ? currentSelectedSchool?.studentLoginIdentifierType === 'student_id_only'
-                            ? (lang === 'th' ? 'รหัสนักเรียน (Student ID)' : 'Student ID')
-                            : currentSelectedSchool?.studentLoginIdentifierType === 'email_only'
-                            ? (lang === 'th' ? 'อีเมลนักเรียน (Student Email)' : 'Student Email')
-                            : (lang === 'th' ? 'รหัสนักเรียน หรือ อีเมล' : 'Student ID or Email')
-                          : (lang === 'th' ? 'อีเมล' : 'Email Address')}
+                        <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                        {lang === 'th' ? 'อีเมล' : 'Email Address'}
                       </span>
                       <input
                         ref={emailInputRef}
-                        type="text"
-                        autoComplete={mode === 'login' && loginTargetRole === 'student' ? 'username' : 'email'}
+                        type="email"
+                        autoComplete="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder={
-                          mode === 'login' && loginTargetRole === 'student'
-                            ? currentSelectedSchool?.studentLoginIdentifierType === 'email_only'
-                              ? 'student@school.ac.th'
-                              : 'เช่น ED-6901, 10001 หรืออีเมล'
-                            : 'yourname@school.ac.th'
-                        }
+                        placeholder="yourname@school.ac.th"
                         className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20 font-medium"
                       />
                     </label>
@@ -1000,7 +566,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       <input
                         type="password"
                         autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                        minLength={mode === 'login' && loginTargetRole === 'student' ? 4 : 8}
+                        minLength={8}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -1009,27 +575,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       />
                     </label>
 
-                    {mode === 'login' && loginTargetRole === 'student' && (
-                      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 space-y-1">
-                        <div className="font-bold flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                          <span>คำแนะนำรหัสผ่านสำหรับนักเรียน:</span>
-                        </div>
-                        <p className="leading-relaxed">
-                          {currentSelectedSchool?.studentDefaultPasswordNote ||
-                            'รหัสผ่านเริ่มต้น: ใช้วันเดือนปีเกิด (ววดดปปปป เช่น 12042551) หรือรหัสนักเรียน (เช่น ED-6901) หรือรหัสผ่านที่โรงเรียนกำหนด (เช่น password123)'}
-                        </p>
-                      </div>
-                    )}
-
                     {mode === 'login' && (
                       <>
                         <p className="text-[11px] text-[var(--color-text-muted)] leading-snug">
                           {lang === 'th'
-                            ? loginTargetRole === 'student'
-                              ? 'นักเรียนสามารถดูตารางเรียน บัตรดิจิทัล ตรวจสอบการเข้าเรียน และเข้าเล่นเกม EduArena ได้ทันที'
-                              : 'ครูและนักเรียนที่โรงเรียนนำเข้ารายชื่อแล้ว สามารถใช้อีเมลและรหัสผ่านเริ่มต้นที่ได้รับจากผู้ดูแลโรงเรียนได้ทันที'
-                            : 'Sign in to access your student portal, virtual ID card, timetable, and learning games.'}
+                            ? 'สำหรับบุคลากรและสมาชิกที่ได้รับบัญชีจากผู้ดูแลโรงเรียน'
+                            : 'For staff and members with accounts provisioned by their school administrator.'}
                         </p>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-0.5">
                           <button
@@ -1057,7 +608,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                     <button
                       type="submit"
-                      disabled={isLoading || (mode === 'register' && registrationType === 'student' && schools.length === 0)}
+                      disabled={isLoading}
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1"
                     >
                       {isLoading
@@ -1065,20 +616,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           ? 'กำลังดำเนินการ...'
                           : 'Processing...'
                         : mode === 'login'
-                          ? loginTargetRole === 'student'
-                            ? lang === 'th'
-                              ? 'เข้าสู่ระบบนักเรียน (Student Portal)'
-                              : 'Sign In to Student Portal'
-                            : lang === 'th'
+                          ? lang === 'th'
                             ? 'เข้าสู่ระบบ'
                             : 'Sign In'
-                          : registrationType === 'school'
-                            ? lang === 'th'
-                              ? 'ยืนยันลงทะเบียนโรงเรียน'
-                              : 'Register School'
-                            : lang === 'th'
-                              ? 'ยืนยันสมัครบัญชีนักเรียน'
-                              : 'Create Student Account'}
+                          : lang === 'th'
+                            ? 'ยืนยันลงทะเบียนโรงเรียน'
+                            : 'Register School'}
                       <ArrowRight className="w-4 h-4" />
                     </button>
 
@@ -1120,14 +663,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     : 'Everything your school needs from academics to student care'}
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowDemoModal(true)}
-                className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 transition self-start md:self-auto cursor-pointer whitespace-nowrap"
-              >
-                <PlayCircle className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>{lang === 'th' ? 'ทดลองใช้งานตัวอย่างตามบทบาท' : 'Explore Role-Based Demo'}</span>
-              </button>
             </div>
 
             {/* Asymmetric Bento Showcase (No Pagination Clutter) */}
@@ -1294,95 +829,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
         </div>
       </footer>
-
-      {/* ===================================================================== */}
-      {/* MODAL: ISOLATED DEMO SANDBOX PICKER (No Confusion with Real Login)     */}
-      {/* ===================================================================== */}
-      {showDemoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4 bg-[var(--color-card-subtle)] shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
-                  <PlayCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'โหมดทดลองใช้งานระบบจำลอง (Demo Sandbox)' : 'Interactive Demo Sandbox'}
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'เลือกบทบาทเพื่อเข้าชมระบบตัวอย่างแบบครบทุกเมนู' : 'Select a role to preview all modules with sample data'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDemoModal(false)}
-                className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                aria-label="Close demo modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 overflow-y-auto space-y-4">
-              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-3 text-xs text-amber-950 dark:text-amber-100 leading-relaxed">
-                <strong>{lang === 'th' ? 'หมายเหตุ:' : 'Note:'}</strong>{' '}
-                {lang === 'th'
-                  ? 'โหมดนี้ใช้ข้อมูลตัวอย่างจำลองในเบราว์เซอร์เท่านั้น ไม่เชื่อมกับข้อมูลจริงของโรงเรียน หากคุณเป็นครู นักเรียน หรือผู้ดูแลโรงเรียนจริง กรุณาปิดหน้าต่างนี้แล้วลงชื่อเข้าใช้ที่ฟอร์มหน้าหลัก'
-                  : 'This sandbox uses sample browser data only and does not connect to your school database. Real school users should sign in using the main form.'}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {demoPersonas.map((persona) => (
-                  <div
-                    key={persona.role}
-                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col justify-between gap-3"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-xl border shrink-0 ${persona.accentClass}`}>
-                        <persona.icon className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-[var(--color-text-muted)]">{persona.roleLabel}</div>
-                        <h4 className="text-xs font-bold text-[var(--color-text-title)] mt-0.5">{persona.title}</h4>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">{persona.desc}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowDemoModal(false);
-                        onStartDemo(persona.role);
-                      }}
-                      className="w-full py-2 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>{lang === 'th' ? 'เข้าชมโหมดทดลอง' : 'Launch Demo'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-[var(--color-border)] px-5 py-3 bg-[var(--color-card-subtle)] flex items-center justify-between gap-3 text-xs shrink-0">
-              <span className="text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'มีบัญชีโรงเรียนจริงแล้ว?' : 'Already have a school account?'}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDemoModal(false);
-                  focusLoginForm('login');
-                }}
-                className="font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                {lang === 'th' ? 'กลับไปหน้าเข้าสู่ระบบจริง' : 'Return to Official Sign In'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal: Forgot / Reset Password with Master Authority Email */}
       {showForgotPasswordModal && (

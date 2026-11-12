@@ -34,9 +34,6 @@ interface SchoolOnboardingTutorModalProps {
   lang: AppLanguage;
   onNavigateToTab: (tab: any) => void;
   onOpenImportExport: (tab?: string) => void;
-  onLoadSandboxData?: () => void;
-  onClearSandboxData?: () => void;
-  hasSandboxData?: boolean;
 }
 
 export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProps> = ({
@@ -49,11 +46,8 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
   lang,
   onNavigateToTab,
   onOpenImportExport,
-  onLoadSandboxData,
-  onClearSandboxData,
-  hasSandboxData = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'checklist' | 'systems_reference' | 'sandbox'>('checklist');
+  const [activeTab, setActiveTab] = useState<'checklist' | 'systems_reference'>('checklist');
   const [completedSteps, setCompletedSteps] = useState<number[]>([
     teachersCount > 0 ? 1 : 0,
     studentsCount > 0 ? 2 : 0,
@@ -268,18 +262,6 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
             <span>คู่มือ 8 ระบบการศึกษาไทย (DMC, MIS, CCT, ฯลฯ)</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('sandbox')}
-            className={`py-3 px-3.5 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'sandbox'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] bg-[var(--color-card)] rounded-t-xl'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <RefreshCw className="w-4 h-4 text-purple-600" />
-            <span>ทดสอบด้วยข้อมูลตัวอย่าง (Sandbox Mode)</span>
-          </button>
         </div>
 
         {/* Modal Scrollable Content */}
@@ -382,68 +364,6 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
             </div>
           )}
 
-          {activeTab === 'sandbox' && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-xs text-purple-900 dark:text-purple-100 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <Sparkles className="w-4 h-4 text-purple-600" />
-                  <span>โหมดทดสอบด้วยข้อมูลจำลอง (Sandbox Demo Controls)</span>
-                </div>
-                <p>
-                  หากท่านต้องการทดลองใช้งานระบบ ดูตัวอย่างใบ ปพ.1/ปพ.5, การออกรายงาน ปพ.3 ออนไลน์, หรือทดสอบฟังก์ชันคัดกรอง SDQ โดยที่ยังไม่ได้เตรียมข้อมูลนักเรียนจริง ท่านสามารถคลิก <strong>"โหลดข้อมูลตัวอย่างเพื่อทดสอบ"</strong> ได้ชั่วคราว
-                </p>
-                <p className="font-semibold text-rose-700 dark:text-rose-300">
-                  * เมื่อทดสอบเสร็จแล้ว สามารถกด "ล้างข้อมูลตัวอย่าง" เพื่อเริ่มต้นบันทึกข้อมูลโรงเรียนจริงของท่านอย่างเป็นทางการ
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
-                  <div>
-                    <h4 className="font-bold text-xs text-[var(--color-text-title)]">โหลดข้อมูลตัวอย่างครบวงจร (Sandbox Demo)</h4>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
-                      จำลองข้อมูลนักเรียน 12 คน, คุณครู 5 ท่าน, 6 รายวิชา, คะแนนสอบ ปพ.5, ผลคัดกรอง SDQ และแบบทดสอบ
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onLoadSandboxData) {
-                        onLoadSandboxData();
-                        onClose();
-                      }
-                    }}
-                    className="w-full py-2.5 px-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer transition"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>โหลดข้อมูลตัวอย่างเพื่อทดสอบทันที</span>
-                  </button>
-                </div>
-
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
-                  <div>
-                    <h4 className="font-bold text-xs text-[var(--color-text-title)]">ล้างข้อมูลตัวอย่าง (Clean Real School)</h4>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
-                      รีเซ็ตข้อมูลทั้งหมดกลับสู่สถานะโรงเรียนสะอาด เพื่อเริ่มป้อนข้อมูลทะเบียนนักเรียน DMC และคุณครู HRMS ตัวจริง
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onClearSandboxData) {
-                        onClearSandboxData();
-                        onClose();
-                      }
-                    }}
-                    className="w-full py-2.5 px-3 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-200 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>ล้างข้อมูลตัวอย่างทั้งหมด</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Footer */}

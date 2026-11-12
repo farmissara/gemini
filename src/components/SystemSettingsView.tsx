@@ -36,11 +36,9 @@ import {
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
 import {
   approveStudentAccountInSupabase,
-  getDemoStudentAccounts,
   linkStudentAccountToStudent,
   listStudentAccountLinks,
   StudentAccountLink,
-  updateDemoStudentAccount,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
@@ -52,7 +50,6 @@ interface SystemSettingsViewProps {
   students: Student[];
   currentRole: UserRole;
   lang: AppLanguage;
-  isDemoMode?: boolean;
   campusGates?: CampusGateGeofence[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
@@ -67,7 +64,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   students,
   currentRole,
   lang,
-  isDemoMode = false,
   campusGates = [],
   onUpdateCampusGates,
   onSaveCampusGates,
@@ -99,16 +95,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     let active = true;
     setStudentAccountsLoading(true);
     setStudentAccountError(null);
-    if (isDemoMode) {
-      const demoList = getDemoStudentAccounts(activeSchool.id);
-      setStudentAccounts(demoList);
-      const defaultAccount = demoList.find((account) => account.status === 'pending' || !account.student_id) || demoList[0];
-      setSelectedAccountId(defaultAccount?.id || '');
-      setSelectedStudentId(defaultAccount?.student_id || '');
-      setStudentAccountsLoading(false);
-      return;
-    }
-
     listStudentAccountLinks(activeSchool.id)
       .then((accounts) => {
         if (!active) return;
@@ -127,14 +113,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     return () => {
       active = false;
     };
-  }, [activeTab, activeSchool.id, currentRole, isDemoMode]);
+  }, [activeTab, activeSchool.id, currentRole]);
 
   const reloadStudentAccounts = async () => {
-    if (isDemoMode) {
-      const accounts = getDemoStudentAccounts(activeSchool.id);
-      setStudentAccounts(accounts);
-      return;
-    }
     const accounts = await listStudentAccountLinks(activeSchool.id);
     setStudentAccounts(accounts);
   };
@@ -149,15 +130,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
     try {
-      if (isDemoMode) {
-        updateDemoStudentAccount(activeSchool.id, selectedAccountId, {
-          student_id: selectedStudentId,
-          status: 'active',
-        });
-      } else {
-        await approveStudentAccountInSupabase(activeSchool.id, selectedAccountId, selectedStudentId);
-        await linkStudentAccountToStudent(activeSchool.id, selectedAccountId, selectedStudentId);
-      }
+      await approveStudentAccountInSupabase(activeSchool.id, selectedAccountId, selectedStudentId);
+      await linkStudentAccountToStudent(activeSchool.id, selectedAccountId, selectedStudentId);
       setStudentAccountSuccess('อนุมัติและผูกบัญชีกับระเบียนนักเรียนเรียบร้อยแล้ว');
       await reloadStudentAccounts();
     } catch (error) {
@@ -172,9 +146,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
     try {
-      if (isDemoMode) {
-        updateDemoStudentAccount(activeSchool.id, account.id, { status: nextStatus });
-      } else if (nextStatus === 'active') {
+      if (nextStatus === 'active') {
         await approveStudentAccountInSupabase(activeSchool.id, account.id, account.student_id || null);
       } else {
         await updateStudentAccountStatusInSupabase(activeSchool.id, account.id, nextStatus);

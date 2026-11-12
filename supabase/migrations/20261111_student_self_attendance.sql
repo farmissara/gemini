@@ -85,8 +85,8 @@ DROP POLICY IF EXISTS "Students can upload own attendance selfies" ON storage.ob
 CREATE POLICY "Students can upload own attendance selfies" ON storage.objects
     FOR INSERT TO authenticated WITH CHECK (
         bucket_id = 'attendance-selfies'
-        AND storage.foldername(name)[1] = public.current_user_school_id()
-        AND storage.foldername(name)[2] = auth.uid()::text
+        AND (storage.foldername(name))[1] = public.current_user_school_id()
+        AND (storage.foldername(name))[2] = auth.uid()::text
         AND public.current_user_role() = 'student'
         AND EXISTS (
             SELECT 1
@@ -94,7 +94,7 @@ CREATE POLICY "Students can upload own attendance selfies" ON storage.objects
             WHERE profile.id = auth.uid()
               AND profile.status = 'active'
               AND profile.role = 'student'
-              AND profile.school_id = storage.foldername(name)[1]
+              AND profile.school_id = (storage.foldername(name))[1]
               AND profile.student_id IS NOT NULL
         )
     );
@@ -103,7 +103,7 @@ DROP POLICY IF EXISTS "Students can remove unattached attendance selfies" ON sto
 CREATE POLICY "Students can remove unattached attendance selfies" ON storage.objects
     FOR DELETE TO authenticated USING (
         bucket_id = 'attendance-selfies'
-        AND storage.foldername(name)[2] = auth.uid()::text
+        AND (storage.foldername(name))[2] = auth.uid()::text
         AND NOT EXISTS (
             SELECT 1
             FROM public.attendance record
@@ -116,9 +116,9 @@ CREATE POLICY "Users can read permitted attendance selfies" ON storage.objects
     FOR SELECT TO authenticated USING (
         bucket_id = 'attendance-selfies'
         AND (
-            storage.foldername(name)[2] = auth.uid()::text
+            (storage.foldername(name))[2] = auth.uid()::text
             OR public.has_school_role(
-                storage.foldername(name)[1],
+                (storage.foldername(name))[1],
                 ARRAY['super_admin', 'admin', 'teacher']
             )
             OR EXISTS (

@@ -257,6 +257,28 @@ export async function registerStudentWithSupabase(params: {
   }
 }
 
+export async function inviteStudentAccount(params: {
+  schoolId: string;
+  studentId: string;
+  email: string;
+}): Promise<string> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.functions.invoke('invite-student', {
+    body: {
+      schoolId: params.schoolId,
+      studentId: params.studentId,
+      email: params.email.trim().toLowerCase(),
+    },
+  });
+  if (error) throw new Error(`Could not invite student: ${error.message}`);
+  if (typeof data?.invitationId !== 'string') {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'The invitation service returned an invalid response.');
+  }
+  return data.invitationId;
+}
+
 export async function registerSchoolWithSupabase(params: {
   email: string;
   password: string;
@@ -458,144 +480,6 @@ export async function updateStudentAccountStatusInSupabase(
     .eq('id', userId)
     .eq('school_id', schoolId);
   if (error) throw new Error(`ไม่สามารถอัปเดตสถานะบัญชีนักเรียนได้: ${error.message}`);
-}
-
-// ====================================================================
-// LOCAL / DEMO STUDENT APPROVAL QUEUE & IMPORTED CREDENTIALS STORE
-// ====================================================================
-
-const DEMO_STUDENT_ACCOUNTS_KEY = 'eduverse_demo_student_accounts_v1';
-const IMPORTED_CREDENTIALS_KEY = 'eduverse_imported_credentials_v1';
-
-const DEFAULT_DEMO_STUDENT_ACCOUNTS: StudentAccountLink[] = [
-  {
-    id: 'demo-stu-acc-pending-1',
-    school_id: 'sch-bkk-01',
-    student_id: null,
-    full_name_th: 'ด.ช. พชรพล วงศ์สุวรรณ',
-    full_name_en: 'Pacharaphon Wongsuwan',
-    email: 'pacharaphon.w@student.demo.ac.th',
-    phone: '089-412-5588',
-    status: 'pending',
-    created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-  },
-  {
-    id: 'demo-stu-acc-pending-2',
-    school_id: 'sch-bkk-01',
-    student_id: null,
-    full_name_th: 'น.ส. ณัฐธิดา ศิริวัฒน์',
-    full_name_en: 'Natthida Siriwat',
-    email: 'natthida.s@student.demo.ac.th',
-    phone: '086-773-9102',
-    status: 'pending',
-    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-  },
-  {
-    id: 'demo-stu-acc-active-1',
-    school_id: 'sch-bkk-01',
-    student_id: 'stu-001',
-    full_name_th: 'นายธนกฤต สุขสมบูรณ์',
-    full_name_en: 'Thanakrit Suksomboon',
-    email: 'thanakrit@student.demo.ac.th',
-    phone: '081-555-1201',
-    status: 'active',
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-  },
-];
-
-export function getDemoStudentAccounts(schoolId: string): StudentAccountLink[] {
-  if (typeof window === 'undefined') {
-    return DEFAULT_DEMO_STUDENT_ACCOUNTS.filter((a) => a.school_id === schoolId);
-  }
-  try {
-    const raw = localStorage.getItem(DEMO_STUDENT_ACCOUNTS_KEY);
-    const list: StudentAccountLink[] = raw ? JSON.parse(raw) : DEFAULT_DEMO_STUDENT_ACCOUNTS;
-    if (!raw) localStorage.setItem(DEMO_STUDENT_ACCOUNTS_KEY, JSON.stringify(DEFAULT_DEMO_STUDENT_ACCOUNTS));
-    return list.filter((a) => a.school_id === schoolId);
-  } catch {
-    return DEFAULT_DEMO_STUDENT_ACCOUNTS.filter((a) => a.school_id === schoolId);
-  }
-}
-
-export function saveAllDemoStudentAccounts(accounts: StudentAccountLink[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(DEMO_STUDENT_ACCOUNTS_KEY, JSON.stringify(accounts));
-  } catch {
-    // ignore
-  }
-}
-
-export function updateDemoStudentAccount(
-  schoolId: string,
-  userId: string,
-  patch: Partial<StudentAccountLink>
-): StudentAccountLink[] {
-  let all: StudentAccountLink[] = DEFAULT_DEMO_STUDENT_ACCOUNTS;
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(DEMO_STUDENT_ACCOUNTS_KEY) : null;
-    if (raw) all = JSON.parse(raw);
-  } catch {
-    all = DEFAULT_DEMO_STUDENT_ACCOUNTS;
-  }
-  const updated = all.map((a) => (a.id === userId && a.school_id === schoolId ? { ...a, ...patch } : a));
-  saveAllDemoStudentAccounts(updated);
-  return updated.filter((a) => a.school_id === schoolId);
-}
-
-export interface StoredImportedCredential {
-  id: string;
-  schoolId: string;
-  role: 'student' | 'teacher';
-  personCode: string;
-  fullName: string;
-  email: string;
-  username: string;
-  initialPassword: string;
-  createdAt: string;
-}
-
-export function getImportedCredentials(schoolId?: string): StoredImportedCredential[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(IMPORTED_CREDENTIALS_KEY);
-    if (!raw) return [];
-    const parsed: StoredImportedCredential[] = JSON.parse(raw);
-    return schoolId ? parsed.filter((c) => c.schoolId === schoolId) : parsed;
-  } catch {
-    return [];
-  }
-}
-
-export function saveImportedCredentials(items: StoredImportedCredential[]): void {
-  if (typeof window === 'undefined' || items.length === 0) return;
-  try {
-    const existing = getImportedCredentials();
-    const map = new Map<string, StoredImportedCredential>();
-    existing.forEach((c) => map.set(`${c.schoolId}:${c.username.toLowerCase()}`, c));
-    items.forEach((c) => map.set(`${c.schoolId}:${c.username.toLowerCase()}`, c));
-    localStorage.setItem(IMPORTED_CREDENTIALS_KEY, JSON.stringify(Array.from(map.values())));
-  } catch {
-    // ignore
-  }
-}
-
-export function authenticateImportedLocalUser(
-  usernameOrEmail: string,
-  password: string
-): StoredImportedCredential | null {
-  const needle = usernameOrEmail.trim().toLowerCase();
-  if (!needle || !password) return null;
-  const all = getImportedCredentials();
-  return (
-    all.find(
-      (c) =>
-        (c.username.toLowerCase() === needle ||
-          c.email.toLowerCase() === needle ||
-          c.personCode.toLowerCase() === needle) &&
-        c.initialPassword === password
-    ) || null
-  );
 }
 
 export async function listPendingSchoolRegistrations(): Promise<PendingSchoolRegistration[]> {

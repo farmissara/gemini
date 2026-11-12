@@ -1,5 +1,26 @@
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS public.school_exam_entitlements (
+    id TEXT PRIMARY KEY,
+    school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    pack_id TEXT NOT NULL,
+    claim_type TEXT NOT NULL CHECK (claim_type IN ('free', 'purchased')),
+    amount_paid_thb NUMERIC(10,2) NOT NULL DEFAULT 0,
+    payment_method TEXT NOT NULL DEFAULT 'free' CHECK (payment_method IN ('free', 'promptpay', 'invoice')),
+    claimed_by TEXT NOT NULL DEFAULT '',
+    claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    slip_url TEXT,
+    slip_attached_at TIMESTAMPTZ,
+    audit_status TEXT NOT NULL DEFAULT 'verified'
+        CHECK (audit_status IN ('pending_audit', 'verified', 'revoked')),
+    verified_at TIMESTAMPTZ,
+    verified_by TEXT,
+    revoked_at TIMESTAMPTZ,
+    revoked_by TEXT,
+    revocation_reason TEXT,
+    UNIQUE (school_id, pack_id)
+);
+
 ALTER TABLE public.school_exam_entitlements
     ADD COLUMN IF NOT EXISTS slip_url TEXT,
     ADD COLUMN IF NOT EXISTS slip_attached_at TIMESTAMPTZ,

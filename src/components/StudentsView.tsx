@@ -26,11 +26,10 @@ import {
 } from 'lucide-react';
 import {
   approveStudentAccountInSupabase,
-  getDemoStudentAccounts,
+  inviteStudentAccount,
   linkStudentAccountToStudent,
   listStudentAccountLinks,
   StudentAccountLink,
-  updateDemoStudentAccount,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
@@ -91,7 +90,6 @@ interface StudentsViewProps {
   students: Student[];
   activeSchool?: School;
   currentRole?: UserRole;
-  isDemoMode?: boolean;
   onSelectStudent: (student: Student) => void;
   onOpenReportCard: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
@@ -107,7 +105,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   students,
   activeSchool,
   currentRole = 'admin',
-  isDemoMode = false,
   onSelectStudent,
   onOpenReportCard,
   onToggleLineSync,
@@ -136,15 +133,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [accountsSuccess, setAccountsSuccess] = useState<string | null>(null);
   const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
   const [processingAccountId, setProcessingAccountId] = useState<string | null>(null);
+  const [invitingStudentId, setInvitingStudentId] = useState<string | null>(null);
 
   const refreshAccountLinks = useCallback(async () => {
     if (!canManageApprovals) return;
     setAccountsLoading(true);
     setAccountsError(null);
     try {
-      const list = isDemoMode
-        ? getDemoStudentAccounts(schoolId)
-        : await listStudentAccountLinks(schoolId);
+      const list = await listStudentAccountLinks(schoolId);
       setAccountLinks(list);
       setLinkDrafts((prev) => {
         const next = { ...prev };
@@ -160,7 +156,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     } finally {
       setAccountsLoading(false);
     }
-  }, [canManageApprovals, isDemoMode, schoolId]);
+  }, [canManageApprovals, schoolId]);
 
   useEffect(() => {
     void refreshAccountLinks();
@@ -177,19 +173,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     setAccountsSuccess(null);
     const chosenStudentId = linkDrafts[account.id] || account.student_id || '';
     try {
-      if (isDemoMode) {
-        const updated = updateDemoStudentAccount(schoolId, account.id, {
-          status: 'active',
-          student_id: chosenStudentId || null,
-        });
-        setAccountLinks(updated);
-      } else {
-        await approveStudentAccountInSupabase(schoolId, account.id, chosenStudentId || null);
-        if (chosenStudentId) {
-          await linkStudentAccountToStudent(schoolId, account.id, chosenStudentId);
-        }
-        await refreshAccountLinks();
+      await approveStudentAccountInSupabase(schoolId, account.id, chosenStudentId || null);
+      if (chosenStudentId) {
+        await linkStudentAccountToStudent(schoolId, account.id, chosenStudentId);
       }
+      await refreshAccountLinks();
       setAccountsSuccess(`อนุมัติบัญชีนักเรียน "${account.full_name_th || account.full_name_en}" เปิดใช้งานเรียบร้อยแล้ว`);
     } catch (err) {
       setAccountsError(err instanceof Error ? err.message : 'อนุมัติบัญชีไม่สำเร็จ');
@@ -203,13 +191,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     setAccountsError(null);
     setAccountsSuccess(null);
     try {
-      if (isDemoMode) {
-        const updated = updateDemoStudentAccount(schoolId, account.id, { status: nextStatus });
-        setAccountLinks(updated);
-      } else {
-        await updateStudentAccountStatusInSupabase(schoolId, account.id, nextStatus);
-        await refreshAccountLinks();
-      }
+      await updateStudentAccountStatusInSupabase(schoolId, account.id, nextStatus);
+      await refreshAccountLinks();
       setAccountsSuccess(
         nextStatus === 'suspended'
           ? `ระงับสิทธิ์บัญชี "${account.full_name_th}" เรียบร้อยแล้ว`
@@ -219,6 +202,23 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       setAccountsError(err instanceof Error ? err.message : 'อัปเดตสถานะบัญชีไม่สำเร็จ');
     } finally {
       setProcessingAccountId(null);
+    }
+  };
+
+  const handleInviteStudent = async (student: Student) => {
+    const email = window.prompt(`อีเมลของนักเรียน ${student.firstNameTh} ${student.lastNameTh} สำหรับรับลิงก์ตั้งค่าบัญชี:`);
+    if (!email?.trim()) return;
+
+    setInvitingStudentId(student.id);
+    setAccountsError(null);
+    setAccountsSuccess(null);
+    try {
+      await inviteStudentAccount({ schoolId, studentId: student.id, email });
+      setAccountsSuccess(`ส่งคำเชิญตั้งค่าบัญชีไปที่ ${email.trim()} แล้ว`);
+    } catch (error) {
+      setAccountsError(error instanceof Error ? error.message : 'ส่งคำเชิญบัญชีนักเรียนไม่สำเร็จ');
+    } finally {
+      setInvitingStudentId(null);
     }
   };
 
@@ -517,6 +517,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
+      {accountsError && (
+        <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium">
+          {accountsError}
+        </div>
+      )}
+      {accountsSuccess && (
+        <div role="status" className="shrink-0 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium">
+          {accountsSuccess}
+        </div>
+      )}
       {/* Header controls */}
       <div className="shrink-0 p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
         <div>
@@ -812,6 +822,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
+
+                          {canManageApprovals && (
+                            <button
+                              type="button"
+                              onClick={() => void handleInviteStudent(student)}
+                              disabled={invitingStudentId === student.id}
+                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 transition-colors cursor-pointer disabled:opacity-50"
+                              title="ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {onDeleteStudent && (
                             <button

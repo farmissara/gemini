@@ -40,34 +40,11 @@ import {
   CentralExamPack,
   SchoolExamEntitlement
 } from './types';
-import { 
-  INITIAL_SCHOOLS,
-  INITIAL_STUDENTS, 
-  INITIAL_TEACHERS,
-  INITIAL_COURSES, 
-  INITIAL_GRADES, 
-  INITIAL_ATTENDANCE, 
-  INITIAL_INVOICES, 
-  INITIAL_ANNOUNCEMENTS, 
+import {
   INITIAL_SYSTEM_CONFIG,
-  INITIAL_LESSONS,
-  INITIAL_ASSIGNMENTS,
-  INITIAL_QUESTIONS,
-  INITIAL_PLAYER_SCORES,
-  INITIAL_REWARD_ITEMS,
-  INITIAL_PERIOD_ATTENDANCE,
-  INITIAL_PORTFOLIO_ITEMS,
-  INITIAL_TIMETABLE_SLOTS,
-  INITIAL_BEHAVIOR_RECORDS,
-  INITIAL_SDQ_ASSESSMENTS,
-  INITIAL_INFIRMARY_VISITS,
-  INITIAL_HOMEWORK_SUBMISSIONS,
   INITIAL_ROLE_PERMISSIONS,
   INITIAL_PROMOTIONS,
   INITIAL_SUBSCRIPTION_PLANS,
-  DEFAULT_CAMPUS_GATES,
-  INITIAL_LEAVE_REQUESTS,
-  DEMO_USERS,
 } from './data/mockData';
 import {
   restoreSupabaseSession,
@@ -75,7 +52,7 @@ import {
   updateSchoolStatusInSupabase,
   updateUserProfileInSupabase,
 } from './lib/authDb';
-import type { AuthContext, StoredImportedCredential } from './lib/authDb';
+import type { AuthContext } from './lib/authDb';
 import { fetchCoordinationMessages } from './lib/coordinationDesk';
 import { 
   loadSchoolData, 
@@ -154,79 +131,34 @@ import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNoti
 import { getLocalDateString } from './lib/date';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database } from 'lucide-react';
 
+const EMPTY_SCHOOL: School = {
+  id: '',
+  code: '',
+  nameTh: '',
+  nameEn: '',
+  slug: '',
+  type: 'public',
+  province: '',
+  address: '',
+  phone: '',
+  email: '',
+  primaryColor: '#1d4ed8',
+  studentsCount: 0,
+  teachersCount: 0,
+  academicYear: '',
+  currentSemester: '',
+  lineOaId: '',
+  createdAt: '',
+  status: 'pending',
+};
+
 export const App: React.FC = () => {
   // Multi-School & Auth State
-  const [schools, setSchools] = useState<School[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_SCHOOLS;
-    try {
-      return INITIAL_SCHOOLS.map((school) => {
-        const raw = localStorage.getItem(`eduverse_school_custom_settings_${school.id}`);
-        if (!raw) return school;
-        const custom = JSON.parse(raw);
-        return { ...school, ...custom };
-      });
-    } catch {
-      return INITIAL_SCHOOLS;
-    }
-  });
-
-  // Parse dedicated school login query parameters (e.g., ?schoolId=...&loginMode=student or ?school=...&loginMode=student)
-  const schoolPortalParams = (() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      const schoolId = sp.get('schoolId') || undefined;
-      const schoolCode = sp.get('schoolCode') || undefined;
-      const schoolSlug = sp.get('school') || sp.get('slug') || undefined;
-      const modeParam = sp.get('loginMode') || sp.get('mode');
-      const loginMode = modeParam === 'student' ? 'student' : modeParam === 'staff' ? 'staff' : undefined;
-      if (!schoolId && !schoolCode && !schoolSlug && !loginMode) return null;
-      return {
-        schoolId,
-        schoolCode,
-        schoolSlug,
-        loginMode: loginMode as 'student' | 'staff' | undefined,
-      };
-    } catch {
-      return null;
-    }
-  })();
-
-  const [activeSchool, setActiveSchool] = useState<School>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const sp = new URLSearchParams(window.location.search);
-        const schoolId = sp.get('schoolId');
-        const schoolCode = sp.get('schoolCode');
-        const schoolSlug = sp.get('school') || sp.get('slug');
-        if (schoolId) {
-          const match = INITIAL_SCHOOLS.find((s) => s.id === schoolId);
-          if (match) return match;
-        }
-        if (schoolCode) {
-          const match = INITIAL_SCHOOLS.find((s) => s.code?.toLowerCase() === schoolCode.toLowerCase());
-          if (match) return match;
-        }
-        if (schoolSlug) {
-          const match = INITIAL_SCHOOLS.find(
-            (s) =>
-              s.customLoginSlug?.toLowerCase() === schoolSlug.toLowerCase() ||
-              s.code?.toLowerCase() === schoolSlug.toLowerCase() ||
-              s.id.toLowerCase() === schoolSlug.toLowerCase()
-          );
-          if (match) return match;
-        }
-      } catch {
-        // fallback to default
-      }
-    }
-    return INITIAL_SCHOOLS[0];
-  });
-  const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
+  const [schools, setSchools] = useState<School[]>([]);
+  const [activeSchool, setActiveSchool] = useState<School>(EMPTY_SCHOOL);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  const isDemoMode = false;
   const [isSuperAdminSchoolView, setIsSuperAdminSchoolView] = useState(false);
-  const demoModeRef = useRef(false);
   const skipNextSuperAdminSyncRef = useRef(false);
   const [showSchoolSwitcher, setShowSchoolSwitcher] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
@@ -343,29 +275,29 @@ export const App: React.FC = () => {
   }, [currentTab]);
 
   // Primary Domain State
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
-  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
-  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
-  const [grades, setGrades] = useState<GradeRecord[]>(INITIAL_GRADES);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
-  const [invoices, setInvoices] = useState<TuitionInvoice[]>(INITIAL_INVOICES);
-  const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [grades, setGrades] = useState<GradeRecord[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [invoices, setInvoices] = useState<TuitionInvoice[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [systemConfig, setSystemConfig] = useState<SystemConfig>(INITIAL_SYSTEM_CONFIG);
-  const [lessons, setLessons] = useState<Lesson[]>(INITIAL_LESSONS);
-  const [assignments, setAssignments] = useState<Assignment[]>(INITIAL_ASSIGNMENTS);
-  const [questions, setQuestions] = useState<QuizQuestion[]>(INITIAL_QUESTIONS);
-  const [playerScores, setPlayerScores] = useState<PlayerScore[]>(INITIAL_PLAYER_SCORES);
-  const [rewardItems, setRewardItems] = useState<RewardItem[]>(INITIAL_REWARD_ITEMS);
-  const [periodAttendance, setPeriodAttendance] = useState<PeriodAttendanceRecord[]>(INITIAL_PERIOD_ATTENDANCE);
-  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>(INITIAL_PORTFOLIO_ITEMS);
-  const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>(INITIAL_TIMETABLE_SLOTS);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
+  const [rewardItems, setRewardItems] = useState<RewardItem[]>([]);
+  const [periodAttendance, setPeriodAttendance] = useState<PeriodAttendanceRecord[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
+  const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>([]);
   const [schoolPeriods, setSchoolPeriods] = useState<SchoolPeriodTime[]>(DEFAULT_SCHOOL_PERIODS);
-  const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>(INITIAL_BEHAVIOR_RECORDS);
-  const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>(INITIAL_SDQ_ASSESSMENTS);
-  const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>(INITIAL_INFIRMARY_VISITS);
-  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(INITIAL_HOMEWORK_SUBMISSIONS);
-  const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>(DEFAULT_CAMPUS_GATES);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
+  const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>([]);
+  const [sdqAssessments, setSdqAssessments] = useState<SdqAssessment[]>([]);
+  const [infirmaryVisits, setInfirmaryVisits] = useState<InfirmaryVisit[]>([]);
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
+  const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   // Load and synchronize school GPS campus gates per active school
   useEffect(() => {
@@ -391,10 +323,10 @@ export const App: React.FC = () => {
           }
         ]);
       } else {
-        setCampusGates(DEFAULT_CAMPUS_GATES);
+        setCampusGates([]);
       }
     } catch {
-      setCampusGates(DEFAULT_CAMPUS_GATES);
+      setCampusGates([]);
     }
   }, [activeSchool.id, activeSchool.nameTh, activeSchool.nameEn, activeSchool.latitude, activeSchool.longitude, activeSchool.geofenceRadiusMeters]);
 
@@ -404,7 +336,6 @@ export const App: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [showOnboardingTutorModal, setShowOnboardingTutorModal] = useState<boolean>(false);
-  const [hasSandboxData, setHasSandboxData] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
   const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
@@ -523,8 +454,6 @@ export const App: React.FC = () => {
   // Keep the live Supabase account flow separate from the local demo session.
   const handleLogin = (context: AuthContext) => {
     const school = context.school;
-    demoModeRef.current = false;
-    setIsDemoMode(false);
     setIsSuperAdminSchoolView(false);
     setSchools(context.schools);
     setCurrentUser(context.user);
@@ -561,172 +490,12 @@ export const App: React.FC = () => {
     setInfirmaryVisits([]);
     setHomeworkSubmissions([]);
     setLeaveRequests([]);
-    setHasSandboxData(false);
-
     if (context.user.role === 'super_admin') {
       setProgramMode('school_erp');
       setCurrentTab('super_admin_console');
     } else {
       setCurrentTab('dashboard');
     }
-  };
-
-  const handleLoadSandboxData = () => {
-    setStudents(INITIAL_STUDENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
-    setTeachers(INITIAL_TEACHERS.map(t => ({ ...t, schoolId: activeSchool.id })));
-    setCourses(INITIAL_COURSES.map(c => ({ ...c, schoolId: activeSchool.id })));
-    setGrades(INITIAL_GRADES.map(g => ({ ...g, schoolId: activeSchool.id })));
-    setAttendance(INITIAL_ATTENDANCE.map(a => ({ ...a, schoolId: activeSchool.id })));
-    setInvoices(INITIAL_INVOICES.map(i => ({ ...i, schoolId: activeSchool.id })));
-    setAnnouncements(INITIAL_ANNOUNCEMENTS.map(an => ({ ...an, schoolId: activeSchool.id })));
-    setLessons(INITIAL_LESSONS.map(l => ({ ...l, schoolId: activeSchool.id })));
-    setAssignments(INITIAL_ASSIGNMENTS.map(a => ({ ...a, schoolId: activeSchool.id })));
-    setQuestions(INITIAL_QUESTIONS.map(q => ({ ...q, schoolId: activeSchool.id })));
-    setTimetableSlots(INITIAL_TIMETABLE_SLOTS.map(t => ({ ...t, schoolId: activeSchool.id })));
-    setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
-    setBehaviorRecords(INITIAL_BEHAVIOR_RECORDS.map(b => ({ ...b, schoolId: activeSchool.id })));
-    setSdqAssessments(INITIAL_SDQ_ASSESSMENTS.map(s => ({ ...s, schoolId: activeSchool.id })));
-    setInfirmaryVisits(INITIAL_INFIRMARY_VISITS.map(i => ({ ...i, schoolId: activeSchool.id })));
-    setHomeworkSubmissions(INITIAL_HOMEWORK_SUBMISSIONS.map(h => ({ ...h, schoolId: activeSchool.id })));
-    setHasSandboxData(true);
-  };
-
-  const handleClearSandboxData = () => {
-    setStudents([]);
-    setTeachers([]);
-    setCourses([]);
-    setGrades([]);
-    setAttendance([]);
-    setInvoices([]);
-    setAnnouncements([]);
-    setLessons([]);
-    setAssignments([]);
-    setQuestions([]);
-    setPlayerScores([]);
-    setRewardItems([]);
-    setPeriodAttendance([]);
-    setPortfolioItems([]);
-    setTimetableSlots([]);
-    setBehaviorRecords([]);
-    setSdqAssessments([]);
-    setInfirmaryVisits([]);
-    setHomeworkSubmissions([]);
-    setLeaveRequests([]);
-    setHasSandboxData(false);
-  };
-
-  const handleStartDemo = (targetRole: UserRole = 'admin') => {
-    const school = INITIAL_SCHOOLS[0];
-    const demoUser = DEMO_USERS.find((user) => user.role === targetRole) || DEMO_USERS[0];
-    if (!demoUser) {
-      setDataLoadError('Demo user is not configured.');
-      return;
-    }
-
-    demoModeRef.current = true;
-    setIsDemoMode(true);
-    setIsSuperAdminSchoolView(false);
-    setSchools(INITIAL_SCHOOLS);
-    setActiveSchool(school);
-    setCurrentUser(demoUser);
-    setCurrentRole(demoUser.role);
-    if (demoUser.role === 'parent') {
-      setProgramMode('parent_portal');
-    } else {
-      setProgramMode('school_erp');
-    }
-    if (demoUser.role === 'super_admin') {
-      setProgramMode('school_erp');
-      setCurrentTab('super_admin_console');
-    } else {
-      setCurrentTab('dashboard');
-    }
-    setStudents(INITIAL_STUDENTS);
-    setTeachers(INITIAL_TEACHERS);
-    setCourses(INITIAL_COURSES);
-    setGrades(INITIAL_GRADES);
-    setAttendance(INITIAL_ATTENDANCE);
-    setInvoices(INITIAL_INVOICES);
-    setAnnouncements(INITIAL_ANNOUNCEMENTS);
-    setSystemConfig(INITIAL_SYSTEM_CONFIG);
-    setLessons(INITIAL_LESSONS);
-    setAssignments(INITIAL_ASSIGNMENTS);
-    setQuestions(INITIAL_QUESTIONS);
-    setPlayerScores(INITIAL_PLAYER_SCORES);
-    setRewardItems(INITIAL_REWARD_ITEMS);
-    setPeriodAttendance(INITIAL_PERIOD_ATTENDANCE);
-    setPortfolioItems(INITIAL_PORTFOLIO_ITEMS);
-    setTimetableSlots(INITIAL_TIMETABLE_SLOTS);
-    setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
-    setBehaviorRecords(INITIAL_BEHAVIOR_RECORDS);
-    setSdqAssessments(INITIAL_SDQ_ASSESSMENTS);
-    setInfirmaryVisits(INITIAL_INFIRMARY_VISITS);
-    setHomeworkSubmissions(INITIAL_HOMEWORK_SUBMISSIONS);
-    setRolePermissions(INITIAL_ROLE_PERMISSIONS);
-    setPromotions(INITIAL_PROMOTIONS);
-    setSubscriptionPlans(INITIAL_SUBSCRIPTION_PLANS);
-    setIsDataReady(true);
-    setLoadedSchoolId(school.id);
-    setDataLoadError(null);
-    setDataSyncError(null);
-  };
-
-  const handleLoginImportedUser = (cred: StoredImportedCredential) => {
-    const school = schools.find((s) => s.id === cred.schoolId) || INITIAL_SCHOOLS[0];
-    demoModeRef.current = true;
-    setIsDemoMode(true);
-    setIsSuperAdminSchoolView(false);
-    setSchools(INITIAL_SCHOOLS);
-    setActiveSchool(school);
-    const syntheticUser: AuthUser = {
-      id: cred.id,
-      email: cred.email,
-      fullNameTh: cred.fullName,
-      fullNameEn: cred.fullName,
-      role: cred.role,
-      schoolId: school.id,
-      avatarUrl: cred.role === 'teacher'
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'
-        : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200',
-      lineConnected: false,
-    };
-    setCurrentUser(syntheticUser);
-    setCurrentRole(cred.role);
-    setProgramMode('school_erp');
-    setCurrentTab('dashboard');
-    setIsDataReady(true);
-    setLoadedSchoolId(school.id);
-    setDataLoadError(null);
-    setDataSyncError(null);
-  };
-
-  const handleLoginStudent = (studentUser: AuthUser, school: School) => {
-    demoModeRef.current = true;
-    setIsDemoMode(true);
-    setIsSuperAdminSchoolView(false);
-    setSchools((prev) => (prev.some((s) => s.id === school.id) ? prev : [...prev, school]));
-    setActiveSchool(school);
-    setCurrentUser(studentUser);
-    setCurrentRole('student');
-    setProgramMode('school_erp');
-    setCurrentTab('dashboard');
-
-    // Populate school data if empty so students can explore their courses, grades, homework, and ID card
-    if (students.length === 0) {
-      setStudents(INITIAL_STUDENTS.map((s) => ({ ...s, schoolId: school.id })));
-      setTeachers(INITIAL_TEACHERS.map((t) => ({ ...t, schoolId: school.id })));
-      setCourses(INITIAL_COURSES.map((c) => ({ ...c, schoolId: school.id })));
-      setGrades(INITIAL_GRADES.map((g) => ({ ...g, schoolId: school.id })));
-      setAttendance(INITIAL_ATTENDANCE.map((a) => ({ ...a, schoolId: school.id })));
-      setAnnouncements(INITIAL_ANNOUNCEMENTS.map((an) => ({ ...an, schoolId: school.id })));
-      setTimetableSlots(INITIAL_TIMETABLE_SLOTS.map((t) => ({ ...t, schoolId: school.id })));
-      setSchoolPeriods(DEFAULT_SCHOOL_PERIODS);
-      setHomeworkSubmissions(INITIAL_HOMEWORK_SUBMISSIONS.map((h) => ({ ...h, schoolId: school.id })));
-    }
-    setIsDataReady(true);
-    setLoadedSchoolId(school.id);
-    setDataLoadError(null);
-    setDataSyncError(null);
   };
 
   const handleUpdateSchool = (updates: Partial<School>) => {
@@ -753,9 +522,7 @@ export const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      if (!isDemoMode) await signOutFromSupabase();
-      demoModeRef.current = false;
-      setIsDemoMode(false);
+      await signOutFromSupabase();
       setCurrentUser(null);
       setIsSuperAdminSchoolView(false);
       setIsDataReady(false);
@@ -803,7 +570,7 @@ export const App: React.FC = () => {
     if (school.status === 'pending') {
       throw new Error('Pending registrations must be approved from the registration queue.');
     }
-    if (!isDemoMode) await updateSchoolStatusInSupabase(schoolId, nextStatus);
+    await updateSchoolStatusInSupabase(schoolId, nextStatus);
     setSchools((current) => current.map((school) => (
       school.id === schoolId ? { ...school, status: nextStatus } : school
     )));
@@ -816,7 +583,7 @@ export const App: React.FC = () => {
     let active = true;
     restoreSupabaseSession()
       .then((context) => {
-        if (active && context && !demoModeRef.current) handleLogin(context);
+        if (active && context) handleLogin(context);
       })
       .catch((error: unknown) => {
         if (active) setDataLoadError(error instanceof Error ? error.message : String(error));
@@ -1896,23 +1663,17 @@ export const App: React.FC = () => {
     );
   };
 
-  // Live accounts must load their school data; demo sessions use local fixtures.
+  // Application data is shown only after a real Supabase account is authenticated.
   if (!currentUser) {
     return (
       <AuthLayout
         onLogin={handleLogin}
-        onLoginImportedUser={handleLoginImportedUser}
-        onLoginStudent={handleLoginStudent}
-        onStartDemo={handleStartDemo}
         initialError={dataLoadError}
         lang={lang}
         setLang={setLang}
         themePalette={themePalette}
         setThemePalette={setThemePalette}
-        initialSchoolId={activeSchool.id}
-        initialLoginMode={schoolPortalParams?.loginMode}
         activeSchools={schools}
-        allStudents={students.length > 0 ? students : INITIAL_STUDENTS}
       />
     );
   }
@@ -2352,7 +2113,7 @@ export const App: React.FC = () => {
                     onUpdatePromotions={setPromotions}
                     subscriptionPlans={subscriptionPlans}
                     onUpdateSubscriptionPlans={setSubscriptionPlans}
-                    allUsers={demoUsers}
+                    allUsers={currentUser ? [currentUser] : []}
                     lang={lang}
                     isDemoMode={isDemoMode}
                     onViewSchool={handleViewSchool}
@@ -2426,7 +2187,6 @@ export const App: React.FC = () => {
                     students={schoolStudents}
                     currentRole={currentRole}
                     lang={lang}
-                    isDemoMode={isDemoMode}
                     campusGates={campusGates}
                     onUpdateCampusGates={handleUpdateCampusGates}
                     onSaveCampusGates={handleSaveCampusGates}
@@ -2478,7 +2238,6 @@ export const App: React.FC = () => {
                     students={schoolStudents}
                     activeSchool={activeSchool}
                     currentRole={currentRole}
-                    isDemoMode={isDemoMode}
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenReportCard={setSelectedStudentForReport}
                     onToggleLineSync={handleToggleLineSync}
@@ -2953,7 +2712,6 @@ export const App: React.FC = () => {
           courses={schoolCourses}
           grades={schoolGrades}
           activeSchoolId={activeSchool.id}
-          activeSchoolName={activeSchool.nameTh}
           lang={lang}
           initialTab={importExportInitialTab}
           onImportStudents={handleImportStudents}
@@ -3005,9 +2763,6 @@ export const App: React.FC = () => {
             setImportExportInitialTab(tab || 'students');
             setShowImportExportModal(true);
           }}
-          onLoadSandboxData={handleLoadSandboxData}
-          onClearSandboxData={handleClearSandboxData}
-          hasSandboxData={hasSandboxData}
         />
       )}
 

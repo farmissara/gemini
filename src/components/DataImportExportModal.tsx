@@ -22,12 +22,10 @@ import {
   Send,
   Check,
   FileCheck2,
-  HelpCircle,
-  KeyRound
+  HelpCircle
 } from 'lucide-react';
 import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage, SdqAssessment } from '../types';
 import { getLocalDateString } from '../lib/date';
-import { saveImportedCredentials, StoredImportedCredential } from '../lib/authDb';
 
 export type ImportExportTab = 
   | 'students' // DMC ทะเบียนนักเรียน
@@ -48,7 +46,6 @@ interface DataImportExportModalProps {
   courses?: Course[];
   grades?: GradeRecord[];
   activeSchoolId?: string;
-  activeSchoolName?: string;
   lang: AppLanguage;
   onImportStudents: (newStudents: Student[]) => void;
   onImportTeachers: (newTeachers: Teacher[]) => void;
@@ -68,7 +65,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   courses = [],
   grades = [],
   activeSchoolId = 'sch-bkk-01',
-  activeSchoolName = 'โรงเรียนในระบบ',
   lang,
   onImportStudents,
   onImportTeachers,
@@ -111,72 +107,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   const [previewPp3, setPreviewPp3] = useState<any[]>([]);
   const [previewQuestions, setPreviewQuestions] = useState<QuizQuestion[]>([]);
 
-  // Page Numbers & Imported Credentials Setup
+  // Page Numbers
   const [page, setPage] = useState(0);
-  const [passwordMode, setPasswordMode] = useState<'by_code' | 'fixed'>('by_code');
-  const [customInitialPassword, setCustomInitialPassword] = useState('EduVerse@2569');
-  const [lastIssuedCredentials, setLastIssuedCredentials] = useState<StoredImportedCredential[]>([]);
-
-  const resolveInitialPassword = (personCode: string) => {
-    if (passwordMode === 'fixed') {
-      return customInitialPassword.trim() || 'EduVerse@2569';
-    }
-    const cleanCode = personCode.replace(/\s+/g, '') || '2569';
-    return `Edu@${cleanCode}`;
-  };
-
-  const buildStudentCredentials = (list: Student[]): StoredImportedCredential[] => {
-    return list.map((s) => {
-      const code = (s.studentIdNumber || s.id).trim();
-      const loginId = (s.guardianEmail && s.guardianEmail.includes('@') && !s.guardianEmail.startsWith('somchai')
-        ? `${code.toLowerCase()}@student.eduverse.local`
-        : `${code.toLowerCase()}@student.eduverse.local`);
-      return {
-        id: `cred-stu-${code}-${Date.now()}`,
-        schoolId: activeSchoolId,
-        role: 'student',
-        personCode: code,
-        fullName: `${s.firstNameTh} ${s.lastNameTh}`.trim() || code,
-        email: loginId,
-        username: loginId,
-        initialPassword: resolveInitialPassword(code),
-        createdAt: new Date().toISOString(),
-      };
-    });
-  };
-
-  const buildTeacherCredentials = (list: Teacher[]): StoredImportedCredential[] => {
-    return list.map((t) => {
-      const code = (t.teacherIdNumber || t.id).trim();
-      const loginId = t.email?.trim() ? t.email.trim().toLowerCase() : `${code.toLowerCase()}@teacher.eduverse.local`;
-      return {
-        id: `cred-tch-${code}-${Date.now()}`,
-        schoolId: activeSchoolId,
-        role: 'teacher',
-        personCode: code,
-        fullName: t.fullNameTh || t.fullNameEn || code,
-        email: loginId,
-        username: loginId,
-        initialPassword: resolveInitialPassword(code),
-        createdAt: new Date().toISOString(),
-      };
-    });
-  };
-
-  const handleDownloadCredentialsCsv = (creds: StoredImportedCredential[], filenamePrefix: string) => {
-    if (creds.length === 0) return;
-    const headers = ['บทบาท', 'รหัสประจำตัว', 'ชื่อ-สกุล', 'Username / Email สำหรับล็อกอิน', 'รหัสผ่านเริ่มต้น (Initial Password)', 'โรงเรียน'];
-    const rows = creds.map((c) => [
-      c.role === 'teacher' ? 'ครู/บุคลากร' : 'นักเรียน',
-      c.personCode,
-      `"${c.fullName}"`,
-      c.username,
-      c.initialPassword,
-      `"${activeSchoolName}"`,
-    ]);
-    downloadFile(`${filenamePrefix}_credentials_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map((r) => r.join(','))].join('\n'));
-    showToast(`ดาวน์โหลดใบแจ้ง User & Password (${creds.length} บัญชี) สำเร็จ`);
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -317,72 +249,14 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   const handleDownloadStudentTemplate = () => {
     const headers = ['studentIdNumber', 'nationalId', 'firstNameTh', 'lastNameTh', 'firstNameEn', 'lastNameEn', 'gender', 'dateOfBirth', 'gradeLevel', 'room', 'gpa', 'guardianName', 'guardianRelation', 'guardianPhone'];
-    const sampleRow = ['STU-2569-001', '1-1002-00888-99-1', 'กิตติศักดิ์', 'เจริญวัฒนา', 'Kittisak', 'Charoenwattana', 'male', '2009-05-12', 'มัธยมศึกษาปีที่ 4 (M.4)', 'ห้อง 401', '3.85', 'นายสมชาย เจริญวัฒนา', 'บิดา', '081-234-5678'];
-    downloadFile('template_dmc_students.csv', [headers.join(','), sampleRow.join(',')].join('\n'));
+    downloadFile('template_dmc_students.csv', headers.join(','));
     showToast('ดาวน์โหลดแบบฟอร์ม DMC นักเรียนแล้ว');
-  };
-
-  const handleLoadSampleStudents = () => {
-    const samples: Student[] = [
-      {
-        id: `stu-sample-${Date.now()}-1`,
-        studentIdNumber: 'STU-2569-001',
-        nationalId: '1-1002-00888-99-1',
-        firstNameTh: 'กิตติศักดิ์',
-        lastNameTh: 'เจริญวัฒนา',
-        firstNameEn: 'Kittisak',
-        lastNameEn: 'Charoenwattana',
-        gender: 'male',
-        dateOfBirth: '2009-05-12',
-        gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
-        room: 'ห้อง 401',
-        status: 'active',
-        avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200',
-        gpa: 3.85,
-        guardianName: 'นายสมชาย เจริญวัฒนา',
-        guardianRelation: 'บิดา',
-        guardianPhone: '081-234-5678',
-        guardianEmail: 'somchai@gmail.com',
-        lineLinked: true,
-        lineNotifyEnabled: true,
-        enrolledDate: getLocalDateString(),
-      },
-      {
-        id: `stu-sample-${Date.now()}-2`,
-        studentIdNumber: 'STU-2569-002',
-        nationalId: '1-1002-00777-88-2',
-        firstNameTh: 'วรินทร',
-        lastNameTh: 'สุวรรณศรี',
-        firstNameEn: 'Warinthorn',
-        lastNameEn: 'Suwannasri',
-        gender: 'female',
-        dateOfBirth: '2009-08-20',
-        gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
-        room: 'ห้อง 401',
-        status: 'active',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-        gpa: 3.92,
-        guardianName: 'นางกาญจนา สุวรรณศรี',
-        guardianRelation: 'มารดา',
-        guardianPhone: '089-876-5432',
-        guardianEmail: 'kanjana@gmail.com',
-        lineLinked: true,
-        lineNotifyEnabled: true,
-        enrolledDate: getLocalDateString(),
-      }
-    ];
-    setPage(0);
-    setPreviewStudents(samples);
-    showToast('โหลดข้อมูลตัวอย่างนักเรียน DMC แล้ว');
   };
 
   const handleConfirmImportStudents = () => {
     if (previewStudents.length === 0) return;
-    const issued = buildStudentCredentials(previewStudents);
-    saveImportedCredentials(issued);
-    setLastIssuedCredentials(issued);
     onImportStudents(previewStudents);
-    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คน และออก User/Password เรียบร้อยแล้ว`);
+    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนเรียบร้อยแล้ว`);
     setPreviewStudents([]);
   };
 
@@ -473,47 +347,14 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   const handleDownloadTeacherTemplate = () => {
     const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked'];
-    const sample = ['TCH-201', 'ดร.ชาญชัย เกียรติสกุล', 'Dr. Chanchai Kiatsakul', 'male', 'chanchai@school.ac.th', '081-999-8877', 'ปริญญาเอก (ศศ.ด.)', 'คณิตศาสตร์ศึกษา', 'ครูชำนาญการพิเศษ (คศ.3)', 'กลุ่มสาระการเรียนรู้คณิตศาสตร์', 'คส.6010001234', 'คณิตศาสตร์ ม.4;แคลคูลัส', 'ห้อง 401', '12', '92.5', 'ม.4;ม.5', 'คณิตศาสตร์;หุ่นยนต์', 'Active Learning', 'พัฒนาสื่อการเรียนรู้', '', 'false', 'false'];
-    downloadFile('template_hrms_teachers.csv', [headers.join(','), sample.join(',')].join('\n'));
+    downloadFile('template_hrms_teachers.csv', headers.join(','));
     showToast('ดาวน์โหลดแบบฟอร์มครู HRMS แล้ว');
-  };
-
-  const handleLoadSampleTeachers = () => {
-    const sample: Teacher[] = [
-      {
-        id: `tch-smp-${Date.now()}-1`,
-        teacherIdNumber: 'TCH-201',
-        fullNameTh: 'ดร.ชาญชัย เกียรติสกุล',
-        fullNameEn: 'Dr. Chanchai Kiatsakul',
-        gender: 'male',
-        email: 'chanchai@school.ac.th',
-        phone: '081-999-8877',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-        academicDegree: 'ปริญญาเอก (ศศ.ด.)',
-        major: 'คณิตศาสตร์ศึกษา',
-        academicStanding: 'ครูชำนาญการพิเศษ (คศ.3)',
-        department: 'กลุ่มสาระการเรียนรู้คณิตศาสตร์',
-        teacherLicenseNo: 'คส.6010001234',
-        teachingSubjects: ['คณิตศาสตร์พื้นฐาน ม.4', 'แคลคูลัส ม.6'],
-        homeroomClasses: ['ห้อง 401 (วิทย์-คณิต)'],
-        teachingGrades: ['มัธยมศึกษาปีที่ 4', 'มัธยมศึกษาปีที่ 6'],
-        isSchoolAdmin: false,
-        teachingExperienceYears: 12,
-        paScore: 92.5,
-      }
-    ];
-    setPage(0);
-    setPreviewTeachers(sample);
-    showToast('โหลดข้อมูลตัวอย่างครู HRMS แล้ว');
   };
 
   const handleConfirmImportTeachers = () => {
     if (previewTeachers.length === 0) return;
-    const issued = buildTeacherCredentials(previewTeachers);
-    saveImportedCredentials(issued);
-    setLastIssuedCredentials(issued);
     onImportTeachers(previewTeachers);
-    showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่าน และออก User/Password เรียบร้อยแล้ว`);
+    showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่านเรียบร้อยแล้ว`);
     setPreviewTeachers([]);
   };
 
@@ -721,7 +562,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
     fileInputRef: React.RefObject<HTMLInputElement | null>,
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
     onDownloadTemplate: () => void,
-    onLoadSample: () => void,
+    _onSample: (() => void) | undefined,
     onExport: () => void,
     accentColor: string = 'blue'
   ) => {
@@ -755,35 +596,25 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           </button>
         </div>
 
-        {/* Template & Sample Card */}
+        {/* Template Card */}
         <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col justify-between space-y-3">
           <div>
             <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
               <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>แบบฟอร์ม &amp; ข้อมูลตัวอย่าง</span>
+              <span>แบบฟอร์มสำหรับนำเข้าข้อมูล</span>
             </div>
             <p className="text-xs text-[var(--color-text-muted)] mt-1">
               ดาวน์โหลดโครงสร้างหัวคอลัมน์มาตรฐาน สพฐ. เพื่อกรอกใน Excel
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onDownloadTemplate}
-              className="flex-1 py-2 px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Template (CSV)</span>
-            </button>
-            <button
-              type="button"
-              onClick={onLoadSample}
-              className="py-2 px-2.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-800 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>ตัวอย่าง</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onDownloadTemplate}
+            className="w-full py-2 px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Template (CSV)</span>
+          </button>
         </div>
 
         {/* Export Card */}
@@ -968,74 +799,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 studentFileRef,
                 handleStudentFileUpload,
                 handleDownloadStudentTemplate,
-                handleLoadSampleStudents,
+                undefined,
                 handleExportStudents,
                 'blue'
-              )}
-
-              {/* Initial Password Policy Card */}
-              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
-                    <KeyRound className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <span>การกำหนด User &amp; รหัสผ่านเริ่มต้นสำหรับรายชื่อที่นำเข้า</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setPasswordMode('by_code')}
-                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
-                        passwordMode === 'by_code'
-                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      ใช้รูปแบบ Edu@&lt;รหัสนักเรียน&gt;
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPasswordMode('fixed')}
-                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
-                        passwordMode === 'fixed'
-                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      กำหนดรหัสผ่านเดียวกันทั้งชุด
-                    </button>
-                    {passwordMode === 'fixed' && (
-                      <input
-                        type="text"
-                        value={customInitialPassword}
-                        onChange={(e) => setCustomInitialPassword(e.target.value)}
-                        placeholder="เช่น EduVerse@2569"
-                        className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-mono text-[var(--color-text-title)]"
-                      />
-                    )}
-                  </div>
-                </div>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  ระบบจะสร้างบัญชี Username เป็น <strong className="font-mono text-[var(--color-text-title)]">&lt;รหัสนักเรียน&gt;@student.eduverse.local</strong> และรหัสผ่านตามรูปแบบที่เลือก สามารถดาวน์โหลดเป็นไฟล์ CSV แจกนักเรียนเพื่อทดสอบล็อกอินได้ทันที (ในระบบฐานข้อมูลจริง Supabase ต้องให้นักเรียนสมัครสมาชิกด้วยอีเมลและให้ผู้ดูแลโรงเรียนกดอนุมัติเพื่อความปลอดภัย)
-                </p>
-              </div>
-
-              {lastIssuedCredentials.length > 0 && lastIssuedCredentials[0].role === 'student' && (
-                <div className="p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="text-xs text-emerald-900 dark:text-emerald-100">
-                    <div className="font-bold">บันทึกบัญชีเข้าสู่ระบบเริ่มต้นสำหรับนักเรียน {lastIssuedCredentials.length} คนแล้ว</div>
-                    <div className="text-[11px] opacity-85 mt-0.5">
-                      ตัวอย่าง: User <span className="font-mono font-bold">{lastIssuedCredentials[0].username}</span> · Password <span className="font-mono font-bold">{lastIssuedCredentials[0].initialPassword}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadCredentialsCsv(lastIssuedCredentials, 'students')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>ดาวน์โหลด User &amp; Password (CSV)</span>
-                  </button>
-                </div>
               )}
 
               {previewStudents.length > 0 && (
@@ -1046,14 +812,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       <span>ตรวจสอบข้อมูลนักเรียนที่จะนำเข้า ({previewStudents.length} คน)</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadCredentialsCsv(buildStudentCredentials(previewStudents), 'students_preview')}
-                        className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 font-bold cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>โหลดไฟล์ User/Pass ชุดนี้</span>
-                      </button>
                       <button
                         type="button"
                         onClick={() => setPreviewStudents([])}
@@ -1072,8 +830,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                           <th className="px-3 py-2">รหัสนักเรียน</th>
                           <th className="px-3 py-2">ชื่อ - นามสกุล</th>
                           <th className="px-3 py-2">ระดับชั้น / ห้อง</th>
-                          <th className="px-3 py-2">Username เข้าระบบ</th>
-                          <th className="px-3 py-2">รหัสผ่านเริ่มต้น</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
@@ -1084,8 +840,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                               <td className="px-3 py-2 font-mono font-bold text-blue-600">{code}</td>
                               <td className="px-3 py-2 font-bold">{s.firstNameTh} {s.lastNameTh}</td>
                               <td className="px-3 py-2">{s.gradeLevel} ({s.room})</td>
-                              <td className="px-3 py-2 font-mono text-[11px]">{`${code.toLowerCase()}@student.eduverse.local`}</td>
-                              <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-300">{resolveInitialPassword(code)}</td>
                             </tr>
                           );
                         })}
@@ -1100,7 +854,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       className="px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
                       <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกข้อมูลนักเรียน {previewStudents.length} คน + ออกบัญชีเริ่มต้น</span>
+                      <span>ยืนยันนำเข้านักเรียน {previewStudents.length} คน</span>
                     </button>
                   </div>
                 </div>
@@ -1117,74 +871,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 teacherFileRef,
                 handleTeacherFileUpload,
                 handleDownloadTeacherTemplate,
-                handleLoadSampleTeachers,
+                undefined,
                 handleExportTeachers,
                 'purple'
-              )}
-
-              {/* Initial Password Policy Card */}
-              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
-                    <KeyRound className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <span>การกำหนด User &amp; รหัสผ่านเริ่มต้นสำหรับครูที่นำเข้า</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setPasswordMode('by_code')}
-                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
-                        passwordMode === 'by_code'
-                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      ใช้รูปแบบ Edu@&lt;รหัสครู&gt;
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPasswordMode('fixed')}
-                      className={`px-2.5 py-1 rounded-lg border font-bold cursor-pointer ${
-                        passwordMode === 'fixed'
-                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                          : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      กำหนดรหัสผ่านเดียวกันทั้งชุด
-                    </button>
-                    {passwordMode === 'fixed' && (
-                      <input
-                        type="text"
-                        value={customInitialPassword}
-                        onChange={(e) => setCustomInitialPassword(e.target.value)}
-                        placeholder="เช่น EduVerse@2569"
-                        className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-mono text-[var(--color-text-title)]"
-                      />
-                    )}
-                  </div>
-                </div>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  ระบบใช้อีเมลครูในไฟล์ CSV เป็น Username (หากไม่มีอีเมลจะใช้ <strong className="font-mono text-[var(--color-text-title)]">&lt;รหัสครู&gt;@teacher.eduverse.local</strong>) พร้อมรหัสผ่านเริ่มต้นที่กำหนด
-                </p>
-              </div>
-
-              {lastIssuedCredentials.length > 0 && lastIssuedCredentials[0].role === 'teacher' && (
-                <div className="p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="text-xs text-emerald-900 dark:text-emerald-100">
-                    <div className="font-bold">บันทึกบัญชีเข้าสู่ระบบเริ่มต้นสำหรับครู {lastIssuedCredentials.length} ท่านแล้ว</div>
-                    <div className="text-[11px] opacity-85 mt-0.5">
-                      ตัวอย่าง: User <span className="font-mono font-bold">{lastIssuedCredentials[0].username}</span> · Password <span className="font-mono font-bold">{lastIssuedCredentials[0].initialPassword}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadCredentialsCsv(lastIssuedCredentials, 'teachers')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>ดาวน์โหลด User &amp; Password (CSV)</span>
-                  </button>
-                </div>
               )}
 
               {previewTeachers.length > 0 && (
@@ -1195,14 +884,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       <span>ตรวจสอบข้อมูลครู HRMS ({previewTeachers.length} ท่าน)</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadCredentialsCsv(buildTeacherCredentials(previewTeachers), 'teachers_preview')}
-                        className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 font-bold cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>โหลดไฟล์ User/Pass ชุดนี้</span>
-                      </button>
                       <button
                         type="button"
                         onClick={() => setPreviewTeachers([])}
@@ -1221,21 +902,16 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                           <th className="px-3 py-2">รหัสบุคลากร</th>
                           <th className="px-3 py-2">ชื่อ - สกุล</th>
                           <th className="px-3 py-2">กลุ่มสาระฯ</th>
-                          <th className="px-3 py-2">Username / Email เข้าระบบ</th>
-                          <th className="px-3 py-2">รหัสผ่านเริ่มต้น</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
                         {previewTeachers.slice(page * 5, (page + 1) * 5).map((t, idx) => {
                           const code = (t.teacherIdNumber || t.id).trim();
-                          const loginId = t.email?.trim() ? t.email.trim().toLowerCase() : `${code.toLowerCase()}@teacher.eduverse.local`;
                           return (
                             <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
                               <td className="px-3 py-2 font-mono font-bold text-purple-600">{code}</td>
                               <td className="px-3 py-2 font-bold">{t.fullNameTh}</td>
                               <td className="px-3 py-2">{t.department}</td>
-                              <td className="px-3 py-2 font-mono text-[11px]">{loginId}</td>
-                              <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-300">{resolveInitialPassword(code)}</td>
                             </tr>
                           );
                         })}
@@ -1250,7 +926,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                       className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
                       <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกข้อมูลครู {previewTeachers.length} ท่าน + ออกบัญชีเริ่มต้น</span>
+                      <span>ยืนยันนำเข้าครู {previewTeachers.length} ท่าน</span>
                     </button>
                   </div>
                 </div>
@@ -1267,8 +943,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 courseFileRef,
                 handleCourseFileUpload,
                 () => {
-                  const sample = 'code,titleTh,titleEn,category,credits,weeklyHours,minAttendanceHours,totalHours,teacherName,department\nว30201,ฟิสิกส์ 1,Physics 1,core,1.5,3,48,60,ครูสุรศักดิ์,วิทยาศาสตร์';
-                  downloadFile('template_mis_courses.csv', sample);
+                  downloadFile('template_mis_courses.csv', 'code,titleTh,titleEn,category,credits,weeklyHours,minAttendanceHours,totalHours,teacherName,department');
                 },
                 () => {
                   setPreviewCourses([
@@ -1336,7 +1011,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   showToast('อ่านไฟล์คะแนน ปพ.5 สำเร็จ');
                 },
                 () => {
-                  downloadFile('template_mis_grades.csv', 'studentIdNumber,courseCode,midtermScore,finalScore,assignmentScore,quizScore,totalScore,letterGrade\nSTU-001,ว30201,18,28,32,16,94,4');
+                  downloadFile('template_mis_grades.csv', 'studentIdNumber,courseCode,midtermScore,finalScore,assignmentScore,quizScore,totalScore,letterGrade');
                 },
                 () => {
                   showToast('โหลดตัวอย่างคะแนน ปพ.5 เรียบร้อย');
@@ -1358,8 +1033,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 cctFileRef,
                 handleCctFileUpload,
                 () => {
-                  const sample = 'studentIdNumber,nationalId,studentName,gradeRoom,cctStatus,pmtScore,stipendAmount,transferStatus\nSTU-2569-001,1-1002-00888-99-1,กิตติศักดิ์ เจริญวัฒนา,ม.4/1,ยากจนพิเศษ,32.40,3000,โอนสำเร็จ';
-                  downloadFile('template_cct_poverty.csv', sample);
+                  downloadFile('template_cct_poverty.csv', 'studentIdNumber,nationalId,studentName,gradeRoom,cctStatus,pmtScore,stipendAmount,transferStatus');
                 },
                 () => {
                   setPreviewCct([
@@ -1440,8 +1114,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 sdqFileRef,
                 handleSdqFileUpload,
                 () => {
-                  const sample = 'studentId,nationalId,studentName,gradeRoom,emotional,conduct,hyperactivity,peer,prosocial,total,result,visitDate,visitStatus\nSTU-001,1-1002-001,กิตติศักดิ์,ม.4/1,2,1,3,2,8,8,กลุ่มปกติ,2026-06-12,เยี่ยมบ้านเรียบร้อย';
-                  downloadFile('template_obec_sdq.csv', sample);
+                  downloadFile('template_obec_sdq.csv', 'studentId,nationalId,studentName,gradeRoom,emotional,conduct,hyperactivity,peer,prosocial,total,result,visitDate,visitStatus');
                 },
                 () => {
                   setPreviewSdq([
@@ -1500,8 +1173,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 onetFileRef,
                 handleOnetFileUpload,
                 () => {
-                  const sample = 'schoolOnetCode,studentIdNumber,nationalId,studentName,examGrade,examSeatNo,examCenter,eligibilityStatus\n1010012345,STU-2569-001,1-1002-00888-99-1,กิตติศักดิ์ เจริญวัฒนา,ม.3,001,สนามสอบโรงเรียนประจำอำเภอ,มีสิทธิ์สอบ';
-                  downloadFile('template_onet_candidates.csv', sample);
+                  downloadFile('template_onet_candidates.csv', 'schoolOnetCode,studentIdNumber,nationalId,studentName,examGrade,examSeatNo,examCenter,eligibilityStatus');
                 },
                 () => {
                   setPreviewOnet([
@@ -1556,8 +1228,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 pp3FileRef,
                 handlePp3FileUpload,
                 () => {
-                  const sample = 'studentIdNumber,nationalId,fullNameTh,gradGradeLevel,academicYear,approvalDate,bookNo,registerNo,gpax,graduationStatus\nSTU-2569-001,1-1002-00888-99-1,กิตติศักดิ์ เจริญวัฒนา,มัธยมศึกษาปีที่ 3,2568,31 มีนาคม 2569,01/2569,001,3.85,อนุมัติสำเร็จการศึกษาตามหลักสูตร';
-                  downloadFile('template_pp3_online.csv', sample);
+                  downloadFile('template_pp3_online.csv', 'studentIdNumber,nationalId,fullNameTh,gradGradeLevel,academicYear,approvalDate,bookNo,registerNo,gpax,graduationStatus');
                 },
                 () => {
                   setPreviewPp3([
