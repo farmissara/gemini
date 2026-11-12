@@ -81,7 +81,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 app-page-header">
         <div>
           <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
             <BellRing className="w-5 h-5 text-[var(--color-primary-text)]" />

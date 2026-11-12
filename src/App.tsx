@@ -1972,7 +1972,6 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
-        onOpenGpsSettings={() => navigateToAppTab('school_gps')}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
@@ -2089,10 +2088,6 @@ export const App: React.FC = () => {
                 coordinationUnreadCount={coordinationUnreadCount}
                 unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                 lang={lang}
-                onOpenProfile={() => {
-                  setShowProfileModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
               />
             </div>
           </div>
@@ -2117,13 +2112,12 @@ export const App: React.FC = () => {
               coordinationUnreadCount={coordinationUnreadCount}
               unclaimedCentralPacksCount={unclaimedCentralPacks.length}
               lang={lang}
-              onOpenProfile={() => setShowProfileModal(true)}
             />
           </div>
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'p-3 overflow-visible' : 'p-2 sm:p-3 lg:p-4 overflow-y-auto')}`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-3 overflow-visible' : 'app-workspace p-3 sm:p-4 lg:p-5 overflow-y-auto')}`}>
           <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-7xl mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2147,63 +2141,6 @@ export const App: React.FC = () => {
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
-                {/* Top Horizontal Module Category Strip: 1-Click Access To Avoid Menu Scrolling */}
-                {currentTab !== 'super_admin_console' && !useImmersiveGameLayout && (
-                  <div className="shrink-0 mb-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-0.5">
-                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] min-w-0 max-w-full shadow-2xs">
-                      {[
-                        ...(currentRole === 'super_admin' ? [
-                          { id: 'super_admin', labelTh: '🛡️ ศูนย์ควบคุมแม่ข่าย', labelEn: 'Master Console', defaultTab: 'super_admin_console' as NavTab, tabs: ['super_admin_console'] }
-                        ] : []),
-                        { id: 'academics', labelTh: '🎓 วิชาการ & ทะเบียน', labelEn: 'Academics', defaultTab: 'dashboard' as NavTab, tabs: ['dashboard', 'executive_monitor', 'students', 'teachers', 'courses', 'timetable', 'gradebook'] },
-                        { id: 'student_care', labelTh: '🏥 กิจการ & ดูแล', labelEn: 'Student Care', defaultTab: 'attendance' as NavTab, tabs: ['attendance', 'mobile_checkin', 'student_id_cards', 'behavior_sdq', 'infirmary'] },
-                        { id: 'innovation', labelTh: '🚀 นวัตกรรม & AI', labelEn: 'Labs & AI', defaultTab: 'homework' as NavTab, tabs: ['homework', 'portfolio', 'study_streak', 'socratic_tutor', 'realworld_quests', 'boss_raid', 'ai_diagnostic', 'subject_labs', 'games', 'central_exam_hub', 'hall_of_fame'] },
-                        { id: 'administration', labelTh: '⚙️ บริหาร & GPS', labelEn: 'Admin & GPS', defaultTab: 'school_gps' as NavTab, tabs: ['school_gps', 'executive_warning', 'school_permissions', 'admin_superadmin_desk', 'system_settings'] },
-                        { id: 'finance', labelTh: '💰 การเงิน & ข่าว', labelEn: 'Finance', defaultTab: 'billing' as NavTab, tabs: ['billing', 'announcements'] },
-                      ].map((cat) => {
-                        const isCatActive = cat.tabs.includes(currentTab);
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              if (!isCatActive) {
-                                navigateToAppTab(cat.defaultTab);
-                              }
-                            }}
-                            className={`min-w-0 px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
-                              isCatActive
-                                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                                : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
-                            }`}
-                          >
-                            <span>{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Direct School GPS Coordinates Button for School Admin */}
-                    {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
-                      <button
-                        type="button"
-                        onClick={() => navigateToAppTab('school_gps')}
-                        className={`self-start sm:self-auto px-3 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                          currentTab === 'school_gps'
-                            ? 'bg-amber-400 text-slate-950 border-amber-600 shadow-xs'
-                            : 'bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900'
-                        }`}
-                        title="กำหนดพิกัด GPS ละติจูด ลองจิจูด รัศมี และประตูโรงเรียน"
-                      >
-                        <span className="text-amber-700 dark:text-amber-300">📍</span>
-                        <span className="hidden sm:inline font-bold">
-                          {lang === 'th' ? 'ตั้งค่าพิกัด GPS โรงเรียน' : 'School GPS'}
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
                 {currentTab === 'super_admin_console' && currentRole === 'super_admin' && (
                   <SuperAdminConsoleView
                     schools={schools}

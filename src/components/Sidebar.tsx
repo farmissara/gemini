@@ -17,7 +17,6 @@ import {
   FileCheck2,
   SlidersHorizontal,
   ShieldCheck,
-  User,
   GraduationCap,
   MessageSquare,
   FlaskConical,
@@ -35,7 +34,6 @@ import {
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage } from '../types';
-import { PWAInstallButton } from './PWAInstallButton';
 
 export type NavTab = 
   | 'super_admin_console'
@@ -89,7 +87,6 @@ interface SidebarProps {
   coordinationUnreadCount?: number;
   unclaimedCentralPacksCount?: number;
   lang: AppLanguage;
-  onOpenProfile?: () => void;
 }
 
 export interface NavItemDef {
@@ -123,7 +120,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   coordinationUnreadCount = 0,
   unclaimedCentralPacksCount = 0,
   lang,
-  onOpenProfile,
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [displayMode, setDisplayMode] = useState<'tabs' | 'all'>('tabs');
@@ -379,7 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'ตั้งค่าพิกัด GPS โรงเรียน',
           labelEn: 'School GPS Coordinates',
           icon: MapPin,
-          roles: ['super_admin', 'admin'],
+          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'executive_warning',
@@ -729,46 +725,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Footer Controls: Quick GPS Setting & Profile */}
-      <div className="p-2.5 border-t border-[var(--color-border)] space-y-1.5 shrink-0 bg-[var(--color-card-subtle)]">
-        {/* Direct School GPS Shortcut for Admins */}
-        {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
-          <button
-            type="button"
-            onClick={() => setCurrentTab('school_gps')}
-            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-              currentTab === 'school_gps'
-                ? 'bg-amber-400 text-slate-950 border-amber-600 shadow-xs'
-                : 'bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900'
-            }`}
-          >
-            <MapPin className={`w-3.5 h-3.5 shrink-0 ${currentTab === 'school_gps' ? 'text-slate-950' : 'text-amber-700 dark:text-amber-300'}`} />
-            <div className="flex-1 min-w-0 text-left">
-              <span className="truncate block">{lang === 'th' ? '📍 ตั้งค่าพิกัด GPS โรงเรียน' : 'Configure School GPS'}</span>
-            </div>
-            <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 dark:bg-amber-800 text-amber-950 dark:text-amber-100 font-mono">
-              ตั้งค่า
-            </span>
-          </button>
-        )}
-
-        {/* Mobile App Install Button (Android & iOS) */}
-        <PWAInstallButton lang={lang} variant="sidebar" />
-
-        {/* Profile Button */}
-        {onOpenProfile && (currentRole !== 'super_admin' || isSuperAdminSchoolView) && (
-          <button
-            type="button"
-            onClick={onOpenProfile}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 text-[var(--color-primary-text)] border border-[var(--color-border)] transition text-xs font-semibold text-left cursor-pointer"
-          >
-            <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-            <span className="truncate flex-1 font-bold">
-              {lang === 'th' ? 'โปรไฟล์ & ผลงานของฉัน' : 'My Profile'}
-            </span>
-          </button>
-        )}
-
+      <div className="p-2.5 border-t border-[var(--color-border)] shrink-0 bg-[var(--color-card-subtle)]">
         <div className="text-[10px] text-[var(--color-text-muted)] text-center font-mono">
           EduVerse SIS • โหมดแท็บเต็มหน้า
         </div>

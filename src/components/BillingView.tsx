@@ -73,7 +73,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="shrink-0 p-4 app-page-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
             <Receipt className="w-5 h-5 text-[var(--color-primary-text)]" />

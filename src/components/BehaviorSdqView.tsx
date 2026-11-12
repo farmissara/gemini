@@ -225,7 +225,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[var(--color-card)] p-3.5 sm:p-4 rounded-xl border border-[var(--color-border)] shadow-xs">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header">
         <div className="flex items-center gap-3">
           <span className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700">
             <HeartHandshake className="w-5 h-5" />

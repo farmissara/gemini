@@ -296,7 +296,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   }, [attendance, students, teachers, courses, invoices, infirmaryVisits, sdqAssessments]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] pb-16 select-none">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none">
       {/* ======================================================== */}
       {/* 1. TOP MOBILE HEADER */}
       {/* ======================================================== */}

@@ -354,7 +354,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3.5">
       {/* Top Header */}
-      <div className="shrink-0 p-3.5 sm:p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-[var(--color-text-body)] shadow-sm">
+      <div className="shrink-0 p-3.5 sm:p-4 app-page-header flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-[var(--color-text-body)]">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[var(--color-primary-text)] text-xs font-bold uppercase tracking-wider mb-0.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />

@@ -373,7 +373,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Top Header & View Mode Switcher */}
-      <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[var(--color-card)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
+      <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-4 app-page-header">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">

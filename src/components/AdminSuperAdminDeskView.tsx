@@ -315,7 +315,7 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
   return (
     <div className="space-y-4 pb-8">
       {/* Header */}
-      <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="app-page-header p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold border border-[var(--color-border)]">

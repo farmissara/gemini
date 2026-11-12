@@ -281,7 +281,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--color-card)] p-4 rounded-2xl border border-[var(--color-border)] shadow-sm">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 app-page-header">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <BookOpen className="w-5 h-5 text-[var(--color-primary-text)]" />

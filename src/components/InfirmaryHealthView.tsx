@@ -151,7 +151,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[var(--color-card)] p-3.5 sm:p-4 rounded-xl border border-[var(--color-border)] shadow-xs">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header">
         <div className="flex items-center gap-3">
           <span className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
             <HeartPulse className="w-5 h-5" />

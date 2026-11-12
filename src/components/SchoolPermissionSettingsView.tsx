@@ -191,7 +191,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       )}
 
       {/* Header Banner */}
-      <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="app-page-header p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold border border-[var(--color-border)]">
             <Building2 className="w-3.5 h-3.5" />

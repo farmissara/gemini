@@ -528,7 +528,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       )}
       {/* Header controls */}
-      <div className="shrink-0 p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+      <div className="shrink-0 p-4 app-page-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <Users className="w-5 h-5 text-[var(--color-primary-text)]" />

@@ -58,7 +58,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[var(--color-card)] p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] shadow-xs text-[var(--color-text-title)]">
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header text-[var(--color-text-title)]">
         <div className="flex items-center gap-3">
           <span className="p-2 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
             <CreditCard className="w-5 h-5" />

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppLanguage, School, ThemePalette } from '../types';
 import {
   AlertCircle,
@@ -6,29 +6,21 @@ import {
   BookOpen,
   Building2,
   Calendar,
-  Check,
   CheckCircle2,
-  Copy,
   CreditCard,
-  ExternalLink,
   FileText,
   Gamepad2,
   Globe,
   GraduationCap,
   HeartPulse,
-  HelpCircle,
   KeyRound,
   Lock,
   Mail,
   Moon,
-  PlayCircle,
   School as SchoolIcon,
   Send,
-  ShieldCheck,
-  Sparkles,
   Sun,
   UserCheck,
-  Users,
   X,
 } from 'lucide-react';
 import {
@@ -42,9 +34,6 @@ import {
 } from '../lib/authDb';
 import { PWAInstallButton } from './PWAInstallButton';
 import heroImage from '../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
-import featureLmsImage from '../assets/images/classroom_teaching_learning_1793958766838.jpg';
-import featureArenaImage from '../assets/images/feature_eduarena_game_learning_1793951856246.jpg';
-import featureClinicImage from '../assets/images/feature_smart_student_health_clinic_1793951856130.jpg';
 
 interface AuthLayoutProps {
   onLogin: (context: AuthContext) => void;
@@ -74,11 +63,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   themePalette = 'light_warm',
   setThemePalette,
 }) => {
-  const emailInputRef = useRef<HTMLInputElement>(null);
-
   // Production Auth Form State (Primary Landing Experience)
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [schools, setSchools] = useState<School[]>(activeSchools && activeSchools.length > 0 ? activeSchools : []);
+  const [isLoadingSchools, setIsLoadingSchools] = useState(true);
   const [schoolLoadError, setSchoolLoadError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,14 +81,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Secondary Modals: Forgot Password, SMTP Setup
+  // Secondary Modals: Forgot Password
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  const [showSmtpGuideModal, setShowSmtpGuideModal] = useState(false);
-  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
-  const [smtpTab, setSmtpTab] = useState<'gmail_smtp' | 'disable_confirm' | 'sql_confirm' | 'superadmin'>('gmail_smtp');
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -108,28 +93,24 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   useEffect(() => {
     let active = true;
+    setIsLoadingSchools(true);
+    setSchoolLoadError(null);
     listActiveSchools()
       .then((availableSchools) => {
         if (!active) return;
         setSchools(availableSchools);
-        setSchoolLoadError(null);
+        setIsLoadingSchools(false);
       })
       .catch((loadError: unknown) => {
         if (!active) return;
+        console.error('Failed to load active schools:', loadError);
         setSchoolLoadError(loadError instanceof Error ? loadError.message : String(loadError));
+        setIsLoadingSchools(false);
       });
     return () => {
       active = false;
     };
   }, [activeSchools]);
-
-  const focusLoginForm = (targetMode: 'login' | 'register' = 'login') => {
-    setMode(targetMode);
-    setError(null);
-    const portalEl = document.getElementById('portal-auth');
-    portalEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.setTimeout(() => emailInputRef.current?.focus(), 200);
-  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -229,17 +210,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     }
   };
 
-  const handleCopySnippet = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSnippet(label);
-    setTimeout(() => setCopiedSnippet(null), 2500);
-  };
-
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
-      {/* Top Bar: Clean 3-Zone Contract */}
+      {/* Top Bar */}
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
           {/* Zone 1: Brand Wordmark */}
@@ -250,41 +225,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <span>EduVerse</span>
           </a>
 
-          {/* Zone 2: Concise Navigation Links */}
-          <nav aria-label="Primary" className="hidden md:flex items-center gap-7 text-sm font-medium text-[var(--color-text-muted)]">
-            <a
-              href="#portal-auth"
-              onClick={(e) => {
-                e.preventDefault();
-                focusLoginForm('login');
-              }}
-              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
-            >
-              {lang === 'th' ? 'เข้าสู่ระบบ' : 'Sign In'}
-            </a>
-            <a
-              href="#portal-auth"
-              onClick={(e) => {
-                e.preventDefault();
-                focusLoginForm('register');
-              }}
-              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
-            >
-              {lang === 'th' ? 'ลงทะเบียนโรงเรียน' : 'Register School'}
-            </a>
-            <a
-              href="#platform-overview"
-              className="hover:text-[var(--color-text-title)] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
-            >
-              {lang === 'th' ? 'ความสามารถระบบ' : 'Capabilities'}
-            </a>
-          </nav>
-
-          {/* Zone 3: Single Primary/Utility Action Area */}
+          {/* Utility Actions */}
           <div className="flex items-center gap-2 shrink-0">
-
-            <PWAInstallButton lang={lang} variant="nav" />
-
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
@@ -308,340 +250,342 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </header>
 
-      <main className="flex-1">
-        {/* ===================================================================== */}
-        {/* HERO & OFFICIAL LOGIN PORTAL (Production-First, Zero Demo Confusion)   */}
-        {/* ===================================================================== */}
-        <section id="portal-auth" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-12 items-start">
-            {/* Left Column: Editorial Context, Campus Visual & Active Schools */}
-            <div className="order-2 lg:order-1 space-y-6">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
-                  <span>{lang === 'th' ? 'ระบบบริหารสถานศึกษาครบวงจร' : 'School Operations Platform'}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{lang === 'th' ? 'แยกฐานข้อมูลรายโรงเรียน (Multi-Tenant)' : 'Multi-Tenant Isolation'}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{lang === 'th' ? 'มาตรฐาน PDPA' : 'PDPA Compliant'}</span>
-                </div>
-
-                <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold leading-[1.14] tracking-tight text-[var(--color-text-title)] text-balance max-w-2xl">
-                  {lang === 'th'
-                    ? 'เข้าสู่ระบบปฏิบัติการสถานศึกษา EduVerse'
-                    : 'Sign in to your EduVerse School Workspace'}
-                </h1>
-
-                <p className="text-sm sm:text-base leading-relaxed text-[var(--color-text-body)] max-w-xl">
-                  {lang === 'th'
-                    ? 'สำหรับผู้บริหาร ครู นักเรียน และผู้ปกครองของสถานศึกษาที่ลงทะเบียนในระบบ รวมงานวิชาการ การเช็กชื่อ GPS ตารางสอน ห้องพยาบาล และการออกเอกสาร ปพ.1/ปพ.7 ไว้ในที่เดียว'
-                    : 'Unified academic administration, GPS period attendance, conflict-free timetables, digital infirmary logs, and official grade reports for registered schools.'}
-                </p>
-              </div>
-
-              {/* Clean 16:9 Classroom Hero Photography (No Floating Pill Clutter) */}
-              <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-slate-900 shadow-sm">
-                <img
-                  src={heroImage}
-                  alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนยุคใหม่ของ EduVerse' : 'Modern classroom environment powered by EduVerse'}
-                  className="w-full aspect-[16/9] object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none" />
-                <div className="absolute bottom-3.5 left-4 right-4 flex flex-wrap items-center justify-between gap-2 text-xs text-white/95">
-                  <span className="font-semibold">
-                    {lang === 'th'
-                      ? 'ระบบวิชาการ · เช็กชื่อ GPS · ตารางสอนไร้คาบชน · รายงาน ปพ.1/ปพ.7'
-                      : 'Gradebook · GPS Attendance · Smart Timetable · Official Reports'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Active Registered Schools */}
-              <div className="pt-2 border-t border-[var(--color-border)] space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-xs font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'สถานศึกษาที่เปิดใช้งานในระบบขณะนี้' : 'Active Schools in System'}
-                  </h2>
-                  <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
-                    {schools.length} {lang === 'th' ? 'แห่ง' : 'schools'}
-                  </span>
-                </div>
-                {schools.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {schools.map((s) => (
-                      <span
-                        key={s.id}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium"
-                      >
-                        {lang === 'th' ? s.nameTh : s.nameEn}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    {schoolLoadError
-                      ? lang === 'th'
-                        ? `ไม่สามารถโหลดรายชื่อโรงเรียน: ${schoolLoadError}`
-                        : `Could not load schools: ${schoolLoadError}`
-                      : lang === 'th'
-                        ? 'กำลังเชื่อมต่อรายชื่อสถานศึกษา...'
-                        : 'Loading active schools...'}
+      <main>
+        <section
+          id="portal-auth"
+          className="relative isolate overflow-hidden bg-gradient-to-br from-sky-50 via-white to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl dark:bg-sky-500/10"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-indigo-200/40 blur-3xl dark:bg-indigo-500/10"
+          />
+          <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+            <div className="grid grid-cols-1 items-center gap-7 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+              <div className="order-2 lg:order-1 space-y-5">
+                <div className="space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-text)]">
+                    {lang === 'th' ? 'แพลตฟอร์มบริหารสถานศึกษา' : 'School Operations Platform'}
                   </p>
-                )}
-              </div>
-
-              <PWAInstallButton lang={lang} variant="mobile_card" />
-            </div>
-
-            {/* Right Column (First on Mobile): Official Sign In / Sign Up Card */}
-            <div className="order-1 lg:order-2 w-full max-w-md mx-auto lg:ml-auto lg:mr-0">
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-md overflow-hidden">
-                {/* Card Header & Sign In / Sign Up Switcher */}
-                <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)]">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
-                      {mode === 'login' ? <SchoolIcon className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
-                    </div>
-                    <div>
-                      <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight">
-                        {mode === 'login'
-                          ? lang === 'th'
-                            ? 'เข้าสู่ระบบบัญชีโรงเรียน'
-                            : 'Sign in to EduVerse'
-                          : lang === 'th'
-                            ? 'ลงทะเบียนสถานศึกษาใหม่'
-                            : 'Register New School'}
-                      </h2>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                        {mode === 'login'
-                          ? lang === 'th'
-                            ? 'กรอกอีเมล (หรือบัญชีที่โรงเรียนออกให้) และรหัสผ่าน'
-                            : 'Enter your school email/username and password'
-                          : lang === 'th'
-                            ? 'กรอกข้อมูลเพื่อยื่นคำขอเปิดใช้งานในระบบจริง'
-                            : 'Submit your details for school activation'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('login');
-                        setError(null);
-                        setNotice(null);
-                      }}
-                      className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
-                        mode === 'login'
-                          ? 'bg-[var(--color-primary)] text-white'
-                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                      }`}
-                    >
-                      {lang === 'th' ? 'เข้าสู่ระบบ' : 'Sign In'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('register');
-                        setError(null);
-                        setNotice(null);
-                      }}
-                      className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
-                        mode === 'register'
-                          ? 'bg-[var(--color-primary)] text-white'
-                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                      }`}
-                    >
-                      {lang === 'th' ? 'สมัครสมาชิก' : 'Sign Up'}
-                    </button>
+                  <h1 className="max-w-2xl text-3xl font-extrabold leading-tight tracking-tight text-[var(--color-text-title)] text-balance sm:text-4xl lg:text-5xl">
+                    {lang === 'th' ? 'งานโรงเรียนครบในระบบเดียว' : 'Everyday school work, in one place'}
+                  </h1>
+                  <p className="max-w-xl text-sm leading-relaxed text-[var(--color-text-body)] sm:text-base">
+                    {lang === 'th'
+                      ? 'เชื่อมงานวิชาการ การเช็กชื่อ และการดูแลนักเรียน สำหรับผู้บริหาร ครู นักเรียน และผู้ปกครอง'
+                      : 'Connect academics, attendance, and student care for administrators, teachers, students, and families.'}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-[11px] font-semibold text-[var(--color-text-body)]">
+                      {lang === 'th' ? 'แยกข้อมูลรายโรงเรียน' : 'School-level data isolation'}
+                    </span>
+                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-[11px] font-semibold text-[var(--color-text-body)]">
+                      {lang === 'th' ? 'คำนึงถึง PDPA' : 'Privacy-conscious'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Form Body */}
-                <div className="p-5 sm:p-6 space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
+                  <img
+                    src={heroImage}
+                    alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนของ EduVerse' : 'Classroom learning with EduVerse'}
+                    className="aspect-[16/10] w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
 
-
-                  {error && (
-                    <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                      <span className="leading-relaxed">{error}</span>
+                <div className="border-t border-[var(--color-border)] pt-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-xs font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'สถานศึกษาที่เปิดใช้งาน' : 'Active schools'}
+                    </h2>
+                    <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                      {schools.length} {lang === 'th' ? 'แห่ง' : 'schools'}
+                    </span>
+                  </div>
+                  {schools.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {schools.map((s) => (
+                        <span
+                          key={s.id}
+                          className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium"
+                        >
+                          {lang === 'th' ? s.nameTh : s.nameEn}
+                        </span>
+                      ))}
                     </div>
+                  ) : (
+                    <p
+                      role={schoolLoadError ? 'alert' : undefined}
+                      className="text-xs text-[var(--color-text-muted)]"
+                    >
+                      {schoolLoadError
+                        ? /supabase is not configured/i.test(schoolLoadError)
+                          ? lang === 'th'
+                            ? 'ยังไม่ได้ตั้งค่าการเชื่อมต่อฐานข้อมูลโรงเรียน'
+                            : 'School database connection is not configured yet.'
+                          : lang === 'th'
+                            ? 'ไม่สามารถโหลดรายชื่อโรงเรียนได้ในขณะนี้'
+                            : 'Could not load schools right now.'
+                        : isLoadingSchools
+                          ? lang === 'th'
+                            ? 'กำลังโหลดรายชื่อสถานศึกษา...'
+                            : 'Loading active schools...'
+                          : lang === 'th'
+                            ? 'ยังไม่มีสถานศึกษาที่เปิดใช้งาน'
+                            : 'No active schools yet.'}
+                    </p>
                   )}
+                </div>
 
-                  {notice && (
-                    <div role="status" className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs font-medium text-emerald-900 dark:text-emerald-200">
-                      {notice}
+              </div>
+
+              <div className="order-1 lg:order-2 w-full max-w-md mx-auto space-y-4 lg:ml-auto lg:mr-0">
+                <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg shadow-slate-900/5">
+                  <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)]">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
+                        {mode === 'login' ? <SchoolIcon className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight">
+                          {mode === 'login'
+                            ? lang === 'th'
+                              ? 'เข้าสู่ระบบบัญชีโรงเรียน'
+                              : 'Sign in to EduVerse'
+                            : lang === 'th'
+                              ? 'ลงทะเบียนสถานศึกษาใหม่'
+                              : 'Register New School'}
+                        </h2>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                          {mode === 'login'
+                            ? lang === 'th'
+                              ? 'กรอกอีเมล (หรือบัญชีที่โรงเรียนออกให้) และรหัสผ่าน'
+                              : 'Enter your school email/username and password'
+                            : lang === 'th'
+                              ? 'กรอกข้อมูลเพื่อยื่นคำขอเปิดใช้งานในระบบจริง'
+                              : 'Submit your details for school activation'}
+                        </p>
+                      </div>
                     </div>
-                  )}
 
-                  <form onSubmit={handleSubmit} className="space-y-3.5">
-                    {mode === 'register' && (
-                      <>
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาไทย)' : 'School Name (Thai)'}
-                          <input
-                            required
-                            maxLength={150}
-                            value={schoolNameTh}
-                            onChange={(e) => setSchoolNameTh(e.target.value)}
-                            placeholder="เช่น โรงเรียนสาธิตวิทยาคม"
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          />
-                        </label>
+                    <div className="flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('login');
+                          setError(null);
+                          setNotice(null);
+                        }}
+                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
+                          mode === 'login'
+                            ? 'bg-[var(--color-primary)] text-white'
+                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                        }`}
+                      >
+                        {lang === 'th' ? 'เข้าสู่ระบบ' : 'Sign In'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('register');
+                          setError(null);
+                          setNotice(null);
+                        }}
+                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
+                          mode === 'register'
+                            ? 'bg-[var(--color-primary)] text-white'
+                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                        }`}
+                      >
+                        {lang === 'th' ? 'สมัครสมาชิก' : 'Sign Up'}
+                      </button>
+                    </div>
+                  </div>
 
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาอังกฤษ)' : 'School Name (English)'}
-                          <input
-                            maxLength={150}
-                            value={schoolNameEn}
-                            onChange={(e) => setSchoolNameEn(e.target.value)}
-                            placeholder="e.g. Satit Wittayakhom School"
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          />
-                        </label>
+                  {/* Form Body */}
+                  <div className="p-5 sm:p-6 space-y-4">
 
-                        <div className="grid grid-cols-2 gap-3">
+
+                    {error && (
+                      <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{error}</span>
+                      </div>
+                    )}
+
+                    {notice && (
+                      <div role="status" className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs font-medium text-emerald-900 dark:text-emerald-200">
+                        {notice}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-3.5">
+                      {mode === 'register' && (
+                        <>
                           <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'ประเภทสถานศึกษา' : 'School Type'}
-                            <select
-                              value={schoolType}
-                              onChange={(e) => setSchoolType(e.target.value as School['type'])}
-                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                            >
-                              <option value="public">{lang === 'th' ? 'รัฐบาล' : 'Public'}</option>
-                              <option value="private">{lang === 'th' ? 'เอกชน' : 'Private'}</option>
-                              <option value="international">{lang === 'th' ? 'นานาชาติ' : 'International'}</option>
-                              <option value="demonstration">{lang === 'th' ? 'สาธิต' : 'Demonstration'}</option>
-                            </select>
-                          </label>
-
-                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'จังหวัดที่ตั้ง' : 'Province'}
+                            {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาไทย)' : 'School Name (Thai)'}
                             <input
                               required
-                              value={province}
-                              onChange={(e) => setProvince(e.target.value)}
-                              placeholder="เช่น กรุงเทพฯ"
+                              maxLength={150}
+                              value={schoolNameTh}
+                              onChange={(e) => setSchoolNameTh(e.target.value)}
+                              placeholder="เช่น โรงเรียนสาธิตวิทยาคม"
                               className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
                             />
                           </label>
-                        </div>
 
-                        <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'ชื่อผู้ดูแลสถานศึกษา (Admin)' : 'Administrator Name'}
-                          <input
-                            required
-                            value={fullNameTh}
-                            onChange={(e) => setFullNameTh(e.target.value)}
-                            placeholder="ชื่อ-นามสกุล ผู้ดูแลระบบ"
-                            className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                          />
-                        </label>
-                      </>
-                    )}
+                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาอังกฤษ)' : 'School Name (English)'}
+                            <input
+                              maxLength={150}
+                              value={schoolNameEn}
+                              onChange={(e) => setSchoolNameEn(e.target.value)}
+                              placeholder="e.g. Satit Wittayakhom School"
+                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                            />
+                          </label>
 
-                    <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                      <span className="flex items-center gap-1.5 mb-1">
-                        <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                        {lang === 'th' ? 'อีเมล' : 'Email Address'}
-                      </span>
-                      <input
-                        ref={emailInputRef}
-                        type="email"
-                        autoComplete="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="yourname@school.ac.th"
-                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20 font-medium"
-                      />
-                    </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                              {lang === 'th' ? 'ประเภทสถานศึกษา' : 'School Type'}
+                              <select
+                                value={schoolType}
+                                onChange={(e) => setSchoolType(e.target.value as School['type'])}
+                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                              >
+                                <option value="public">{lang === 'th' ? 'รัฐบาล' : 'Public'}</option>
+                                <option value="private">{lang === 'th' ? 'เอกชน' : 'Private'}</option>
+                                <option value="international">{lang === 'th' ? 'นานาชาติ' : 'International'}</option>
+                                <option value="demonstration">{lang === 'th' ? 'สาธิต' : 'Demonstration'}</option>
+                              </select>
+                            </label>
 
-                    <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                      <span className="flex items-center gap-1.5 mb-1">
-                        <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                        {lang === 'th' ? 'รหัสผ่าน' : 'Password'}
-                      </span>
-                      <input
-                        type="password"
-                        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                        minLength={8}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
-                      />
-                    </label>
+                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                              {lang === 'th' ? 'จังหวัดที่ตั้ง' : 'Province'}
+                              <input
+                                required
+                                value={province}
+                                onChange={(e) => setProvince(e.target.value)}
+                                placeholder="เช่น กรุงเทพฯ"
+                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                              />
+                            </label>
+                          </div>
 
-                    {mode === 'login' && (
-                      <>
-                        <p className="text-[11px] text-[var(--color-text-muted)] leading-snug">
-                          {lang === 'th'
-                            ? 'สำหรับบุคลากรและสมาชิกที่ได้รับบัญชีจากผู้ดูแลโรงเรียน'
-                            : 'For staff and members with accounts provisioned by their school administrator.'}
-                        </p>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-0.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResetEmail(email);
-                              setResetStatus(null);
-                              setShowForgotPasswordModal(true);
-                            }}
-                            className="text-[var(--color-primary-text)] hover:underline font-semibold transition cursor-pointer"
-                          >
-                            {lang === 'th' ? 'ลืมรหัสผ่าน? (ขอเปลี่ยน Password)' : 'Forgot Password?'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleResendConfirmation}
-                            disabled={isLoading || !email.trim()}
-                            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline font-medium transition cursor-pointer disabled:opacity-50"
-                          >
-                            {lang === 'th' ? 'ขอให้ Super Admin อนุมัติเปิดใช้งาน' : 'Request Super Admin approval'}
-                          </button>
-                        </div>
-                      </>
-                    )}
+                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            {lang === 'th' ? 'ชื่อผู้ดูแลสถานศึกษา (Admin)' : 'Administrator Name'}
+                            <input
+                              required
+                              value={fullNameTh}
+                              onChange={(e) => setFullNameTh(e.target.value)}
+                              placeholder="ชื่อ-นามสกุล ผู้ดูแลระบบ"
+                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                            />
+                          </label>
+                        </>
+                      )}
 
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1"
-                    >
-                      {isLoading
-                        ? lang === 'th'
-                          ? 'กำลังดำเนินการ...'
-                          : 'Processing...'
-                        : mode === 'login'
-                          ? lang === 'th'
-                            ? 'เข้าสู่ระบบ'
-                            : 'Sign In'
-                          : lang === 'th'
-                            ? 'ยืนยันลงทะเบียนโรงเรียน'
-                            : 'Register School'}
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                      <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                        <span className="flex items-center gap-1.5 mb-1">
+                          <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                          {lang === 'th' ? 'อีเมล' : 'Email Address'}
+                        </span>
+                        <input
+                          type="email"
+                          autoComplete="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="yourname@school.ac.th"
+                          className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20 font-medium"
+                        />
+                      </label>
 
-                    <div className="pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2 flex-wrap">
-                      <span>{lang === 'th' ? 'ติดต่อผู้ดูแลระบบกลาง:' : 'Master Admin Email:'}</span>
-                      <a
-                        href={`mailto:${MASTER_SYSTEM_EMAIL}`}
-                        className="font-mono font-semibold text-[var(--color-primary-text)] hover:underline"
+                      <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                        <span className="flex items-center gap-1.5 mb-1">
+                          <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                          {lang === 'th' ? 'รหัสผ่าน' : 'Password'}
+                        </span>
+                        <input
+                          type="password"
+                          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                          minLength={8}
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                        />
+                      </label>
+
+                      {mode === 'login' && (
+                        <>
+                          <p className="text-[11px] text-[var(--color-text-muted)] leading-snug">
+                            {lang === 'th'
+                              ? 'สำหรับบุคลากรและสมาชิกที่ได้รับบัญชีจากผู้ดูแลโรงเรียน'
+                              : 'For staff and members with accounts provisioned by their school administrator.'}
+                          </p>
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-[11px] pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setResetEmail(email);
+                                setResetStatus(null);
+                                setShowForgotPasswordModal(true);
+                              }}
+                              className="text-[var(--color-primary-text)] hover:underline font-semibold transition cursor-pointer"
+                            >
+                              {lang === 'th' ? 'ลืมรหัสผ่าน? (ขอเปลี่ยน Password)' : 'Forgot Password?'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleResendConfirmation}
+                              disabled={isLoading || !email.trim()}
+                              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline font-medium transition cursor-pointer disabled:opacity-50"
+                            >
+                              {lang === 'th' ? 'ขอให้ Super Admin อนุมัติเปิดใช้งาน' : 'Request Super Admin approval'}
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1"
                       >
-                        {MASTER_SYSTEM_EMAIL}
-                      </a>
-                    </div>
-                  </form>
-                </div>
+                        {isLoading
+                          ? lang === 'th'
+                            ? 'กำลังดำเนินการ...'
+                            : 'Processing...'
+                          : mode === 'login'
+                            ? lang === 'th'
+                              ? 'เข้าสู่ระบบ'
+                              : 'Sign In'
+                            : lang === 'th'
+                              ? 'ยืนยันลงทะเบียนโรงเรียน'
+                              : 'Register School'}
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
 
-                {/* Card Footer Security Notice */}
-                <div className="flex items-center justify-center gap-2 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] px-6 py-3 text-[11px] text-[var(--color-text-muted)]">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary-text)] shrink-0" />
-                  <span>{lang === 'th' ? 'เชื่อมต่อฐานข้อมูลแยกสิทธิ์รายโรงเรียน (Supabase Multi-Tenant)' : 'Secured via Supabase multi-tenant isolation'}</span>
+                      <div className="pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2 flex-wrap">
+                        <span>{lang === 'th' ? 'ติดต่อผู้ดูแลระบบกลาง:' : 'Master Admin Email:'}</span>
+                        <a
+                          href={`mailto:${MASTER_SYSTEM_EMAIL}`}
+                          className="font-mono font-semibold text-[var(--color-primary-text)] hover:underline"
+                        >
+                          {MASTER_SYSTEM_EMAIL}
+                        </a>
+                      </div>
+                    </form>
+                  </div>
+
                 </div>
+                <PWAInstallButton lang={lang} variant="mobile_card" />
               </div>
             </div>
           </div>
@@ -650,156 +594,107 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         {/* ===================================================================== */}
         {/* BELOW THE FOLD: CORE CAPABILITIES OVERVIEW                            */}
         {/* ===================================================================== */}
-        <section id="platform-overview" className="border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] py-12 lg:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-10">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div className="space-y-2 max-w-2xl">
-                <p className="text-xs font-semibold text-[var(--color-primary-text)]">
-                  {lang === 'th' ? 'โครงสร้างระบบปฏิบัติการสถานศึกษา' : 'Platform Architecture'}
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--color-text-title)] text-balance">
+        <section
+          id="platform-overview"
+          className="border-t border-[var(--color-border)] bg-gradient-to-b from-[var(--color-card-subtle)] to-[var(--color-canvas)] py-10 sm:py-12 lg:py-16"
+        >
+          <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+              <div className="max-w-2xl">
+                <h2 className="text-2xl font-extrabold tracking-tight text-[var(--color-text-title)] text-balance sm:text-3xl">
                   {lang === 'th'
-                    ? 'ครบทุกงานโรงเรียน ตั้งแต่ฝ่ายวิชาการจนถึงการดูแลนักเรียน'
-                    : 'Everything your school needs from academics to student care'}
+                    ? 'เครื่องมือสำคัญของโรงเรียนในที่เดียว'
+                    : 'Essential school tools, all in one place'}
                 </h2>
               </div>
             </div>
 
-            {/* Asymmetric Bento Showcase (No Pagination Clutter) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Featured Marquee Pillar (col-span-6) */}
-              <article className="lg:col-span-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
-                <div className="relative aspect-[16/9] overflow-hidden bg-slate-900">
-                  <img
-                    src={featureLmsImage}
-                    alt={lang === 'th' ? 'ห้องเรียนออนไลน์และระบบตัดเกรดอัตโนมัติ' : 'Smart LMS & Auto Gradebook'}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                      <span>01. {lang === 'th' ? 'งานวิชาการ' : 'Academics'}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{lang === 'th' ? 'LMS & ตัดเกรดอัตโนมัติ' : 'LMS & Auto Gradebook'}</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ห้องเรียนดิจิทัล ตัดเกรด สพฐ. และออก ปพ.1 / ปพ.7' : 'Smart LMS, Automated GPA & Official Transcripts'}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-[var(--color-text-body)] leading-relaxed">
-                      {lang === 'th'
-                        ? 'บริหารรายวิชา บทเรียนออนไลน์ ตรวจการบ้าน คำนวณเกรด 0–4 และ A–F อัตโนมัติ พร้อมพิมพ์ใบรายงานผลการศึกษา ปพ.1/ปพ.7 แบบ A4 ทั้งภาษาไทยและอังกฤษ'
-                        : 'Manage courses, lessons, homework grading, automated 0-4 / A-F calculation, and printable bilingual A4 transcripts.'}
-                    </p>
-                  </div>
-                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-2 text-xs font-semibold text-[var(--color-primary-text)]">
-                    <BookOpen className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'th' ? 'รองรับนำเข้าข้อมูล DMC / School MIS และออกรหัสผู้ใช้ทันที' : 'Supports DMC / School MIS import & instant credential export'}</span>
-                  </div>
-                </div>
-              </article>
-
-              {/* Secondary Pillars (col-span-3 each) */}
-              <article className="lg:col-span-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
-                <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
-                  <img
-                    src={featureArenaImage}
-                    alt={lang === 'th' ? 'สนามประลองปัญญา 3 มิติ EduArena' : 'EduArena 3D Learning'}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="text-xs text-[var(--color-text-muted)]">
-                      02. {lang === 'th' ? 'การเรียนรู้ 3 มิติ' : '3D Learning'}
-                    </div>
-                    <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'สนามประลองปัญญา 3D EduArena' : '3D EduArena & AI Diagnostic'}
-                    </h3>
-                    <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
-                      {lang === 'th'
-                        ? 'ห้องทดลองวิทยาศาสตร์เสมือนจริง และเกมตอบคำถาม 3 มิติ ครบ 8 กลุ่มสาระการเรียนรู้'
-                        : 'Virtual STEM labs and interactive 3D quiz arenas across 8 core subject banks.'}
-                    </p>
-                  </div>
-                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                    <Gamepad2 className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'th' ? 'คลังข้อสอบ 8 สาระวิชา' : '8 Core Subject Banks'}</span>
-                  </div>
-                </div>
-              </article>
-
-              <article className="lg:col-span-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
-                <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
-                  <img
-                    src={featureClinicImage}
-                    alt={lang === 'th' ? 'ห้องพยาบาลดิจิทัลและการคัดกรอง SDQ' : 'Digital Infirmary & SDQ'}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="text-xs text-[var(--color-text-muted)]">
-                      03. {lang === 'th' ? 'ระบบดูแลนักเรียน' : 'Student Wellness'}
-                    </div>
-                    <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ห้องพยาบาลดิจิทัล & คัดกรอง SDQ' : 'Infirmary Clinic & SDQ'}
-                    </h3>
-                    <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
-                      {lang === 'th'
-                        ? 'บันทึกอาการและจ่ายยาห้องพยาบาล ประเมินพฤติกรรม SDQ 5 ด้าน และแจ้งเตือนผู้ปกครอง'
-                        : 'Infirmary visit records, 5-domain SDQ screening, behavior tracking, and parent alerts.'}
-                    </p>
-                  </div>
-                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                    <HeartPulse className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'th' ? 'แจ้งเตือนผู้ปกครองผ่าน LINE' : 'Parent LINE Notifications'}</span>
-                  </div>
-                </div>
-              </article>
-            </div>
-
-            {/* 4 Operational Highlights */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
                 {
+                  id: 'academics',
+                  icon: BookOpen,
+                  title: lang === 'th' ? 'งานวิชาการ' : 'Academics',
+                  description: lang === 'th' ? 'จัดการบทเรียนและผลการเรียน' : 'Courses, lessons, and grading',
+                },
+                {
+                  id: 'attendance',
                   icon: UserCheck,
-                  title: lang === 'th' ? 'เช็กชื่อ QR & พิกัด GPS' : 'GPS & QR Attendance',
-                  desc: lang === 'th' ? 'ป้องกันการลงชื่อแทนด้วยขอบเขตพิกัดโรงเรียนและภาพถ่าย' : 'Geofenced selfie & rapid gate QR check-in',
+                  title: lang === 'th' ? 'การเข้าเรียน' : 'Attendance',
+                  description: lang === 'th' ? 'เช็กชื่อสะดวกด้วย QR และ GPS' : 'Quick check-in with QR and GPS',
                 },
                 {
-                  icon: Calendar,
-                  title: lang === 'th' ? 'ตารางสอนไร้คาบชน' : 'Conflict-Free Timetable',
-                  desc: lang === 'th' ? 'ตรวจจับครูสอนซ้ำและห้องเรียนซ้อนอัตโนมัติทันที' : 'Automatic teacher & room conflict detection',
-                },
-                {
-                  icon: CreditCard,
-                  title: lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital Student ID',
-                  desc: lang === 'th' ? 'พกพาง่ายบนมือถือ พร้อมใบแจ้งค่าเทอมและใบเสร็จรับเงิน' : 'Mobile ID card with tuition billing & receipts',
-                },
-                {
-                  icon: FileText,
-                  title: lang === 'th' ? 'แดชบอร์ดผู้บริหาร & จอทีวี' : 'Executive & TV Monitor',
-                  desc: lang === 'th' ? 'สรุปสถิติประจำวันสำหรับผู้อำนวยการและแสดงผลขึ้นจอทีวีโรงเรียน' : 'Director analytics report & live school TV display',
+                  id: 'student-care',
+                  icon: HeartPulse,
+                  title: lang === 'th' ? 'ดูแลนักเรียน' : 'Student care',
+                  description: lang === 'th' ? 'ห้องพยาบาลและคัดกรอง SDQ' : 'Infirmary and SDQ screening',
                 },
               ].map((item) => (
-                <div
-                  key={item.title}
-                  className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-start gap-3"
+                <article
+                  key={item.id}
+                  className="group flex items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-lg dark:hover:border-indigo-500/60"
                 >
-                  <div className="p-2 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
-                    <item.icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-[var(--color-text-title)]">{item.title}</h4>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">{item.desc}</p>
-                  </div>
-                </div>
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/20 transition-transform duration-200 group-hover:scale-105">
+                    <item.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-[var(--color-text-title)]">{item.title}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-[var(--color-text-muted)]">{item.description}</span>
+                  </span>
+                </article>
               ))}
             </div>
+
+            <details className="group overflow-hidden rounded-2xl border border-indigo-100 bg-white/75 shadow-sm backdrop-blur-sm transition dark:border-slate-700 dark:bg-slate-900/60">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 sm:p-5 dark:hover:bg-white/5">
+                <span className="text-sm font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'ความสามารถเพิ่มเติม' : 'Additional capabilities'}
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                  {lang === 'th' ? 'ดูเพิ่มเติม' : 'Explore'}
+                  <ArrowRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                </span>
+              </summary>
+              <div className="border-t border-indigo-100/80 p-4 sm:p-5 dark:border-slate-700">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    {
+                      icon: Gamepad2,
+                      title: lang === 'th' ? 'สนามประลอง 3D EduArena' : '3D EduArena',
+                      desc: lang === 'th' ? 'ห้องทดลองและคลังข้อสอบ 8 กลุ่มสาระ' : 'Virtual labs and quizzes across 8 subjects',
+                    },
+                    {
+                      icon: Calendar,
+                      title: lang === 'th' ? 'ตารางสอนไร้คาบชน' : 'Conflict-Free Timetable',
+                      desc: lang === 'th' ? 'ตรวจจับครูสอนซ้ำและห้องเรียนซ้อนอัตโนมัติทันที' : 'Automatic teacher & room conflict detection',
+                    },
+                    {
+                      icon: CreditCard,
+                      title: lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital Student ID',
+                      desc: lang === 'th' ? 'พกพาง่ายบนมือถือ พร้อมใบแจ้งค่าเทอมและใบเสร็จรับเงิน' : 'Mobile ID card with tuition billing & receipts',
+                    },
+                    {
+                      icon: FileText,
+                      title: lang === 'th' ? 'แดชบอร์ดผู้บริหาร & จอทีวี' : 'Executive & TV Monitor',
+                      desc: lang === 'th' ? 'สรุปสถิติประจำวันสำหรับผู้อำนวยการและแสดงผลขึ้นจอทีวีโรงเรียน' : 'Director analytics report & live school TV display',
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.title}
+                      className="group flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 transition duration-200 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md dark:hover:border-indigo-500/60"
+                    >
+                      <div className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                        <item.icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-[var(--color-text-title)]">{item.title}</h4>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </details>
           </div>
         </section>
       </main>
@@ -812,20 +707,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <span className="font-semibold text-[var(--color-text-title)]">EduVerse Academic Operations</span>
             <span>·</span>
             <span>© 2026</span>
-          </div>
-          <div className="flex items-center gap-3 text-[11px] flex-wrap justify-center">
-            <button
-              type="button"
-              onClick={() => setShowSmtpGuideModal(true)}
-              className="text-[var(--color-primary-text)] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'คู่มือตั้งค่า Supabase SMTP' : 'Supabase SMTP Guide'}</span>
-            </button>
-            <span>·</span>
-            <span>PDPA Standard</span>
-            <span>·</span>
-            <span>PWA Offline Capable</span>
           </div>
         </div>
       </footer>
@@ -945,253 +826,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       )}
 
-      {/* Modal: Supabase SMTP & Email Confirmation Setup Guide */}
-      {showSmtpGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] p-4 shrink-0 bg-[var(--color-card-subtle)]">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'คู่มือตั้งค่า Supabase SMTP & แก้ปัญหาอีเมลยืนยัน' : 'Supabase SMTP & Email Confirmation Guide'}
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'วิธีแก้ปัญหา "Supabase ส่งอีเมลยืนยันไม่สำเร็จ"' : 'Fixing "Error sending confirmation email"'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSmtpGuideModal(false)}
-                className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex border-b border-[var(--color-border)] bg-[var(--color-card)] px-4 pt-2 gap-1 overflow-x-auto shrink-0">
-              <button
-                type="button"
-                onClick={() => setSmtpTab('gmail_smtp')}
-                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
-                  smtpTab === 'gmail_smtp'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                1. ตั้งค่า Gmail SMTP ({MASTER_SYSTEM_EMAIL})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSmtpTab('disable_confirm')}
-                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
-                  smtpTab === 'disable_confirm'
-                    ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                2. ปิด Confirm Email (ใช้งานได้ทันที)
-              </button>
-              <button
-                type="button"
-                onClick={() => setSmtpTab('sql_confirm')}
-                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
-                  smtpTab === 'sql_confirm'
-                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                3. คำสั่ง SQL ยืนยันบัญชีค้างอยู่
-              </button>
-              <button
-                type="button"
-                onClick={() => setSmtpTab('superadmin')}
-                className={`px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer whitespace-nowrap ${
-                  smtpTab === 'superadmin'
-                    ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                4. อนุมัติผ่าน Super Admin
-              </button>
-            </div>
-
-            <div className="p-5 overflow-y-auto space-y-4 text-xs text-[var(--color-text-body)] flex-1">
-              {smtpTab === 'gmail_smtp' && (
-                <div className="space-y-4">
-                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 leading-relaxed text-xs">
-                    <span className="font-bold">สาเหตุที่เกิดปัญหานี้:</span> เมลเซิร์ฟเวอร์เริ่มต้นฟรีของ Supabase มีข้อจำกัด (Rate Limit ส่งได้เพียง 3-4 ฉบับต่อชั่วโมง) เพื่อส่งอีเมลยืนยันการสมัครและรีเซ็ตรหัสผ่านได้ไม่จำกัด แนะนำให้ตั้งค่า <strong>Gmail SMTP</strong> ด้วยอีเมล <strong>{MASTER_SYSTEM_EMAIL}</strong>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h4 className="font-bold text-sm text-[var(--color-text-title)] flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[11px]">1</span>
-                      <span>ขั้นตอนที่ 1: สร้าง Google App Password (รหัสผ่านสำหรับแอป)</span>
-                    </h4>
-                    <ol className="list-decimal list-inside space-y-1.5 pl-2 leading-relaxed text-[11px] text-[var(--color-text-body)]">
-                      <li>เข้าสู่บัญชี Google ที่ <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">myaccount.google.com/security <ExternalLink className="w-3 h-3" /></a></li>
-                      <li>เปิดใช้งาน <strong>การยืนยันแบบ 2 ขั้นตอน (2-Step Verification)</strong> ให้เรียบร้อย</li>
-                      <li>พิมพ์ค้นหาที่ช่องค้นหาด้านบนว่า <strong>&quot;App passwords&quot;</strong> หรือ <strong>&quot;รหัสผ่านสำหรับแอป&quot;</strong></li>
-                      <li>ตั้งชื่อแอป เช่น <code>EduVerse Supabase</code> แล้วกดปุ่ม <strong>สร้าง (Create)</strong></li>
-                      <li>คัดลอกรหัสผ่าน 16 ตัวอักษร (เช่น <code>abcd efgh ijkl mnop</code>)</li>
-                    </ol>
-                  </div>
-
-                  <div className="space-y-3 pt-2 border-t border-[var(--color-border)]">
-                    <h4 className="font-bold text-sm text-[var(--color-text-title)] flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[11px]">2</span>
-                      <span>ขั้นตอนที่ 2: นำค่าไปใส่ใน Supabase Dashboard</span>
-                    </h4>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      ไปที่ <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">Supabase Dashboard <ExternalLink className="w-3 h-3" /></a> → เลือกโปรเจกต์ → เมนู <strong>Authentication</strong> → <strong>Emails</strong> → แท็บ <strong>SMTP Settings</strong> → เปิด <strong>Enable Custom SMTP</strong> แล้วกรอกค่าเหล่านี้:
-                    </p>
-
-                    <div className="rounded-xl border border-[var(--color-border)] overflow-hidden divide-y divide-[var(--color-border)] font-mono text-[11px]">
-                      {[
-                        { label: 'Sender email', value: MASTER_SYSTEM_EMAIL },
-                        { label: 'Sender name', value: 'EduVerse Academic Operations' },
-                        { label: 'Host', value: 'smtp.gmail.com' },
-                        { label: 'Port', value: '465' },
-                        { label: 'Username', value: MASTER_SYSTEM_EMAIL },
-                        { label: 'Password', value: '[รหัสผ่าน App Password 16 ตัวที่ได้จาก Google]' },
-                      ].map((item) => (
-                        <div key={item.label} className="p-2.5 flex items-center justify-between gap-2 bg-[var(--color-card-subtle)]">
-                          <span className="text-[var(--color-text-muted)] font-sans font-medium w-28 shrink-0">{item.label}:</span>
-                          <span className="text-[var(--color-text-title)] font-bold truncate flex-1">{item.value}</span>
-                          {item.value !== '[รหัสผ่าน App Password 16 ตัวที่ได้จาก Google]' && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopySnippet(item.value, item.label)}
-                              className="px-2 py-1 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[10px] font-sans font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer flex items-center gap-1 shrink-0"
-                            >
-                              {copiedSnippet === item.label ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                              <span>{copiedSnippet === item.label ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
-                      ✓ เมื่อกรอกครบแล้ว กดปุ่ม <strong>Save changes</strong> ที่ด้านล่าง จากนั้นลองกดปุ่มส่งลิงก์ยืนยันใน EduVerse อีกครั้งได้ทันที
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {smtpTab === 'disable_confirm' && (
-                <div className="space-y-4">
-                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 leading-relaxed text-xs">
-                    <span className="font-bold">วิธีที่เร็วที่สุด (ไม่ต้องใช้ SMTP):</span> หากต้องการให้ผู้ใช้สมัครสมาชิกแล้วล็อกอินใช้งานได้ทันทีโดยไม่ต้องรอยืนยันอีเมล ให้ปิดฟังก์ชัน <strong>Confirm email</strong> ใน Supabase
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <h4 className="font-bold text-sm text-[var(--color-text-title)]">ขั้นตอนการปิด Confirm email ใน Supabase Dashboard:</h4>
-                    <ol className="list-decimal list-inside space-y-2 pl-2 text-xs leading-relaxed">
-                      <li>เข้าสู่ <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold inline-flex items-center gap-0.5">Supabase Dashboard <ExternalLink className="w-3 h-3" /></a> แล้วเลือกโปรเจกต์ของคุณ</li>
-                      <li>ในแถบเมนูด้านซ้าย คลิกที่ไอคอน <strong>Authentication</strong></li>
-                      <li>เลือกเมนูย่อย <strong>Providers</strong> แล้วคลิกที่แถบ <strong>Email</strong></li>
-                      <li>เลื่อนลงมาที่ตัวเลือก <strong>&quot;Confirm email&quot;</strong></li>
-                      <li><strong>คลิกสวิตช์เป็น ปิด (Disable / Turn Off)</strong></li>
-                      <li>คลิกปุ่มสีเขียว <strong>&quot;Save&quot;</strong> ที่มุมขวาล่าง</li>
-                    </ol>
-                  </div>
-                </div>
-              )}
-
-              {smtpTab === 'sql_confirm' && (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 text-xs leading-relaxed">
-                    หากคุณได้ทำการสมัครบัญชีไปแล้ว แต่อีเมลยังไม่ได้รับการยืนยัน สามารถรันคำสั่ง SQL นี้ใน <strong>Supabase SQL Editor</strong> เพื่อยืนยันบัญชีและเปิดใช้งานโรงเรียนได้ทันที
-                  </div>
-
-                  <div className="relative">
-                    <div className="flex items-center justify-between pb-1.5 text-[11px] font-semibold text-[var(--color-text-muted)]">
-                      <span>SQL Script (รันใน Supabase → SQL Editor):</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleCopySnippet(
-                            `-- 1. ยืนยันอีเมลบัญชีที่สมัครไว้ทั้งหมดทันที
-UPDATE auth.users 
-SET email_confirmed_at = NOW() 
-WHERE email_confirmed_at IS NULL;
-
--- 2. เปิดใช้งานโปรไฟล์บัญชีผู้ใช้
-UPDATE public.user_profiles 
-SET status = 'active' 
-WHERE status = 'pending';
-
--- 3. เปิดใช้งานโรงเรียนที่สมัครใหม่
-UPDATE public.schools 
-SET status = 'active' 
-WHERE status = 'pending';`,
-                            'sql_all'
-                          )
-                        }
-                        className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] flex items-center gap-1 transition cursor-pointer"
-                      >
-                        {copiedSnippet === 'sql_all' ? <Check className="w-3 h-3 text-emerald-200" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedSnippet === 'sql_all' ? 'คัดลอกโค้ดแล้ว' : 'คัดลอกโค้ด SQL ทั้งหมด'}</span>
-                      </button>
-                    </div>
-
-                    <pre className="p-3 rounded-xl bg-slate-900 text-emerald-300 font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
-{`-- 1. ยืนยันอีเมลบัญชีที่สมัครไว้ทั้งหมดทันที
-UPDATE auth.users 
-SET email_confirmed_at = NOW() 
-WHERE email_confirmed_at IS NULL;
-
--- 2. เปิดใช้งานโปรไฟล์บัญชีผู้ใช้
-UPDATE public.user_profiles 
-SET status = 'active' 
-WHERE status = 'pending';
-
--- 3. เปิดใช้งานโรงเรียนที่สมัครใหม่
-UPDATE public.schools 
-SET status = 'active' 
-WHERE status = 'pending';`}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {smtpTab === 'superadmin' && (
-                <div className="space-y-3">
-                  <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs leading-relaxed">
-                    <span className="font-bold">อนุมัติด้วยตนเองผ่านระบบ (Manual Super Admin Approval):</span> Super Admin สามารถเข้าสู่ระบบและกดอนุมัติการสมัครโรงเรียนได้โดยตรง แม้ว่าอีเมลจะยังไม่ได้รับการยืนยันก็ตาม
-                  </div>
-
-                  <ol className="list-decimal list-inside space-y-2 pl-2 text-xs leading-relaxed">
-                    <li>เข้าสู่ระบบด้วยบัญชี Super Admin: <span className="font-mono font-bold text-purple-700 dark:text-purple-300">{MASTER_SYSTEM_EMAIL}</span></li>
-                    <li>ไปที่เมนู <strong>ศูนย์ควบคุมระบบ (Super Admin Console)</strong></li>
-                    <li>เลือกแท็บ <strong>&quot;อนุมัติการสมัครโรงเรียน&quot; (School Approvals)</strong></li>
-                    <li>จะพบรายการโรงเรียนที่สมัครค้างอยู่ คลิกปุ่ม <strong>&quot;อนุมัติ&quot;</strong></li>
-                    <li>ระบบจะทำการยืนยันอีเมลและเปิดใช้งานโรงเรียนให้โดยอัตโนมัติทันที</li>
-                  </ol>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-[var(--color-border)] p-4 bg-[var(--color-card-subtle)] flex items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
-                <Mail className="w-3.5 h-3.5 text-blue-600" />
-                <span>Master Contact: <strong>{MASTER_SYSTEM_EMAIL}</strong></span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSmtpGuideModal(false)}
-                className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-xs font-bold text-white transition cursor-pointer"
-              >
-                {lang === 'th' ? 'เข้าใจแล้ว / ปิดหน้าต่าง' : 'Got it / Close'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
