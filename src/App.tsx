@@ -77,7 +77,18 @@ import {
 } from './lib/authDb';
 import type { AuthContext, StoredImportedCredential } from './lib/authDb';
 import { fetchCoordinationMessages } from './lib/coordinationDesk';
-import { loadSchoolData, saveSchoolCampusGates, saveSchoolGpsCoordinates, saveSchoolPeriodTimes, syncDataToSupabase, SUPABASE_PATCH_MIGRATION_SQL } from './lib/supabase';
+import { 
+  loadSchoolData, 
+  saveSchoolCampusGates, 
+  saveSchoolGpsCoordinates, 
+  saveSchoolPeriodTimes, 
+  syncDataToSupabase, 
+  SUPABASE_PATCH_MIGRATION_SQL,
+  deleteStudentFromDb,
+  deleteTeacherFromDb,
+  saveTimetableSlotsToDb,
+  deleteTimetableSlotFromDb
+} from './lib/supabase';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
@@ -834,14 +845,31 @@ export const App: React.FC = () => {
         if (currentUser.role === 'super_admin') {
           skipNextSuperAdminSyncRef.current = true;
         }
-        setStudents(data.students);
-        setTeachers(data.teachers);
+        let resolvedStudents = data.students;
+        let resolvedTeachers = data.teachers;
+        if (typeof window !== 'undefined') {
+          try {
+            const deletedStudentIds: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
+            const deletedTeacherIds: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
+            if (deletedStudentIds.length > 0) {
+              resolvedStudents = resolvedStudents.filter(s => !deletedStudentIds.includes(s.id));
+            }
+            if (deletedTeacherIds.length > 0) {
+              resolvedTeachers = resolvedTeachers.filter(t => !deletedTeacherIds.includes(t.id));
+            }
+          } catch (e) {
+            console.warn('Could not parse deleted IDs from localStorage:', e);
+          }
+        }
+        setStudents(resolvedStudents);
+        setTeachers(resolvedTeachers);
         setCourses(data.courses);
         setGrades(data.grades);
         setAttendance(data.attendance);
         setInvoices(data.invoices);
         setAnnouncements(data.announcements);
         setSchoolPeriods(data.schoolPeriods);
+        setTimetableSlots(data.timetableSlots || []);
         if (data.campusGates.length > 0) {
           setCampusGates(data.campusGates);
           try {
@@ -856,7 +884,6 @@ export const App: React.FC = () => {
         setQuestions(prev => prev.filter(q => q.schoolId === activeSchool.id));
         setPeriodAttendance(prev => prev.filter(p => p.schoolId === activeSchool.id));
         setPortfolioItems(prev => prev.filter(p => p.schoolId === activeSchool.id));
-        setTimetableSlots(prev => prev.filter(t => t.schoolId === activeSchool.id));
         setBehaviorRecords(prev => prev.filter(b => b.schoolId === activeSchool.id));
         setSdqAssessments(prev => prev.filter(s => s.schoolId === activeSchool.id));
         setInfirmaryVisits(prev => prev.filter(i => i.schoolId === activeSchool.id));
@@ -941,7 +968,45 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteStudent = (studentId: string) => {
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    setStudents((prev) => {
+      const next = prev.filter((s) => s.id !== studentId);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
+          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
+          if (!deleted.includes(studentId)) {
+            deleted.push(studentId);
+            localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
+          }
+        } catch (e) {
+          console.warn('Could not update deleted student in localStorage:', e);
+        }
+      }
+      return next;
+    });
+    deleteStudentFromDb(activeSchool.id, studentId);
+  };
+
+  const handlePurgeSampleStudents = () => {
+    if (!confirm('ยืนยันล้างข้อมูลนักเรียนตัวอย่างทั้งหมด (Sample Students) ออกจากโรงเรียนนี้หรือไม่? ข้อมูลจริงที่สร้างใหม่จะไม่ได้รับผลกระทบ')) return;
+    setStudents((prev) => {
+      const samples = prev.filter(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock'));
+      samples.forEach(s => deleteStudentFromDb(activeSchool.id, s.id));
+      const next = prev.filter(s => !s.id.startsWith('std-0') && !s.id.startsWith('std-demo') && !s.id.startsWith('std-mock'));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
+          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
+          samples.forEach(s => {
+            if (!deleted.includes(s.id)) deleted.push(s.id);
+          });
+          localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
+        } catch (e) {
+          console.warn('Could not cache purged student IDs:', e);
+        }
+      }
+      return next;
+    });
   };
 
   const handleToggleLineSync = (studentId: string) => {
@@ -971,7 +1036,45 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
-    setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+    setTeachers((prev) => {
+      const next = prev.filter((t) => t.id !== teacherId);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
+          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
+          if (!deleted.includes(teacherId)) {
+            deleted.push(teacherId);
+            localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify(deleted));
+          }
+        } catch (e) {
+          console.warn('Could not update deleted teacher in localStorage:', e);
+        }
+      }
+      return next;
+    });
+    deleteTeacherFromDb(activeSchool.id, teacherId);
+  };
+
+  const handlePurgeSampleTeachers = () => {
+    if (!confirm('ยืนยันล้างข้อมูลครูตัวอย่างทั้งหมด (Sample Teachers) ออกจากโรงเรียนนี้หรือไม่? ข้อมูลจริงที่สร้างใหม่จะไม่ได้รับผลกระทบ')) return;
+    setTeachers((prev) => {
+      const samples = prev.filter(t => t.id.startsWith('tch-0') || t.id.startsWith('tch-demo') || t.id.startsWith('tch-mock'));
+      samples.forEach(t => deleteTeacherFromDb(activeSchool.id, t.id));
+      const next = prev.filter(t => !t.id.startsWith('tch-0') && !t.id.startsWith('tch-demo') && !t.id.startsWith('tch-mock'));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
+          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
+          samples.forEach(t => {
+            if (!deleted.includes(t.id)) deleted.push(t.id);
+          });
+          localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify(deleted));
+        } catch (e) {
+          console.warn('Could not cache purged teacher IDs:', e);
+        }
+      }
+      return next;
+    });
   };
 
   const handleImportStudents = (newStudents: Student[]) => {
@@ -1583,19 +1686,24 @@ export const App: React.FC = () => {
     }
   };
 
-  const handlePurchaseCentralPack = async (pack: CentralExamPack, method: 'promptpay' | 'invoice') => {
+  const handlePurchaseCentralPack = async (
+    pack: CentralExamPack,
+    method: 'promptpay' | 'invoice',
+    slipUrl?: string
+  ) => {
     const res = await claimCentralExamPack({
       schoolId: activeSchool.id,
       pack,
       paymentMethod: method,
       claimedBy: currentUser?.fullNameTh || currentUser?.email || 'School Admin',
       isDemoMode,
+      slipUrl,
     });
     setSchoolExamEntitlements(res.allEntitlements);
     handleImportQuestions(res.addedQuestions);
     sendEduVerseNotification({
-      title: `สั่งซื้อข้อสอบกลางสำเร็จ: ${pack.titleTh}`,
-      body: `ปลดล็อก ${res.addedQuestions.length} ข้อเข้าคลังโรงเรียน (${method === 'promptpay' ? 'PromptPay' : 'ใบแจ้งหนี้โรงเรียน'} ฿${pack.priceThb.toLocaleString()})`,
+      title: `⚡ ปลดล็อกข้อสอบกลางทันที: ${pack.titleTh}`,
+      body: `ปลดล็อก ${res.addedQuestions.length} ข้อเข้าคลังโรงเรียนแล้ว (แนบสลิป 100% รอตรวจสอบย้อนหลัง)`,
       category: 'billing',
     });
   };
@@ -1699,11 +1807,21 @@ export const App: React.FC = () => {
   };
 
   const handleAddTimetableSlot = (slot: TimetableSlot) => {
-    setTimetableSlots((prev) => [{ ...slot, schoolId: activeSchool.id }, ...prev]);
+    const fullSlot: TimetableSlot = { ...slot, schoolId: activeSchool.id };
+    setTimetableSlots((prev) => {
+      const next = [fullSlot, ...prev];
+      saveTimetableSlotsToDb(activeSchool.id, next);
+      return next;
+    });
   };
 
   const handleDeleteTimetableSlot = (slotId: string) => {
-    setTimetableSlots((prev) => prev.filter(s => s.id !== slotId));
+    setTimetableSlots((prev) => {
+      const next = prev.filter(s => s.id !== slotId);
+      saveTimetableSlotsToDb(activeSchool.id, next);
+      return next;
+    });
+    deleteTimetableSlotFromDb(activeSchool.id, slotId);
   };
 
   const handleSaveSchoolPeriods = async (periods: SchoolPeriodTime[]) => {
@@ -1814,6 +1932,11 @@ export const App: React.FC = () => {
           students={schoolStudents}
           teachers={schoolTeachers}
           courses={schoolCourses}
+          grades={schoolGrades}
+          invoices={schoolInvoices}
+          infirmaryVisits={infirmaryVisits}
+          behaviorRecords={behaviorRecords}
+          sdqAssessments={sdqAssessments}
           attendance={schoolAttendance}
           periodAttendance={schoolPeriodAttendance}
           leaveRequests={leaveRequests}
@@ -2334,6 +2457,7 @@ export const App: React.FC = () => {
                     onAddStudent={handleAddStudent}
                     onUpdateStudent={handleUpdateStudent}
                     onDeleteStudent={handleDeleteStudent}
+                    onPurgeSampleStudents={handlePurgeSampleStudents}
                     onBatchUpdateStudents={(updatedList) => {
                       const updateMap = new Map(updatedList.map((s) => [s.id, s]));
                       setStudents((prev) => prev.map((s) => updateMap.get(s.id) || s));
@@ -2350,6 +2474,7 @@ export const App: React.FC = () => {
                     onAddTeacher={handleAddTeacher}
                     onUpdateTeacher={handleUpdateTeacher}
                     onDeleteTeacher={handleDeleteTeacher}
+                    onPurgeSampleTeachers={handlePurgeSampleTeachers}
                     onOpenImportExport={() => setShowImportExportModal(true)}
                   />
                 )}
@@ -2358,6 +2483,7 @@ export const App: React.FC = () => {
                   <CoursesView
                     courses={schoolCourses}
                     students={schoolStudents}
+                    currentRole={currentRole}
                     onAddCourse={handleAddCourse}
                     onUpdateCourse={handleUpdateCourse}
                     onDeleteCourse={handleDeleteCourse}

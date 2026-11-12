@@ -72,6 +72,7 @@ interface TeachersViewProps {
   onAddTeacher: (teacher: Teacher) => void;
   onUpdateTeacher: (teacher: Teacher) => void;
   onDeleteTeacher: (teacherId: string) => void;
+  onPurgeSampleTeachers?: () => void;
   onOpenImportExport?: () => void;
 }
 
@@ -82,6 +83,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   onAddTeacher,
   onUpdateTeacher,
   onDeleteTeacher,
+  onPurgeSampleTeachers,
   onOpenImportExport,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -415,6 +417,18 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
             >
               นำเข้า/ส่งออก Excel
+            </button>
+          )}
+
+          {onPurgeSampleTeachers && canManage && teachers.some(t => t.id.startsWith('tch-0') || t.id.startsWith('tch-demo') || t.id.startsWith('tch-mock')) && (
+            <button
+              type="button"
+              onClick={onPurgeSampleTeachers}
+              className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-semibold text-rose-800 dark:text-rose-200 transition flex items-center gap-1.5 cursor-pointer"
+              title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>ล้างข้อมูลตัวอย่าง</span>
             </button>
           )}
 

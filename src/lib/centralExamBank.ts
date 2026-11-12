@@ -287,6 +287,14 @@ interface DbEntitlementRow {
   payment_method: 'free' | 'promptpay' | 'invoice';
   claimed_by: string;
   claimed_at: string;
+  slip_url?: string | null;
+  slip_attached_at?: string | null;
+  audit_status?: 'pending_audit' | 'verified' | 'revoked' | null;
+  verified_at?: string | null;
+  verified_by?: string | null;
+  revoked_at?: string | null;
+  revoked_by?: string | null;
+  revocation_reason?: string | null;
 }
 
 export async function fetchSchoolExamEntitlements(
@@ -321,6 +329,14 @@ export async function fetchSchoolExamEntitlements(
       paymentMethod: row.payment_method,
       claimedBy: row.claimed_by,
       claimedAt: row.claimed_at,
+      slipUrl: row.slip_url || undefined,
+      slipAttachedAt: row.slip_attached_at || undefined,
+      auditStatus: row.audit_status || undefined,
+      verifiedAt: row.verified_at || undefined,
+      verifiedBy: row.verified_by || undefined,
+      revokedAt: row.revoked_at || undefined,
+      revokedBy: row.revoked_by || undefined,
+      revocationReason: row.revocation_reason || undefined,
     }));
 
     // Merge local fallback items that may not be synced yet
@@ -461,14 +477,20 @@ export async function claimCentralExamPack(params: {
   paymentMethod: 'free' | 'promptpay' | 'invoice';
   claimedBy: string;
   isDemoMode: boolean;
+  slipUrl?: string;
 }): Promise<{
   entitlement: SchoolExamEntitlement;
   addedQuestions: QuizQuestion[];
   allEntitlements: SchoolExamEntitlement[];
 }> {
-  const { schoolId, pack, paymentMethod, claimedBy, isDemoMode } = params;
+  const { schoolId, pack, paymentMethod, claimedBy, isDemoMode, slipUrl } = params;
   const now = new Date().toISOString();
   const isPaid = pack.pricingType === 'paid' && pack.priceThb > 0;
+
+  // บังคับแนบสลิป 100% สำหรับการสั่งซื้อ
+  if (isPaid && !slipUrl) {
+    throw new Error('กรุณาแนบภาพสลิปหลักฐานการโอนเงิน 100% (ตามโมเดลที่ 2 ปลดล็อกทันทีและตรวจสอบสลิปย้อนหลัง)');
+  }
 
   const entitlement: SchoolExamEntitlement = {
     id: `ent-${schoolId}-${pack.id}`,
@@ -479,12 +501,16 @@ export async function claimCentralExamPack(params: {
     paymentMethod: isPaid ? (paymentMethod === 'free' ? 'promptpay' : paymentMethod) : 'free',
     claimedBy,
     claimedAt: now,
+    slipUrl: slipUrl || undefined,
+    slipAttachedAt: slipUrl ? now : undefined,
+    auditStatus: isPaid ? 'pending_audit' : 'verified',
   };
 
   const currentEntitlements = readLocalEntitlements(schoolId).filter((e) => e.packId !== pack.id);
   const nextEntitlements = [entitlement, ...currentEntitlements];
   writeLocalEntitlements(schoolId, nextEntitlements);
 
+  // ปลดล็อกข้อสอบให้โรงเรียนใช้สอนได้ทันที (Instant Access with Audit)
   const taggedQuestions: QuizQuestion[] = pack.questions.map((q, index) => ({
     ...q,
     id: `${schoolId}-${pack.id}-${q.id || index}`,
@@ -510,6 +536,9 @@ export async function claimCentralExamPack(params: {
             payment_method: entitlement.paymentMethod,
             claimed_by: claimedBy,
             claimed_at: now,
+            slip_url: entitlement.slipUrl || null,
+            slip_attached_at: entitlement.slipAttachedAt || null,
+            audit_status: entitlement.auditStatus || 'verified',
           },
           { onConflict: 'school_id,pack_id' }
         )
@@ -525,12 +554,125 @@ export async function claimCentralExamPack(params: {
   };
 }
 
+export async function verifyExamEntitlement(
+  schoolId: string,
+  packId: string,
+  verifiedBy: string
+): Promise<SchoolExamEntitlement | null> {
+  const entitlements = readLocalEntitlements(schoolId);
+  const targetIndex = entitlements.findIndex((e) => e.packId === packId);
+  if (targetIndex === -1) return null;
+
+  const now = new Date().toISOString();
+  const updated: SchoolExamEntitlement = {
+    ...entitlements[targetIndex],
+    auditStatus: 'verified',
+    verifiedAt: now,
+    verifiedBy,
+  };
+  entitlements[targetIndex] = updated;
+  writeLocalEntitlements(schoolId, entitlements);
+
+  const client = getSupabaseClient();
+  if (client) {
+    await client
+      .from('school_exam_entitlements')
+      .update({
+        audit_status: 'verified',
+        verified_at: now,
+        verified_by: verifiedBy,
+      })
+      .eq('school_id', schoolId)
+      .eq('pack_id', packId)
+      .then(() => undefined, () => undefined);
+  }
+
+  dispatchCentralExamsUpdated();
+  return updated;
+}
+
+export async function revokeExamEntitlement(
+  schoolId: string,
+  packId: string,
+  revokedBy: string,
+  reason: string
+): Promise<SchoolExamEntitlement | null> {
+  const entitlements = readLocalEntitlements(schoolId);
+  const targetIndex = entitlements.findIndex((e) => e.packId === packId);
+  if (targetIndex === -1) return null;
+
+  const now = new Date().toISOString();
+  const updated: SchoolExamEntitlement = {
+    ...entitlements[targetIndex],
+    auditStatus: 'revoked',
+    revokedAt: now,
+    revokedBy,
+    revocationReason: reason,
+  };
+  entitlements[targetIndex] = updated;
+  writeLocalEntitlements(schoolId, entitlements);
+
+  // ดึงข้อสอบกลับทันที: ลบข้อสอบที่ได้จาก pack นี้ออกจากคลังของโรงเรียน
+  const currentQuestions = readLocalSchoolQuestions(schoolId);
+  const remainingQuestions = currentQuestions.filter((q) => q.packId !== packId);
+  writeLocalSchoolQuestions(schoolId, remainingQuestions);
+
+  const client = getSupabaseClient();
+  if (client) {
+    await client
+      .from('school_exam_entitlements')
+      .update({
+        audit_status: 'revoked',
+        revoked_at: now,
+        revoked_by: revokedBy,
+        revocation_reason: reason,
+      })
+      .eq('school_id', schoolId)
+      .eq('pack_id', packId)
+      .then(() => undefined, () => undefined);
+
+    await client
+      .from('school_questions')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('pack_id', packId)
+      .then(() => undefined, () => undefined);
+  }
+
+  dispatchCentralExamsUpdated();
+  return updated;
+}
+
+export function fetchAllAuditEntitlements(): SchoolExamEntitlement[] {
+  if (typeof window === 'undefined') return [];
+  const results: SchoolExamEntitlement[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('eduverse_entitlements_')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw) as SchoolExamEntitlement[];
+          if (Array.isArray(parsed)) {
+            results.push(...parsed);
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return results.sort((a, b) => new Date(b.claimedAt).getTime() - new Date(a.claimedAt).getTime());
+}
+
 export function getUnclaimedPublishedPacks(
   packs: CentralExamPack[],
   entitlements: SchoolExamEntitlement[]
 ): CentralExamPack[] {
-  const claimedIds = new Set(entitlements.map((e) => e.packId));
-  return packs.filter((p) => p.status === 'published' && !claimedIds.has(p.id));
+  const activeClaimedIds = new Set(
+    entitlements.filter((e) => e.auditStatus !== 'revoked').map((e) => e.packId)
+  );
+  return packs.filter((p) => p.status === 'published' && !activeClaimedIds.has(p.id));
 }
 
 export function buildCentralExamSignature(unclaimedPacks: CentralExamPack[]): string {

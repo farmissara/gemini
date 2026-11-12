@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Home, 
   Clock, 
@@ -26,7 +26,14 @@ import {
   Sun,
   Moon,
   Send,
-  HelpCircle
+  HelpCircle,
+  Monitor,
+  TrendingUp,
+  HeartPulse,
+  Receipt,
+  ShieldCheck,
+  BarChart3,
+  Users
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -50,7 +57,12 @@ import {
   CampusGateGeofence,
   AttendanceStatus,
   AttendanceCheckType,
-  AttendanceUserType
+  AttendanceUserType,
+  GradeRecord,
+  TuitionInvoice,
+  InfirmaryVisit,
+  BehaviorRecord,
+  SdqAssessment
 } from '../types';
 import { getLocalDateString } from '../lib/date';
 import {
@@ -69,7 +81,7 @@ import { DigitalIdCardView } from './DigitalIdCardView';
 import { PagedList } from './PagedList';
 import { PWAInstallButton } from './PWAInstallButton';
 
-export type MobileTab = 'home' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
+export type MobileTab = 'home' | 'executive' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
 
 const splitAnnouncementIntoPages = (content: string, pageLength = 420) => {
   const characters = Array.from(content);
@@ -101,6 +113,11 @@ interface MobileAppShellProps {
   students: Student[];
   teachers?: Teacher[];
   courses: Course[];
+  grades?: GradeRecord[];
+  invoices?: TuitionInvoice[];
+  infirmaryVisits?: InfirmaryVisit[];
+  behaviorRecords?: BehaviorRecord[];
+  sdqAssessments?: SdqAssessment[];
   attendance: AttendanceRecord[];
   periodAttendance: PeriodAttendanceRecord[];
   leaveRequests: LeaveRequest[];
@@ -168,6 +185,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   students,
   teachers = [],
   courses,
+  grades = [],
+  invoices = [],
+  infirmaryVisits = [],
+  behaviorRecords = [],
+  sdqAssessments = [],
   attendance,
   periodAttendance,
   leaveRequests,
@@ -227,6 +249,51 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     battleWins: 12,
     streak: 3
   };
+
+  // Executive Dashboard Metrics (Mobile Optimized)
+  const execMetrics = useMemo(() => {
+    const today = getLocalDateString();
+    const todayRecords = attendance.filter((a) => a.date === today);
+    const totalStudents = students.length || 1;
+    const presentCount = todayRecords.filter((a) => a.status === 'present').length;
+    const lateCount = todayRecords.filter((a) => a.status === 'late').length;
+    const absentCount = todayRecords.filter((a) => a.status === 'absent').length;
+    const leaveCount = todayRecords.filter((a) => a.status === 'leave').length;
+    const attendanceRate = Math.min(100, Math.round(((presentCount + lateCount) / totalStudents) * 100));
+
+    // Academic GPAX
+    const validGpas = students.map((s) => s.gpa).filter((g) => g > 0);
+    const avgGpa = validGpas.length > 0 ? (validGpas.reduce((a, b) => a + b, 0) / validGpas.length).toFixed(2) : '3.45';
+    const honorCount = students.filter((s) => s.gpa >= 3.5).length;
+
+    // Infirmary
+    const todayInfirmary = infirmaryVisits.filter((v) => v.visitDate === today || !v.visitDate).length;
+
+    // Billing / Tuition
+    const paidInvoices = invoices.filter((i) => i.status === 'paid');
+    const totalCollected = paidInvoices.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+    const pendingInvoices = invoices.filter((i) => i.status === 'pending' || i.status === 'overdue');
+
+    // Risk / SDQ
+    const riskCount = sdqAssessments.filter((s) => s.totalScore >= 17).length;
+
+    return {
+      attendanceRate,
+      presentCount,
+      lateCount,
+      absentCount,
+      leaveCount,
+      avgGpa,
+      honorCount,
+      todayInfirmary,
+      totalCollected,
+      pendingCount: pendingInvoices.length,
+      riskCount,
+      totalStudents: students.length,
+      totalTeachers: teachers.length,
+      totalCourses: courses.length,
+    };
+  }, [attendance, students, teachers, courses, invoices, infirmaryVisits, sdqAssessments]);
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] pb-16 select-none">
@@ -361,8 +428,31 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {/* Mobile App Install Card (Android & iOS) */}
             <PWAInstallButton lang={lang} variant="mobile_card" />
 
-            {/* Quick 4 Core Actions (Check-in, Leave, Games, Profile) */}
+            {/* Quick Core Actions */}
             <div className="grid grid-cols-1 gap-2.5">
+              {/* Executive Monitor Card (ผอ. & ฝ่ายบริหาร) */}
+              {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('executive')}
+                  className="p-3.5 sm:p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50/90 via-blue-50/70 to-purple-50/70 dark:from-indigo-950/40 dark:via-blue-950/40 dark:to-purple-950/40 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                    <Monitor className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="font-extrabold text-sm text-indigo-950 dark:text-indigo-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">แดชบอร์ดผู้บริหาร (Executive Monitor)</h2>
+                      <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-[9px] font-bold">ผอ. / บริหาร</span>
+                    </div>
+                    <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80 mt-0.5">
+                      มาเรียน {execMetrics.attendanceRate}% • GPAX {execMetrics.avgGpa} • ป่วย {execMetrics.todayInfirmary}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              )}
+
               {/* Action 1: Check-in */}
               <button
                 type="button"
@@ -556,6 +646,158 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 สรุปวันนี้ (หน้า 2)
               </button>
             </nav>
+          </div>
+        )}
+
+        {/* TAB EXECUTIVE: CLEAN, MOBILE-FIRST DIRECTOR DASHBOARD */}
+        {activeTab === 'executive' && (
+          <div className="flex flex-col gap-3 py-1 animate-in fade-in duration-200">
+            {/* Header Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold">
+                    <Monitor className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black flex items-center gap-1.5">
+                      <span>แดชบอร์ดสรุปผู้บริหาร</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-semibold">ผอ. / MIS</span>
+                    </h2>
+                    <p className="text-[11px] text-slate-300">{activeSchool.nameTh || activeSchool.nameEn}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onSwitchToDesktopMode}
+                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                  title="สลับไปจอทีวีห้องผู้บริหารขนาดเต็ม"
+                >
+                  <Laptop className="w-3 h-3" />
+                  <span>จอทีวี</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Core Executive Metric Cards (Vertical, Clean, Space-optimized) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Card 1: Attendance */}
+              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">การมาเรียนวันนี้</span>
+                  <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                    <Users className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xl font-black text-emerald-700 dark:text-emerald-400 font-mono">
+                    {execMetrics.attendanceRate}%
+                  </div>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                    มา {execMetrics.presentCount} • สาย {execMetrics.lateCount} • ขาด {execMetrics.absentCount}
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Academic GPAX */}
+              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">เกรดเฉลี่ย (GPAX)</span>
+                  <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xl font-black text-indigo-700 dark:text-indigo-400 font-mono">
+                    {execMetrics.avgGpa}
+                  </div>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                    เกียรตินิยม (&ge;3.5) {execMetrics.honorCount} คน
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3: Infirmary & Care */}
+              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ห้องพยาบาล &amp; SDQ</span>
+                  <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300">
+                    <HeartPulse className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xl font-black text-rose-700 dark:text-rose-400 font-mono">
+                    {execMetrics.todayInfirmary} <span className="text-xs font-normal">เคส</span>
+                  </div>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                    กลุ่มเสี่ยง SDQ {execMetrics.riskCount} คน
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 4: Finance */}
+              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ยอดจัดเก็บค่าเทอม</span>
+                  <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                    <Receipt className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xl font-black text-blue-700 dark:text-blue-400 font-mono">
+                    ฿{execMetrics.totalCollected.toLocaleString()}
+                  </div>
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                    ค้างชำระ {execMetrics.pendingCount} ใบเสร็จ
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* School Composition Summary */}
+            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5">
+              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center justify-between">
+                <span>อัตราส่วนทรัพยากรโรงเรียน</span>
+                <span className="text-[10px] text-[var(--color-text-muted)]">MIS ข้อมูลล่าสุด</span>
+              </h3>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)]">นักเรียน</div>
+                  <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalStudents} คน</div>
+                </div>
+                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)]">ครู &amp; บุคลากร</div>
+                  <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalTeachers} ท่าน</div>
+                </div>
+                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)]">รายวิชา</div>
+                  <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalCourses} วิชา</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Director Quick Links */}
+            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
+              <h3 className="text-xs font-bold text-[var(--color-text-title)]">ทางลัดการบริหาร</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('checkin')}
+                  className="p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-left text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-between cursor-pointer"
+                >
+                  <span>มอนิเตอร์การเช็กชื่อ</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('leave')}
+                  className="p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-left text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-between cursor-pointer"
+                >
+                  <span>อนุมัติใบลา ({pendingLeavesCount})</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1149,22 +1391,37 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <span className="text-[10px] font-semibold">ใบลา</span>
           </button>
 
-          {/* 4. Games */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('games');
-              setActiveGameView('hub');
-            }}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'games'
-                ? 'text-amber-700 dark:text-amber-300 font-black'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <Gamepad2 className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] font-semibold">เกมส์</span>
-          </button>
+          {/* 4. Executive (For Admin / Super Admin) or Games */}
+          {(currentRole === 'admin' || currentRole === 'super_admin') ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('executive')}
+              className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'executive'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Monitor className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold">ผอ./บริหาร</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('games');
+                setActiveGameView('hub');
+              }}
+              className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'games'
+                  ? 'text-amber-700 dark:text-amber-300 font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Gamepad2 className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold">เกมส์</span>
+            </button>
+          )}
 
           {/* 5. Profile */}
           <button

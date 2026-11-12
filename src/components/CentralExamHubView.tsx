@@ -38,7 +38,7 @@ interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
   schoolName: string;
   isProcessing: boolean;
-  onConfirmPurchase: (pack: CentralExamPack, method: 'promptpay' | 'invoice') => Promise<void>;
+  onConfirmPurchase: (pack: CentralExamPack, method: 'promptpay' | 'invoice', slipUrl?: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -225,23 +225,56 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
               {paymentSettings.transferInstructions}
             </div>
 
-            {/* Optional Slip Upload */}
+            {/* Mandatory Slip Upload (บังคับ 100% ตามโมเดลที่ 2) */}
             <div className="w-full text-left pt-1">
-              <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between mb-1">
-                <span className="flex items-center gap-1">
-                  <Upload className="w-3 h-3 text-slate-500" />
-                  <span>แนบสลิปหลักฐานการโอน (ไม่บังคับ)</span>
+              <label className="text-[11px] font-bold text-slate-800 flex items-center justify-between mb-1.5">
+                <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>* บังคับแนบสลิปหลักฐานการโอน 100%</span>
                 </span>
-                {slipFilePreview && (
-                  <span className="text-[10px] text-emerald-600 font-bold">✓ แนบไฟล์แล้ว</span>
+                {slipFilePreview ? (
+                  <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> แนบสลิปแล้ว
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-rose-600 font-medium">ยังไม่ได้แนบสลิป</span>
                 )}
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleSlipChange}
-                className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
-              />
+
+              {slipFilePreview ? (
+                <div className="relative p-2 bg-white rounded-lg border border-emerald-300 flex items-center gap-3">
+                  <img
+                    src={slipFilePreview}
+                    alt="Slip Preview"
+                    className="w-12 h-16 object-cover rounded border border-slate-200"
+                  />
+                  <div className="flex-1 text-[11px]">
+                    <span className="font-semibold text-emerald-700 block">แนบภาพสลิปเรียบร้อยแล้ว</span>
+                    <span className="text-slate-500 text-[10px]">ปลดล็อกทันที + Super Admin ตรวจย้อนหลัง</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSlipFilePreview(null)}
+                    className="text-xs text-rose-600 hover:underline p-1 cursor-pointer"
+                  >
+                    เปลี่ยนรูป
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="image/*"
+                  required
+                  onChange={handleSlipChange}
+                  className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer"
+                />
+              )}
+
+              {!slipFilePreview && (
+                <p className="text-[10px] text-rose-600 mt-1">
+                  ⚠️ ระบบบังคับแนบสลิปการโอนเงิน 100% ก่อนจึงจะกดปลดล็อกข้อสอบได้
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -252,6 +285,16 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
             </p>
           </div>
         )}
+
+        {/* Model 2 Instant Access Notice */}
+        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px]">
+          <span className="font-bold">⚡ โมเดลที่ 2 (Instant Access with Audit): </span>
+          <span>
+            {method === 'promptpay'
+              ? 'เมื่อแนบสลิปครบ 100% ระบบจะปลดล็อกข้อสอบให้โรงเรียนทันที Super Admin สามารถตรวจสอบสลิปย้อนหลังและเพิกถอนสิทธิ์ได้หากสลิปไม่ถูกต้อง'
+              : 'ระบบจะปลดล็อกข้อสอบทันทีและออกใบแจ้งหนี้เพื่อดำเนินการเบิกจ่าย'}
+          </span>
+        </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">
           <button
@@ -264,16 +307,16 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
           </button>
           <button
             type="button"
-            disabled={isProcessing}
-            onClick={() => void onConfirmPurchase(pack, method)}
-            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition active:scale-95"
+            disabled={isProcessing || (method === 'promptpay' && !slipFilePreview)}
+            onClick={() => void onConfirmPurchase(pack, method, slipFilePreview || undefined)}
+            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition active:scale-95"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>
               {isProcessing
                 ? 'กำลังบันทึก...'
                 : method === 'promptpay'
-                ? 'ยืนยันชำระเงินและรับข้อสอบ'
+                ? 'ยืนยันสลิปและปลดล็อกทันที'
                 : 'ออกใบแจ้งหนี้และรับข้อสอบ'}
             </span>
           </button>
@@ -493,10 +536,10 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
           schoolName={schoolName}
           isProcessing={processingPackId === checkoutPack.id}
           onClose={() => setCheckoutPack(null)}
-          onConfirmPurchase={async (pack, method) => {
+          onConfirmPurchase={async (pack, method, slipUrl) => {
             setProcessingPackId(pack.id);
             try {
-              await onPurchasePack(pack, method);
+              await onPurchasePack(pack, method, slipUrl);
               setCheckoutPack(null);
             } finally {
               setProcessingPackId(null);
@@ -516,7 +559,7 @@ interface CentralExamHubViewProps {
   entitlements: SchoolExamEntitlement[];
   schoolQuestions: QuizQuestion[];
   onClaimFreePack: (pack: CentralExamPack) => Promise<void>;
-  onPurchasePack: (pack: CentralExamPack, method: 'promptpay' | 'invoice') => Promise<void>;
+  onPurchasePack: (pack: CentralExamPack, method: 'promptpay' | 'invoice', slipUrl?: string) => Promise<void>;
   onOpenQuestionBankInEduBattle?: () => void;
   onOpenCoordinationDesk?: () => void;
 }
@@ -869,13 +912,13 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
           schoolName={schoolName}
           isProcessing={processingPackId === checkoutPack.id}
           onClose={() => setCheckoutPack(null)}
-          onConfirmPurchase={async (pack, method) => {
+          onConfirmPurchase={async (pack, method, slipUrl) => {
             setProcessingPackId(pack.id);
             try {
-              await onPurchasePack(pack, method);
+              await onPurchasePack(pack, method, slipUrl);
               setCheckoutPack(null);
               setToastMessage(
-                `สั่งซื้อและปลดล็อก "${pack.titleTh}" (+${pack.questions.length} ข้อ) เข้าคลังโรงเรียนแล้ว`
+                `⚡ ปลดล็อก "${pack.titleTh}" (+${pack.questions.length} ข้อ) เข้าคลังโรงเรียนทันที (รอ Super Admin ตรวจสอบสลิปย้อนหลัง)`
               );
             } finally {
               setProcessingPackId(null);

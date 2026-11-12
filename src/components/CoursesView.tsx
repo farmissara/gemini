@@ -19,12 +19,13 @@ import {
   ShieldCheck,
   CalendarCheck
 } from 'lucide-react';
-import { Course, Student } from '../types';
+import { Course, Student, UserRole } from '../types';
 import { PagedList } from './PagedList';
 
 interface CoursesViewProps {
   courses: Course[];
   students: Student[];
+  currentRole?: UserRole;
   onAddCourse: (newCourse: Course) => void;
   onUpdateCourse?: (updatedCourse: Course) => void;
   onDeleteCourse?: (courseId: string) => void;
@@ -59,12 +60,14 @@ const DEPARTMENTS = [
 export const CoursesView: React.FC<CoursesViewProps> = ({
   courses,
   students,
+  currentRole = 'admin',
   onAddCourse,
   onUpdateCourse,
   onDeleteCourse,
   onEnrollStudent,
   onOpenImportExport,
 }) => {
+  const canManageCourses = currentRole !== 'student' && currentRole !== 'parent';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -292,28 +295,30 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-          {/* Quick Academic Import / Export Button */}
-          {onOpenImportExport && (
+        {canManageCourses && (
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            {/* Quick Academic Import / Export Button */}
+            {onOpenImportExport && (
+              <button
+                type="button"
+                onClick={() => onOpenImportExport('courses')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>นำเข้า/ส่งออกวิชาการ</span>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => onOpenImportExport('courses')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition cursor-pointer"
+              onClick={handleOpenAddCourse}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition cursor-pointer"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>นำเข้า/ส่งออกวิชาการ</span>
+              <Plus className="w-4 h-4" />
+              <span>เพิ่มรายวิชาใหม่ (Add Course)</span>
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleOpenAddCourse}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>เพิ่มรายวิชาใหม่ (Add Course)</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Search & Category Filter Pills */}
@@ -437,31 +442,33 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   <span className="text-xs font-mono font-bold text-[var(--color-primary-text)]">
                     {activeCourse.code} • ห้อง {activeCourse.room}
                   </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditCourse(activeCourse)}
-                      className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-semibold flex items-center gap-1 cursor-pointer transition"
-                      title="แก้ไขข้อมูลหลักสูตรและรายวิชา"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>แก้ไขวิชา</span>
-                    </button>
-                    {onDeleteCourse && (
+                  {canManageCourses && (
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (confirm(`ต้องการลบรายวิชา ${activeCourse.code} (${activeCourse.titleTh}) หรือไม่?`)) {
-                            onDeleteCourse(activeCourse.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs cursor-pointer transition"
-                        title="ลบรายวิชานี้"
+                        onClick={() => handleOpenEditCourse(activeCourse)}
+                        className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-semibold flex items-center gap-1 cursor-pointer transition"
+                        title="แก้ไขข้อมูลหลักสูตรและรายวิชา"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>แก้ไขวิชา</span>
                       </button>
-                    )}
-                  </div>
+                      {onDeleteCourse && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`ต้องการลบรายวิชา ${activeCourse.code} (${activeCourse.titleTh}) หรือไม่?`)) {
+                              onDeleteCourse(activeCourse.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs cursor-pointer transition"
+                          title="ลบรายวิชานี้"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -529,36 +536,38 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   </h3>
                 </div>
 
-                {/* Quick Enroll Student Selector */}
-                <div className="flex items-center gap-2 pt-1">
-                  <select
-                    id={`enroll-select-${activeCourse.id}`}
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>เลือกนักเรียนเพื่อลงทะเบียนเพิ่ม...</option>
-                    {students
-                      .filter((s) => !(activeCourse.enrolledStudentIds || []).includes(s.id))
-                      .map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.studentIdNumber} - {s.firstNameTh} {s.lastNameTh} ({s.room})
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const sel = document.getElementById(`enroll-select-${activeCourse.id}`) as HTMLSelectElement;
-                      if (sel && sel.value) {
-                        onEnrollStudent(activeCourse.id, sel.value);
-                        sel.value = '';
-                      }
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer shrink-0"
-                  >
-                    ลงทะเบียน
-                  </button>
-                </div>
+                {/* Quick Enroll Student Selector (Staff Only) */}
+                {canManageCourses && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <select
+                      id={`enroll-select-${activeCourse.id}`}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>เลือกนักเรียนเพื่อลงทะเบียนเพิ่ม...</option>
+                      {students
+                        .filter((s) => !(activeCourse.enrolledStudentIds || []).includes(s.id))
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.studentIdNumber} - {s.firstNameTh} {s.lastNameTh} ({s.room})
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sel = document.getElementById(`enroll-select-${activeCourse.id}`) as HTMLSelectElement;
+                        if (sel && sel.value) {
+                          onEnrollStudent(activeCourse.id, sel.value);
+                          sel.value = '';
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer shrink-0"
+                    >
+                      ลงทะเบียน
+                    </button>
+                  </div>
+                )}
 
                 <div className="space-y-2 pr-1 pt-2">
                   {(activeCourse.enrolledStudentIds || []).length === 0 ? (

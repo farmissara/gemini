@@ -98,6 +98,7 @@ interface StudentsViewProps {
   onAddStudent: (newStudent: Student) => void;
   onUpdateStudent?: (student: Student) => void;
   onDeleteStudent?: (studentId: string) => void;
+  onPurgeSampleStudents?: () => void;
   onOpenImportExport?: () => void;
   onBatchUpdateStudents?: (updatedStudents: Student[]) => void;
 }
@@ -113,6 +114,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onAddStudent,
   onUpdateStudent,
   onDeleteStudent,
+  onPurgeSampleStudents,
   onOpenImportExport,
   onBatchUpdateStudents,
 }) => {
@@ -550,6 +552,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
               <span>นำเข้า/ส่งออก Excel</span>
+            </button>
+          )}
+
+          {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
+            <button
+              type="button"
+              onClick={onPurgeSampleStudents}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold shadow-xs transition cursor-pointer"
+              title="ล้างนักเรียนตัวอย่างออกจากโรงเรียน เพื่อเริ่มใช้งานจริงแบบสะอาด"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <span>ล้างข้อมูลตัวอย่าง</span>
             </button>
           )}
 
@@ -1422,18 +1436,33 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
 
                   {/* Academic GPA */}
-                  <div className="pt-2 border-t border-[var(--color-border)]">
-                    <label className="block text-[var(--color-text-title)] font-bold mb-1">เกรดเฉลี่ยสะสม (GPA)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="4"
-                      step="0.01"
-                      value={formData.gpa}
-                      onChange={(e) => setFormData({ ...formData, gpa: Number(e.target.value) })}
-                      placeholder="เช่น 3.50"
-                      className="w-full sm:w-1/2 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold"
-                    />
+                  <div className="pt-2 border-t border-[var(--color-border)] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[var(--color-text-title)] font-bold text-xs">
+                        เกรดเฉลี่ยสะสม (GPA / GPAX)
+                      </label>
+                      <span className="text-[11px] text-[var(--color-primary-text)] font-semibold">
+                        ค่าระหว่าง 0.00 - 4.00
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="0"
+                        max="4"
+                        step="0.01"
+                        value={formData.gpa}
+                        onChange={(e) => {
+                          const val = Math.min(4.00, Math.max(0, Number(e.target.value)));
+                          setFormData({ ...formData, gpa: Number(val.toFixed(2)) });
+                        }}
+                        placeholder="เช่น 3.50"
+                        className="w-40 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm"
+                      />
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1">
+                        ผลการเรียนเฉลี่ยรวมทุกวิชา สามารถพิมพ์แก้ไขได้ทันที หรือระบบจะคำนวณอัตโนมัติจากคะแนนในสมุด ปพ.5
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}

@@ -1125,6 +1125,14 @@ export interface SchoolExamEntitlement {
   paymentMethod: 'free' | 'promptpay' | 'invoice';
   claimedBy: string;
   claimedAt: string;
+  slipUrl?: string; // แนบสลิปหลักฐานการโอน 100% (บังคับสำหรับชุดข้อสอบที่สั่งซื้อ)
+  slipAttachedAt?: string;
+  auditStatus?: 'pending_audit' | 'verified' | 'revoked'; // โมเดลที่ 2: ปลดล็อกทันที + Super Admin ตรวจสอบสลิปย้อนหลัง
+  verifiedAt?: string;
+  verifiedBy?: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  revocationReason?: string;
 }
 
 // 12. Central Exam Bank Payment & PromptPay Settings (Requirement 2)

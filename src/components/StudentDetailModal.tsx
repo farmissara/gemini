@@ -49,6 +49,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const [editGradeLevel, setEditGradeLevel] = useState(student.gradeLevel);
   const [editRoom, setEditRoom] = useState(student.room);
   const [editStatus, setEditStatus] = useState<StudentStatus>(student.status || 'active');
+  const [editGpa, setEditGpa] = useState<number>(Number(student.gpa) || 0.0);
 
   const studentGrades = grades.filter((g) => g.studentId === student.id);
   const studentAttendance = attendance.filter((a) => a.studentId === student.id);
@@ -63,6 +64,13 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     }
   };
 
+  const handleCalculateGpaFromGrades = () => {
+    if (studentGrades.length === 0) return;
+    const totalPoints = studentGrades.reduce((sum, g) => sum + (g.gradePoint || 0), 0);
+    const calculated = Number((totalPoints / studentGrades.length).toFixed(2));
+    setEditGpa(calculated);
+  };
+
   const handleSaveClassEdit = () => {
     if (onUpdateStudent) {
       onUpdateStudent({
@@ -70,6 +78,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         gradeLevel: editGradeLevel.trim() || student.gradeLevel,
         room: editRoom.trim() || student.room,
         status: editStatus,
+        gpa: Math.min(4.0, Math.max(0, Number(editGpa) || 0)),
       });
     }
     setIsEditingClass(false);
@@ -140,9 +149,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <div className="p-4 bg-indigo-50 dark:bg-indigo-950/70 border-b border-indigo-200 dark:border-indigo-800 shrink-0 space-y-2 text-xs">
             <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
               <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              แก้ไขระดับชั้น ห้องเรียน และสถานะนักเรียน
+              แก้ไขระดับชั้น ห้องเรียน เกรดเฉลี่ยสะสม (GPA) และสถานะนักเรียน
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <div>
                 <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
                   ระดับชั้น (Grade Level)
@@ -174,6 +183,33 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   placeholder="เช่น Room 401 หรือ ม.4/1"
                   className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
+                  เกรดเฉลี่ยสะสม (GPA: 0-4.00)
+                </label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="4.00"
+                    value={editGpa}
+                    onChange={(e) => setEditGpa(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-bold tabular-nums"
+                  />
+                  {studentGrades.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleCalculateGpaFromGrades}
+                      className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] whitespace-nowrap cursor-pointer"
+                      title="คำนวณเฉลี่ยจากรายวิชาที่มีในระบบ"
+                    >
+                      ออโต้
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -218,12 +254,31 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0 text-xs">
           {/* Action Row */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
-                <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Overall GPA</span>
-                <span className="text-xl font-mono font-extrabold text-amber-700 dark:text-amber-300">{student.gpa.toFixed(2)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">GPA สะสม</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
+                    Grade Point Average
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300">
+                    {student.gpa.toFixed(2)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingClass(true)}
+                    className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                  >
+                    [ปรับแก้เกรดเฉลี่ย]
+                  </button>
+                </div>
+                <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                  เกรดเฉลี่ยสะสมระดับ 0.00 - 4.00 คำนวณจากทุกรายวิชา หรือครูสามารถคลิกปรับแก้ได้โดยตรง
+                </p>
               </div>
-              <div className="border-l border-[var(--color-border)] pl-3">
+              <div className="border-t sm:border-t-0 sm:border-l border-[var(--color-border)] pt-2 sm:pt-0 sm:pl-3">
                 <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">LINE OA Sync</span>
                 <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
                   <MessageSquare className="w-3 h-3 fill-current" />

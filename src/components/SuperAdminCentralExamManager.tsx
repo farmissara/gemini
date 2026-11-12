@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   BookOpen,
+  Check,
   CheckCircle2,
   Coins,
   CreditCard,
   Download,
   Eye,
   FileSpreadsheet,
+  FileText,
   Gift,
   Globe,
   Layers,
   Plus,
   Search,
   Send,
+  ShieldAlert,
   Sparkles,
   Trash2,
   Upload,
@@ -24,12 +28,15 @@ import {
   buildCentralExamCsvTemplate,
   CENTRAL_EXAMS_UPDATED_EVENT,
   deleteCentralExamPack,
+  fetchAllAuditEntitlements,
   fetchCentralExamPacks,
   getStrandMeta,
   parseExamQuestionsCsvOrJson,
+  revokeExamEntitlement,
   upsertCentralExamPack,
+  verifyExamEntitlement,
 } from '../lib/centralExamBank';
-import { CentralExamPack, LearningStrandId, QuizQuestion } from '../types';
+import { CentralExamPack, LearningStrandId, QuizQuestion, SchoolExamEntitlement } from '../types';
 
 interface SuperAdminCentralExamManagerProps {
   isDemoMode: boolean;
@@ -98,6 +105,21 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const [importRawText, setImportRawText] = useState('');
   const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
 
+  // Model 2: Audit & Slips Tab State
+  const [managerTab, setManagerTab] = useState<'packs' | 'audit_slips'>('packs');
+  const [auditList, setAuditList] = useState<SchoolExamEntitlement[]>([]);
+  const [auditStatusFilter, setAuditStatusFilter] = useState<'all' | 'pending_audit' | 'verified' | 'revoked'>('all');
+  const [auditSearch, setAuditSearch] = useState('');
+  const [selectedSlipImage, setSelectedSlipImage] = useState<string | null>(null);
+  const [revokingEntitlement, setRevokingEntitlement] = useState<SchoolExamEntitlement | null>(null);
+  const [revokeReasonInput, setRevokeReasonInput] = useState('');
+  const [isProcessingAudit, setIsProcessingAudit] = useState(false);
+
+  const loadAuditList = () => {
+    const list = fetchAllAuditEntitlements();
+    setAuditList(list);
+  };
+
   const loadPacks = async () => {
     setLoading(true);
     const list = await fetchCentralExamPacks(isDemoMode);
@@ -110,12 +132,46 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
 
   useEffect(() => {
     void loadPacks();
+    loadAuditList();
     const handleUpdate = () => {
       void fetchCentralExamPacks(isDemoMode).then(setPacks);
+      loadAuditList();
     };
     window.addEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);
     return () => window.removeEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);
   }, [isDemoMode]);
+
+  const handleVerifySlip = async (entitlement: SchoolExamEntitlement) => {
+    setIsProcessingAudit(true);
+    try {
+      await verifyExamEntitlement(entitlement.schoolId, entitlement.packId, adminDisplayName);
+      loadAuditList();
+      setFeedbackMessage({
+        type: 'success',
+        text: `✓ ยืนยันสลิปถูกต้องเรียบร้อยแล้ว (โรงเรียน ${entitlement.schoolId} ได้รับสิทธิ์สมบูรณ์)`,
+      });
+    } finally {
+      setIsProcessingAudit(false);
+    }
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (!revokingEntitlement) return;
+    const reason = revokeReasonInput.trim() || 'สลิปไม่ตรง หรือมีการทุจริต';
+    setIsProcessingAudit(true);
+    try {
+      await revokeExamEntitlement(revokingEntitlement.schoolId, revokingEntitlement.packId, adminDisplayName, reason);
+      loadAuditList();
+      setRevokingEntitlement(null);
+      setRevokeReasonInput('');
+      setFeedbackMessage({
+        type: 'error',
+        text: `✕ เพิกถอนสิทธิ์และดึงข้อสอบกลับจากโรงเรียนเรียบร้อยแล้ว (เหตุผล: ${reason})`,
+      });
+    } finally {
+      setIsProcessingAudit(false);
+    }
+  };
 
   const strandSummary = useMemo(() => {
     return LEARNING_STRANDS.map((strand) => {
@@ -152,6 +208,24 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       return true;
     });
   }, [packs, strandFilter, statusFilter, searchQuery]);
+
+  const filteredAuditList = useMemo(() => {
+    return auditList.filter((item) => {
+      const status = item.auditStatus || 'verified';
+      if (auditStatusFilter !== 'all' && status !== auditStatusFilter) return false;
+      if (auditSearch.trim()) {
+        const q = auditSearch.toLowerCase();
+        const pack = packs.find((p) => p.id === item.packId);
+        return (
+          item.schoolId.toLowerCase().includes(q) ||
+          item.packId.toLowerCase().includes(q) ||
+          item.claimedBy.toLowerCase().includes(q) ||
+          (pack && pack.titleTh.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [auditList, auditStatusFilter, auditSearch, packs]);
 
   const parsedImportPreview = useMemo(() => {
     if (!importRawText.trim()) return [];
@@ -507,10 +581,44 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-      )}
+      {/* Tab Switcher: Packs vs Order Audit & Slips */}
+      <div className="flex border-b border-[var(--color-border)] gap-2">
+        <button
+          type="button"
+          onClick={() => setManagerTab('packs')}
+          className={`pb-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            managerTab === 'packs'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>ชุดข้อสอบกลาง 8 สาระฯ ({packs.length} ชุด)</span>
+        </button>
 
-      {/* 8-Strand Coverage Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        <button
+          type="button"
+          onClick={() => setManagerTab('audit_slips')}
+          className={`pb-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer relative ${
+            managerTab === 'audit_slips'
+              ? 'border-amber-500 text-amber-700 dark:text-amber-300'
+              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>ตรวจสอบสลิปคำสั่งซื้อ & สิทธิ์ข้อสอบ (โมเดล 2)</span>
+          {auditList.filter((a) => a.auditStatus === 'pending_audit').length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white animate-pulse">
+              {auditList.filter((a) => a.auditStatus === 'pending_audit').length} รอตรวจ
+            </span>
+          )}
+        </button>
+      </div>
+
+      {managerTab === 'packs' ? (
+        <>
+          {/* 8-Strand Coverage Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         {strandSummary.map((s) => {
           const isSelected = strandFilter === s.id;
           return (
@@ -827,7 +935,251 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
             </div>
           )}
         </div>
-      )}
+      </>
+    ) : (
+      /* MODEL 2 AUDIT SLIPS VIEW */
+      <div className="space-y-4">
+        {/* Model 2 Explanation Banner */}
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1.5 text-xs">
+          <div className="flex items-center gap-2 font-extrabold text-sm text-amber-950 dark:text-amber-100">
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <span>โมเดลที่ 2: ระบบ "ปลดล็อกข้อสอบทันที + Super Admin ตรวจสอบสลิปย้อนหลัง" (Instant Access with Audit)</span>
+          </div>
+          <p className="text-[11px] leading-relaxed opacity-90">
+            ขั้นตอนการทำงาน: โรงเรียนชำระเงิน → แนบสลิป 100% → ระบบปลดล็อกข้อสอบให้ทันที Super Admin สามารถตรวจสอบรูปสลิปย้อนหลังในประวัติคำสั่งซื้อ หากสลิปไม่ตรง หรือมีการทุจริต สามารถกดปุ่ม <span className="font-bold underline text-rose-700 dark:text-rose-400">"เพิกถอนสิทธิ์ / ดึงข้อสอบกลับ"</span> เพื่อดึงข้อสอบออกจากโรงเรียนได้ทันที
+          </p>
+        </div>
+
+        {/* Audit Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
+            <span className="text-[11px] font-semibold text-[var(--color-text-muted)] block">คำสั่งซื้อทั้งหมด</span>
+            <span className="text-xl font-extrabold text-[var(--color-text-title)] tabular-nums">{auditList.length}</span>
+          </div>
+          <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700">
+            <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 block">รอตรวจสอบสลิป</span>
+            <span className="text-xl font-extrabold text-amber-700 dark:text-amber-200 tabular-nums">
+              {auditList.filter((a) => a.auditStatus === 'pending_audit').length}
+            </span>
+          </div>
+          <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700">
+            <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 block">ตรวจสอบผ่านแล้ว</span>
+            <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-200 tabular-nums">
+              {auditList.filter((a) => a.auditStatus === 'verified').length}
+            </span>
+          </div>
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700">
+            <span className="text-[11px] font-semibold text-rose-800 dark:text-rose-300 block">เพิกถอนสิทธิ์แล้ว</span>
+            <span className="text-xl font-extrabold text-rose-700 dark:text-rose-200 tabular-nums">
+              {auditList.filter((a) => a.auditStatus === 'revoked').length}
+            </span>
+          </div>
+        </div>
+
+        {/* Filters & Search */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto text-xs">
+            <button
+              type="button"
+              onClick={() => setAuditStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                auditStatusFilter === 'all'
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+              }`}
+            >
+              ทั้งหมด ({auditList.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuditStatusFilter('pending_audit')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                auditStatusFilter === 'pending_audit'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-amber-50'
+              }`}
+            >
+              รอตรวจสลิป ({auditList.filter((a) => a.auditStatus === 'pending_audit').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuditStatusFilter('verified')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                auditStatusFilter === 'verified'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-emerald-50'
+              }`}
+            >
+              ผ่านแล้ว ({auditList.filter((a) => a.auditStatus === 'verified').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuditStatusFilter('revoked')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                auditStatusFilter === 'revoked'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-rose-50'
+              }`}
+            >
+              เพิกถอนสิทธิ์ ({auditList.filter((a) => a.auditStatus === 'revoked').length})
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input
+              type="text"
+              value={auditSearch}
+              onChange={(e) => setAuditSearch(e.target.value)}
+              placeholder="ค้นหาตามโรงเรียน, ชุดข้อสอบ..."
+              className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+            />
+          </div>
+        </div>
+
+        {/* Audit Table */}
+        <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden shadow-xs">
+          {filteredAuditList.length === 0 ? (
+            <div className="p-12 text-center space-y-2">
+              <CreditCard className="w-10 h-10 mx-auto text-[var(--color-text-muted)] opacity-50" />
+              <div className="text-sm font-bold text-[var(--color-text-title)]">ไม่พบรายการคำสั่งซื้อตามเงื่อนไขที่เลือก</div>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                เมื่อโรงเรียนกดสั่งซื้อพร้อมแนบสลิป 100% รายการจะปรากฏที่นี่เพื่อรอ Super Admin ตรวจสอบย้อนหลัง
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] uppercase text-[10px] font-bold">
+                  <tr>
+                    <th className="p-3">วันที่ / เวลา</th>
+                    <th className="p-3">โรงเรียน</th>
+                    <th className="p-3">ชุดข้อสอบ</th>
+                    <th className="p-3">ยอดเงิน (บาท)</th>
+                    <th className="p-3">สลิปหลักฐาน (100%)</th>
+                    <th className="p-3">สถานะตรวจสอบ</th>
+                    <th className="p-3 text-right">การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {filteredAuditList.map((item) => {
+                    const pack = packs.find((p) => p.id === item.packId);
+                    const status = item.auditStatus || 'verified';
+                    return (
+                      <tr key={item.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                        <td className="p-3 text-[var(--color-text-muted)] whitespace-nowrap font-mono">
+                          {new Date(item.claimedAt).toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-[var(--color-text-title)] block">{item.schoolId}</span>
+                          <span className="text-[10px] text-[var(--color-text-muted)]">โดย: {item.claimedBy}</span>
+                        </td>
+                        <td className="p-3 max-w-xs">
+                          <span className="font-bold text-[var(--color-text-title)] block truncate">
+                            {pack?.titleTh || item.packId}
+                          </span>
+                          <span className="text-[10px] text-[var(--color-primary-text)] font-semibold">
+                            {pack ? `${getStrandMeta(pack.strand).nameTh} · ${pack.gradeLevel}` : item.packId}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-amber-700 dark:text-amber-300">
+                          {item.amountPaidThb > 0 ? `฿${item.amountPaidThb.toLocaleString()}` : 'ฟรี'}
+                        </td>
+                        <td className="p-3">
+                          {item.slipUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSlipImage(item.slipUrl!)}
+                              className="group flex items-center gap-2 p-1 rounded-lg border border-[var(--color-border)] hover:border-amber-500 bg-white cursor-pointer"
+                              title="คลิกเพื่อดูภาพสลิปขยายใหญ่"
+                            >
+                              <img
+                                src={item.slipUrl}
+                                alt="Slip"
+                                className="w-9 h-12 object-cover rounded shadow-2xs group-hover:scale-105 transition"
+                              />
+                              <span className="text-[10px] font-bold text-amber-700 hover:underline flex items-center gap-1">
+                                <Eye className="w-3 h-3" /> ดูสลิป
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-[var(--color-text-muted)] italic">ไม่มีสลิป (ฟรี)</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {status === 'pending_audit' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                              <AlertTriangle className="w-3 h-3" /> รอตรวจสอบย้อนหลัง
+                            </span>
+                          )}
+                          {status === 'verified' && (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <Check className="w-3 h-3" /> สลิปถูกต้องแล้ว
+                              </span>
+                              {item.verifiedBy && (
+                                <span className="text-[9px] text-[var(--color-text-muted)] block">โดย {item.verifiedBy}</span>
+                              )}
+                            </div>
+                          )}
+                          {status === 'revoked' && (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
+                                <ShieldAlert className="w-3 h-3" /> เพิกถอนสิทธิ์แล้ว
+                              </span>
+                              {item.revocationReason && (
+                                <span className="text-[9px] text-rose-600 font-medium block truncate max-w-xs">
+                                  เหตุผล: {item.revocationReason}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {status !== 'verified' && status !== 'revoked' && (
+                              <button
+                                type="button"
+                                disabled={isProcessingAudit}
+                                onClick={() => void handleVerifySlip(item)}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer transition shadow-xs"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>ยืนยันสลิป</span>
+                              </button>
+                            )}
+                            {status !== 'revoked' && (
+                              <button
+                                type="button"
+                                disabled={isProcessingAudit}
+                                onClick={() => {
+                                  setRevokingEntitlement(item);
+                                  setRevokeReasonInput('สลิปไม่ตรง หรือมีการทุจริต');
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition"
+                              >
+                                <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                                <span>เพิกถอนสิทธิ์</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
 
       {/* CREATE PACK MODAL */}
       {showCreatePackModal && (
@@ -1335,6 +1687,117 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                 });
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Fullscreen Slip Lightbox Modal */}
+      {selectedSlipImage && (
+        <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-lg w-full p-5 space-y-3 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-amber-600" />
+                <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">
+                  ภาพสลิปหลักฐานการโอนเงิน (ตรวจสอบย้อนหลัง 100%)
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSlipImage(null)}
+                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-2 bg-slate-900 rounded-xl flex items-center justify-center max-h-[70vh] overflow-auto">
+              <img
+                src={selectedSlipImage}
+                alt="Full Slip"
+                className="max-h-[65vh] w-auto object-contain rounded-lg shadow-md"
+              />
+            </div>
+
+            <div className="flex justify-between items-center text-xs pt-1">
+              <span className="text-[11px] text-[var(--color-text-muted)]">
+                ตรวจสอบความถูกต้องของจำนวนเงิน, วันที่, และบัญชีผู้รับ
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedSlipImage(null)}
+                className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-bold cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Revocation Confirmation Modal */}
+      {revokingEntitlement && (
+        <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                <ShieldAlert className="w-5 h-5" />
+                <h4 className="font-extrabold text-base text-[var(--color-text-title)]">
+                  เพิกถอนสิทธิ์ / ดึงข้อสอบกลับ
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRevokingEntitlement(null)}
+                className="p-1 rounded hover:bg-black/10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700 text-xs text-rose-900 dark:text-rose-200 space-y-1">
+              <div className="font-bold flex items-center gap-1">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <span>คำเตือน: การกระทำนี้จะมีผลทันที</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                ระบบจะลบข้อสอบทั้งหมดในชุดนี้ออกจากคลังข้อสอบของโรงเรียน <span className="font-bold">{revokingEntitlement.schoolId}</span> ทันที และเปลี่ยนสถานะคำสั่งซื้อเป็น "เพิกถอนสิทธิ์แล้ว"
+              </p>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <label className="font-bold text-[var(--color-text-title)] block">
+                ระบุเหตุผลการเพิกถอนสิทธิ์ (เช่น สลิปปลอม, ยอดเงินไม่ตรง, แจ้งยกเลิก) *
+              </label>
+              <textarea
+                rows={3}
+                required
+                value={revokeReasonInput}
+                onChange={(e) => setRevokeReasonInput(e.target.value)}
+                placeholder="พิมพ์เหตุผลการเพิกถอนสิทธิ์..."
+                className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+              <button
+                type="button"
+                disabled={isProcessingAudit}
+                onClick={() => setRevokingEntitlement(null)}
+                className="px-4 py-2 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isProcessingAudit}
+                onClick={() => void handleConfirmRevoke()}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                <span>{isProcessingAudit ? 'กำลังดำเนินการ...' : 'ยืนยันเพิกถอนและดึงข้อสอบกลับ'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

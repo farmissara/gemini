@@ -2630,7 +2630,7 @@ export const INITIAL_ROLE_PERMISSIONS: RolePermissionConfig[] = [
       recordAttendance: true,
       manageTuition: false,
       sendBroadcastLine: true,
-      manageTimetable: false,
+      manageTimetable: true,
       manageSdq: true,
       viewInfirmary: true,
       approveTranscripts: false,
