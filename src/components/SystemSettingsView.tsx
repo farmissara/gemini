@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   BellRing, 
   MessageSquare, 
@@ -31,7 +31,8 @@ import {
   MapPin,
   Mail,
   KeyRound,
-  GraduationCap
+  GraduationCap,
+  Upload
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
 import {
@@ -43,6 +44,7 @@ import {
 } from '../lib/authDb';
 import { SchoolGpsSettingsCard } from './SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from './SchoolStudentLoginSettingsCard';
+import { uploadSchoolLogo } from '../lib/supabase';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -85,6 +87,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [studentAccountSaving, setStudentAccountSaving] = useState(false);
   const [studentAccountError, setStudentAccountError] = useState<string | null>(null);
   const [studentAccountSuccess, setStudentAccountSuccess] = useState<string | null>(null);
+  const [schoolLogoUploading, setSchoolLogoUploading] = useState(false);
+  const [schoolLogoError, setSchoolLogoError] = useState<string | null>(null);
+  const [schoolLogoSuccess, setSchoolLogoSuccess] = useState<string | null>(null);
+  const schoolLogoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (
@@ -214,6 +220,25 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2500);
+  };
+
+  const handleSchoolLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSchoolLogoError(null);
+    setSchoolLogoSuccess(null);
+    setSchoolLogoUploading(true);
+    try {
+      const logoUrl = await uploadSchoolLogo(activeSchool.id, file);
+      onUpdateSchool?.({ logoUrl });
+      setSchoolLogoSuccess('บันทึกโลโก้โรงเรียนเรียบร้อยแล้ว');
+    } catch (error) {
+      setSchoolLogoError(error instanceof Error ? error.message : 'ไม่สามารถบันทึกโลโก้โรงเรียนได้');
+    } finally {
+      setSchoolLogoUploading(false);
+      event.target.value = '';
+    }
   };
 
   const handleToggleEvent = (field: keyof LineNotificationSettings) => {
@@ -1401,6 +1426,42 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* TAB 5: General School Config & Database Backup */}
       {activeTab === 'school_general' && (
         <div className="space-y-6 animate-in fade-in duration-200">
+          {['admin', 'super_admin'].includes(currentRole) && (
+            <section className="bg-[var(--color-card)] rounded-2xl p-5 border border-[var(--color-border)] shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="w-20 h-20 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-hidden flex items-center justify-center shrink-0">
+                  {activeSchool.logoUrl ? (
+                    <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain" />
+                  ) : (
+                    <Building2 className="w-8 h-8 text-[var(--color-text-muted)]" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">โลโก้โรงเรียน</h3>
+                  <p className="text-xs text-[var(--color-text-muted)]">ไฟล์ PNG, JPEG หรือ WebP ขนาดไม่เกิน 2 MB โลโก้จะแสดงบนแถบเมนูของโรงเรียน</p>
+                  {schoolLogoError && <p role="alert" className="text-xs text-rose-600">{schoolLogoError}</p>}
+                  {schoolLogoSuccess && <p role="status" className="text-xs text-emerald-700">{schoolLogoSuccess}</p>}
+                </div>
+                <input
+                  ref={schoolLogoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleSchoolLogoUpload}
+                />
+                <button
+                  type="button"
+                  disabled={schoolLogoUploading}
+                  onClick={() => schoolLogoInputRef.current?.click()}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer shrink-0"
+                >
+                  <Upload className="w-4 h-4" />
+                  {schoolLogoUploading ? 'กำลังอัปโหลด...' : activeSchool.logoUrl ? 'เปลี่ยนโลโก้' : 'อัปโหลดโลโก้'}
+                </button>
+              </div>
+            </section>
+          )}
+
           <div className="bg-[var(--color-card)] rounded-2xl p-6 border border-[var(--color-border)] shadow-xs space-y-5">
             <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
               <Building2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />

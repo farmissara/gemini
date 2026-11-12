@@ -921,6 +921,42 @@ export async function deleteTeacherFromDb(schoolId: string, teacherId: string): 
   if (error) throw new Error(`Could not delete teacher from Supabase: ${error.message}`);
 }
 
+export async function uploadSchoolLogo(schoolId: string, file: File): Promise<string> {
+  const mimeTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+  if (!mimeTypes.has(file.type)) {
+    throw new Error('เลือกไฟล์โลโก้ชนิด PNG, JPEG หรือ WebP เท่านั้น');
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error('ไฟล์โลโก้ต้องมีขนาดไม่เกิน 2 MB');
+  }
+
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const path = `${schoolId}/logo`;
+  const { error: uploadError } = await client.storage
+    .from('school-logos')
+    .upload(path, file, {
+      cacheControl: '0',
+      contentType: file.type,
+      upsert: true,
+    });
+  if (uploadError) throw new Error(`ไม่สามารถอัปโหลดโลโก้โรงเรียนได้: ${uploadError.message}`);
+
+  const publicUrl = client.storage.from('school-logos').getPublicUrl(path).data.publicUrl;
+  const versionedUrl = `${publicUrl}?v=${Date.now()}`;
+  const { data, error } = await client
+    .from('schools')
+    .update({ logo_url: versionedUrl })
+    .eq('id', schoolId)
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(`อัปโหลดโลโก้แล้วแต่บันทึกข้อมูลโรงเรียนไม่สำเร็จ: ${error.message}`);
+  if (!data) throw new Error('ไม่พบโรงเรียนหรือไม่มีสิทธิ์เปลี่ยนโลโก้');
+
+  return versionedUrl;
+}
+
 /**
  * Saves timetable slots for a school to local storage and Supabase if table exists
  */

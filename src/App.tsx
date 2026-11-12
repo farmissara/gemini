@@ -366,17 +366,27 @@ export const App: React.FC = () => {
     }
     let active = true;
     const scopeId = currentRole === 'super_admin' ? undefined : activeSchool.id;
-    fetchCoordinationMessages(isDemoMode, scopeId).then((msgs) => {
-      if (!active) return;
-      const count = currentRole === 'super_admin'
-        ? msgs.filter((m) => m.senderRole === 'admin' && !m.readBySuperAdmin).length
-        : msgs.filter((m) => m.schoolId === activeSchool.id && m.senderRole === 'super_admin' && !m.readByAdmin).length;
-      setCoordinationUnreadCount(count);
-    });
+    fetchCoordinationMessages(scopeId)
+      .then((msgs) => {
+        if (!active) return;
+        const count = currentRole === 'super_admin'
+          ? msgs.filter((m) => m.senderRole === 'admin' && !m.readBySuperAdmin).length
+          : msgs.filter((m) => m.schoolId === activeSchool.id && m.senderRole === 'super_admin' && !m.readByAdmin).length;
+        setCoordinationUnreadCount(count);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setCoordinationUnreadCount(0);
+        setDataSyncError(
+          error instanceof Error
+            ? `Coordination inbox error: ${error.message}`
+            : 'Could not load coordination inbox.'
+        );
+      });
     return () => {
       active = false;
     };
-  }, [currentUser, currentRole, activeSchool.id, isDemoMode, currentTab]);
+  }, [currentUser, currentRole, activeSchool.id, currentTab]);
 
   // Load Central Exam Packs (8 Strands), School Entitlements, and Persisted School Questions
   useEffect(() => {
@@ -2131,7 +2141,6 @@ export const App: React.FC = () => {
                     schools={schools}
                     currentRole={currentRole}
                     lang={lang}
-                    isDemoMode={isDemoMode}
                     onUnreadCountChange={setCoordinationUnreadCount}
                   />
                 )}

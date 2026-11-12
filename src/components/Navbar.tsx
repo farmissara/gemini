@@ -112,8 +112,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center shadow-xs shrink-0">
-            <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
+          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+            {activeSchool.logoUrl ? (
+              <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain bg-white" />
+            ) : (
+              <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 min-w-0">

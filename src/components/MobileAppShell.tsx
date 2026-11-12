@@ -302,8 +302,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-xs transition-colors">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-            <GraduationCap className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shadow-xs shrink-0 overflow-hidden">
+            {activeSchool.logoUrl ? (
+              <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain bg-white" />
+            ) : (
+              <GraduationCap className="w-4 h-4" />
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">

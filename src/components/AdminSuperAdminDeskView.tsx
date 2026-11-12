@@ -41,7 +41,6 @@ interface AdminSuperAdminDeskViewProps {
   schools: School[];
   currentRole: UserRole;
   lang: AppLanguage;
-  isDemoMode: boolean;
   onUnreadCountChange?: (count: number) => void;
 }
 
@@ -51,7 +50,6 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
   schools,
   currentRole,
   lang,
-  isDemoMode,
   onUnreadCountChange,
 }) => {
   const isSuperAdmin = currentRole === 'super_admin';
@@ -98,18 +96,29 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const targetScope = isSuperAdmin ? undefined : activeSchool.id;
-      const list = await fetchCoordinationMessages(isDemoMode, targetScope);
+      const list = await fetchCoordinationMessages(targetScope);
       setMessages(list);
       onUnreadCountChange?.(computeUnreadForRole(list));
+    } catch (error) {
+      setMessages([]);
+      setErrorMsg(error instanceof Error ? error.message : 'ไม่สามารถโหลดข้อความประสานงานได้');
     } finally {
       setLoading(false);
     }
-  }, [activeSchool.id, computeUnreadForRole, isDemoMode, isSuperAdmin, onUnreadCountChange]);
+  }, [activeSchool.id, computeUnreadForRole, isSuperAdmin, onUnreadCountChange]);
 
   useEffect(() => {
     void loadMessages();
+  }, [loadMessages]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadMessages();
+    }, 15000);
+    return () => window.clearInterval(intervalId);
   }, [loadMessages]);
 
   // Mark incoming messages in active scope as read when opened
@@ -128,25 +137,35 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
     let cancelled = false;
     (async () => {
       let latest = messages;
-      for (const item of unreadIncoming) {
-        if (cancelled) break;
-        latest = await updateCoordinationMessageStatus(
-          item.id,
-          isSuperAdmin ? { readBySuperAdmin: true } : { readByAdmin: true },
-          isDemoMode
-        );
-      }
-      if (!cancelled) {
-        const scoped = isSuperAdmin ? latest : latest.filter((m) => m.schoolId === activeSchool.id);
-        setMessages(scoped);
-        onUnreadCountChange?.(computeUnreadForRole(scoped));
+      try {
+        for (const item of unreadIncoming) {
+          if (cancelled) break;
+          await updateCoordinationMessageStatus(
+            item.id,
+            isSuperAdmin ? { readBySuperAdmin: true } : { readByAdmin: true }
+          );
+          latest = latest.map((message) =>
+            message.id === item.id
+              ? { ...message, ...(isSuperAdmin ? { readBySuperAdmin: true } : { readByAdmin: true }) }
+              : message
+          );
+        }
+        if (!cancelled) {
+          const scoped = isSuperAdmin ? latest : latest.filter((m) => m.schoolId === activeSchool.id);
+          setMessages(scoped);
+          onUnreadCountChange?.(computeUnreadForRole(scoped));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMsg(error instanceof Error ? error.message : 'ไม่สามารถอัปเดตสถานะการอ่านข้อความได้');
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [activeSchool.id, computeUnreadForRole, isDemoMode, isSuperAdmin, messages, onUnreadCountChange, selectedSchoolId]);
+  }, [activeSchool.id, computeUnreadForRole, isSuperAdmin, messages, onUnreadCountChange, selectedSchoolId]);
 
   const schoolSummaries = useMemo(() => {
     return schools.map((school) => {
@@ -248,7 +267,8 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
 
     setSending(true);
     try {
-      const updatedAll = await sendCoordinationMessage(newMsg, isDemoMode);
+      const savedMessage = await sendCoordinationMessage(newMsg);
+      const updatedAll = [savedMessage, ...messages];
       const scoped = isSuperAdmin ? updatedAll : updatedAll.filter((m) => m.schoolId === activeSchool.id);
       setMessages(scoped);
       onUnreadCountChange?.(computeUnreadForRole(scoped));
@@ -261,24 +281,31 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
           : 'ส่งข้อความประสานงานด่วนเรียบร้อยแล้ว'
       );
       setTimeout(() => setNoticeMsg(null), 4000);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'ไม่สามารถส่งข้อความประสานงานได้');
     } finally {
       setSending(false);
     }
   };
 
   const handleUpdateStatus = async (msgId: string, nextStatus: AdminCoordinationMessage['status']) => {
-    const updatedAll = await updateCoordinationMessageStatus(
-      msgId,
-      {
+    try {
+      await updateCoordinationMessageStatus(msgId, {
         status: nextStatus,
         readByAdmin: true,
         readBySuperAdmin: true,
-      },
-      isDemoMode
-    );
-    const scoped = isSuperAdmin ? updatedAll : updatedAll.filter((m) => m.schoolId === activeSchool.id);
-    setMessages(scoped);
-    onUnreadCountChange?.(computeUnreadForRole(scoped));
+      });
+      const updatedAll = messages.map((message) =>
+        message.id === msgId
+          ? { ...message, status: nextStatus, readByAdmin: true, readBySuperAdmin: true }
+          : message
+      );
+      const scoped = isSuperAdmin ? updatedAll : updatedAll.filter((m) => m.schoolId === activeSchool.id);
+      setMessages(scoped);
+      onUnreadCountChange?.(computeUnreadForRole(scoped));
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'ไม่สามารถเปลี่ยนสถานะข้อความได้');
+    }
   };
 
   const openCount = visibleMessages.filter((m) => m.status === 'open').length;
