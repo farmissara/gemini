@@ -297,6 +297,27 @@ interface DbEntitlementRow {
   revocation_reason?: string | null;
 }
 
+function mapEntitlementFromDb(row: DbEntitlementRow): SchoolExamEntitlement {
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    packId: row.pack_id,
+    claimType: row.claim_type,
+    amountPaidThb: Number(row.amount_paid_thb) || 0,
+    paymentMethod: row.payment_method,
+    claimedBy: row.claimed_by,
+    claimedAt: row.claimed_at,
+    slipUrl: row.slip_url || undefined,
+    slipAttachedAt: row.slip_attached_at || undefined,
+    auditStatus: row.audit_status || undefined,
+    verifiedAt: row.verified_at || undefined,
+    verifiedBy: row.verified_by || undefined,
+    revokedAt: row.revoked_at || undefined,
+    revokedBy: row.revoked_by || undefined,
+    revocationReason: row.revocation_reason || undefined,
+  };
+}
+
 export async function fetchSchoolExamEntitlements(
   schoolId: string,
   isDemoMode: boolean
@@ -317,27 +338,10 @@ export async function fetchSchoolExamEntitlements(
 
     if (error) {
       if (isMissingTableOrSchemaError(error)) return local;
-      return local;
+      throw new Error(`Could not load school exam entitlements: ${error.message}`);
     }
 
-    const mapped: SchoolExamEntitlement[] = ((data || []) as DbEntitlementRow[]).map((row) => ({
-      id: row.id,
-      schoolId: row.school_id,
-      packId: row.pack_id,
-      claimType: row.claim_type,
-      amountPaidThb: Number(row.amount_paid_thb) || 0,
-      paymentMethod: row.payment_method,
-      claimedBy: row.claimed_by,
-      claimedAt: row.claimed_at,
-      slipUrl: row.slip_url || undefined,
-      slipAttachedAt: row.slip_attached_at || undefined,
-      auditStatus: row.audit_status || undefined,
-      verifiedAt: row.verified_at || undefined,
-      verifiedBy: row.verified_by || undefined,
-      revokedAt: row.revoked_at || undefined,
-      revokedBy: row.revoked_by || undefined,
-      revocationReason: row.revocation_reason || undefined,
-    }));
+    const mapped = ((data || []) as DbEntitlementRow[]).map(mapEntitlementFromDb);
 
     // Merge local fallback items that may not be synced yet
     const mappedPackIds = new Set(mapped.map((e) => e.packId));
@@ -435,6 +439,31 @@ export async function saveSchoolQuestionsBatch(
     strand: q.strand || inferStrandFromSubject(q.subject),
   }));
 
+  if (!isDemoMode) {
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase is not configured.');
+
+    const payload = tagged.map((q) => ({
+      id: q.id,
+      school_id: schoolId,
+      pack_id: q.packId || null,
+      strand: q.strand || inferStrandFromSubject(q.subject),
+      subject: q.subject,
+      grade_level: q.gradeLevel || 'ป.1 - ม.6',
+      category: q.category || 'standard_exam',
+      question_th: q.questionTh,
+      question_en: q.questionEn || '',
+      options: q.options,
+      correct_index: q.correctIndex,
+      explanation_th: q.explanationTh || '',
+      points: q.points || 100,
+    }));
+    const { error } = await client
+      .from('school_questions')
+      .upsert(payload, { onConflict: 'id' });
+    if (error) throw new Error(`Could not save school questions: ${error.message}`);
+  }
+
   const current = readLocalSchoolQuestions(schoolId);
   const byId = new Map<string, QuizQuestion>();
   for (const q of [...tagged, ...current]) {
@@ -442,31 +471,6 @@ export async function saveSchoolQuestionsBatch(
   }
   const merged = Array.from(byId.values());
   writeLocalSchoolQuestions(schoolId, merged);
-
-  if (!isDemoMode) {
-    const client = getSupabaseClient();
-    if (client) {
-      const payload = tagged.map((q) => ({
-        id: q.id,
-        school_id: schoolId,
-        pack_id: q.packId || null,
-        strand: q.strand || inferStrandFromSubject(q.subject),
-        subject: q.subject,
-        grade_level: q.gradeLevel || 'ป.1 - ม.6',
-        category: q.category || 'standard_exam',
-        question_th: q.questionTh,
-        question_en: q.questionEn || '',
-        options: q.options,
-        correct_index: q.correctIndex,
-        explanation_th: q.explanationTh || '',
-        points: q.points || 100,
-      }));
-      await client
-        .from('school_questions')
-        .upsert(payload, { onConflict: 'id' })
-        .then(() => undefined, () => undefined);
-    }
-  }
 
   return merged;
 }
@@ -506,10 +510,6 @@ export async function claimCentralExamPack(params: {
     auditStatus: isPaid ? 'pending_audit' : 'verified',
   };
 
-  const currentEntitlements = readLocalEntitlements(schoolId).filter((e) => e.packId !== pack.id);
-  const nextEntitlements = [entitlement, ...currentEntitlements];
-  writeLocalEntitlements(schoolId, nextEntitlements);
-
   // ปลดล็อกข้อสอบให้โรงเรียนใช้สอนได้ทันที (Instant Access with Audit)
   const taggedQuestions: QuizQuestion[] = pack.questions.map((q, index) => ({
     ...q,
@@ -519,32 +519,35 @@ export async function claimCentralExamPack(params: {
     strand: q.strand || pack.strand,
   }));
 
-  await saveSchoolQuestionsBatch(schoolId, taggedQuestions, isDemoMode);
-
   if (!isDemoMode) {
     const client = getSupabaseClient();
-    if (client) {
-      await client
-        .from('school_exam_entitlements')
-        .upsert(
-          {
-            id: entitlement.id,
-            school_id: schoolId,
-            pack_id: pack.id,
-            claim_type: entitlement.claimType,
-            amount_paid_thb: entitlement.amountPaidThb,
-            payment_method: entitlement.paymentMethod,
-            claimed_by: claimedBy,
-            claimed_at: now,
-            slip_url: entitlement.slipUrl || null,
-            slip_attached_at: entitlement.slipAttachedAt || null,
-            audit_status: entitlement.auditStatus || 'verified',
-          },
-          { onConflict: 'school_id,pack_id' }
-        )
-        .then(() => undefined, () => undefined);
-    }
+    if (!client) throw new Error('Supabase is not configured.');
+    const { error } = await client
+      .from('school_exam_entitlements')
+      .upsert(
+        {
+          id: entitlement.id,
+          school_id: schoolId,
+          pack_id: pack.id,
+          claim_type: entitlement.claimType,
+          amount_paid_thb: entitlement.amountPaidThb,
+          payment_method: entitlement.paymentMethod,
+          claimed_by: claimedBy,
+          claimed_at: now,
+          slip_url: entitlement.slipUrl || null,
+          slip_attached_at: entitlement.slipAttachedAt || null,
+          audit_status: entitlement.auditStatus || 'verified',
+        },
+        { onConflict: 'school_id,pack_id' }
+      );
+    if (error) throw new Error(`Could not save exam entitlement: ${error.message}`);
   }
+
+  await saveSchoolQuestionsBatch(schoolId, taggedQuestions, isDemoMode);
+
+  const currentEntitlements = readLocalEntitlements(schoolId).filter((e) => e.packId !== pack.id);
+  const nextEntitlements = [entitlement, ...currentEntitlements];
+  writeLocalEntitlements(schoolId, nextEntitlements);
 
   dispatchCentralExamsUpdated();
   return {
@@ -559,32 +562,30 @@ export async function verifyExamEntitlement(
   packId: string,
   verifiedBy: string
 ): Promise<SchoolExamEntitlement | null> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  const now = new Date().toISOString();
+  const { data, error } = await client
+    .from('school_exam_entitlements')
+    .update({
+      audit_status: 'verified',
+      verified_at: now,
+      verified_by: verifiedBy,
+      revoked_at: null,
+      revoked_by: null,
+      revocation_reason: null,
+    })
+    .eq('school_id', schoolId)
+    .eq('pack_id', packId)
+    .select('*')
+    .single();
+  if (error) throw new Error(`Could not verify exam entitlement: ${error.message}`);
+  const updated = mapEntitlementFromDb(data as DbEntitlementRow);
   const entitlements = readLocalEntitlements(schoolId);
   const targetIndex = entitlements.findIndex((e) => e.packId === packId);
-  if (targetIndex === -1) return null;
-
-  const now = new Date().toISOString();
-  const updated: SchoolExamEntitlement = {
-    ...entitlements[targetIndex],
-    auditStatus: 'verified',
-    verifiedAt: now,
-    verifiedBy,
-  };
-  entitlements[targetIndex] = updated;
-  writeLocalEntitlements(schoolId, entitlements);
-
-  const client = getSupabaseClient();
-  if (client) {
-    await client
-      .from('school_exam_entitlements')
-      .update({
-        audit_status: 'verified',
-        verified_at: now,
-        verified_by: verifiedBy,
-      })
-      .eq('school_id', schoolId)
-      .eq('pack_id', packId)
-      .then(() => undefined, () => undefined);
+  if (targetIndex >= 0) {
+    entitlements[targetIndex] = updated;
+    writeLocalEntitlements(schoolId, entitlements);
   }
 
   dispatchCentralExamsUpdated();
@@ -597,72 +598,52 @@ export async function revokeExamEntitlement(
   revokedBy: string,
   reason: string
 ): Promise<SchoolExamEntitlement | null> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  const now = new Date().toISOString();
+  const { error: deleteError } = await client
+    .from('school_questions')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('pack_id', packId);
+  if (deleteError) throw new Error(`Could not remove revoked exam questions: ${deleteError.message}`);
+
+  const { data, error } = await client
+    .from('school_exam_entitlements')
+    .update({
+      audit_status: 'revoked',
+      revoked_at: now,
+      revoked_by: revokedBy,
+      revocation_reason: reason,
+    })
+    .eq('school_id', schoolId)
+    .eq('pack_id', packId)
+    .select('*')
+    .single();
+  if (error) throw new Error(`Could not revoke exam entitlement: ${error.message}`);
+  const updated = mapEntitlementFromDb(data as DbEntitlementRow);
   const entitlements = readLocalEntitlements(schoolId);
   const targetIndex = entitlements.findIndex((e) => e.packId === packId);
-  if (targetIndex === -1) return null;
-
-  const now = new Date().toISOString();
-  const updated: SchoolExamEntitlement = {
-    ...entitlements[targetIndex],
-    auditStatus: 'revoked',
-    revokedAt: now,
-    revokedBy,
-    revocationReason: reason,
-  };
-  entitlements[targetIndex] = updated;
-  writeLocalEntitlements(schoolId, entitlements);
-
-  // ดึงข้อสอบกลับทันที: ลบข้อสอบที่ได้จาก pack นี้ออกจากคลังของโรงเรียน
-  const currentQuestions = readLocalSchoolQuestions(schoolId);
-  const remainingQuestions = currentQuestions.filter((q) => q.packId !== packId);
-  writeLocalSchoolQuestions(schoolId, remainingQuestions);
-
-  const client = getSupabaseClient();
-  if (client) {
-    await client
-      .from('school_exam_entitlements')
-      .update({
-        audit_status: 'revoked',
-        revoked_at: now,
-        revoked_by: revokedBy,
-        revocation_reason: reason,
-      })
-      .eq('school_id', schoolId)
-      .eq('pack_id', packId)
-      .then(() => undefined, () => undefined);
-
-    await client
-      .from('school_questions')
-      .delete()
-      .eq('school_id', schoolId)
-      .eq('pack_id', packId)
-      .then(() => undefined, () => undefined);
+  if (targetIndex >= 0) {
+    entitlements[targetIndex] = updated;
+    writeLocalEntitlements(schoolId, entitlements);
   }
+  const currentQuestions = readLocalSchoolQuestions(schoolId);
+  writeLocalSchoolQuestions(schoolId, currentQuestions.filter((q) => q.packId !== packId));
 
   dispatchCentralExamsUpdated();
   return updated;
 }
 
-export function fetchAllAuditEntitlements(): SchoolExamEntitlement[] {
-  if (typeof window === 'undefined') return [];
-  const results: SchoolExamEntitlement[] = [];
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('eduverse_entitlements_')) {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const parsed = JSON.parse(raw) as SchoolExamEntitlement[];
-          if (Array.isArray(parsed)) {
-            results.push(...parsed);
-          }
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return results.sort((a, b) => new Date(b.claimedAt).getTime() - new Date(a.claimedAt).getTime());
+export async function fetchAllAuditEntitlements(): Promise<SchoolExamEntitlement[]> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  const { data, error } = await client
+    .from('school_exam_entitlements')
+    .select('*')
+    .order('claimed_at', { ascending: false });
+  if (error) throw new Error(`Could not load exam audit history: ${error.message}`);
+  return ((data || []) as DbEntitlementRow[]).map(mapEntitlementFromDb);
 }
 
 export function getUnclaimedPublishedPacks(

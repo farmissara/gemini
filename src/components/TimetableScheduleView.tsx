@@ -35,8 +35,8 @@ interface TimetableScheduleViewProps {
   courses: Course[];
   teachers: Teacher[];
   students: Student[];
-  onAddSlot: (slot: TimetableSlot) => void;
-  onDeleteSlot: (id: string) => void;
+  onAddSlot: (slot: TimetableSlot) => Promise<void>;
+  onDeleteSlot: (id: string) => Promise<void>;
   schoolPeriods: SchoolPeriodTime[];
   onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
   lang: AppLanguage;
@@ -63,13 +63,6 @@ const PERIOD_LAYOUT = [
   { num: 7 }
 ];
 const PERIOD_ORDER = [1, 2, 3, 4, 0, 5, 6, 7];
-
-const DEFAULT_CLASSROOMS = [
-  'ห้อง 401 (วิทย์-คณิต)',
-  'ห้อง 402 (ศิลป์-ภาษาอังกฤษ)',
-  'ห้อง 501 (วิทย์-คณิต)',
-  'ห้อง 601 (วิทย์-คอมพิวเตอร์)'
-];
 
 const COLOR_CLASSES: Record<string, string> = {
   sky: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:bg-sky-200 dark:hover:bg-sky-900',
@@ -100,12 +93,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   // Classroom selection
   const uniqueClassRooms = Array.from(
     new Set([
-      ...DEFAULT_CLASSROOMS,
       ...slots.map((s) => s.classRoom).filter(Boolean),
       ...students.map((st) => st.room).filter(Boolean),
     ])
   );
-  const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || 'ห้อง 401 (วิทย์-คณิต)');
+  const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
 
   // Teacher selection for Teacher Workload Timetable
   const teacherNames = Array.from(
@@ -115,7 +107,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       ...courses.map((c) => c.teacherName).filter(Boolean),
     ])
   );
-  const [selectedTeacherName, setSelectedTeacherName] = useState<string>(teacherNames[0] || 'อ.ดร.ประเสริฐ ถาวร');
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>(teacherNames[0] || '');
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -123,17 +115,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [periodDraft, setPeriodDraft] = useState<SchoolPeriodTime[]>(schoolPeriods);
   const [periodSettingsError, setPeriodSettingsError] = useState<string | null>(null);
   const [isSavingPeriods, setIsSavingPeriods] = useState(false);
+  const [slotActionError, setSlotActionError] = useState<string | null>(null);
+  const [isSavingSlot, setIsSavingSlot] = useState(false);
   const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<TimetableSlot | null>(null);
 
   // Add slot form state
   const [newDay, setNewDay] = useState<DayOfWeek>('mon');
   const [newPeriod, setNewPeriod] = useState<number>(1);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('custom');
-  const [newCourseCode, setNewCourseCode] = useState('ว30201');
-  const [newTitleTh, setNewTitleTh] = useState('โครงสร้างข้อมูลและ Python');
-  const [newTitleEn, setNewTitleEn] = useState('Data Structures & Python');
-  const [newTeacher, setNewTeacher] = useState(teacherNames[0] || 'อ.ดร.ประเสริฐ ถาวร');
-  const [newRoom, setNewRoom] = useState('ห้อง 401');
+  const [newCourseCode, setNewCourseCode] = useState('');
+  const [newTitleTh, setNewTitleTh] = useState('');
+  const [newTitleEn, setNewTitleEn] = useState('');
+  const [newTeacher, setNewTeacher] = useState(teacherNames[0] || '');
+  const [newRoom, setNewRoom] = useState('');
   const [newCredits, setNewCredits] = useState<number>(1.5);
   const [newColor, setNewColor] = useState<TimetableSlot['colorTag']>('sky');
   const getPeriodTime = (periodNumber: number) => schoolPeriods.find((period) => period.periodNumber === periodNumber);
@@ -217,7 +211,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
   const prospectiveConflict = showAddModal ? checkProspectiveConflict() : null;
 
-  const handleCreateSlot = (e: React.FormEvent) => {
+  const handleCreateSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseCode || !newTitleTh) return;
 
@@ -245,8 +239,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       totalSemesterHours,
     };
 
-    onAddSlot(newSlot);
-    setShowAddModal(false);
+    setIsSavingSlot(true);
+    setSlotActionError(null);
+    try {
+      await onAddSlot(newSlot);
+      setShowAddModal(false);
+    } catch (error) {
+      setSlotActionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSavingSlot(false);
+    }
   };
 
   const handleSavePeriodSettings = async (e: React.FormEvent) => {
@@ -951,8 +953,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onDeleteSlot(selectedSlotForDetail.id);
-                    setSelectedSlotForDetail(null);
+                    setSlotActionError(null);
+                    void onDeleteSlot(selectedSlotForDetail.id)
+                      .then(() => setSelectedSlotForDetail(null))
+                      .catch((error: unknown) => {
+                        setSlotActionError(error instanceof Error ? error.message : String(error));
+                      });
                   }}
                   className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold hover:bg-rose-200 cursor-pointer"
                 >
@@ -990,6 +996,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </div>
 
             <form onSubmit={handleCreateSlot} className="space-y-4 text-xs">
+              {slotActionError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-rose-800">
+                  {slotActionError}
+                </p>
+              )}
               {/* Conflict Preview Warning inside Modal */}
               {prospectiveConflict && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-start gap-2">
@@ -1151,9 +1162,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold cursor-pointer shadow-sm"
+                  disabled={isSavingSlot}
+                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-semibold cursor-pointer shadow-sm"
                 >
-                  บันทึกคาบเรียนลงตาราง
+                  {isSavingSlot ? 'กำลังบันทึก...' : 'บันทึกคาบเรียนลงตาราง'}
                 </button>
               </div>
             </form>

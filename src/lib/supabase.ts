@@ -382,42 +382,28 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     resendEmailSent: Boolean(row.resend_email_sent),
   }));
 
-  // Load timetable slots from Supabase or localStorage fallback
-  let timetableSlots: TimetableSlot[] = [];
-  try {
-    const timetableResult = await client.from('timetable_slots').select('*').eq('school_id', schoolId);
-    if (!timetableResult.error && timetableResult.data && timetableResult.data.length > 0) {
-      timetableSlots = timetableResult.data.map((row) => ({
-        id: row.id,
-        schoolId: row.school_id,
-        day: row.day,
-        period: Number(row.period),
-        courseId: row.course_id || undefined,
-        courseCode: row.course_code || '',
-        courseTitleTh: row.course_title_th || '',
-        courseTitleEn: row.course_title_en || '',
-        teacherName: row.teacher_name || '',
-        room: row.room || '',
-        classRoom: row.classroom || row.class_room || '',
-        colorTag: row.color_tag || 'sky',
-        credits: Number(row.credits || 1.5),
-        totalSemesterHours: Number(row.total_semester_hours || 60),
-      }));
-    }
-  } catch (err) {
-    console.warn('Could not query timetable_slots table:', err);
+  const timetableResult = await client.from('timetable_slots').select('*').eq('school_id', schoolId);
+  if (timetableResult.error) {
+    throw new Error(`Could not load timetable slots: ${timetableResult.error.message}`);
   }
-
-  if (timetableSlots.length === 0 && typeof window !== 'undefined') {
-    try {
-      const cached = localStorage.getItem(`eduverse_timetable_slots_${schoolId}`);
-      if (cached) {
-        timetableSlots = JSON.parse(cached);
-      }
-    } catch (err) {
-      console.warn('Could not read cached timetable slots:', err);
-    }
-  }
+  const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    dayOfWeek: row.day_of_week,
+    periodNumber: Number(row.period_number),
+    startTime: String(row.start_time).slice(0, 5),
+    endTime: String(row.end_time).slice(0, 5),
+    courseId: row.course_id || undefined,
+    courseCode: row.course_code || '',
+    courseTitleTh: row.course_title_th || '',
+    courseTitleEn: row.course_title_en || '',
+    teacherName: row.teacher_name || '',
+    room: row.room || '',
+    classRoom: row.classroom || '',
+    colorTag: row.color_tag || 'sky',
+    credits: Number(row.credits || 1.5),
+    totalSemesterHours: Number(row.total_semester_hours || 60),
+  }));
 
   return { students, teachers, courses, grades, attendance, invoices, announcements, schoolPeriods, campusGates, timetableSlots };
 }
@@ -876,15 +862,13 @@ export async function fetchSchoolCounts(schoolIds: string[]): Promise<Record<str
  */
 export async function deleteStudentFromDb(schoolId: string, studentId: string): Promise<void> {
   const client = getSupabaseClient();
-  if (!client) return;
-  try {
-    const { error } = await client.from('students').delete().eq('id', studentId);
-    if (error) {
-      console.warn('Could not delete student from Supabase:', error.message);
-    }
-  } catch (err) {
-    console.warn('Error deleting student from Supabase:', err);
-  }
+  if (!client) throw new Error('Supabase is not configured.');
+  const { error } = await client
+    .from('students')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('id', studentId);
+  if (error) throw new Error(`Could not delete student from Supabase: ${error.message}`);
 }
 
 /**
@@ -892,56 +876,51 @@ export async function deleteStudentFromDb(schoolId: string, studentId: string): 
  */
 export async function deleteTeacherFromDb(schoolId: string, teacherId: string): Promise<void> {
   const client = getSupabaseClient();
-  if (!client) return;
-  try {
-    const { error } = await client.from('teachers').delete().eq('id', teacherId);
-    if (error) {
-      console.warn('Could not delete teacher from Supabase:', error.message);
-    }
-  } catch (err) {
-    console.warn('Error deleting teacher from Supabase:', err);
-  }
+  if (!client) throw new Error('Supabase is not configured.');
+  const { error } = await client
+    .from('teachers')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('id', teacherId);
+  if (error) throw new Error(`Could not delete teacher from Supabase: ${error.message}`);
 }
 
 /**
  * Saves timetable slots for a school to local storage and Supabase if table exists
  */
 export async function saveTimetableSlotsToDb(schoolId: string, slots: TimetableSlot[]): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const rows = slots.map((s) => ({
+    id: s.id,
+    school_id: schoolId,
+    day_of_week: s.dayOfWeek,
+    period_number: s.periodNumber,
+    start_time: s.startTime,
+    end_time: s.endTime,
+    course_id: s.courseId || null,
+    course_code: s.courseCode,
+    course_title_th: s.courseTitleTh,
+    course_title_en: s.courseTitleEn,
+    teacher_name: s.teacherName,
+    room: s.room,
+    classroom: s.classRoom,
+    color_tag: s.colorTag || 'sky',
+    credits: s.credits || 1.5,
+    total_semester_hours: s.totalSemesterHours || 60,
+  }));
+
+  if (rows.length > 0) {
+    const { error } = await client.from('timetable_slots').upsert(rows);
+    if (error) throw new Error(`Could not save timetable slots to Supabase: ${error.message}`);
+  }
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(`eduverse_timetable_slots_${schoolId}`, JSON.stringify(slots));
     } catch (err) {
       console.warn('Could not cache timetable slots locally:', err);
     }
-  }
-
-  const client = getSupabaseClient();
-  if (!client) return;
-
-  try {
-    const rows = slots.map((s) => ({
-      id: s.id,
-      school_id: schoolId,
-      day: s.day,
-      period: s.period,
-      course_id: s.courseId || null,
-      course_code: s.courseCode,
-      course_title_th: s.courseTitleTh,
-      course_title_en: s.courseTitleEn,
-      teacher_name: s.teacherName,
-      room: s.room,
-      classroom: s.classRoom,
-      color_tag: s.colorTag || 'sky',
-      credits: s.credits || 1.5,
-      total_semester_hours: s.totalSemesterHours || 60,
-    }));
-
-    const { error } = await client.from('timetable_slots').upsert(rows);
-    if (error && !isMissingTableError(error)) {
-      console.warn('Could not upsert timetable slots to Supabase:', error.message);
-    }
-  } catch (err) {
-    console.warn('Error saving timetable slots to Supabase:', err);
   }
 }
 
@@ -950,14 +929,12 @@ export async function saveTimetableSlotsToDb(schoolId: string, slots: TimetableS
  */
 export async function deleteTimetableSlotFromDb(schoolId: string, slotId: string): Promise<void> {
   const client = getSupabaseClient();
-  if (!client) return;
-  try {
-    const { error } = await client.from('timetable_slots').delete().eq('id', slotId);
-    if (error && !isMissingTableError(error)) {
-      console.warn('Could not delete timetable slot from Supabase:', error.message);
-    }
-  } catch (err) {
-    console.warn('Error deleting timetable slot from Supabase:', err);
-  }
+  if (!client) throw new Error('Supabase is not configured.');
+  const { error } = await client
+    .from('timetable_slots')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('id', slotId);
+  if (error) throw new Error(`Could not delete timetable slot from Supabase: ${error.message}`);
 }
 

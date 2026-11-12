@@ -115,27 +115,41 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const [revokeReasonInput, setRevokeReasonInput] = useState('');
   const [isProcessingAudit, setIsProcessingAudit] = useState(false);
 
-  const loadAuditList = () => {
-    const list = fetchAllAuditEntitlements();
-    setAuditList(list);
+  const loadAuditList = async () => {
+    try {
+      setAuditList(await fetchAllAuditEntitlements());
+    } catch (error) {
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : String(error),
+      });
+    }
   };
 
   const loadPacks = async () => {
     setLoading(true);
-    const list = await fetchCentralExamPacks(isDemoMode);
-    setPacks(list);
-    if (!importExistingPackId && list.length > 0) {
-      setImportExistingPackId(list[0].id);
+    try {
+      const list = await fetchCentralExamPacks(isDemoMode);
+      setPacks(list);
+      if (!importExistingPackId && list.length > 0) {
+        setImportExistingPackId(list[0].id);
+      }
+    } catch (error) {
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     void loadPacks();
-    loadAuditList();
+    void loadAuditList();
     const handleUpdate = () => {
       void fetchCentralExamPacks(isDemoMode).then(setPacks);
-      loadAuditList();
+      void loadAuditList();
     };
     window.addEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);
     return () => window.removeEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);
@@ -145,10 +159,15 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     setIsProcessingAudit(true);
     try {
       await verifyExamEntitlement(entitlement.schoolId, entitlement.packId, adminDisplayName);
-      loadAuditList();
+      await loadAuditList();
       setFeedbackMessage({
         type: 'success',
         text: `✓ ยืนยันสลิปถูกต้องเรียบร้อยแล้ว (โรงเรียน ${entitlement.schoolId} ได้รับสิทธิ์สมบูรณ์)`,
+      });
+    } catch (error) {
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : String(error),
       });
     } finally {
       setIsProcessingAudit(false);
@@ -161,12 +180,17 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     setIsProcessingAudit(true);
     try {
       await revokeExamEntitlement(revokingEntitlement.schoolId, revokingEntitlement.packId, adminDisplayName, reason);
-      loadAuditList();
+      await loadAuditList();
       setRevokingEntitlement(null);
       setRevokeReasonInput('');
       setFeedbackMessage({
         type: 'error',
         text: `✕ เพิกถอนสิทธิ์และดึงข้อสอบกลับจากโรงเรียนเรียบร้อยแล้ว (เหตุผล: ${reason})`,
+      });
+    } catch (error) {
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : String(error),
       });
     } finally {
       setIsProcessingAudit(false);

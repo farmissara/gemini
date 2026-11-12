@@ -33,8 +33,8 @@ import {
   X,
 } from 'lucide-react';
 import {
-  authenticateImportedLocalUser,
   authenticateWithSupabase,
+  authenticateImportedLocalUser,
   getDemoStudentAccounts,
   listActiveSchools,
   MASTER_SYSTEM_EMAIL,
@@ -43,8 +43,8 @@ import {
   requestPasswordReset,
   resendSignupConfirmation,
   saveAllDemoStudentAccounts,
-  type AuthContext,
   type StoredImportedCredential,
+  type AuthContext,
 } from '../lib/authDb';
 import { getSupabaseClient } from '../lib/supabase';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -78,6 +78,10 @@ function getAuthErrorMessage(message: string, lang: AppLanguage): string {
   return message;
 }
 
+function isLoginRequest(mode: 'login' | 'register'): boolean {
+  return mode === 'login';
+}
+
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onLogin,
   onLoginImportedUser,
@@ -98,16 +102,16 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   // Production Auth Form State (Primary Landing Experience)
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loginTargetRole, setLoginTargetRole] = useState<'student' | 'staff'>(
-    initialLoginMode === 'student' ? 'student' : 'staff'
+    'staff'
   );
-  const [registrationType, setRegistrationType] = useState<'student' | 'school'>('student');
+  const [registrationType, setRegistrationType] = useState<'student' | 'school'>('school');
   const [schools, setSchools] = useState<School[]>(activeSchools && activeSchools.length > 0 ? activeSchools : []);
   const [schoolLoadError, setSchoolLoadError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [schoolId, setSchoolId] = useState(initialSchoolId || '');
   const [fullNameTh, setFullNameTh] = useState('');
   const [fullNameEn, setFullNameEn] = useState('');
-  const [schoolId, setSchoolId] = useState(initialSchoolId || '');
   const [schoolNameTh, setSchoolNameTh] = useState('');
   const [schoolNameEn, setSchoolNameEn] = useState('');
   const [schoolType, setSchoolType] = useState<School['type']>('public');
@@ -117,7 +121,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Secondary Modals: Demo Launcher, Forgot Password, SMTP Setup
+  // Secondary Modals: Forgot Password, SMTP Setup
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -137,7 +141,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       .then((availableSchools) => {
         if (!active) return;
         setSchools(availableSchools);
-        setSchoolId(availableSchools[0]?.id || '');
+        setSchoolId(initialSchoolId || availableSchools[0]?.id || '');
         setSchoolLoadError(null);
       })
       .catch((loadError: unknown) => {
@@ -167,6 +171,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     setIsLoading(true);
 
     try {
+      if (isLoginRequest(mode)) {
+        onLogin(await authenticateWithSupabase(email, password));
+        return;
+      }
+
       if (mode === 'login') {
         const inputTrimmed = email.trim();
         const selectedSchool = schools.find((s) => s.id === schoolId) || schools[0] || INITIAL_SCHOOLS[0];
@@ -357,12 +366,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
           : 'Activation request submitted to Super Admin for system approval.'
       );
-    } catch {
-      setNotice(
-        lang === 'th'
-          ? 'ส่งคำขออนุมัติเปิดใช้งานไปยัง Super Admin (farmissara@gmail.com) เรียบร้อยแล้ว'
-          : 'Activation request submitted to Super Admin for system approval.'
-      );
+    } catch (requestError: unknown) {
+      setError(getAuthErrorMessage(requestError instanceof Error ? requestError.message : String(requestError), lang));
     } finally {
       setIsLoading(false);
     }
@@ -718,7 +723,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 {/* Form Body */}
                 <div className="p-5 sm:p-6 space-y-4">
                   {mode === 'login' && (
-                    <div className="space-y-3">
+                    <div className="hidden">
                       <div className="flex gap-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1">
                         <button
                           type="button"
@@ -788,7 +793,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   )}
 
                   {mode === 'register' && (
-                    <div className="flex gap-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1">
+                    <div className="hidden">
                       <button
                         type="button"
                         onClick={() => {

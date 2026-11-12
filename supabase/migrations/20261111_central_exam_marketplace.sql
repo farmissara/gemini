@@ -56,6 +56,15 @@ CREATE TABLE IF NOT EXISTS public.school_exam_entitlements (
     payment_method TEXT NOT NULL DEFAULT 'free' CHECK (payment_method IN ('free', 'promptpay', 'invoice')),
     claimed_by TEXT NOT NULL DEFAULT '',
     claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    slip_url TEXT,
+    slip_attached_at TIMESTAMPTZ,
+    audit_status TEXT NOT NULL DEFAULT 'verified'
+        CHECK (audit_status IN ('pending_audit', 'verified', 'revoked')),
+    verified_at TIMESTAMPTZ,
+    verified_by TEXT,
+    revoked_at TIMESTAMPTZ,
+    revoked_by TEXT,
+    revocation_reason TEXT,
     UNIQUE (school_id, pack_id)
 );
 
@@ -76,6 +85,16 @@ CREATE POLICY "School admins claim or buy central exam packs"
     ON public.school_exam_entitlements
     FOR INSERT WITH CHECK (
         public.has_school_role(school_id, ARRAY['super_admin', 'admin'])
+    );
+
+DROP POLICY IF EXISTS "Super admins audit exam entitlements" ON public.school_exam_entitlements;
+CREATE POLICY "Super admins audit exam entitlements"
+    ON public.school_exam_entitlements
+    FOR UPDATE USING (
+        public.has_school_role(school_id, ARRAY['super_admin'])
+    )
+    WITH CHECK (
+        public.has_school_role(school_id, ARRAY['super_admin'])
     );
 
 GRANT SELECT, INSERT, UPDATE ON public.school_exam_entitlements TO authenticated;

@@ -968,45 +968,61 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteStudent = (studentId: string) => {
-    setStudents((prev) => {
-      const next = prev.filter((s) => s.id !== studentId);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
-          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
-          if (!deleted.includes(studentId)) {
-            deleted.push(studentId);
-            localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
+    void (async () => {
+      try {
+        await deleteStudentFromDb(activeSchool.id, studentId);
+        setStudents((prev) => {
+          const next = prev.filter((student) => student.id !== studentId);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
+              const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
+              if (!deleted.includes(studentId)) deleted.push(studentId);
+              localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
+            } catch (error) {
+              console.warn('Could not update deleted student in localStorage:', error);
+            }
           }
-        } catch (e) {
-          console.warn('Could not update deleted student in localStorage:', e);
-        }
+          return next;
+        });
+        setDataSyncError(null);
+      } catch (error) {
+        setDataSyncError(error instanceof Error ? error.message : String(error));
       }
-      return next;
-    });
-    deleteStudentFromDb(activeSchool.id, studentId);
+    })();
   };
 
   const handlePurgeSampleStudents = () => {
     if (!confirm('ยืนยันล้างข้อมูลนักเรียนตัวอย่างทั้งหมด (Sample Students) ออกจากโรงเรียนนี้หรือไม่? ข้อมูลจริงที่สร้างใหม่จะไม่ได้รับผลกระทบ')) return;
-    setStudents((prev) => {
-      const samples = prev.filter(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock'));
-      samples.forEach(s => deleteStudentFromDb(activeSchool.id, s.id));
-      const next = prev.filter(s => !s.id.startsWith('std-0') && !s.id.startsWith('std-demo') && !s.id.startsWith('std-mock'));
-      if (typeof window !== 'undefined') {
+    void (async () => {
+      const sampleIds = students
+        .filter((student) => /^(std-0|std-demo|std-mock)/.test(student.id))
+        .map((student) => student.id);
+      const deletedIds: string[] = [];
+      const errors: string[] = [];
+      for (const studentId of sampleIds) {
         try {
-          localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
-          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
-          samples.forEach(s => {
-            if (!deleted.includes(s.id)) deleted.push(s.id);
-          });
-          localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
-        } catch (e) {
-          console.warn('Could not cache purged student IDs:', e);
+          await deleteStudentFromDb(activeSchool.id, studentId);
+          deletedIds.push(studentId);
+        } catch (error) {
+          errors.push(error instanceof Error ? error.message : String(error));
         }
       }
-      return next;
-    });
+      if (deletedIds.length > 0) {
+        setStudents((prev) => prev.filter((student) => !deletedIds.includes(student.id)));
+        if (typeof window !== 'undefined') {
+          try {
+            const remaining = students.filter((student) => !deletedIds.includes(student.id));
+            localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(remaining));
+            const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
+            localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...deletedIds])]));
+          } catch (error) {
+            console.warn('Could not cache purged student IDs:', error);
+          }
+        }
+      }
+      setDataSyncError(errors.length ? `Could not delete ${errors.length} sample student record(s): ${errors.join('; ')}` : null);
+    })();
   };
 
   const handleToggleLineSync = (studentId: string) => {
@@ -1036,45 +1052,61 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
-    setTeachers((prev) => {
-      const next = prev.filter((t) => t.id !== teacherId);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
-          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
-          if (!deleted.includes(teacherId)) {
-            deleted.push(teacherId);
-            localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify(deleted));
+    void (async () => {
+      try {
+        await deleteTeacherFromDb(activeSchool.id, teacherId);
+        setTeachers((prev) => {
+          const next = prev.filter((teacher) => teacher.id !== teacherId);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
+              const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
+              if (!deleted.includes(teacherId)) deleted.push(teacherId);
+              localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify(deleted));
+            } catch (error) {
+              console.warn('Could not update deleted teacher in localStorage:', error);
+            }
           }
-        } catch (e) {
-          console.warn('Could not update deleted teacher in localStorage:', e);
-        }
+          return next;
+        });
+        setDataSyncError(null);
+      } catch (error) {
+        setDataSyncError(error instanceof Error ? error.message : String(error));
       }
-      return next;
-    });
-    deleteTeacherFromDb(activeSchool.id, teacherId);
+    })();
   };
 
   const handlePurgeSampleTeachers = () => {
     if (!confirm('ยืนยันล้างข้อมูลครูตัวอย่างทั้งหมด (Sample Teachers) ออกจากโรงเรียนนี้หรือไม่? ข้อมูลจริงที่สร้างใหม่จะไม่ได้รับผลกระทบ')) return;
-    setTeachers((prev) => {
-      const samples = prev.filter(t => t.id.startsWith('tch-0') || t.id.startsWith('tch-demo') || t.id.startsWith('tch-mock'));
-      samples.forEach(t => deleteTeacherFromDb(activeSchool.id, t.id));
-      const next = prev.filter(t => !t.id.startsWith('tch-0') && !t.id.startsWith('tch-demo') && !t.id.startsWith('tch-mock'));
-      if (typeof window !== 'undefined') {
+    void (async () => {
+      const sampleIds = teachers
+        .filter((teacher) => /^(tch-0|tch-demo|tch-mock)/.test(teacher.id))
+        .map((teacher) => teacher.id);
+      const deletedIds: string[] = [];
+      const errors: string[] = [];
+      for (const teacherId of sampleIds) {
         try {
-          localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
-          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
-          samples.forEach(t => {
-            if (!deleted.includes(t.id)) deleted.push(t.id);
-          });
-          localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify(deleted));
-        } catch (e) {
-          console.warn('Could not cache purged teacher IDs:', e);
+          await deleteTeacherFromDb(activeSchool.id, teacherId);
+          deletedIds.push(teacherId);
+        } catch (error) {
+          errors.push(error instanceof Error ? error.message : String(error));
         }
       }
-      return next;
-    });
+      if (deletedIds.length > 0) {
+        setTeachers((prev) => prev.filter((teacher) => !deletedIds.includes(teacher.id)));
+        if (typeof window !== 'undefined') {
+          try {
+            const remaining = teachers.filter((teacher) => !deletedIds.includes(teacher.id));
+            localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(remaining));
+            const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
+            localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...deletedIds])]));
+          } catch (error) {
+            console.warn('Could not cache purged teacher IDs:', error);
+          }
+        }
+      }
+      setDataSyncError(errors.length ? `Could not delete ${errors.length} sample teacher record(s): ${errors.join('; ')}` : null);
+    })();
   };
 
   const handleImportStudents = (newStudents: Student[]) => {
@@ -1806,22 +1838,18 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleAddTimetableSlot = (slot: TimetableSlot) => {
+  const handleAddTimetableSlot = async (slot: TimetableSlot) => {
     const fullSlot: TimetableSlot = { ...slot, schoolId: activeSchool.id };
-    setTimetableSlots((prev) => {
-      const next = [fullSlot, ...prev];
-      saveTimetableSlotsToDb(activeSchool.id, next);
-      return next;
-    });
+    const next = [fullSlot, ...timetableSlots];
+    await saveTimetableSlotsToDb(activeSchool.id, next);
+    setTimetableSlots(next);
   };
 
-  const handleDeleteTimetableSlot = (slotId: string) => {
-    setTimetableSlots((prev) => {
-      const next = prev.filter(s => s.id !== slotId);
-      saveTimetableSlotsToDb(activeSchool.id, next);
-      return next;
-    });
-    deleteTimetableSlotFromDb(activeSchool.id, slotId);
+  const handleDeleteTimetableSlot = async (slotId: string) => {
+    const next = timetableSlots.filter((slot) => slot.id !== slotId);
+    await deleteTimetableSlotFromDb(activeSchool.id, slotId);
+    await saveTimetableSlotsToDb(activeSchool.id, next);
+    setTimetableSlots(next);
   };
 
   const handleSaveSchoolPeriods = async (periods: SchoolPeriodTime[]) => {
