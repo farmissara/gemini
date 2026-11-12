@@ -93,6 +93,8 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
    - Password: Google App Password
 4. บันทึกการตั้งค่าแล้วทดสอบสมัครบัญชีและส่งลิงก์ยืนยันใหม่ โดยใช้กล่องเมลที่ควบคุมได้ ตรวจโฟลเดอร์ Spam หากไม่พบอีเมล
 
+หากหน้าเว็บแจ้ง `Error sending recovery email` ปัญหาอยู่ที่ Supabase Auth ส่งอีเมลไม่สำเร็จ ไม่ใช่การรัน SQL migration ให้ตรวจว่าเปิด Custom SMTP แล้ว, credentials ถูกต้อง, sender address ใช้งานได้ และ **Authentication → URL Configuration** อนุญาต URL ของเว็บที่ใช้งานจริงทั้ง Site URL และ Redirect URLs จากนั้นตรวจ Auth logs ใน Supabase เพื่อดูข้อผิดพลาดจากผู้ให้บริการ SMTP โดยตรง
+
 ใส่ App Password ใน Supabase Dashboard โดยตรงเท่านั้น ห้ามใช้รหัสผ่าน Google ปกติ ห้ามส่ง App Password ในแชต และห้ามเก็บไว้ในโค้ด, Git หรือ environment variable ฝั่ง `VITE_*` Gmail ส่วนบุคคลมีข้อจำกัดการส่งและอาจไม่เหมาะกับอีเมลปริมาณมาก
 
 การตั้งค่านี้ครอบคลุมอีเมล Supabase Auth เช่น ยืนยันสมาชิกและรีเซ็ตรหัสผ่านเท่านั้น ปัจจุบันอีเมลแจ้งเตือนทั่วไป/ประกาศในแอปยังไม่ได้เชื่อมกับบริการส่งจริง และค่า Resend Sender ในหน้า System Settings ยังไม่ใช่การตั้งค่า SMTP หรือการส่งอีเมลจริง

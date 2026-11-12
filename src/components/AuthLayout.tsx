@@ -218,8 +218,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       await requestPasswordReset(target);
       setResetStatus(
         lang === 'th'
-          ? `ระบบได้ส่งคำขอเปลี่ยนรหัสผ่านสำหรับ ${target} แล้ว โดยมี Master System Email: ${MASTER_SYSTEM_EMAIL} เป็นผู้ดูแลยืนยันและตอบกลับ`
-          : `Password reset request submitted for ${target}. Master confirmation and replies are handled by ${MASTER_SYSTEM_EMAIL}.`
+          ? `ระบบรับคำขอแล้ว หากมีบัญชีที่ใช้อีเมล ${target} Supabase จะส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลนั้น โปรดตรวจสอบกล่อง Spam/Junk ด้วย`
+          : `Request received. If an account uses ${target}, Supabase will send a password reset link to that address. Check Spam/Junk as well.`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -830,7 +830,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </footer>
 
-      {/* Modal: Forgot / Reset Password with Master Authority Email */}
+      {/* Modal: Forgot / Reset Password */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="relative w-full max-w-md rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 overflow-hidden">
@@ -844,7 +844,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     {lang === 'th' ? 'ขอเปลี่ยนรหัสผ่าน / ลืมรหัสผ่าน' : 'Reset Password Request'}
                   </h3>
                   <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ส่งคำขอไปยังระบบ และมี Master Email เป็นผู้ยืนยัน' : 'Request reset link via master authority'}
+                    {lang === 'th' ? 'รับลิงก์รีเซ็ตรหัสผ่านทางอีเมลบัญชี' : 'Receive a reset link at your account email'}
                   </p>
                 </div>
               </div>
@@ -863,15 +863,15 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
                 <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>{lang === 'th' ? 'อีเมล Master สำหรับยืนยันการเปลี่ยนรหัสผ่าน:' : 'Master Authority Email:'}</span>
+                <span>{lang === 'th' ? 'อีเมลผู้ดูแลสำหรับขอความช่วยเหลือ:' : 'Administrator support email:'}</span>
               </div>
               <div className="font-mono text-xs font-semibold pl-5 text-blue-700 dark:text-blue-300">
                 {MASTER_SYSTEM_EMAIL}
               </div>
               <div className="text-[11px] text-blue-800/80 dark:text-blue-300/80 pl-5 leading-relaxed">
                 {lang === 'th'
-                  ? 'ระบบจะส่งคำขอและประสานงานยืนยันผ่าน Master Email นี้ หากไม่ได้รับอีเมลอัตโนมัติสามารถส่งอีเมลตรงเพื่อขอความช่วยเหลือได้ทันที'
-                  : 'All security reset verifications are managed through this master address.'}
+                  ? 'ลิงก์รีเซ็ตจะส่งโดย Supabase Auth ไปยังอีเมลบัญชีโดยตรง อีเมลนี้เป็นช่องทางติดต่อผู้ดูแลเท่านั้น'
+                  : 'Supabase Auth sends the reset link directly to the account email. This address is for support only.'}
               </div>
             </div>
 

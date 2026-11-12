@@ -352,6 +352,11 @@ export async function requestPasswordReset(email: string): Promise<void> {
     redirectTo: typeof window === 'undefined' ? undefined : `${window.location.origin}/`,
   });
   if (error) {
+    if (error.message.toLowerCase().includes('error sending recovery email')) {
+      throw new Error(
+        `Supabase ส่งอีเมลรีเซ็ตรหัสผ่านไม่สำเร็จ โปรดตรวจสอบ Authentication > SMTP Settings, ข้อมูลผู้ส่งอีเมล และ URL Configuration ใน Supabase (รายละเอียด: ${error.message})`
+      );
+    }
     throw new Error(`ไม่สามารถส่งคำขอเปลี่ยนรหัสผ่านได้: ${error.message}`);
   }
 }
