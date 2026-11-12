@@ -378,27 +378,84 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         const text = event.target?.result as string;
         const rows = parseCSVLines(text);
         if (rows.length < 2) return;
+        const normalizeHeader = (value: string) => value.toLowerCase().replace(/[\s()]/g, '');
+        const headers = rows[0].map(normalizeHeader);
+        const aliases = {
+          code: ['code', 'รหัสวิชา'],
+          titleTh: ['titleth', 'ชื่อวิชาไทย', 'ชื่อไทย', 'ชื่อวิชา'],
+          titleEn: ['titleen', 'ชื่อวิชาen', 'ชื่ออังกฤษ'],
+          category: ['category', 'ประเภทวิชา', 'หมวดวิชา'],
+          credits: ['credits', 'หน่วยกิต'],
+          weeklyHours: ['weeklyhours', 'คาบ/สัปดาห์', 'ชั่วโมง/สัปดาห์'],
+          minAttendanceHours: ['minattendancehours', 'เกณฑ์80%ชม.'],
+          totalHours: ['totalhours', 'ชั่วโมงรวม/เทอม', 'ชั่วโมงรวมต่อภาคเรียน'],
+          teacherName: ['teachername', 'ครูผู้สอน'],
+          department: ['department', 'กลุ่มสาระฯ', 'กลุ่มสาระ'],
+          schedule: ['schedule', 'ตารางสอน'],
+          room: ['room', 'ห้องเรียน'],
+          description: ['description', 'คำอธิบาย'],
+        };
+        const hasNamedHeaders = [...aliases.code, ...aliases.titleTh, ...aliases.credits]
+          .some((alias) => headers.includes(normalizeHeader(alias)));
+        const column = (field: keyof typeof aliases, fallback: number) => {
+          const index = headers.findIndex((header) =>
+            aliases[field].some((alias) => normalizeHeader(alias) === header)
+          );
+          return index >= 0 ? index : hasNamedHeaders ? -1 : fallback;
+        };
+        const columns = {
+          code: column('code', 0),
+          titleTh: column('titleTh', 1),
+          titleEn: column('titleEn', 2),
+          category: column('category', 3),
+          credits: column('credits', 4),
+          weeklyHours: column('weeklyHours', 5),
+          minAttendanceHours: column('minAttendanceHours', 6),
+          totalHours: column('totalHours', 7),
+          teacherName: column('teacherName', 8),
+          department: column('department', 9),
+          schedule: column('schedule', 10),
+          room: column('room', 11),
+          description: column('description', 12),
+        };
+        const cell = (row: string[], index: number) => index >= 0 ? row[index]?.trim() || '' : '';
+        const number = (value: string, fallback: number) => {
+          if (!value) return fallback;
+          const parsed = Number(value.replace(/,/g, ''));
+          return Number.isFinite(parsed) ? parsed : fallback;
+        };
         const dataRows = rows.slice(1);
-        const imported: Course[] = dataRows.map((r, idx) => ({
-          id: `crs-mis-${Date.now()}-${idx}`,
-          code: r[0] || `CRS-${idx}`,
-          titleTh: r[1] || 'รายวิชา',
-          titleEn: r[2] || 'Course',
-          category: (r[3] as any) || 'core',
-          credits: parseFloat(r[4]) || 1.5,
-          weeklyHours: parseInt(r[5]) || 3,
-          minAttendanceHours: parseInt(r[6]) || 48,
-          totalHours: parseInt(r[7]) || 60,
-          teacherName: r[8] || '',
-          teacherEmail: r[8] ? `${r[8].replace(/\s+/g, '').toLowerCase()}@school.ac.th` : 'teacher@school.ac.th',
-          department: r[9] || 'วิชาการ',
-          schedule: r[10] || 'จันทร์ 08:30-10:10',
-          room: r[11] || 'ห้อง 401',
-          academicYear: '2569',
-          semester: '1' as const,
-          enrolledStudentIds: [],
-          description: r[12] || '',
-        })).filter(c => c.code && c.titleTh);
+        const imported: Course[] = dataRows.map((row, idx) => {
+          const credits = number(cell(row, columns.credits), 1.5);
+          const weeklyHours = number(cell(row, columns.weeklyHours), Math.round(credits * 2));
+          const totalHours = number(cell(row, columns.totalHours), weeklyHours * 20);
+          const teacherName = cell(row, columns.teacherName);
+          return {
+            id: `crs-mis-${Date.now()}-${idx}`,
+            code: cell(row, columns.code) || `CRS-${idx}`,
+            titleTh: cell(row, columns.titleTh) || 'รายวิชา',
+            titleEn: cell(row, columns.titleEn) || 'Course',
+            category: cell(row, columns.category) || 'core',
+            credits,
+            weeklyHours,
+            minAttendanceHours: number(
+              cell(row, columns.minAttendanceHours),
+              Math.round(totalHours * 0.8)
+            ),
+            totalHours,
+            teacherName,
+            teacherEmail: teacherName
+              ? `${teacherName.replace(/\s+/g, '').toLowerCase()}@school.ac.th`
+              : 'teacher@school.ac.th',
+            department: cell(row, columns.department) || 'วิชาการ',
+            schedule: cell(row, columns.schedule) || 'จันทร์ 08:30-10:10',
+            room: cell(row, columns.room) || 'ห้อง 401',
+            academicYear: '2569',
+            semester: '1' as const,
+            enrolledStudentIds: [],
+            description: cell(row, columns.description),
+          };
+        }).filter(c => c.code && c.titleTh);
 
         setPage(0);
         setPreviewCourses(imported);
@@ -978,8 +1035,17 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   ]);
                 },
                 () => {
-                  const headers = ['รหัสวิชา', 'ชื่อวิชา (ไทย)', 'ชื่อวิชา (EN)', 'หน่วยกิต', 'คาบ/สัปดาห์', 'เกณฑ์ 80% (ชม.)', 'ครูผู้สอน', 'กลุ่มสาระฯ'];
-                  const rows = courses.map(c => [c.code, `"${c.titleTh}"`, `"${c.titleEn}"`, c.credits, c.weeklyHours || 3, c.minAttendanceHours || 48, `"${c.teacherName}"`, `"${c.department}"`]);
+                  const headers = [
+                    'รหัสวิชา', 'ชื่อวิชา (ไทย)', 'ชื่อวิชา (EN)', 'ประเภทวิชา', 'หน่วยกิต',
+                    'คาบ/สัปดาห์', 'เกณฑ์ 80% (ชม.)', 'ชั่วโมงรวม/เทอม', 'ครูผู้สอน',
+                    'กลุ่มสาระฯ', 'ตารางสอน', 'ห้องเรียน', 'คำอธิบาย',
+                  ];
+                  const rows = courses.map(c => [
+                    c.code, `"${c.titleTh}"`, `"${c.titleEn}"`, c.category, c.credits,
+                    c.weeklyHours ?? '', c.minAttendanceHours ?? '', c.totalHours ?? '',
+                    `"${c.teacherName}"`, `"${c.department}"`, `"${c.schedule}"`,
+                    `"${c.room}"`, `"${c.description}"`,
+                  ]);
                   downloadFile(`mis_courses_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
                 },
                 'indigo'

@@ -8,6 +8,7 @@
 --   4. Student account approval RPCs
 --   5. Admin <-> Super Admin coordination messages table
 --   6. Refreshes Supabase PostgREST schema cache (NOTIFY pgrst, 'reload schema')
+--   7. Persistent course workload hours
 -- =========================================================================
 
 BEGIN;
@@ -15,6 +16,11 @@ BEGIN;
 -- 0. Ensure user_profiles.status exists for policies & approval RPCs
 ALTER TABLE public.user_profiles
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+
+ALTER TABLE public.courses
+    ADD COLUMN IF NOT EXISTS weekly_hours NUMERIC(5,2),
+    ADD COLUMN IF NOT EXISTS total_hours NUMERIC(7,2),
+    ADD COLUMN IF NOT EXISTS min_attendance_hours NUMERIC(7,2);
 
 -- 1. TEACHERS TABLE (HRMS & DPA Staff System)
 CREATE TABLE IF NOT EXISTS public.teachers (
