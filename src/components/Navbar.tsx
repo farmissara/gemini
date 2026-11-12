@@ -23,6 +23,7 @@ import {
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
+  currentTab?: string;
   currentUser: AuthUser | null;
   activeSchool: School;
   currentRole: UserRole;
@@ -54,6 +55,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  currentTab,
   currentUser,
   activeSchool,
   currentRole,
@@ -222,7 +224,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Bulk Import / Export Data Trigger (For Admin & Teacher) */}
-          {canAccessSchoolOperations && onOpenImportExport && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+          {currentTab !== 'teachers' && canAccessSchoolOperations && onOpenImportExport && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
             <button
               type="button"
               onClick={onOpenImportExport}

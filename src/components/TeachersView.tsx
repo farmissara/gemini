@@ -5,6 +5,7 @@ import {
   Search, 
   Filter, 
   Plus, 
+  ChevronDown,
   Mail, 
   Phone, 
   Award, 
@@ -28,7 +29,8 @@ import {
   Target,
   BarChart3,
   Calendar,
-  Tag
+  Tag,
+  FileSpreadsheet
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from './PagedList';
@@ -386,6 +388,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   };
 
   const canManage = currentRole === 'admin' || currentRole === 'super_admin';
+  const canPurgeSampleTeachers = canManage
+    && Boolean(onPurgeSampleTeachers)
+    && teachers.some(t => t.id.startsWith('tch-0') || t.id.startsWith('tch-demo') || t.id.startsWith('tch-mock'));
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
@@ -394,58 +399,68 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
             <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)]" />
-            <span>{lang === 'th' ? 'ระบบบุคลากรโรงเรียน & ทำวิทยฐานะ DPA (HRMS)' : 'Faculty & Staff Directory (HRMS / DPA)'}</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
-              HRMS สพฐ.
-            </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">
-              DPA (ว.PA)
-            </span>
+            <span>{lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}</span>
           </h1>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             {lang === 'th'
-              ? 'ระบบบุคลากรโรงเรียน (HRMS) ทะเบียนประวัติครู แฟ้มวิทยฐานะดิจิทัล DPA (ว.PA 3 ด้าน) และวิเคราะห์ศักยภาพการจัดการเรียนรู้'
-              : 'Official HRMS teacher directory with DPA digital performance appraisal (PA 3 aspects) and teaching analytics.'}
+              ? `ทะเบียนบุคลากรและแฟ้มผลงาน PA · ${filteredTeachers.length} คน`
+              : `Staff directory and PA portfolios · ${filteredTeachers.length} people`}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {onOpenImportExport && (
-            <button
-              type="button"
-              onClick={onOpenImportExport}
-              className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-            >
-              นำเข้า/ส่งออก Excel
-            </button>
-          )}
-
-          {onPurgeSampleTeachers && canManage && teachers.some(t => t.id.startsWith('tch-0') || t.id.startsWith('tch-demo') || t.id.startsWith('tch-mock')) && (
-            <button
-              type="button"
-              onClick={onPurgeSampleTeachers}
-              className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-semibold text-rose-800 dark:text-rose-200 transition flex items-center gap-1.5 cursor-pointer"
-              title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-              <span>ล้างข้อมูลตัวอย่าง</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
-          </button>
+          <details className="relative">
+            <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]">
+              <span>{lang === 'th' ? 'จัดการข้อมูล' : 'Data actions'}</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-2 min-w-48 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+              {onOpenImportExport && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onOpenImportExport();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                  <span>{lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.closest('details')?.removeAttribute('open');
+                  handleExportCSV();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+              >
+                <Download className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
+              </button>
+              {canPurgeSampleTeachers && onPurgeSampleTeachers && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onPurgeSampleTeachers();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                  title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>{lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data'}</span>
+                </button>
+              )}
+            </div>
+          </details>
 
           {canManage && (
             <button
               type="button"
               onClick={handleOpenAdd}
-              className="px-4 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{lang === 'th' ? 'เพิ่มครู/บุคลากร' : 'Add Teacher'}</span>
@@ -455,7 +470,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="shrink-0 bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="shrink-0 bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2 w-full">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
@@ -463,7 +478,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={lang === 'th' ? 'ค้นหาชื่อครู, รหัส, วิชาเอก, วิชาโท, ทักษะ, หรือวิชาที่สอน...' : 'Search by name, ID, major, minor, skills, subjects...'}
+              placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส หรือวิชาที่สอน...' : 'Search by name, ID, or subject...'}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
@@ -515,10 +530,28 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         {/* Teachers Cards View */}
         {viewMode === 'cards' ? (
         <div>
-          <PagedList items={filteredTeachers} pageSize={1} renderItem={(teacher) => (
+          <PagedList
+            items={filteredTeachers}
+            pageSize={6}
+            emptyState={
+              <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-6 py-10 text-center">
+                <UserCheck className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" />
+                <p className="mt-2 text-sm font-semibold text-[var(--color-text-title)]">
+                  {teachers.length === 0
+                    ? (lang === 'th' ? 'ยังไม่มีข้อมูลบุคลากร' : 'No staff records yet')
+                    : (lang === 'th' ? 'ไม่พบรายชื่อที่ตรงกับการค้นหา' : 'No staff match your search')}
+                </p>
+                {teachers.length > 0 && (
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'ลองเปลี่ยนคำค้นหาหรือตัวกรองกลุ่มสาระ' : 'Try a different search or department filter.'}
+                  </p>
+                )}
+              </div>
+            }
+            renderItem={(teacher) => (
             <div
               key={teacher.id}
-              className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -539,10 +572,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <h3 className="font-extrabold text-sm text-[var(--color-text-title)] tracking-tight">
                         {teacher.fullNameTh}
                       </h3>
-                      <p className="text-[11px] text-[var(--color-text-muted)]">{teacher.fullNameEn}</p>
-                      <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold border border-[var(--color-border)]">
-                        {teacher.academicStanding}
-                      </span>
+                      {teacher.fullNameEn.trim() && (
+                        <p className="text-[11px] text-[var(--color-text-muted)]">{teacher.fullNameEn}</p>
+                      )}
+                      {teacher.academicStanding.trim() && (
+                        <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold border border-[var(--color-border)]">
+                          {teacher.academicStanding}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -572,30 +609,38 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   )}
                 </div>
 
-                <div className="mt-3.5 space-y-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-[var(--color-text-body)]">
-                    <Building2 className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                    <span className="truncate">{teacher.department.replace('กลุ่มสาระการเรียนรู้', '')}</span>
-                  </div>
-
-                  <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-[var(--color-text-muted)]">วิชาเอก:</span>
-                      <span className="font-bold text-[var(--color-text-title)] truncate max-w-[170px]">{teacher.major}</span>
+                <div className="mt-3 space-y-2 text-xs">
+                  {teacher.department.trim() && (
+                    <div className="flex items-center gap-1.5 text-[var(--color-text-body)]">
+                      <Building2 className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      <span className="truncate">{teacher.department.replace('กลุ่มสาระการเรียนรู้', '').trim()}</span>
                     </div>
-                    {teacher.minor && (
+                  )}
+
+                  {(teacher.major.trim() || teacher.minor?.trim() || typeof teacher.teachingExperienceYears === 'number') && (
+                    <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
+                      {teacher.major.trim() && (
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-[var(--color-text-muted)]">วิชาเอก:</span>
+                          <span className="font-bold text-[var(--color-text-title)] truncate max-w-[170px]">{teacher.major.trim()}</span>
+                        </div>
+                      )}
+                      {teacher.minor?.trim() && (
                       <div className="flex justify-between items-center text-[11px]">
                         <span className="text-[var(--color-text-muted)]">วิชาโท:</span>
-                        <span className="font-semibold text-[var(--color-primary-text)] truncate max-w-[170px]">{teacher.minor}</span>
+                        <span className="font-semibold text-[var(--color-primary-text)] truncate max-w-[170px]">{teacher.minor.trim()}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-[var(--color-text-muted)]">ประสบการณ์:</span>
-                      <span className="font-mono text-[var(--color-text-body)]">
-                        {teacher.teachingExperienceYears === undefined ? 'ไม่ระบุ' : `${teacher.teachingExperienceYears} ปี`}
-                      </span>
+                      )}
+                      {typeof teacher.teachingExperienceYears === 'number' && (
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-[var(--color-text-muted)]">ประสบการณ์:</span>
+                          <span className="font-mono text-[var(--color-text-body)]">
+                            {teacher.teachingExperienceYears} ปี
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Other skills badge preview */}
                   {teacher.otherSkills && teacher.otherSkills.length > 0 && (
@@ -613,7 +658,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+              <div className="mt-3 pt-2.5 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
                   <FileCheck2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                   <span>ผลงาน PA: <strong className="text-[var(--color-text-title)]">{teacher.paPortfolio?.length || 0}</strong> ชิ้น</span>

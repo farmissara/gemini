@@ -1951,6 +1951,7 @@ export const App: React.FC = () => {
 
       {/* Top Navbar */}
       {!useImmersiveGameLayout && <Navbar
+        currentTab={currentTab}
         currentUser={currentUser}
         activeSchool={activeSchool}
         currentRole={currentRole}
