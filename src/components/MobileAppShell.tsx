@@ -275,7 +275,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     const pendingInvoices = invoices.filter((i) => i.status === 'pending' || i.status === 'overdue');
 
     // Risk / SDQ
-    const riskCount = sdqAssessments.filter((s) => s.totalScore >= 17).length;
+    const riskCount = sdqAssessments.filter((s) => s.overallStatus === 'risk' || s.overallStatus === 'problem' || (s.totalDifficultiesScore ?? 0) >= 17).length;
 
     return {
       attendanceRate,

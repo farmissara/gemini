@@ -332,7 +332,7 @@ interface CentralExamNotificationPopupProps {
   unclaimedPacks: CentralExamPack[];
   onClaimFreePack: (pack: CentralExamPack) => Promise<void>;
   onClaimAllFreePacks: () => Promise<void>;
-  onPurchasePack: (pack: CentralExamPack, method: 'promptpay' | 'invoice') => Promise<void>;
+  onPurchasePack: (pack: CentralExamPack, method: 'promptpay' | 'invoice', slipUrl?: string) => Promise<void>;
   onOpenHub: () => void;
   onDismiss: () => void;
 }

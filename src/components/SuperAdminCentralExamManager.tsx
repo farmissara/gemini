@@ -581,6 +581,8 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+
       {/* Tab Switcher: Packs vs Order Audit & Slips */}
       <div className="flex border-b border-[var(--color-border)] gap-2">
         <button
@@ -935,7 +937,8 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
             </div>
           )}
         </div>
-      </>
+      )}
+    </>
     ) : (
       /* MODEL 2 AUDIT SLIPS VIEW */
       <div className="space-y-4">
