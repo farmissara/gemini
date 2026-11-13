@@ -34,7 +34,9 @@ import {
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
-import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
+import { getDuplicateRecordWarnings, getTeacherDuplicateReasons } from '../lib/duplicateRecords';
+import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -72,12 +74,14 @@ interface TeachersViewProps {
   teachers: Teacher[];
   lang: AppLanguage;
   currentRole: UserRole;
+  schoolId?: string;
   onAddTeacher: (teacher: Teacher) => void;
   onUpdateTeacher: (teacher: Teacher) => void;
   onDeleteTeacher: (teacherId: string) => void;
   onPurgeSampleTeachers?: () => void;
   onOpenImportExport?: () => void;
   staffPositionOptions?: string[];
+  onUpdateStaffPositionOptions?: (options: string[]) => Promise<void> | void;
   academicYear?: string;
 }
 
@@ -85,17 +89,26 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   teachers,
   lang,
   currentRole,
+  schoolId = 'default-school',
   onAddTeacher,
   onUpdateTeacher,
   onDeleteTeacher,
   onPurgeSampleTeachers,
   onOpenImportExport,
   staffPositionOptions = [],
+  onUpdateStaffPositionOptions,
   academicYear = '2569',
 }) => {
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [positionFilter, setPositionFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showStaffMetaModal, setShowStaffMetaModal] = useState(false);
+  const [newPositionInput, setNewPositionInput] = useState('');
+  const [newDepartmentInput, setNewDepartmentInput] = useState('');
+  const [newStandingInput, setNewStandingInput] = useState('');
+  const [savingPositions, setSavingPositions] = useState(false);
   const [teacherFormStep, setTeacherFormStep] = useState<1 | 2>(1);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<Teacher | null>(null);
@@ -151,25 +164,22 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [certificationInput, setCertificationInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const departments = [
-    'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
-    'กลุ่มสาระการเรียนรู้คณิตศาสตร์',
-    'กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ',
-    'กลุ่มสาระการเรียนรู้ภาษาไทย',
-    'กลุ่มสาระการเรียนรู้สังคมศึกษา ศาสนา และวัฒนธรรม',
-    'กลุ่มสาระการเรียนรู้สุขศึกษาและพลศึกษา',
-    'กลุ่มสาระการเรียนรู้ศิลปะ',
-    'กลุ่มสาระการเรียนรู้การงานอาชีพ',
-  ];
-
-  const academicStandings = [
-    'ครูผู้ช่วย',
-    'ครู คศ.1',
-    'ครูชำนาญการ (คศ.2)',
-    'ครูชำนาญการพิเศษ (คศ.3)',
-    'ครูเชี่ยวชาญ (คศ.4)',
-    'ครูเชี่ยวชาญพิเศษ (คศ.5)',
-  ];
+  const departments = presets.departments;
+  const academicStandings = presets.academicStandings;
+  const resolvedPositionOptions = Array.from(
+    new Set([
+      ...(staffPositionOptions.length > 0 ? staffPositionOptions : DEFAULT_STAFF_POSITION_OPTIONS),
+      ...teachers.map((t) => t.positionTitle || '').filter(Boolean),
+    ])
+  );
+  const teacherDuplicateWarnings = getDuplicateRecordWarnings({
+    students: [],
+    teachers,
+    courses: [],
+    grades: [],
+    invoices: [],
+    timetableSlots: [],
+  });
 
   const filteredTeachers = teachers.filter((t) => {
     const matchesSearch =
@@ -185,7 +195,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       (t.otherSkills && t.otherSkills.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase())));
 
     const matchesDept = departmentFilter === 'all' || t.department === departmentFilter;
-    return matchesSearch && matchesDept;
+    const matchesPosition = positionFilter === 'all' || (t.positionTitle || '') === positionFilter;
+    return matchesSearch && matchesDept && matchesPosition;
   });
 
   const handleOpenAdd = () => {
@@ -274,9 +285,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       };
       const duplicateReasons = getTeacherDuplicateReasons(
         [updated],
-        teachers.filter((teacher) => teacher.id !== editingTeacher.id)
+        teachers,
+        [editingTeacher.id]
       );
-      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')} ต้องการบันทึกต่อหรือไม่?`)) return;
+      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
       onUpdateTeacher(updated);
       if (selectedTeacherForDetail && selectedTeacherForDetail.id === updated.id) {
         setSelectedTeacherForDetail(updated);
@@ -296,7 +308,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         major: formData.major?.trim() || '',
         minor: formData.minor?.trim() || '',
         academicStanding: formData.academicStanding?.trim() || 'ครูผู้ช่วย',
-        department: formData.department?.trim() || 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
+        department: formData.department?.trim() || departments[0] || 'ฝ่ายบริหารงานทั่วไป',
         teacherLicenseNo: formData.teacherLicenseNo?.trim() || '',
         teachingSubjects: formData.teachingSubjects || [],
         homeroomClasses: formData.homeroomClasses || [],
@@ -311,7 +323,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         paPortfolio: formData.paPortfolio || [],
       };
       const duplicateReasons = getTeacherDuplicateReasons([newTeacher], teachers);
-      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')} ต้องการบันทึกต่อหรือไม่?`)) return;
+      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
       onAddTeacher(newTeacher);
     }
 
@@ -472,39 +484,68 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           </details>
 
           {canManage && (
-            <button
-              type="button"
-              onClick={handleOpenAdd}
-              className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{lang === 'th' ? 'เพิ่มครู/บุคลากร' : 'Add Teacher'}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowStaffMetaModal(true)}
+                className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Tag className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                <span>จัดการตำแหน่ง/ฝ่าย</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{lang === 'th' ? 'เพิ่มครู/บุคลากร' : 'Add Teacher'}</span>
+              </button>
+            </>
           )}
         </div>
       </div>
 
+      {teacherDuplicateWarnings.length > 0 && (
+        <div className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+          <span><strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {teacherDuplicateWarnings.join(' • ')}</span>
+        </div>
+      )}
+
       {/* Filter and Search Bar */}
       <div className="shrink-0 bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-1 items-center gap-2 w-full">
-          <div className="relative flex-1">
+        <div className="flex flex-1 items-center gap-2 w-full flex-wrap">
+          <div className="relative flex-1 min-w-48">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส หรือวิชาที่สอน...' : 'Search by name, ID, or subject...'}
+              placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส ตำแหน่ง หรือวิชาที่สอน...' : 'Search by name, ID, position, or subject...'}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             />
           </div>
 
-          <div className="relative w-56 hidden md:block">
+          <div className="relative w-44 hidden sm:block">
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+            >
+              <option value="all">ทุกตำแหน่งบุคลากร</option>
+              {resolvedPositionOptions.map((pos) => (
+                <option key={pos} value={pos}>{pos}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative w-52 hidden md:block">
             <select
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
-              <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระการเรียนรู้' : 'All Departments'}</option>
+              <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระ/ฝ่ายงาน' : 'All Departments'}</option>
               {departments.map((dept) => (
                 <option key={dept} value={dept}>
                   {dept.replace('กลุ่มสาระการเรียนรู้', '')}
@@ -1414,11 +1455,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     list="teacher-position-options"
                     value={formData.positionTitle || ''}
                     onChange={(e) => setFormData({ ...formData, positionTitle: e.target.value })}
-                    placeholder="เลือกหรือพิมพ์ตำแหน่ง"
+                    placeholder="เลือกหรือพิมพ์ตำแหน่ง เช่น นักการภารโรง, เจ้าหน้าที่ธุรการ, ครู, ผอ."
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   />
                   <datalist id="teacher-position-options">
-                    {staffPositionOptions.map((position) => <option key={position} value={position} />)}
+                    {resolvedPositionOptions.map((position) => <option key={position} value={position} />)}
                   </datalist>
                 </div>
                 <div>
@@ -1919,6 +1960,168 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         onSelectImage={handlePhotoSelected}
         onClose={() => setShowPhotoModal(false)}
       />
+
+      {/* Admin Staff Positions, Departments & Standings Manager Modal */}
+      {showStaffMetaModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 space-y-5 shadow-2xl text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                  จัดการตำแหน่งบุคลากร กลุ่มสาระ และวิทยฐานะ (Admin กำหนดเองได้)
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  กำหนดได้ตั้งแต่นักการภารโรง เจ้าหน้าที่ธุรการ ครูอัตราจ้าง ครู รองผู้อำนวยการ ผู้อำนวยการ หรือเพิ่มตำแหน่งใหม่
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStaffMetaModal(false)}
+                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Positions */}
+            <div className="space-y-2">
+              <div className="font-bold text-[var(--color-text-title)]">1. ตำแหน่งบุคลากร ({resolvedPositionOptions.length} ตำแหน่ง)</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPositionInput}
+                  onChange={(e) => setNewPositionInput(e.target.value)}
+                  placeholder="เพิ่มตำแหน่งใหม่ เช่น บรรณารักษ์, แม่บ้าน, ช่างเทคนิค"
+                  className="flex-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+                <button
+                  type="button"
+                  disabled={savingPositions}
+                  onClick={async () => {
+                    const val = newPositionInput.trim();
+                    if (!val) return;
+                    const next = Array.from(new Set([...resolvedPositionOptions, val]));
+                    setSavingPositions(true);
+                    try {
+                      await onUpdateStaffPositionOptions?.(next);
+                      setNewPositionInput('');
+                    } finally {
+                      setSavingPositions(false);
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--color-primary)] text-white font-bold cursor-pointer disabled:opacity-50"
+                >
+                  + เพิ่มตำแหน่ง
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {resolvedPositionOptions.map((pos) => (
+                  <span key={pos} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold">
+                    <span>{pos}</span>
+                    {resolvedPositionOptions.length > 1 && onUpdateStaffPositionOptions && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = resolvedPositionOptions.filter((p) => p !== pos);
+                          void onUpdateStaffPositionOptions(next);
+                        }}
+                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                        title="ลบตำแหน่งนี้"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Departments */}
+            <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
+              <div className="font-bold text-[var(--color-text-title)]">2. กลุ่มสาระ / ฝ่ายงาน ({departments.length})</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newDepartmentInput}
+                  onChange={(e) => setNewDepartmentInput(e.target.value)}
+                  placeholder="เพิ่มฝ่ายงาน / กลุ่มสาระใหม่"
+                  className="flex-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newDepartmentInput.trim();
+                    if (!val) return;
+                    updatePresets({ departments: [...departments, val] });
+                    setNewDepartmentInput('');
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-bold cursor-pointer"
+                >
+                  + เพิ่มฝ่ายงาน
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {departments.map((dept) => (
+                  <span key={dept} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
+                    <span>{dept}</span>
+                    {departments.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => updatePresets({ departments: departments.filter((d) => d !== dept) })}
+                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Academic Standings */}
+            <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
+              <div className="font-bold text-[var(--color-text-title)]">3. วิทยฐานะ / ประเภทการจ้าง ({academicStandings.length})</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newStandingInput}
+                  onChange={(e) => setNewStandingInput(e.target.value)}
+                  placeholder="เพิ่มวิทยฐานะหรือประเภทการจ้างใหม่"
+                  className="flex-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newStandingInput.trim();
+                    if (!val) return;
+                    updatePresets({ academicStandings: [...academicStandings, val] });
+                    setNewStandingInput('');
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-bold cursor-pointer"
+                >
+                  + เพิ่มวิทยฐานะ
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {academicStandings.map((st) => (
+                  <span key={st} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
+                    <span>{st}</span>
+                    {academicStandings.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => updatePresets({ academicStandings: academicStandings.filter((x) => x !== st) })}
+                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

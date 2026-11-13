@@ -4,13 +4,16 @@ import {
   AttendanceRecord,
   Course,
   GradeRecord,
+  GradingSystem,
   PeriodAttendanceRecord,
   Student,
   SystemConfig,
   TimetableSlot,
+  UserRole,
 } from '../types';
-import { calculateGrade, formatSemesterLabel } from '../lib/schoolSettings';
+import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
+import { getDuplicateRecordWarnings } from '../lib/duplicateRecords';
 import { 
   Award, 
   FileText, 
@@ -34,6 +37,8 @@ interface GradebookViewProps {
   courses: Course[];
   grades: GradeRecord[];
   systemConfig: SystemConfig;
+  currentRole?: UserRole;
+  onChangeGradingSystem?: (mode: GradingSystem) => Promise<void> | void;
   onUpdateGrade: (gradeId: string, updates: Partial<GradeRecord>) => void;
   onOpenReportCard: (student: Student) => void;
   timetableSlots?: TimetableSlot[];
@@ -47,6 +52,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   courses,
   grades,
   systemConfig,
+  currentRole = 'teacher',
+  onChangeGradingSystem,
   onUpdateGrade,
   onOpenReportCard,
   timetableSlots = [],
@@ -55,6 +62,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onPracticeInAi,
 }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
+  const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
   const [selectedStudentIdForPp6, setSelectedStudentIdForPp6] = useState<string>(students[0]?.id || '');
   const [pp3LevelFilter, setPp3LevelFilter] = useState<'all' | 'p6' | 'm3' | 'm6'>('all');
@@ -67,6 +75,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const courseGrades = grades.filter((g) => g.courseId === selectedCourseId);
+  const gradeDuplicateWarnings = getDuplicateRecordWarnings({
+    students: [],
+    teachers: [],
+    courses: [],
+    grades,
+    invoices: [],
+    timetableSlots: [],
+  });
   const selectedStudentForPp6 = students.find((s) => s.id === selectedStudentIdForPp6) || students[0];
   const gradePageSize = 15;
   const pp5PageSize = 15;
@@ -420,10 +436,53 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header */}
       <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
-        <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
-          <Award className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <span>วัดผลและประเมินผล (Gradebook &amp; ปพ.)</span>
-        </h1>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+            <Award className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+            <span>วัดผลและประเมินผล (Gradebook &amp; ปพ.)</span>
+          </h1>
+          {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
+            <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-[11px] font-bold">
+              <span className="px-2 text-[var(--color-text-muted)]">เกรด:</span>
+              <button
+                type="button"
+                disabled={isUpdatingGradingMode}
+                onClick={async () => {
+                  if (systemConfig.gradingSystem === 'thai') return;
+                  setIsUpdatingGradingMode(true);
+                  try { await onChangeGradingSystem('thai'); } finally { setIsUpdatingGradingMode(false); }
+                }}
+                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  systemConfig.gradingSystem !== 'international'
+                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                ระบบไทย (0–4)
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingGradingMode}
+                onClick={async () => {
+                  if (systemConfig.gradingSystem === 'international') return;
+                  setIsUpdatingGradingMode(true);
+                  try { await onChangeGradingSystem('international'); } finally { setIsUpdatingGradingMode(false); }
+                }}
+                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  systemConfig.gradingSystem === 'international'
+                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                }`}
+              >
+                สากล (A–F)
+              </button>
+            </div>
+          ) : (
+            <span className="px-2 py-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold text-[var(--color-text-muted)]">
+              {systemConfig.gradingSystem === 'international' ? 'เกณฑ์สากล (A–F)' : 'เกณฑ์ไทย (0–4)'}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {(activeTab === 'gradebook' || activeTab === 'pp5') && (
@@ -589,17 +648,23 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         {activeTab === 'gradebook' && selectedCourse && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible space-y-3 p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2 text-xs">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
               <span className="text-[var(--color-text-title)] font-bold text-sm">{selectedCourse.titleEn}</span>
               <span className="text-[var(--color-text-muted)] font-thai">({selectedCourse.titleTh})</span>
               <span className="text-[var(--color-text-muted)]">· {selectedCourse.teacherName} · {selectedCourse.credits} หน่วยกิต</span>
             </div>
 
-            <div className="text-[11px] text-[var(--color-text-muted)] hidden lg:block">
-              A(80+) B+(75) B(70) C+(65) C(60) D+(55) D(50) F(&lt;50)
+            <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
+              {getGradingScaleLegend(systemConfig.gradingSystem)}
             </div>
           </div>
+          {gradeDuplicateWarnings.length > 0 && (
+            <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span><strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {gradeDuplicateWarnings.join(' • ')}</span>
+            </div>
+          )}
 
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">

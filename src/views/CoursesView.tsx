@@ -21,18 +21,25 @@ import {
 } from 'lucide-react';
 import { Course, Student, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
-import { getCourseDuplicateReasons } from '../lib/duplicateRecords';
+import {
+  getCourseDuplicateExtraIds,
+  getCourseDuplicateReasons,
+  getDuplicateRecordWarnings,
+} from '../lib/duplicateRecords';
 import { formatSemesterLabel } from '../lib/schoolSettings';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 
 interface CoursesViewProps {
   courses: Course[];
   students: Student[];
   currentRole?: UserRole;
+  schoolId?: string;
   onAddCourse: (newCourse: Course) => void;
   onUpdateCourse?: (updatedCourse: Course) => void;
   onDeleteCourse?: (courseId: string) => Promise<boolean | void> | boolean | void;
   onDeleteCourses?: (courseIds: string[]) => Promise<boolean | void> | boolean | void;
   onEnrollStudent: (courseId: string, studentId: string) => void;
+  onEnrollStudentsBatch?: (courseId: string, studentIds: string[]) => void;
   onOpenImportExport?: (tab?: 'courses' | 'enrollment' | 'grades') => void;
   semesterOptions?: string[];
   academicYear?: string;
@@ -67,20 +74,29 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   courses,
   students,
   currentRole = 'admin',
+  schoolId = 'default-school',
   onAddCourse,
   onUpdateCourse,
   onDeleteCourse,
   onDeleteCourses,
   onEnrollStudent,
+  onEnrollStudentsBatch,
   onOpenImportExport,
   semesterOptions = ['1', '2', 'Summer'],
   academicYear = '2569',
   currentSemester = '1',
 }) => {
   const canManageCourses = currentRole !== 'student' && currentRole !== 'parent';
+  const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const availableDepartments = Array.from(new Set([...DEPARTMENTS, ...presets.departments]));
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeptPresetModal, setShowDeptPresetModal] = useState(false);
+  const [newDeptInput, setNewDeptInput] = useState('');
+  const [enrollRoomInput, setEnrollRoomInput] = useState('');
+  const [enrollFeedback, setEnrollFeedback] = useState<string | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [activeCourseId, setActiveCourseId] = useState<string>(courses[0]?.id || '');
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
@@ -260,9 +276,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       };
       const duplicateReasons = getCourseDuplicateReasons(
         [updated],
-        courses.filter((course) => course.id !== editingCourse.id)
+        courses,
+        [editingCourse.id]
       );
-      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')}。ต้องการบันทึกต่อหรือไม่?`)) return;
+      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
       onUpdateCourse?.(updated);
       setEditingCourse(null);
       setShowAddModal(false);
@@ -290,20 +307,34 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       description: formData.description.trim(),
     };
     const duplicateReasons = getCourseDuplicateReasons([newCourse], courses);
-    if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')}。ต้องการบันทึกต่อหรือไม่?`)) return;
+    if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
     onAddCourse(newCourse);
     setActiveCourseId(newCourse.id);
     setShowAddModal(false);
   };
 
   const activeCourse = courses.find((c) => c.id === activeCourseId) || courses[0];
+  const availableRoomsForEnroll = Array.from(
+    new Set(students.map((s) => s.room).filter(Boolean))
+  );
+  const selectedEnrollRoom = enrollRoomInput && availableRoomsForEnroll.includes(enrollRoomInput)
+    ? enrollRoomInput
+    : (availableRoomsForEnroll[0] || '');
   const isDuplicateCourse = (course: Course) =>
     Boolean(course.code.trim()) && courses.filter((item) =>
       item.code.trim().toLowerCase() === course.code.trim().toLowerCase() &&
       item.academicYear === course.academicYear &&
       item.semester === course.semester
     ).length > 1;
-  const duplicateCourseIds = courses.filter(isDuplicateCourse).map((course) => course.id);
+  const duplicateExtraCourseIds = getCourseDuplicateExtraIds(courses);
+  const courseDuplicateWarnings = getDuplicateRecordWarnings({
+    students: [],
+    teachers: [],
+    courses,
+    grades: [],
+    invoices: [],
+    timetableSlots: [],
+  });
   const handleDeleteSelectedCourses = async () => {
     if (selectedCourseIds.length === 0) return;
     if (!confirm(`ยืนยันลบรายวิชาที่เลือก ${selectedCourseIds.length} รายการ?`)) return;
@@ -367,25 +398,51 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               </button>
             )}
 
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowDeptPresetModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>จัดการกลุ่มสาระ</span>
+              </button>
+            )}
+
+            {filteredCourses.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const visibleIds = filteredCourses.map((c) => c.id);
+                  const allVisibleSelected = visibleIds.every((id) => selectedCourseIds.includes(id));
+                  setSelectedCourseIds(allVisibleSelected ? [] : visibleIds);
+                }}
+                className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold hover:bg-[var(--color-primary-light)] cursor-pointer"
+              >
+                {filteredCourses.every((c) => selectedCourseIds.includes(c.id)) ? 'ล้างที่เลือก' : `เลือกทั้งหมด (${filteredCourses.length})`}
+              </button>
+            )}
+
             {selectedCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
               <button
                 type="button"
                 onClick={() => void handleDeleteSelectedCourses()}
                 disabled={isDeletingCourses}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold hover:bg-rose-100"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold hover:bg-rose-100 cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
               </button>
             )}
 
-            {duplicateCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+            {duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
               <button
                 type="button"
-                onClick={() => setSelectedCourseIds(duplicateCourseIds)}
-                className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100"
+                onClick={() => setSelectedCourseIds(duplicateExtraCourseIds)}
+                className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 cursor-pointer"
+                title="เลือกเฉพาะรายการซ้ำโดยเก็บต้นฉบับไว้ 1 รายการต่อรหัสวิชา"
               >
-                เลือกวิชารหัสซ้ำ ({duplicateCourseIds.length})
+                เลือกเฉพาะวิชาซ้ำ ({duplicateExtraCourseIds.length})
               </button>
             )}
 
@@ -401,7 +458,23 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         )}
       </div>
 
-      {/* Search & Category Filter Pills */}
+      {/* Duplicate & Error Alerts */}
+      {courseDuplicateWarnings.length > 0 && (
+        <div className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            <strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {courseDuplicateWarnings.join(' • ')} (พบตัวซ้ำส่วนเกิน {duplicateExtraCourseIds.length} วิชา)
+          </span>
+          {canManageCourses && duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+            <button
+              type="button"
+              onClick={() => setSelectedCourseIds(duplicateExtraCourseIds)}
+              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] cursor-pointer"
+            >
+              เลือกเฉพาะตัวซ้ำ ({duplicateExtraCourseIds.length} วิชา) เพื่อลบ
+            </button>
+          )}
+        </div>
+      )}
       {courseDeleteError && (
         <p role="alert" className="shrink-0 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
           {courseDeleteError}
@@ -638,36 +711,90 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   </h3>
                 </div>
 
-                {/* Quick Enroll Student Selector (Staff Only) */}
+                {/* Quick Enroll Student Selector & Batch Room Enrollment (Staff Only) */}
                 {canManageCourses && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <select
-                      id={`enroll-select-${activeCourse.id}`}
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
-                      defaultValue=""
-                    >
-                      <option value="" disabled>เลือกนักเรียนเพื่อลงทะเบียนเพิ่ม...</option>
-                      {students
-                        .filter((s) => !(activeCourse.enrolledStudentIds || []).includes(s.id))
-                        .map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.studentIdNumber} - {s.firstNameTh} {s.lastNameTh} ({s.room})
-                          </option>
-                        ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const sel = document.getElementById(`enroll-select-${activeCourse.id}`) as HTMLSelectElement;
-                        if (sel && sel.value) {
-                          onEnrollStudent(activeCourse.id, sel.value);
-                          sel.value = '';
-                        }
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer shrink-0"
-                    >
-                      ลงทะเบียน
-                    </button>
+                  <div className="space-y-2 pt-1">
+                    {availableRoomsForEnroll.length > 0 && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 whitespace-nowrap">
+                          ลงทะเบียนทั้งห้อง:
+                        </span>
+                        <select
+                          value={selectedEnrollRoom}
+                          onChange={(e) => setEnrollRoomInput(e.target.value)}
+                          className="flex-1 min-w-28 px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold"
+                        >
+                          {availableRoomsForEnroll.map((room) => {
+                            const pendingInRoom = students.filter(
+                              (s) => s.room === room && !(activeCourse.enrolledStudentIds || []).includes(s.id)
+                            ).length;
+                            return (
+                              <option key={room} value={room}>
+                                {room} (ยังไม่ลง {pendingInRoom} คน)
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!selectedEnrollRoom) return;
+                            const idsToEnroll = students
+                              .filter((s) => s.room === selectedEnrollRoom && !(activeCourse.enrolledStudentIds || []).includes(s.id))
+                              .map((s) => s.id);
+                            if (idsToEnroll.length === 0) {
+                              setEnrollFeedback(`นักเรียนห้อง ${selectedEnrollRoom} ลงทะเบียนครบทุกคนแล้ว`);
+                              setTimeout(() => setEnrollFeedback(null), 3000);
+                              return;
+                            }
+                            if (onEnrollStudentsBatch) {
+                              onEnrollStudentsBatch(activeCourse.id, idsToEnroll);
+                            } else {
+                              idsToEnroll.forEach((id) => onEnrollStudent(activeCourse.id, id));
+                            }
+                            setEnrollFeedback(`ลงทะเบียนนักเรียนห้อง ${selectedEnrollRoom} เพิ่ม ${idsToEnroll.length} คนเรียบร้อย`);
+                            setTimeout(() => setEnrollFeedback(null), 3500);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shrink-0"
+                        >
+                          ลงทะเบียนทั้งห้อง
+                        </button>
+                      </div>
+                    )}
+                    {enrollFeedback && (
+                      <div className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        {enrollFeedback}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <select
+                        id={`enroll-select-${activeCourse.id}`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>หรือเลือกลงทะเบียนรายบุคคล...</option>
+                        {students
+                          .filter((s) => !(activeCourse.enrolledStudentIds || []).includes(s.id))
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.studentIdNumber} - {s.firstNameTh} {s.lastNameTh} ({s.room})
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const sel = document.getElementById(`enroll-select-${activeCourse.id}`) as HTMLSelectElement;
+                          if (sel && sel.value) {
+                            onEnrollStudent(activeCourse.id, sel.value);
+                            sel.value = '';
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer shrink-0"
+                      >
+                        เพิ่มรายคน
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -901,7 +1028,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
-                    {DEPARTMENTS.map((d) => (
+                    {availableDepartments.map((d) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
@@ -995,6 +1122,63 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Department Preset Manager Modal */}
+      {showDeptPresetModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                จัดการรายชื่อกลุ่มสาระ / แผนกวิชา (สำหรับผู้ดูแลระบบ)
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowDeptPresetModal(false)}
+                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newDeptInput}
+                onChange={(e) => setNewDeptInput(e.target.value)}
+                placeholder="เพิ่มชื่อกลุ่มสาระ/ฝ่ายใหม่ เช่น กลุ่มสาระเทคโนโลยีและหุ่นยนต์"
+                className="flex-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const val = newDeptInput.trim();
+                  if (!val) return;
+                  updatePresets({ departments: [...availableDepartments, val] });
+                  setNewDeptInput('');
+                }}
+                className="px-3.5 py-2 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
+              >
+                + เพิ่ม
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-1.5 text-xs">
+              {presets.departments.map((dept) => (
+                <div key={dept} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <span className="text-[var(--color-text-title)] font-medium">{dept}</span>
+                  {presets.departments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => updatePresets({ departments: presets.departments.filter((d) => d !== dept) })}
+                      className="text-rose-600 hover:text-rose-700 font-bold text-xs cursor-pointer"
+                    >
+                      ลบ
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -276,7 +276,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </h1>
                   <p className="max-w-xl text-sm leading-relaxed text-[var(--color-text-body)] sm:text-base">
                     {lang === 'th'
-                      ? 'เชื่อมงานวิชาการ การเช็กชื่อ และการดูแลนักเรียน สำหรับผู้บริหาร ครู นักเรียน และผู้ปกครอง'
+                      ? 'เชื่อมงานวิชาการ การเช็คชื่อ และการดูแลนักเรียน สำหรับผู้บริหาร ครู นักเรียน และผู้ปกครอง'
                       : 'Connect academics, attendance, and student care for administrators, teachers, students, and families.'}
                   </p>
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -612,7 +612,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   id: 'attendance',
                   icon: UserCheck,
                   title: lang === 'th' ? 'การเข้าเรียน' : 'Attendance',
-                  description: lang === 'th' ? 'เช็กชื่อสะดวกด้วย QR และ GPS' : 'Quick check-in with QR and GPS',
+                  description: lang === 'th' ? 'เช็คชื่อสะดวกด้วย QR และ GPS' : 'Quick check-in with QR and GPS',
                 },
                 {
                   id: 'student-care',

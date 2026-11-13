@@ -349,7 +349,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     สถานะการเดินทางถึงโรงเรียนวันนี้ ({todayStr})
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-200 border border-emerald-600 font-semibold">
-                    {todayRecord ? 'เช็กชื่อแล้ว' : 'รอการเช็กชื่อ'}
+                    {todayRecord ? 'เช็คชื่อแล้ว' : 'รอการเช็คชื่อ'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-200 mt-0.5">
@@ -360,7 +360,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                       {todayRecord.location?.distanceMeters && ` • ในเขต ${todayRecord.location.distanceMeters} ม.`}
                     </>
                   ) : (
-                    'ยังไม่มีข้อมูลการสแกนผ่านประตูหรือถ่ายรูปเช็กชื่อในเช้าวันนี้'
+                    'ยังไม่มีข้อมูลการสแกนผ่านประตูหรือถ่ายรูปเช็คชื่อในเช้าวันนี้'
                   )}
                 </p>
               </div>
@@ -537,7 +537,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             <div>
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                 <Camera className="w-5 h-5 text-[var(--color-primary-text)]" />
-                <span>อัลบั้มภาพถ่ายเช็กชื่อเข้า-ออกของบุตรหลาน ({student?.firstNameTh})</span>
+                <span>อัลบั้มภาพถ่ายเช็คชื่อเข้า-ออกของบุตรหลาน ({student?.firstNameTh})</span>
               </h3>
               <p className="text-xs text-[var(--color-text-muted)]">
                 รูปถ่ายยืนยันตัวตนตอนผ่านประตูโรงเรียน พร้อมบันทึกวัน-เวลาและพิกัด GPS
@@ -607,7 +607,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
                         isCheckOut ? 'bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                       }`}>
-                        {isCheckOut ? 'เช็กชื่อออกโรงเรียน (Check-out)' : 'เช็กชื่อเข้าโรงเรียน (Check-in)'}
+                        {isCheckOut ? 'เช็คชื่อออกโรงเรียน (Check-out)' : 'เช็คชื่อเข้าโรงเรียน (Check-in)'}
                       </span>
                       <span className="font-mono font-bold text-xs text-[var(--color-text-title)]">
                         {rec.time} น.
@@ -896,7 +896,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-title)]">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
-                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็กชื่อตอนผ่านประตู</h4>
+                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็คชื่อตอนผ่านประตู</h4>
                 <p className="text-xs text-[var(--color-text-muted)]">{selectedZoomPhoto.date} • {selectedZoomPhoto.time} น.</p>
               </div>
               <button

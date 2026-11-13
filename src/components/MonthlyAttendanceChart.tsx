@@ -493,7 +493,7 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[var(--color-text-muted)]">
             <Calendar className="w-8 h-8 mb-2 opacity-50" />
             <p className="text-sm font-semibold">
-              {lang === 'th' ? 'ไม่พบข้อมูลการเช็กชื่อในตัวกรองนี้' : 'No attendance data for this filter'}
+              {lang === 'th' ? 'ไม่พบข้อมูลการเช็คชื่อในตัวกรองนี้' : 'No attendance data for this filter'}
             </p>
           </div>
         ) : (
@@ -743,7 +743,7 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
         </div>
         <p className="italic text-[10px]">
           {lang === 'th'
-            ? '* คลิกที่แท่งกราฟประจำวันเพื่อเลือกและดูรายละเอียดการเช็กชื่อของวันนั้น'
+            ? '* คลิกที่แท่งกราฟประจำวันเพื่อเลือกและดูรายละเอียดการเช็คชื่อของวันนั้น'
             : '* Click on any day bar to inspect detailed records for that date'}
         </p>
       </div>
@@ -783,7 +783,7 @@ const CustomTooltip = ({ active, payload, lang = 'th', onSelectDate }: any) => {
                 ? 'ยังไม่ถึงวันดังกล่าว'
                 : 'Upcoming day'
               : lang === 'th'
-                ? 'ยังไม่มีบันทึกการเช็กชื่อ'
+                ? 'ยังไม่มีบันทึกการเช็คชื่อ'
                 : 'No attendance records yet'}
         </p>
       ) : (

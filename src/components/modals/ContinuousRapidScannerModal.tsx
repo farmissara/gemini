@@ -274,7 +274,7 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
       enqueueOfflineAction({
         actionType: 'attendance',
         schoolId: matched.schoolId || schoolId,
-        description: `${scanMode === 'check_in' ? 'เช็กชื่อเข้าเรียน' : 'ปล่อยกลับบ้าน'} ${matched.firstNameTh} ${matched.lastNameTh} (${matched.studentIdNumber})`,
+        description: `${scanMode === 'check_in' ? 'เช็คชื่อเข้าเรียน' : 'ปล่อยกลับบ้าน'} ${matched.firstNameTh} ${matched.lastNameTh} (${matched.studentIdNumber})`,
         payload: {
           studentId: matched.id,
           status,

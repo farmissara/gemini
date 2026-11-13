@@ -17,7 +17,9 @@ import {
   TrendingUp, 
   TrendingDown,
   Layers,
-  Info
+  Info,
+  Sliders,
+  Trash2
 } from 'lucide-react';
 import { 
   Student, 
@@ -28,6 +30,9 @@ import {
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { formatSemesterLabel } from '../lib/schoolSettings';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { getBehaviorDuplicateReasons, getSdqDuplicateReasons } from '../lib/duplicateRecords';
+import { getLocalDateString } from '../lib/date';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -62,6 +67,7 @@ const PaginatedTableRows = <T,>({
 };
 
 interface BehaviorSdqViewProps {
+  schoolId?: string;
   students: Student[];
   records: BehaviorRecord[];
   sdqList: SdqAssessment[];
@@ -73,22 +79,8 @@ interface BehaviorSdqViewProps {
   currentSemester: string;
 }
 
-const PRESET_MERITS = [
-  { label: 'จิตอาสาบำเพ็ญประโยชน์ต่อส่วนรวม', points: 10 },
-  { label: 'สร้างชื่อเสียงให้โรงเรียน (แข่งขันทักษะวิชาการ/กีฬา)', points: 15 },
-  { label: 'ความมีน้ำใจและเอื้อเฟื้อต่อเพื่อนร่วมชั้น', points: 5 },
-  { label: 'ความซื่อสัตย์สุจริต (เก็บของมีค่าได้ส่งคืนอาจารย์)', points: 10 }
-];
-
-const PRESET_DEMERITS = [
-  { label: 'มาสายเข้าแถวเคารพธงชาติ', points: -5 },
-  { label: 'หนีเรียน / ขาดเรียนโดยไม่มีใบลา', points: -10 },
-  { label: 'แต่งกายไม่ถูกระเบียบสถานศึกษา', points: -5 },
-  { label: 'ใช้โทรศัพท์มือถือในเวลาเรียนโดยไม่ได้รับอนุญาต', points: -5 },
-  { label: 'พฤติกรรมก้าวร้าวหรือทะเลาะวิวาท', points: -20 }
-];
-
 export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
+  schoolId = 'default-school',
   students,
   records,
   sdqList,
@@ -99,17 +91,27 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   academicYear,
   currentSemester
 }) => {
+  const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const meritPresets = presets.behaviorMeritPresets;
+  const demeritPresets = presets.behaviorDemeritPresets;
+
   const [activeTab, setActiveTab] = useState<'merit' | 'sdq' | 'cct_poverty' | 'obec_care_steps'>('merit');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [showSdqModal, setShowSdqModal] = useState(false);
+  const [showPresetModal, setShowPresetModal] = useState(false);
   const [sdqFormStep, setSdqFormStep] = useState<1 | 2>(1);
+  const [allowDuplicateConfirm, setAllowDuplicateConfirm] = useState(false);
+  const [newPresetType, setNewPresetType] = useState<'merit' | 'demerit'>('merit');
+  const [newPresetLabel, setNewPresetLabel] = useState('');
+  const [newPresetPoints, setNewPresetPoints] = useState(5);
 
   // Behavior Record Form State
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [recordType, setRecordType] = useState<'merit' | 'demerit'>('merit');
-  const [recordCategory, setRecordCategory] = useState<string>(PRESET_MERITS[0].label);
-  const [recordPoints, setRecordPoints] = useState<number>(10);
+  const [recordCategory, setRecordCategory] = useState<string>(meritPresets[0]?.label || '');
+  const [recordPoints, setRecordPoints] = useState<number>(meritPresets[0]?.points || 10);
   const [recordNotes, setRecordNotes] = useState<string>('');
   const [notifyParentLine, setNotifyParentLine] = useState<boolean>(true);
 
@@ -138,10 +140,49 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     return fullName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
+  const todayStr = getLocalDateString();
+  const behaviorDupReasons = showAddRecordModal
+    ? getBehaviorDuplicateReasons(
+        { studentId: selectedStudentId, date: todayStr, type: recordType, category: recordCategory },
+        records
+      )
+    : [];
+  const sdqDupReasons = showSdqModal
+    ? getSdqDuplicateReasons(
+        { studentId: sdqStudentId, academicYear, semester: currentSemester },
+        sdqList
+      )
+    : [];
+
+  const existingBehaviorDuplicatesCount = (() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    records.forEach((r) => {
+      const k = `${r.studentId}|${r.date}|${r.type}|${r.category.trim().toLowerCase()}`;
+      if (seen.has(k)) dups += 1;
+      else seen.add(k);
+    });
+    return dups;
+  })();
+
+  const existingSdqDuplicatesCount = (() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    sdqList.forEach((s) => {
+      const k = `${s.studentId}|${s.academicYear}|${s.semester}`;
+      if (seen.has(k)) dups += 1;
+      else seen.add(k);
+    });
+    return dups;
+  })();
+
   const handleCreateRecord = (e: React.FormEvent) => {
     e.preventDefault();
     const student = students.find((s) => s.id === selectedStudentId);
     if (!student) return;
+    if (behaviorDupReasons.length > 0 && !allowDuplicateConfirm) {
+      return;
+    }
 
     const newRecord: BehaviorRecord = {
       id: `beh-${Date.now()}`,
@@ -149,7 +190,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       studentId: student.id,
       studentName: `${student.firstNameTh} ${student.lastNameTh}`,
       studentRoom: student.room,
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       type: recordType,
       points: recordType === 'merit' ? Math.abs(recordPoints) : -Math.abs(recordPoints),
       category: recordCategory,
@@ -159,6 +200,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     };
 
     onAddBehaviorRecord(newRecord);
+    setAllowDuplicateConfirm(false);
     setShowAddRecordModal(false);
     setRecordNotes('');
   };
@@ -167,6 +209,9 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     e.preventDefault();
     const student = students.find((s) => s.id === sdqStudentId);
     if (!student) return;
+    if (sdqDupReasons.length > 0 && !allowDuplicateConfirm) {
+      return;
+    }
 
     const totalDifficulties = sdqEmotional + sdqConduct + sdqHyperactivity + sdqPeer;
     let status: 'normal' | 'risk' | 'problem' = 'normal';
@@ -193,11 +238,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       prosocialScore: sdqProsocial,
       totalDifficultiesScore: totalDifficulties,
       overallStatus: status,
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       notes: sdqNotes || 'ประเมินตามเกณฑ์มาตรฐาน สพฐ.'
     };
 
     onAddSdqAssessment(newSdq);
+    setAllowDuplicateConfirm(false);
     setShowSdqModal(false);
     setSdqNotes('');
   };
@@ -284,18 +330,34 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
           </div>
 
           {activeTab === 'merit' && (
-            <button
-              onClick={() => setShowAddRecordModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
-            </button>
+            <>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowPresetModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer shrink-0"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                  <span>{lang === 'th' ? 'จัดการเกณฑ์คะแนน' : 'Presets'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setAllowDuplicateConfirm(false);
+                  setShowAddRecordModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
+              </button>
+            </>
           )}
 
           {activeTab === 'sdq' && (
             <button
               onClick={() => {
+                setAllowDuplicateConfirm(false);
                 setSdqFormStep(1);
                 setShowSdqModal(true);
               }}
@@ -307,6 +369,18 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
           )}
         </div>
       </div>
+
+      {(existingBehaviorDuplicatesCount > 0 || existingSdqDuplicatesCount > 0) && (
+        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span>
+            <strong>ตรวจพบข้อมูลซ้ำในระบบ:</strong>{' '}
+            {existingBehaviorDuplicatesCount > 0 && `บันทึกพฤติกรรมซ้ำ ${existingBehaviorDuplicatesCount} รายการ`}
+            {existingBehaviorDuplicatesCount > 0 && existingSdqDuplicatesCount > 0 && ' • '}
+            {existingSdqDuplicatesCount > 0 && `ผลประเมิน SDQ ซ้ำในภาคเรียนเดียว ${existingSdqDuplicatesCount} รายการ`}
+          </span>
+        </div>
+      )}
 
       {/* Tab 1: Merit & Demerit Tracker */}
       {activeTab === 'merit' && (
@@ -810,8 +884,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                     type="button"
                     onClick={() => {
                       setRecordType('merit');
-                      setRecordCategory(PRESET_MERITS[0].label);
-                      setRecordPoints(PRESET_MERITS[0].points);
+                      setRecordCategory(meritPresets[0]?.label || '');
+                      setRecordPoints(meritPresets[0]?.points || 10);
                     }}
                     className={`py-2 px-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
                       recordType === 'merit'
@@ -827,8 +901,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                     type="button"
                     onClick={() => {
                       setRecordType('demerit');
-                      setRecordCategory(PRESET_DEMERITS[0].label);
-                      setRecordPoints(Math.abs(PRESET_DEMERITS[0].points));
+                      setRecordCategory(demeritPresets[0]?.label || '');
+                      setRecordPoints(Math.abs(demeritPresets[0]?.points || 5));
                     }}
                     className={`py-2 px-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
                       recordType === 'demerit'
@@ -844,18 +918,29 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
               {/* Preset selection */}
               <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'รายการมาตรฐาน' : 'Preset Categories'}</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[var(--color-text-body)] font-semibold">{lang === 'th' ? 'รายการมาตรฐาน' : 'Preset Categories'}</label>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPresetModal(true)}
+                      className="text-[11px] font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                    >
+                      + เพิ่ม/แก้ไขหัวข้อ
+                    </button>
+                  )}
+                </div>
                 <select
                   value={recordCategory}
                   onChange={(e) => {
                     setRecordCategory(e.target.value);
-                    const list = recordType === 'merit' ? PRESET_MERITS : PRESET_DEMERITS;
+                    const list = recordType === 'merit' ? meritPresets : demeritPresets;
                     const match = list.find((item) => item.label === e.target.value);
                     if (match) setRecordPoints(Math.abs(match.points));
                   }}
                   className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                 >
-                  {(recordType === 'merit' ? PRESET_MERITS : PRESET_DEMERITS).map((item) => (
+                  {(recordType === 'merit' ? meritPresets : demeritPresets).map((item) => (
                     <option key={item.label} value={item.label}>
                       {item.label} ({item.points > 0 ? `+${item.points}` : item.points} คะแนน)
                     </option>
@@ -900,6 +985,24 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 />
               </div>
 
+              {behaviorDupReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>แจ้งเตือนข้อมูลซ้ำ: {behaviorDupReasons.join(', ')}</span>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowDuplicateConfirm}
+                      onChange={(e) => setAllowDuplicateConfirm(e.target.checked)}
+                      className="rounded accent-amber-600"
+                    />
+                    <span>ยืนยันต้องการบันทึกซ้ำในวันและหัวข้อเดียวกันอีกครั้ง</span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
@@ -910,7 +1013,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold shadow-sm cursor-pointer"
+                  disabled={behaviorDupReasons.length > 0 && !allowDuplicateConfirm}
+                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-semibold shadow-sm cursor-pointer"
                 >
                   {lang === 'th' ? 'บันทึกคะแนน' : 'Save Record'}
                 </button>
@@ -1070,6 +1174,24 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 />
               </div>
 
+              {sdqDupReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>แจ้งเตือนข้อมูลซ้ำ: {sdqDupReasons.join(', ')}</span>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowDuplicateConfirm}
+                      onChange={(e) => setAllowDuplicateConfirm(e.target.checked)}
+                      className="rounded accent-amber-600"
+                    />
+                    <span>ยืนยันบันทึกผลประเมิน SDQ ซ้ำอีกครั้ง</span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
@@ -1087,7 +1209,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-sm cursor-pointer"
+                  disabled={sdqDupReasons.length > 0 && !allowDuplicateConfirm}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold shadow-sm cursor-pointer"
                 >
                   {lang === 'th' ? 'บันทึกผลการคัดกรอง' : 'Save Assessment'}
                 </button>
@@ -1095,6 +1218,113 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 </div>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Behavior Presets Manager Modal */}
+      {showPresetModal && isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 shrink-0">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>ตั้งค่าหัวข้อและเกณฑ์คะแนนความประพฤติ (Admin)</span>
+              </h3>
+              <button type="button" onClick={() => setShowPresetModal(false)} className="px-2 py-0.5 rounded-lg text-sm font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 shrink-0 text-xs">
+              <select
+                value={newPresetType}
+                onChange={(e) => setNewPresetType(e.target.value as 'merit' | 'demerit')}
+                className="sm:col-span-3 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+              >
+                <option value="merit">+ ความดี</option>
+                <option value="demerit">- ตัดคะแนน</option>
+              </select>
+              <input
+                type="text"
+                value={newPresetLabel}
+                onChange={(e) => setNewPresetLabel(e.target.value)}
+                placeholder="ชื่อรายการพฤติกรรม..."
+                className="sm:col-span-5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+              />
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={newPresetPoints}
+                onChange={(e) => setNewPresetPoints(Math.max(1, Number(e.target.value) || 5))}
+                className="sm:col-span-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const label = newPresetLabel.trim();
+                  if (!label) return;
+                  if (newPresetType === 'merit') {
+                    updatePresets({
+                      behaviorMeritPresets: [...meritPresets.filter((p) => p.label !== label), { label, points: Math.abs(newPresetPoints) }],
+                    });
+                  } else {
+                    updatePresets({
+                      behaviorDemeritPresets: [...demeritPresets.filter((p) => p.label !== label), { label, points: -Math.abs(newPresetPoints) }],
+                    });
+                  }
+                  setNewPresetLabel('');
+                }}
+                className="sm:col-span-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-bold cursor-pointer"
+              >
+                เพิ่ม
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-3 text-xs">
+              <div>
+                <p className="font-bold text-emerald-700 dark:text-emerald-300 mb-1.5">รายการเพิ่มคะแนนความดี (+)</p>
+                <div className="space-y-1">
+                  {meritPresets.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+                      <span className="truncate">{item.label}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">+{item.points}</span>
+                        <button
+                          type="button"
+                          onClick={() => updatePresets({ behaviorMeritPresets: meritPresets.filter((p) => p.label !== item.label) })}
+                          className="text-rose-600 hover:text-rose-800 cursor-pointer"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="font-bold text-rose-700 dark:text-rose-300 mb-1.5">รายการตัดคะแนนความประพฤติ (-)</p>
+                <div className="space-y-1">
+                  {demeritPresets.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+                      <span className="truncate">{item.label}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono font-bold text-rose-700 dark:text-rose-300">{item.points}</span>
+                        <button
+                          type="button"
+                          onClick={() => updatePresets({ behaviorDemeritPresets: demeritPresets.filter((p) => p.label !== item.label) })}
+                          className="text-rose-600 hover:text-rose-800 cursor-pointer"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

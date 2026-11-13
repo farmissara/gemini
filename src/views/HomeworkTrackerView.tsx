@@ -15,7 +15,8 @@ import {
   MessageSquare, 
   BookOpen,
   Calendar,
-  Layers
+  Layers,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   HomeworkSubmission, 
@@ -26,6 +27,7 @@ import {
   Assignment
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -96,6 +98,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   const [submitCourseCode, setSubmitCourseCode] = useState('MA201');
   const [submitText, setSubmitText] = useState('');
   const [submitFileName, setSubmitFileName] = useState('My_Calculus_Project.pdf');
+  const [allowDuplicateConfirm, setAllowDuplicateConfirm] = useState(false);
 
   // Grading form
   const [gradingScore, setGradingScore] = useState<number>(18);
@@ -111,10 +114,29 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
     return matchSearch && matchStatus && matchCourse;
   });
 
+  const duplicateHomeworkCount = (() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    submissions.forEach((sub) => {
+      const k = `${sub.studentId}|${sub.assignmentId}|${sub.courseCode.trim().toLowerCase()}`;
+      if (seen.has(k)) dups += 1;
+      else seen.add(k);
+    });
+    return dups;
+  })();
+
+  const submitDupReasons = showSubmitModal
+    ? getHomeworkDuplicateReasons(
+        { studentId: submitStudentId, assignmentId: submitAssignmentId, courseCode: submitCourseCode },
+        submissions
+      )
+    : [];
+
   const handleSubmitHomework = (e: React.FormEvent) => {
     e.preventDefault();
     const student = students.find((s) => s.id === submitStudentId);
     if (!student) return;
+    if (submitDupReasons.length > 0 && !allowDuplicateConfirm) return;
 
     const newSub: HomeworkSubmission = {
       id: `sub-${Date.now()}`,
@@ -139,6 +161,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
     };
 
     onAddSubmission(newSub);
+    setAllowDuplicateConfirm(false);
     setShowSubmitModal(false);
     setSubmitText('');
   };
@@ -204,7 +227,10 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           </div>
 
           <button
-            onClick={() => setShowSubmitModal(true)}
+            onClick={() => {
+              setAllowDuplicateConfirm(false);
+              setShowSubmitModal(true);
+            }}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-sm transition cursor-pointer"
           >
             <UploadCloud className="w-4 h-4" />
@@ -212,6 +238,13 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           </button>
         </div>
       </div>
+
+      {duplicateHomeworkCount > 0 && (
+        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span>พบการส่งการบ้านซ้ำซ้อน (นักเรียน/ชิ้นงาน/รหัสวิชาเดียวกัน) จำนวน {duplicateHomeworkCount} รายการ</span>
+        </div>
+      )}
 
       {/* TAB 1: SUBMISSIONS LIST */}
       {hwTab === 'submissions' && (
@@ -576,6 +609,24 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 />
               </div>
 
+              {submitDupReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>{submitDupReasons.join(', ')}</span>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowDuplicateConfirm}
+                      onChange={(e) => setAllowDuplicateConfirm(e.target.checked)}
+                      className="rounded accent-amber-600"
+                    />
+                    <span>ยืนยันต้องการส่งการบ้านซ้ำอีกครั้ง</span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
@@ -586,7 +637,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold shadow-sm cursor-pointer"
+                  disabled={submitDupReasons.length > 0 && !allowDuplicateConfirm}
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold shadow-sm cursor-pointer"
                 >
                   {lang === 'th' ? 'ยืนยันการส่งการบ้าน' : 'Submit Now'}
                 </button>

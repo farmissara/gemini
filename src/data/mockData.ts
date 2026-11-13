@@ -898,7 +898,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูใหญ่ฝั่งถนนวิทยุ (Main Gate)'
     },
-    remarks: 'ถ่ายรูปเช็กอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเองในเขตพื้นที่ 18 ม.',
+    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเองในเขตพื้นที่ 18 ม.',
     lineNotificationSent: true
   },
   {
@@ -921,9 +921,9 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       lng: 100.523290,
       distanceMeters: 25,
       inGeofence: true,
-      geofenceZoneName: 'จุดเช็กชื่อหน้าอาคาร 1'
+      geofenceZoneName: 'จุดเช็คชื่อหน้าอาคาร 1'
     },
-    remarks: 'ถ่ายรูปเช็กอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเอง',
+    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเอง',
     lineNotificationSent: true
   },
   {
@@ -948,7 +948,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ป้อมยามประตูทิศเหนือ'
     },
-    remarks: 'มาสาย 12 นาที ถ่ายรูปเช็กชื่อผ่านมือถือ (การจราจรหนาแน่น)',
+    remarks: 'มาสาย 12 นาที ถ่ายรูปเช็คชื่อผ่านมือถือ (การจราจรหนาแน่น)',
     lineNotificationSent: true
   },
   // --- วันนี้: ครูเข้า-ออกโรงเรียน ---
@@ -975,7 +975,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'อาคารอำนวยการและห้องพักครู'
     },
-    remarks: 'ครูถ่ายรูปเซลฟี่เช็กอินเข้าปฏิบัติหน้าที่ตรงเวลา',
+    remarks: 'ครูถ่ายรูปเซลฟี่เช็คอินเข้าปฏิบัติหน้าที่ตรงเวลา',
     lineNotificationSent: true
   },
   {
@@ -1001,7 +1001,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ลานเสาธงกลาง'
     },
-    remarks: 'ครูถ่ายรูปเช็กอินเข้าทำงานผ่านโทรศัพท์มือถือ',
+    remarks: 'ครูถ่ายรูปเช็คอินเข้าทำงานผ่านโทรศัพท์มือถือ',
     lineNotificationSent: true
   },
   {
@@ -1027,10 +1027,10 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ห้อง English Program'
     },
-    remarks: 'ถ่ายรูปเช็กอินเข้าทำงานระบบ Geofence ผ่านมือถือ',
+    remarks: 'ถ่ายรูปเช็คอินเข้าทำงานระบบ Geofence ผ่านมือถือ',
     lineNotificationSent: true
   },
-  // --- วันนี้: ตัวอย่างการเช็กชื่อออกโรงเรียน (Check-out) ---
+  // --- วันนี้: ตัวอย่างการเช็คชื่อออกโรงเรียน (Check-out) ---
   {
     id: 'att-today-1-out',
     schoolId: 'sch-1',
@@ -1053,7 +1053,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ซุ้มประตูใหญ่ทางออก'
     },
-    remarks: 'ถ่ายรูปเช็กชื่อออกจากโรงเรียนหลังเลิกเรียน ส่งแจ้งเตือน LINE ผู้ปกครอง',
+    remarks: 'ถ่ายรูปเช็คชื่อออกจากโรงเรียนหลังเลิกเรียน ส่งแจ้งเตือน LINE ผู้ปกครอง',
     lineNotificationSent: true
   },
 
@@ -1080,7 +1080,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูทางเข้าหลัก'
     },
-    remarks: 'ถ่ายรูปเช็กอินเข้าโรงเรียนตรงเวลา',
+    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนตรงเวลา',
     lineNotificationSent: true
   },
   {
@@ -1105,7 +1105,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูหน้าโรงเรียน'
     },
-    remarks: 'ถ่ายรูปเช็กชื่อออกจากโรงเรียน',
+    remarks: 'ถ่ายรูปเช็คชื่อออกจากโรงเรียน',
     lineNotificationSent: true
   },
   {
@@ -1130,7 +1130,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'หน้าอาคารเรียนรวม'
     },
-    remarks: 'ถ่ายรูปเซลฟี่เช็กอินผ่านโทรศัพท์มือถือ',
+    remarks: 'ถ่ายรูปเซลฟี่เช็คอินผ่านโทรศัพท์มือถือ',
     lineNotificationSent: true
   },
   {
@@ -1155,7 +1155,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูทางออกฝั่งอาคาร 1'
     },
-    remarks: 'เช็กชื่อออกจากโรงเรียนผ่านมือถือ',
+    remarks: 'เช็คชื่อออกจากโรงเรียนผ่านมือถือ',
     lineNotificationSent: true
   },
   {
@@ -1181,7 +1181,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ห้องพักครูวิชาการ'
     },
-    remarks: 'ครูถ่ายรูปเซลฟี่เช็กอินเข้าทำงาน',
+    remarks: 'ครูถ่ายรูปเซลฟี่เช็คอินเข้าทำงาน',
     lineNotificationSent: true
   },
   {
@@ -1207,7 +1207,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ทางออกลานจอดรถครู'
     },
-    remarks: 'ครูถ่ายรูปเซลฟี่เช็กเอาท์เลิกงาน',
+    remarks: 'ครูถ่ายรูปเซลฟี่เช็คเอาท์เลิกงาน',
     lineNotificationSent: true
   },
 
@@ -1234,7 +1234,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูทางเข้าหลัก'
     },
-    remarks: 'ถ่ายรูปเซลฟี่เช็กอินเข้าโรงเรียน',
+    remarks: 'ถ่ายรูปเซลฟี่เช็คอินเข้าโรงเรียน',
     lineNotificationSent: true
   },
   {
@@ -1259,7 +1259,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูรั้วทิศเหนือ'
     },
-    remarks: 'มาสาย 25 นาที ถ่ายรูปเช็กชื่อผ่านมือถือ',
+    remarks: 'มาสาย 25 นาที ถ่ายรูปเช็คชื่อผ่านมือถือ',
     lineNotificationSent: true
   },
   {
@@ -1285,7 +1285,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'อาคารเรียนคณิตศาสตร์'
     },
-    remarks: 'ครูถ่ายรูปเช็กอินเข้าทำงาน',
+    remarks: 'ครูถ่ายรูปเช็คอินเข้าทำงาน',
     lineNotificationSent: true
   }
 ];

@@ -354,7 +354,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             }`}
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'เช็กชื่อ & GPS สด' : 'Live GPS'}</span>
+            <span>{lang === 'th' ? 'เช็คชื่อ & GPS สด' : 'Live GPS'}</span>
             <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
               dashboardTab === 'live_attendance'
                 ? 'bg-white/20 text-white'
@@ -815,7 +815,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
                   >
                     <Smartphone className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'เปิดกล้องเช็กชื่อ' : 'Open Camera'}</span>
+                    <span>{lang === 'th' ? 'เปิดกล้องเช็คชื่อ' : 'Open Camera'}</span>
                   </button>
                 </div>
               </div>
@@ -1011,7 +1011,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <span>{lang === 'th' ? `ภาพถ่ายเช็กชื่อล่าสุดในวันที่เลือก (${selectedDate})` : `Selfie Verification Logs (${selectedDate})`}</span>
+                <span>{lang === 'th' ? `ภาพถ่ายเช็คชื่อล่าสุดในวันที่เลือก (${selectedDate})` : `Selfie Verification Logs (${selectedDate})`}</span>
                 <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold text-xs">
                   {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
                 </span>
@@ -1037,11 +1037,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
               <Camera className="w-10 h-10 text-[var(--color-text-muted)] mx-auto" />
               <p className="text-sm font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? `ไม่พบบันทึกเช็กชื่อในวันที่เลือก (${selectedDate})` : `No records found for ${selectedDate}`}
+                {lang === 'th' ? `ไม่พบบันทึกเช็คชื่อในวันที่เลือก (${selectedDate})` : `No records found for ${selectedDate}`}
               </p>
               <p className="text-xs text-[var(--color-text-muted)]">
                 {lang === 'th'
-                  ? 'ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน หรือกด "ถ่ายรูปเช็กชื่อมือถือ" เพื่อบันทึกข้อมูลใหม่'
+                  ? 'ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน หรือกด "ถ่ายรูปเช็คชื่อมือถือ" เพื่อบันทึกข้อมูลใหม่'
                   : 'Try selecting another date or use Mobile Check-in to capture a new record.'}
               </p>
               <button
@@ -1508,7 +1508,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'รูปถ่ายเช็กชื่อยืนยันตัวตน' : 'Selfie Verification Proof'}
+                    {lang === 'th' ? 'รูปถ่ายเช็คชื่อยืนยันตัวตน' : 'Selfie Verification Proof'}
                   </h3>
                   <p className="text-[11px] text-[var(--color-text-muted)]">
                     {lang === 'th' ? `วันที่ ${selectedPhotoRecord.date} • เวลา ${selectedPhotoRecord.time} น.` : `${selectedPhotoRecord.date} at ${selectedPhotoRecord.time}`}
@@ -1580,11 +1580,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-center gap-2">
                     {selectedPhotoRecord.recordType === 'check_out' ? (
                       <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 font-bold text-[11px]">
-                        {lang === 'th' ? 'เช็กชื่อออก' : 'Check-out'}
+                        {lang === 'th' ? 'เช็คชื่อออก' : 'Check-out'}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-[11px]">
-                        {lang === 'th' ? 'เช็กชื่อเข้า' : 'Check-in'}
+                        {lang === 'th' ? 'เช็คชื่อเข้า' : 'Check-in'}
                       </span>
                     )}
                     <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${

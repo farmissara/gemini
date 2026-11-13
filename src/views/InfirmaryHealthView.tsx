@@ -14,7 +14,9 @@ import {
   Activity, 
   Clock, 
   Calendar,
-  FileText
+  FileText,
+  Sliders,
+  Trash2
 } from 'lucide-react';
 import { 
   InfirmaryVisit, 
@@ -26,6 +28,9 @@ import {
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { getInfirmaryDuplicateReasons } from '../lib/duplicateRecords';
+import { getLocalDateString } from '../lib/date';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -60,6 +65,7 @@ const PaginatedTableRows = <T,>({
 };
 
 interface InfirmaryHealthViewProps {
+  schoolId?: string;
   visits: InfirmaryVisit[];
   students: Student[];
   onAddVisit: (visit: InfirmaryVisit) => void;
@@ -68,25 +74,37 @@ interface InfirmaryHealthViewProps {
 }
 
 export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
+  schoolId = 'default-school',
   visits,
   students,
   onAddVisit,
   lang,
   currentRole
 }) => {
+  const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const bedOptions = presets.infirmaryBeds;
+  const treatmentPresets = presets.infirmaryTreatments;
+  const medicationPresets = presets.infirmaryMedications;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | InfirmaryStatus>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPresetModal, setShowPresetModal] = useState(false);
   const [visitFormStep, setVisitFormStep] = useState<1 | 2>(1);
+  const [allowDuplicateConfirm, setAllowDuplicateConfirm] = useState(false);
+  const [newBedInput, setNewBedInput] = useState('');
+  const [newTreatmentInput, setNewTreatmentInput] = useState('');
+  const [newMedInput, setNewMedInput] = useState('');
 
   // New visit form state
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [temperature, setTemperature] = useState<number>(37.5);
   const [symptoms, setSymptoms] = useState('');
   const [category, setCategory] = useState<InfirmaryCategory>('fever');
-  const [treatment, setTreatment] = useState('ให้นอนพักดื่มน้ำอุ่น และเช็ดตัวลดไข้');
-  const [medication, setMedication] = useState('Paracetamol 500mg 1 เม็ด');
-  const [bedNumber, setBedNumber] = useState('เตียง 1');
+  const [treatment, setTreatment] = useState(treatmentPresets[0] || 'ให้นอนพักดื่มน้ำอุ่น และเช็ดตัวลดไข้');
+  const [medication, setMedication] = useState(medicationPresets[0] || 'Paracetamol 500mg 1 เม็ด');
+  const [bedNumber, setBedNumber] = useState(bedOptions[0] || 'เตียง 1');
   const [visitStatus, setVisitStatus] = useState<InfirmaryStatus>('resting');
   const [nurseName, setNurseName] = useState('พว.สุดารัตน์ เจริญสุข (พยาบาลวิชาชีพ)');
   const [notifyParent, setNotifyParent] = useState(true);
@@ -107,11 +125,30 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   );
 
   const [offlineSavedNote, setOfflineSavedNote] = useState<string | null>(null);
+  const todayStr = getLocalDateString();
+  const visitDupReasons = showAddModal
+    ? getInfirmaryDuplicateReasons(
+        { studentId: selectedStudentId, visitDate: todayStr, symptoms: symptoms.trim() || 'รู้สึกไม่สบายตัว' },
+        visits
+      )
+    : [];
+
+  const existingDuplicateVisitsCount = (() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    visits.forEach((v) => {
+      const k = `${v.studentId}|${v.visitDate}|${v.symptoms.trim().toLowerCase()}`;
+      if (seen.has(k)) dups += 1;
+      else seen.add(k);
+    });
+    return dups;
+  })();
 
   const handleCreateVisit = (e: React.FormEvent) => {
     e.preventDefault();
     const student = students.find((s) => s.id === selectedStudentId);
     if (!student) return;
+    if (visitDupReasons.length > 0 && !allowDuplicateConfirm) return;
 
     const newVisit: InfirmaryVisit = {
       id: `inf-${Date.now()}`,
@@ -119,7 +156,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
       studentId: student.id,
       studentName: `${student.firstNameTh} ${student.lastNameTh}`,
       gradeRoom: student.room,
-      visitDate: new Date().toISOString().split('T')[0],
+      visitDate: todayStr,
       visitTime: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
       temperature: Number(temperature),
       symptoms: symptoms.trim() || 'รู้สึกไม่สบายตัว',
@@ -145,6 +182,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
     }
 
     onAddVisit(newVisit);
+    setAllowDuplicateConfirm(false);
     setShowAddModal(false);
     setSymptoms('');
   };
@@ -190,7 +228,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 infirmaryTab === 'beds' ? 'bg-rose-700 text-white shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/6)
+              2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/{bedOptions.length})
             </button>
             <button
               onClick={() => setInfirmaryTab('allergies')}
@@ -202,8 +240,20 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             </button>
           </div>
 
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowPresetModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5 text-rose-700 dark:text-rose-300" />
+              <span>ตั้งค่าเตียง/ยา/การรักษา</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
+              setAllowDuplicateConfirm(false);
               setVisitFormStep(1);
               setShowAddModal(true);
             }}
@@ -214,6 +264,13 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
           </button>
         </div>
       </div>
+
+      {existingDuplicateVisitsCount > 0 && (
+        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs font-medium text-amber-950 dark:text-amber-100 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span>พบการบันทึกเข้าห้องพยาบาลซ้ำในวันและอาการเดียวกัน {existingDuplicateVisitsCount} รายการ</span>
+        </div>
+      )}
 
       {offlineSavedNote && (
         <div role="status" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs font-bold text-amber-900 dark:text-amber-200">
@@ -352,9 +409,9 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             <div className="bg-[var(--color-card)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs">
               <span className="text-[11px] text-[var(--color-text-muted)]">{lang === 'th' ? 'กำลังนอนพักเตียง' : 'Resting on Beds'}</span>
               <p className="text-lg font-bold text-amber-800 dark:text-amber-300 mt-1">
-                {visits.filter((v) => v.status === 'resting').length} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 6 เตียง</span>
+                {visits.filter((v) => v.status === 'resting').length} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ {bedOptions.length} เตียง</span>
               </p>
-              <p className="text-[10px] text-emerald-700 dark:text-emerald-300">พร้อมรองรับอีก {6 - visits.filter((v) => v.status === 'resting').length} เตียง</p>
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-300">พร้อมรองรับอีก {Math.max(0, bedOptions.length - visits.filter((v) => v.status === 'resting').length)} เตียง</p>
             </div>
 
             <div className="bg-[var(--color-card)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs">
@@ -374,20 +431,19 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             </div>
           </div>
 
-          {/* 6 Infirmary Beds Status Cards */}
+          {/* Infirmary Beds Status Cards */}
           <div className="bg-[var(--color-card)] p-4 rounded-xl border border-[var(--color-border)] shadow-xs">
             <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider pb-2 border-b border-[var(--color-border)] flex items-center gap-1.5 mb-3">
               <Bed className="w-4 h-4 text-amber-700 dark:text-amber-300" />
-              <span>ผังเตียงนอนพักห้องพยาบาล (Infirmary Ward Beds 1-6)</span>
+              <span>ผังเตียงนอนพักห้องพยาบาล ({bedOptions.length} เตียง)</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {[1, 2, 3, 4, 5, 6].map((num) => {
-                const bedLabel = `เตียง ${num}`;
-                const restingPatient = visits.find((v) => v.status === 'resting' && (v.bedNumber === bedLabel || v.bedNumber === `Bed ${num}`));
+              {bedOptions.map((bedLabel) => {
+                const restingPatient = visits.find((v) => v.status === 'resting' && v.bedNumber === bedLabel);
                 return (
                   <div
-                    key={num}
+                    key={bedLabel}
                     className={`p-3 rounded-xl border transition ${
                       restingPatient
                         ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-400 dark:border-amber-700'
@@ -397,7 +453,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                     <div className="flex items-center justify-between pb-1.5 border-b border-[var(--color-border)]">
                       <span className="font-bold text-xs text-[var(--color-text-title)] flex items-center gap-1.5">
                         <Bed className={`w-3.5 h-3.5 ${restingPatient ? 'text-amber-800 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`} />
-                        <span>เตียงที่ {num}</span>
+                        <span>{bedLabel}</span>
                       </span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                         restingPatient ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
@@ -562,11 +618,15 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 <input
                   type="text"
                   required
+                  list="infirmary-treatments-list"
                   value={treatment}
                   onChange={(e) => setTreatment(e.target.value)}
                   placeholder="เช่น ให้นอนพัก เช็ดตัวลดไข้..."
                   className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                 />
+                <datalist id="infirmary-treatments-list">
+                  {treatmentPresets.map((item) => <option key={item} value={item} />)}
+                </datalist>
               </div>
                   <button
                     type="button"
@@ -587,11 +647,15 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                   <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'ยาที่จ่าย (ถ้ามี)' : 'Medicine Dispensed'}</label>
                   <input
                     type="text"
+                    list="infirmary-meds-list"
                     value={medication}
                     onChange={(e) => setMedication(e.target.value)}
                     placeholder="เช่น Paracetamol 500mg 1 เม็ด"
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   />
+                  <datalist id="infirmary-meds-list">
+                    {medicationPresets.map((item) => <option key={item} value={item} />)}
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'เตียงนอนพัก' : 'Bed Assigned'}</label>
@@ -600,10 +664,9 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                     onChange={(e) => setBedNumber(e.target.value)}
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   >
-                    <option value="เตียง 1">เตียง 1</option>
-                    <option value="เตียง 2">เตียง 2</option>
-                    <option value="เตียง 3">เตียง 3</option>
-                    <option value="เตียง 4">เตียง 4</option>
+                    {bedOptions.map((bed) => (
+                      <option key={bed} value={bed}>{bed}</option>
+                    ))}
                     <option value="ไม่ต้องนอนพัก">ไม่ต้องนอนพัก</option>
                   </select>
                 </div>
@@ -637,6 +700,24 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 />
               </div>
 
+              {visitDupReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>{visitDupReasons.join(', ')}</span>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowDuplicateConfirm}
+                      onChange={(e) => setAllowDuplicateConfirm(e.target.checked)}
+                      className="rounded accent-amber-600"
+                    />
+                    <span>ยืนยันบันทึกเข้าห้องพยาบาลซ้ำอีกครั้ง</span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
@@ -654,7 +735,8 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-semibold shadow-sm cursor-pointer"
+                  disabled={visitDupReasons.length > 0 && !allowDuplicateConfirm}
+                  className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 disabled:opacity-50 text-white font-semibold shadow-sm cursor-pointer"
                 >
                   {lang === 'th' ? 'บันทึกการรักษา' : 'Save Record'}
                 </button>
@@ -662,6 +744,118 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 </div>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Infirmary Presets Modal */}
+      {showPresetModal && isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 shrink-0">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-rose-700 dark:text-rose-300" />
+                <span>ตั้งค่าเตียงพัก ยา และการปฐมพยาบาล (Admin)</span>
+              </h3>
+              <button type="button" onClick={() => setShowPresetModal(false)} className="px-2 py-0.5 rounded-lg text-sm font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+              <div className="space-y-2">
+                <label className="font-bold text-[var(--color-text-title)]">รายชื่อเตียงห้องพยาบาล ({bedOptions.length} เตียง)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newBedInput}
+                    onChange={(e) => setNewBedInput(e.target.value)}
+                    placeholder="เช่น เตียง 5 หรือ เตียงแยกกัก"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = newBedInput.trim();
+                      if (!val) return;
+                      updatePresets({ infirmaryBeds: [...bedOptions, val] });
+                      setNewBedInput('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-700 text-white font-bold cursor-pointer"
+                  >เพิ่ม</button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {bedOptions.map((bed) => (
+                    <span key={bed} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                      <span>{bed}</span>
+                      {bedOptions.length > 1 && (
+                        <button type="button" onClick={() => updatePresets({ infirmaryBeds: bedOptions.filter((b) => b !== bed) })} className="text-rose-600 cursor-pointer"><Trash2 className="w-3 h-3" /></button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-bold text-[var(--color-text-title)]">ตัวเลือกรายการยา ({medicationPresets.length})</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMedInput}
+                    onChange={(e) => setNewMedInput(e.target.value)}
+                    placeholder="เพิ่มชื่อยา..."
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = newMedInput.trim();
+                      if (!val) return;
+                      updatePresets({ infirmaryMedications: [...medicationPresets, val] });
+                      setNewMedInput('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-700 text-white font-bold cursor-pointer"
+                  >เพิ่ม</button>
+                </div>
+                <div className="space-y-1">
+                  {medicationPresets.map((med) => (
+                    <div key={med} className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                      <span className="truncate">{med}</span>
+                      <button type="button" onClick={() => updatePresets({ infirmaryMedications: medicationPresets.filter((m) => m !== med) })} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-bold text-[var(--color-text-title)]">ตัวเลือกการปฐมพยาบาล ({treatmentPresets.length})</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTreatmentInput}
+                    onChange={(e) => setNewTreatmentInput(e.target.value)}
+                    placeholder="เพิ่มแนวทางการดูแลรักษา..."
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = newTreatmentInput.trim();
+                      if (!val) return;
+                      updatePresets({ infirmaryTreatments: [...treatmentPresets, val] });
+                      setNewTreatmentInput('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-700 text-white font-bold cursor-pointer"
+                  >เพิ่ม</button>
+                </div>
+                <div className="space-y-1">
+                  {treatmentPresets.map((tr) => (
+                    <div key={tr} className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                      <span className="truncate">{tr}</span>
+                      <button type="button" onClick={() => updatePresets({ infirmaryTreatments: treatmentPresets.filter((t) => t !== tr) })} className="text-rose-600 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

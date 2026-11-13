@@ -48,6 +48,7 @@ import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -80,6 +81,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   featureFlags: externalFeatureFlags,
   onUpdateFeatureFlags,
 }) => {
+  const { presets: customPresets, updatePresets: updateCustomPresets, resetPresets: resetCustomPresets } = useSchoolCustomPresets(activeSchool.id);
   const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts' | 'student_login_config' | 'saas_audit'>('line_events');
   const [localFlags, setLocalFlags] = useState<SchoolFeatureFlags>(
     () => externalFeatureFlags || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise')
@@ -1754,6 +1756,88 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
           </div>
 
+          {['admin', 'super_admin'].includes(currentRole) && (
+            <div className="bg-[var(--color-card)] rounded-2xl p-6 border border-[var(--color-border)] shadow-xs space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-[var(--color-primary-text)]" />
+                  <div>
+                    <h3 className="font-bold text-sm text-[var(--color-text-title)]">
+                      ตั้งค่ารายการตัวเลือกและพรีเซ็ตของโรงเรียน (Custom Presets)
+                    </h3>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      ปรับแต่งระดับชั้น ห้องเรียน กลุ่มสาระ วิทยฐานะ เตียงห้องพยาบาล รายการยา และหมวดหมู่ต่างๆ ได้อิสระ (แยกตามโรงเรียน)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => resetCustomPresets()}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold cursor-pointer"
+                >
+                  คืนค่ามาตรฐาน
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--color-text-body)]">ระดับชั้น (1 รายการ/บรรทัด)</label>
+                  <textarea
+                    rows={4}
+                    value={customPresets.gradeLevels.join('\n')}
+                    onChange={(e) => updateCustomPresets({ gradeLevels: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--color-text-body)]">ห้องเรียน / ห้องประจำ (1 ห้อง/บรรทัด)</label>
+                  <textarea
+                    rows={4}
+                    value={customPresets.roomOptions.join('\n')}
+                    onChange={(e) => updateCustomPresets({ roomOptions: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--color-text-body)]">กลุ่มสาระ / ฝ่ายงาน (1 ฝ่าย/บรรทัด)</label>
+                  <textarea
+                    rows={4}
+                    value={customPresets.departments.join('\n')}
+                    onChange={(e) => updateCustomPresets({ departments: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--color-text-body)]">วิทยฐานะ / ระดับตำแหน่งบุคลากร</label>
+                  <textarea
+                    rows={4}
+                    value={customPresets.academicStandings.join('\n')}
+                    onChange={(e) => updateCustomPresets({ academicStandings: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--color-text-body)]">เตียงห้องพยาบาล</label>
+                  <textarea
+                    rows={4}
+                    value={customPresets.infirmaryBeds.join('\n')}
+                    onChange={(e) => updateCustomPresets({ infirmaryBeds: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-[var(--color-text-body)]">รายการยาห้องพยาบาล</label>
+                  <textarea
+                    rows={4}
+                    value={customPresets.infirmaryMedications.join('\n')}
+                    onChange={(e) => updateCustomPresets({ infirmaryMedications: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {saveError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{saveError}</p>}
           <div className="flex justify-end pt-2">
             <button
@@ -1790,7 +1874,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-[var(--color-text-title)]">อนุมัติคำขอสมัคร &amp; ผูกบัญชีล็อกอินกับรายชื่อนักเรียน</h3>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  ตรวจสอบนักเรียนที่สมัครสมาชิกเข้าโรงเรียน กดอนุมัติเปิดใช้งาน และจับคู่กับระเบียนนักเรียน DMC เพื่อระบุตัวตนและสิทธิ์เช็กอิน
+                  ตรวจสอบนักเรียนที่สมัครสมาชิกเข้าโรงเรียน กดอนุมัติเปิดใช้งาน และจับคู่กับระเบียนนักเรียน DMC เพื่อระบุตัวตนและสิทธิ์เช็คอิน
                 </p>
               </div>
 

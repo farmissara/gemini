@@ -535,12 +535,20 @@ export const App: React.FC = () => {
       homeworkSubmissions: schoolHomeworkSubmissions,
     }),
     ...getDuplicateRecordWarnings({
-    students: schoolStudents,
-    teachers: schoolTeachers,
-    courses: schoolCourses,
-    grades: schoolGrades,
-    invoices: schoolInvoices,
-    timetableSlots: schoolTimetableSlots,
+      students: schoolStudents,
+      teachers: schoolTeachers,
+      courses: schoolCourses,
+      grades: schoolGrades,
+      invoices: schoolInvoices,
+      timetableSlots: schoolTimetableSlots,
+      attendance: schoolAttendance,
+      periodAttendance: schoolPeriodAttendance,
+      announcements: schoolAnnouncements,
+      behaviorRecords: schoolBehaviorRecords,
+      sdqAssessments: schoolSdqAssessments,
+      infirmaryVisits: schoolInfirmaryVisits,
+      homeworkSubmissions: schoolHomeworkSubmissions,
+      leaveRequests,
     }),
   ];
 
@@ -656,8 +664,16 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleUpdateAcademicPeriod = async (academicYear: string, currentSemester: string) => {
-    await handleUpdateSchool({ academicYear, currentSemester });
+  const handleUpdateAcademicPeriod = async (
+    academicYear: string,
+    currentSemester: string,
+    semesterOptions?: string[]
+  ) => {
+    await handleUpdateSchool({
+      academicYear,
+      currentSemester,
+      ...(semesterOptions ? { semesterOptions } : {}),
+    });
   };
 
   const handleUpdateSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFlags) => {
@@ -1160,6 +1176,20 @@ export const App: React.FC = () => {
     );
   };
 
+  const handleEnrollStudentsBatch = (courseId: string, studentIds: string[]) => {
+    if (studentIds.length === 0) return;
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        const merged = Array.from(new Set([...(c.enrolledStudentIds || []), ...studentIds]));
+        return {
+          ...c,
+          enrolledStudentIds: merged,
+        };
+      })
+    );
+  };
+
   const handleImportCourses = (newCourses: Course[]) => {
     setCourses((prev) => [...newCourses.map((course) => ({ ...course, schoolId: activeSchool.id })), ...prev]);
   };
@@ -1356,14 +1386,14 @@ export const App: React.FC = () => {
 
       if (records.length === 1) {
         sendEduVerseNotification({
-          title: isCheckout ? '🔴 เช็กชื่อออกคาบเรียนสำเร็จ (Check-out)' : '🟢 เช็กชื่อเข้าคาบเรียนสำเร็จ (Check-in)',
+          title: isCheckout ? '🔴 เช็คชื่อออกคาบเรียนสำเร็จ (Check-out)' : '🟢 เช็คชื่อเข้าคาบเรียนสำเร็จ (Check-in)',
           body: `${studentName} • วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} (${firstRec.timeSlot})`,
           category: 'attendance',
           priority: 'normal',
         }).catch(() => {});
       } else {
         sendEduVerseNotification({
-          title: '📋 บันทึกเช็กชื่อทั้งคาบเรียนสำเร็จ',
+          title: '📋 บันทึกเช็คชื่อทั้งคาบเรียนสำเร็จ',
           body: `วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} บันทึกรายชื่อแล้ว ${records.length} คน`,
           category: 'attendance',
           priority: 'normal',
@@ -1476,7 +1506,7 @@ export const App: React.FC = () => {
         firedAlerts.add(morningKey);
         sendEduVerseNotification({
           title: '☀️ สวัสดีตอนเช้า: อย่าลืมสแกนเข้าโรงเรียน',
-          body: 'ยินดีต้อนรับสู่โรงเรียน กรุณาถ่ายรูปหรือสแกนบัตรเช็กอินผ่านพิกัด GPS ประตูโรงเรียนก่อนเวลา 08:00 น.',
+          body: 'ยินดีต้อนรับสู่โรงเรียน กรุณาถ่ายรูปหรือสแกนบัตรเช็คอินผ่านพิกัด GPS ประตูโรงเรียนก่อนเวลา 08:00 น.',
           category: 'attendance',
           priority: 'normal',
         }).catch(() => {});
@@ -1498,7 +1528,7 @@ export const App: React.FC = () => {
         if (!userHasCheckedIn) {
           sendEduVerseNotification({
             title: '⚠️ แจ้งเตือนเวลาเข้าโรงเรียน (เลยเวลา 08:00 น.)',
-            body: 'ขณะนี้เลยเวลา 08:00 น. แล้ว ระบบยังไม่พบบันทึกการเช็กอินเข้าโรงเรียนของคุณ กรุณาติดต่อครูเวรประจำวันหรือสแกนเช็กชื่อด่วน',
+            body: 'ขณะนี้เลยเวลา 08:00 น. แล้ว ระบบยังไม่พบบันทึกการเช็คอินเข้าโรงเรียนของคุณ กรุณาติดต่อครูเวรประจำวันหรือสแกนเช็คชื่อด่วน',
             category: 'attendance',
             priority: 'urgent',
           }).catch(() => {});
@@ -1510,8 +1540,8 @@ export const App: React.FC = () => {
       if (totalMinutes >= 930 && totalMinutes <= 990 && !firedAlerts.has(departureKey)) {
         firedAlerts.add(departureKey);
         sendEduVerseNotification({
-          title: '🏫 สิ้นสุดเวลาเรียนประจำวัน: อย่าลืมเช็กเอาท์',
-          body: 'หมดเวลาเรียนตามตารางแล้ว กรุณาสแกนหรือถ่ายรูปเช็กเอาท์ (Check-out) ก่อนเดินทางกลับบ้านอย่างปลอดภัย',
+          title: '🏫 สิ้นสุดเวลาเรียนประจำวัน: อย่าลืมเช็คเอาท์',
+          body: 'หมดเวลาเรียนตามตารางแล้ว กรุณาสแกนหรือถ่ายรูปเช็คเอาท์ (Check-out) ก่อนเดินทางกลับบ้านอย่างปลอดภัย',
           category: 'attendance',
           priority: 'normal',
         }).catch(() => {});
@@ -1534,7 +1564,7 @@ export const App: React.FC = () => {
           firedAlerts.add(pStartKey);
           sendEduVerseNotification({
             title: `⏰ เริ่มคาบเรียนที่ ${p.periodNumber} (${p.startTime} - ${p.endTime})`,
-            body: `ใกล้เริ่มคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเข้าห้องเรียนและสแกน Barcode/QR เพื่อเช็กชื่อเข้าเรียน (Check-in)`,
+            body: `ใกล้เริ่มคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเข้าห้องเรียนและสแกน Barcode/QR เพื่อเช็คชื่อเข้าเรียน (Check-in)`,
             category: 'attendance',
             priority: 'urgent',
           }).catch(() => {});
@@ -1545,7 +1575,7 @@ export const App: React.FC = () => {
         if (totalMinutes >= startMin + 10 && totalMinutes <= startMin + 15 && !firedAlerts.has(pLateKey)) {
           firedAlerts.add(pLateKey);
           sendEduVerseNotification({
-            title: `⚠️ แจ้งเตือนลืมเช็กชื่อคาบที่ ${p.periodNumber}`,
+            title: `⚠️ แจ้งเตือนลืมเช็คชื่อคาบที่ ${p.periodNumber}`,
             body: `คาบที่ ${p.periodNumber} (${p.startTime} - ${p.endTime}) เริ่มไปแล้ว 10 นาที หากเข้าห้องเรียนแล้ว กรุณาสแกน Barcode/QR หรือแจ้งอาจารย์ผู้สอน`,
             category: 'attendance',
             priority: 'urgent',
@@ -1558,7 +1588,7 @@ export const App: React.FC = () => {
           firedAlerts.add(pEndKey);
           sendEduVerseNotification({
             title: `🔔 สิ้นสุดคาบเรียนที่ ${p.periodNumber} (${p.endTime} น.)`,
-            body: `หมดเวลาคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเช็กชื่อออก (Check-out) และเตรียมตัวสำหรับคาบถัดไป`,
+            body: `หมดเวลาคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเช็คชื่อออก (Check-out) และเตรียมตัวสำหรับคาบถัดไป`,
             category: 'attendance',
             priority: 'normal',
           }).catch(() => {});
@@ -1573,7 +1603,7 @@ export const App: React.FC = () => {
 
   const handleSaveCampusGates = async (gates: CampusGateGeofence[]) => {
     if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
-      throw new Error('ไม่มีสิทธิ์แก้ไขชื่อจุดเช็กชื่อ');
+      throw new Error('ไม่มีสิทธิ์แก้ไขชื่อจุดเช็คชื่อ');
     }
     const savedToDatabase = isDemoMode ? false : await saveSchoolCampusGates(activeSchool.id, gates);
     handleUpdateCampusGates(gates);
@@ -1783,6 +1813,11 @@ export const App: React.FC = () => {
     });
     setDataSyncError(null);
     return result;
+  };
+
+  const handleAddInvoice = (newInvoice: TuitionInvoice) => {
+    setInvoices((prev) => [{ ...newInvoice, schoolId: activeSchool.id }, ...prev]);
+    setDataSyncError(null);
   };
 
   const handleAddAnnouncement = (newAnn: Announcement) => {
@@ -2696,11 +2731,13 @@ export const App: React.FC = () => {
                     teachers={schoolTeachers}
                     lang={lang}
                     currentRole={currentRole}
+                    schoolId={activeSchool.id}
                     onAddTeacher={handleAddTeacher}
                     onUpdateTeacher={handleUpdateTeacher}
                     onDeleteTeacher={handleDeleteTeacher}
                     onPurgeSampleTeachers={handlePurgeSampleTeachers}
                     staffPositionOptions={systemConfig.staffPositionOptions}
+                    onUpdateStaffPositionOptions={(options) => handleUpdateSchool({ staffPositionOptions: options })}
                     academicYear={systemConfig.academicYear}
                     onOpenImportExport={() => setShowImportExportModal(true)}
                   />
@@ -2711,11 +2748,13 @@ export const App: React.FC = () => {
                     courses={schoolCourses}
                     students={schoolStudents}
                     currentRole={currentRole}
+                    schoolId={activeSchool.id}
                     onAddCourse={handleAddCourse}
                     onUpdateCourse={handleUpdateCourse}
                     onDeleteCourse={handleDeleteCourse}
                     onDeleteCourses={handleDeleteCourses}
                     onEnrollStudent={handleEnrollStudent}
+                    onEnrollStudentsBatch={handleEnrollStudentsBatch}
                     semesterOptions={systemConfig.semesterOptions}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
@@ -2860,6 +2899,7 @@ export const App: React.FC = () => {
                     onSaveSchoolPeriods={handleSaveSchoolPeriods}
                     lang={lang}
                     currentRole={currentRole}
+                    schoolId={activeSchool.id}
                     schoolName={activeSchool.nameTh}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
@@ -2943,6 +2983,7 @@ export const App: React.FC = () => {
                     onAddSdqAssessment={handleAddSdqAssessment}
                     lang={lang}
                     currentRole={currentRole}
+                    schoolId={activeSchool.id}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
                   />
@@ -2955,6 +2996,7 @@ export const App: React.FC = () => {
                     onAddVisit={handleAddInfirmaryVisit}
                     lang={lang}
                     currentRole={currentRole}
+                    schoolId={activeSchool.id}
                   />
                 )}
 
@@ -2976,6 +3018,8 @@ export const App: React.FC = () => {
                     courses={schoolCourses}
                     grades={schoolGrades}
                     systemConfig={systemConfig}
+                    currentRole={currentRole}
+                    onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
                     onUpdateGrade={handleUpdateGrade}
                     onOpenReportCard={setSelectedStudentForReport}
                     timetableSlots={schoolTimetableSlots}
@@ -2993,7 +3037,9 @@ export const App: React.FC = () => {
                     students={schoolStudents}
                     invoices={schoolInvoices}
                     systemConfig={systemConfig}
+                    schoolId={activeSchool.id}
                     onPayInvoice={handlePayInvoice}
+                    onAddInvoice={handleAddInvoice}
                     onSendPrivateAppReminder={handleSendPrivateAppReminder}
                     currentRole={currentRole}
                     onOpenExamPaymentSettings={handleOpenExamPaymentSettings}
@@ -3337,7 +3383,7 @@ export const App: React.FC = () => {
                   <li>{lang === 'th' ? 'กดปุ่ม "คัดลอก SQL Migration ทั้งหมด" ด้านล่าง' : 'Click "Copy Full SQL Migration" below'}</li>
                   <li>{lang === 'th' ? 'เปิดหน้า Supabase Dashboard ของโปรเจกต์คุณ → เมนูซ้ายเลือก SQL Editor → กด New query' : 'Open your Supabase Dashboard → SQL Editor → New query'}</li>
                   <li>{lang === 'th' ? 'วางโค้ด SQL ลงไป แล้วกดปุ่ม Run (ด้านล่างขวา) จนขึ้น Success' : 'Paste the SQL and click Run until Success appears'}</li>
-                  <li>{lang === 'th' ? 'กลับมาที่หน้าเว็บ EduVerse แล้วกดรีเฟรช (F5) ข้อมูลครูและรูปเช็กชื่อจะซิงก์ครบถ้วนทันที' : 'Return to EduVerse and refresh the page; teachers and attendance photos will sync immediately'}</li>
+                  <li>{lang === 'th' ? 'กลับมาที่หน้าเว็บ EduVerse แล้วกดรีเฟรช (F5) ข้อมูลครูและรูปเช็คชื่อจะซิงก์ครบถ้วนทันที' : 'Return to EduVerse and refresh the page; teachers and attendance photos will sync immediately'}</li>
                 </ol>
               </div>
 

@@ -11,11 +11,16 @@ import {
   Users, 
   Calendar,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle,
+  Sliders,
+  Trash2
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
 import { addConsentForm } from '../lib/campusDataStore';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { getAnnouncementDuplicateReasons } from '../lib/duplicateRecords';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -34,7 +39,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   onBroadcastLine,
   onConsentPublished,
 }) => {
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const categoryOptions = presets.announcementCategories;
+
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [allowDuplicateConfirm, setAllowDuplicateConfirm] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentTitle, setConsentTitle] = useState('');
   const [consentDesc, setConsentDesc] = useState('');
@@ -54,9 +65,25 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     authorRole: 'Administrator',
   });
 
+  const duplicateAnnReasons = showComposeModal && formData.title.trim()
+    ? getAnnouncementDuplicateReasons({ title: formData.title, targetAudience: formData.targetAudience }, announcements)
+    : [];
+
+  const existingAnnDuplicatesCount = (() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    announcements.forEach((a) => {
+      const k = `${a.title.trim().toLowerCase()}|${a.targetAudience}`;
+      if (seen.has(k)) dups += 1;
+      else seen.add(k);
+    });
+    return dups;
+  })();
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
+    if (duplicateAnnReasons.length > 0 && !allowDuplicateConfirm) return;
 
     const newAnn: Announcement = {
       id: `ann-${Date.now()}`,
@@ -73,6 +100,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     };
 
     onAddAnnouncement(newAnn);
+    setAllowDuplicateConfirm(false);
     setShowComposeModal(false);
     setBroadcastToast('Announcement added. LINE OA and email were not sent.');
     setTimeout(() => setBroadcastToast(null), 4000);
@@ -100,6 +128,14 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
+            onClick={() => setShowCategoryModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+            <span>จัดการหมวดประกาศ</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowConsentModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
           >
@@ -108,7 +144,10 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setShowComposeModal(true)}
+            onClick={() => {
+              setAllowDuplicateConfirm(false);
+              setShowComposeModal(true);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
@@ -116,6 +155,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           </button>
         </div>
       </div>
+
+      {existingAnnDuplicatesCount > 0 && (
+        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span>พบประกาศที่มีหัวข้อและกลุ่มเป้าหมายซ้ำกันจำนวน {existingAnnDuplicatesCount} รายการ</span>
+        </div>
+      )}
 
       {broadcastToast && (
         <div className="shrink-0 p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2 font-medium">
@@ -278,10 +324,9 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                     onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
                     className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
-                    <option value="academic">Academic / Exam</option>
-                    <option value="event">Event / Activity</option>
-                    <option value="urgent">Urgent Alert</option>
-                    <option value="general">General Notice</option>
+                    {categoryOptions.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.labelTh}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -311,6 +356,24 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 </label>
               </div>
 
+              {duplicateAnnReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>{duplicateAnnReasons.join(', ')}</span>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowDuplicateConfirm}
+                      onChange={(e) => setAllowDuplicateConfirm(e.target.checked)}
+                      className="rounded accent-amber-600"
+                    />
+                    <span>ยืนยันต้องการประกาศหัวข้อเดิมซ้ำอีกครั้ง</span>
+                  </label>
+                </div>
+              )}
+
               <div className="pt-3 border-t border-[var(--color-border)] flex justify-end gap-2">
                 <button
                   type="button"
@@ -321,7 +384,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  disabled={duplicateAnnReasons.length > 0 && !allowDuplicateConfirm}
+                  className="px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                   Publish &amp; Broadcast
@@ -398,6 +462,63 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 <button type="submit" className="px-4 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">ส่งให้ผู้ปกครองลงนาม</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Announcement Categories Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5">
+              <h3 className="font-bold text-sm text-[var(--color-text-title)] flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>ตั้งค่าหมวดประกาศโรงเรียน (Admin)</span>
+              </h3>
+              <button type="button" onClick={() => setShowCategoryModal(false)} className="text-sm font-bold text-[var(--color-text-muted)] px-2 cursor-pointer">✕</button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCategoryLabel}
+                onChange={(e) => setNewCategoryLabel(e.target.value)}
+                placeholder="ชื่อหมวดประกาศใหม่..."
+                className="flex-1 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const val = newCategoryLabel.trim();
+                  if (!val) return;
+                  updatePresets({
+                    announcementCategories: [
+                      ...categoryOptions,
+                      { id: `custom-${Date.now()}`, labelTh: val, labelEn: val },
+                    ],
+                  });
+                  setNewCategoryLabel('');
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-bold cursor-pointer"
+              >เพิ่ม</button>
+            </div>
+
+            <div className="space-y-1.5 max-h-60 overflow-y-auto">
+              {categoryOptions.map((cat) => (
+                <div key={cat.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <span>{cat.labelTh}</span>
+                  {categoryOptions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => updatePresets({ announcementCategories: categoryOptions.filter((c) => c.id !== cat.id) })}
+                      className="text-rose-600 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

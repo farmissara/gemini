@@ -147,21 +147,21 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     if (type === 'period_start') {
       await sendEduVerseNotification({
         title: '⏰ [ทดสอบ] ใกล้เริ่มคาบเรียนที่ 2 (09:20 - 10:10)',
-        body: 'วิชา ว21101 วิทยาศาสตร์กายภาพ (ห้อง 402) อย่าลืมสแกน Barcode/QR เช็กชื่อเข้าเรียน (Check-in)',
+        body: 'วิชา ว21101 วิทยาศาสตร์กายภาพ (ห้อง 402) อย่าลืมสแกน Barcode/QR เช็คชื่อเข้าเรียน (Check-in)',
         category: 'attendance',
         priority: 'urgent',
       });
     } else if (type === 'period_end') {
       await sendEduVerseNotification({
         title: '🔔 [ทดสอบ] สิ้นสุดคาบเรียนที่ 2 (10:10 น.)',
-        body: 'หมดเวลาคาบเรียนวิชา ว21101 กรุณาเช็กชื่อออก (Check-out) และเตรียมตัวสำหรับคาบเรียนถัดไป',
+        body: 'หมดเวลาคาบเรียนวิชา ว21101 กรุณาเช็คชื่อออก (Check-out) และเตรียมตัวสำหรับคาบเรียนถัดไป',
         category: 'attendance',
         priority: 'normal',
       });
     } else if (type === 'late_alert') {
       await sendEduVerseNotification({
-        title: '⚠️ [ทดสอบ] แจ้งเตือนลืมเช็กชื่อ / มาสาย',
-        body: 'คาบเรียนที่ 2 เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็กชื่อของ ด.ช. ภัทรดนัย กรุณาสแกนหรือติดต่อครูผู้สอน',
+        title: '⚠️ [ทดสอบ] แจ้งเตือนลืมเช็คชื่อ / มาสาย',
+        body: 'คาบเรียนที่ 2 เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็คชื่อของ ด.ช. ภัทรดนัย กรุณาสแกนหรือติดต่อครูผู้สอน',
         category: 'attendance',
         priority: 'urgent',
       });
@@ -420,21 +420,21 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   onClick={() => handleTestNotification('period_start')}
                   className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
                 >
-                  ⏰ เริ่มคาบ &amp; เช็กอิน
+                  ⏰ เริ่มคาบ &amp; เช็คอิน
                 </button>
                 <button
                   type="button"
                   onClick={() => handleTestNotification('period_end')}
                   className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
                 >
-                  🔔 หมดคาบ &amp; เช็กเอ้าท์
+                  🔔 หมดคาบ &amp; เช็คเอาท์
                 </button>
                 <button
                   type="button"
                   onClick={() => handleTestNotification('late_alert')}
                   className="px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
                 >
-                  ⚠️ ลืมเช็กชื่อ / มาสาย
+                  ⚠️ ลืมเช็คชื่อ / มาสาย
                 </button>
                 <button
                   type="button"
@@ -448,7 +448,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   onClick={() => handleTestNotification('gate_checkin')}
                   className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 text-[10px] font-bold hover:opacity-90 cursor-pointer"
                 >
-                  ☀️ เช็กชื่อเข้า รร.
+                  ☀️ เช็คชื่อเข้า รร.
                 </button>
               </div>
             </div>

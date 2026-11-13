@@ -220,7 +220,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
     const newGate: CampusGateGeofence = {
       id: `gate-${activeSchool.id}-${Date.now()}`,
       schoolId: activeSchool.id,
-      nameTh: `จุดเช็กชื่อใหม่ ${gatesList.length + 1}`,
+      nameTh: `จุดเช็คชื่อใหม่ ${gatesList.length + 1}`,
       nameEn: `Gate Zone ${gatesList.length + 1}`,
       lat: Number((schoolLat + (Math.random() - 0.5) * 0.001).toFixed(6)),
       lng: Number((schoolLng + (Math.random() - 0.5) * 0.001).toFixed(6)),
@@ -234,7 +234,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   // Remove gate
   const handleRemoveGate = (gateId: string) => {
     if (gatesList.length <= 1) {
-      alert(lang === 'th' ? 'ต้องมีจุดเช็กชื่อพิกัด Geofence อย่างน้อย 1 จุดในโรงเรียน' : 'At least one campus gate must remain.');
+      alert(lang === 'th' ? 'ต้องมีจุดเช็คชื่อพิกัด Geofence อย่างน้อย 1 จุดในโรงเรียน' : 'At least one campus gate must remain.');
       return;
     }
     setGatesList(prev => prev.filter(g => g.id !== gateId));
@@ -293,7 +293,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       }
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'บันทึกจุดเช็กชื่อไม่สำเร็จ');
+      setSaveError(e instanceof Error ? e.message : 'บันทึกจุดเช็คชื่อไม่สำเร็จ');
     } finally {
       setIsSaving(false);
     }
@@ -317,7 +317,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           </div>
           <p className="text-xs text-blue-100 leading-relaxed">
             {lang === 'th'
-              ? 'ครูและผู้ดูแลแก้ไขชื่อจุดเช็กชื่อได้ ผู้ดูแลระบบกำหนดพิกัดและรัศมีได้'
+              ? 'ครูและผู้ดูแลแก้ไขชื่อจุดเช็คชื่อได้ ผู้ดูแลระบบกำหนดพิกัดและรัศมีได้'
               : 'Teachers and admins can edit check-in point names. Admins can also edit GPS coordinates and radius.'}
           </p>
         </div>
@@ -330,7 +330,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-3.5 h-3.5 text-slate-950" />
-            <span>{isSaving ? 'กำลังบันทึก...' : lang === 'th' ? 'บันทึกจุดเช็กชื่อ' : 'Save Check-in Points'}</span>
+            <span>{isSaving ? 'กำลังบันทึก...' : lang === 'th' ? 'บันทึกจุดเช็คชื่อ' : 'Save Check-in Points'}</span>
           </button>
         </div>
       </div>
@@ -340,7 +340,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         <div className="shrink-0 p-2.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between animate-in fade-in duration-200">
           <span className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-            <span>{lang === 'th' ? `บันทึกชื่อจุดเช็กชื่อ ${gatesList.length} จุดของ ${activeSchool.nameTh} สำเร็จแล้ว!` : `Saved ${gatesList.length} check-in points for ${activeSchool.nameTh}.`}</span>
+            <span>{lang === 'th' ? `บันทึกชื่อจุดเช็คชื่อ ${gatesList.length} จุดของ ${activeSchool.nameTh} สำเร็จแล้ว!` : `Saved ${gatesList.length} check-in points for ${activeSchool.nameTh}.`}</span>
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-100 border border-emerald-400 dark:border-emerald-700">
             {activeSchool.code}
@@ -399,7 +399,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span>2. จุดเช็กชื่อ &amp; ประตูโรงเรียน ({gatesList.length} จุด)</span>
+          <span>2. จุดเช็คชื่อ &amp; ประตูโรงเรียน ({gatesList.length} จุด)</span>
         </button>
 
         <button
@@ -563,7 +563,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                     พิกัดตัวอย่างโรงเรียน / วิทยาเขตในไทย
                   </h3>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-1 mb-2">
-                    คลิกเพื่อเลือกพิกัดตัวอย่างสำหรับทดลองระบบเช็กชื่อ Geofence
+                    คลิกเพื่อเลือกพิกัดตัวอย่างสำหรับทดลองระบบเช็คชื่อ Geofence
                   </p>
 
                   <div className="space-y-1.5">
@@ -627,7 +627,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                   <span>จุดตรวจสแกนเข้าเรียนและประตูวิทยาเขต ({gatesList.length} จุด)</span>
                 </h3>
                 <p className="text-[11px] text-[var(--color-text-muted)]">
-                  ครูและนักเรียนสามารถสแกนบัตรหรือถ่ายรูปเช็กชื่อผ่านรัศมีของจุดตรวจใดก็ได้ที่ใกล้ที่สุด
+                  ครูและนักเรียนสามารถสแกนบัตรหรือถ่ายรูปเช็คชื่อผ่านรัศมีของจุดตรวจใดก็ได้ที่ใกล้ที่สุด
                 </p>
               </div>
 
@@ -670,7 +670,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                             setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, nameTh: val } : g));
                           }}
                           className="text-xs font-bold text-[var(--color-text-title)] bg-transparent border-b border-transparent hover:border-[var(--color-border)] focus:border-indigo-600 focus:outline-hidden px-1"
-                          placeholder="ชื่อจุดเช็กชื่อ (ไทย)"
+                          placeholder="ชื่อจุดเช็คชื่อ (ไทย)"
                         />
                       </div>
                     </div>
@@ -812,7 +812,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         ) : (
                           <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-300" />
                         )}
-                        <span>{testResult.isInside ? 'อยู่ในขอบเขตรั้วโรงเรียน (สามารถเช็กชื่อได้)' : 'อยู่นอกขอบเขตรั้วโรงเรียน (เช็กชื่อไม่ได้)'}</span>
+                        <span>{testResult.isInside ? 'อยู่ในขอบเขตรั้วโรงเรียน (สามารถเช็คชื่อได้)' : 'อยู่นอกขอบเขตรั้วโรงเรียน (เช็คชื่อไม่ได้)'}</span>
                       </span>
                       <span className="font-mono font-black text-base">
                         {testResult.distance.toLocaleString()} เมตร

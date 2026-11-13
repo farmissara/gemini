@@ -30,6 +30,8 @@ import {
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { formatSemesterLabel } from '../lib/schoolSettings';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { getTimetableDuplicateReasons } from '../lib/duplicateRecords';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -42,11 +44,16 @@ interface TimetableScheduleViewProps {
   onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
   lang: AppLanguage;
   currentRole: UserRole;
+  schoolId?: string;
   schoolName: string;
   academicYear: string;
   currentSemester: string;
   semesterOptions?: string[];
-  onUpdateAcademicPeriod?: (academicYear: string, currentSemester: string) => Promise<void>;
+  onUpdateAcademicPeriod?: (
+    academicYear: string,
+    currentSemester: string,
+    semesterOptions?: string[]
+  ) => Promise<void>;
 }
 
 const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
@@ -57,7 +64,7 @@ const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
   { key: 'fri', th: 'วันศุกร์', en: 'Friday', color: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-200' }
 ];
 
-const MAX_LESSON_PERIODS = 7;
+const MAX_LESSON_PERIODS = 12;
 
 const COLOR_CLASSES: Record<string, string> = {
   sky: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:bg-sky-200 dark:hover:bg-sky-900',
@@ -80,12 +87,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onSaveSchoolPeriods,
   lang,
   currentRole,
+  schoolId = 'default-school',
   schoolName,
   academicYear,
   currentSemester,
   semesterOptions = ['1', '2', 'Summer'],
   onUpdateAcademicPeriod,
 }) => {
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+
   // Main view mode: 'classroom' | 'teacher' | 'hours_criteria'
   const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria'>('classroom');
 
@@ -94,9 +105,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     new Set([
       ...slots.map((s) => s.classRoom).filter(Boolean),
       ...students.map((st) => st.room).filter(Boolean),
+      ...presets.roomOptions,
     ])
   );
   const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
+  const [newCustomRoomName, setNewCustomRoomName] = useState('');
+  const [showAddRoomInput, setShowAddRoomInput] = useState(false);
 
   // Teacher selection for Teacher Workload Timetable
   const teacherNames = Array.from(
@@ -120,6 +134,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [showPeriodEditor, setShowPeriodEditor] = useState(false);
   const [draftAcademicYear, setDraftAcademicYear] = useState(academicYear);
   const [draftSemester, setDraftSemester] = useState(currentSemester);
+  const [draftSemesterOptions, setDraftSemesterOptions] = useState<string[]>(semesterOptions);
+  const [newSemesterOptionInput, setNewSemesterOptionInput] = useState('');
   const [isSavingAcademicPeriod, setIsSavingAcademicPeriod] = useState(false);
   const [academicPeriodNotice, setAcademicPeriodNotice] = useState<string | null>(null);
 
@@ -245,6 +261,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       totalSemesterHours,
     };
 
+    const prospectiveReasons = getTimetableDuplicateReasons(
+      {
+        classRoom: selectedClassRoom,
+        dayOfWeek: newDay,
+        periodNumber: newPeriod,
+        teacherName: newTeacher.trim(),
+        room: newRoom.trim(),
+      },
+      slots
+    );
+    if (prospectiveReasons.length > 0 && !confirm(`${prospectiveReasons.join(' และ ')}\nต้องการบันทึกคาบเรียนนี้ทับหรือบันทึกต่อหรือไม่?`)) {
+      return;
+    }
+
     setIsSavingSlot(true);
     setSlotActionError(null);
     try {
@@ -266,14 +296,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     if (
       new Set(periodNumbers).size !== periodNumbers.length ||
       orderedPeriods.filter((period) => !period.isBreak).length === 0 ||
-      orderedPeriods.filter((period) => period.isBreak).length !== 1 ||
-      orderedPeriods.some((period) => (
-        period.periodNumber < 0 ||
-        period.periodNumber > MAX_LESSON_PERIODS ||
-        Boolean(period.isBreak) !== (period.periodNumber === 0)
-      ))
+      orderedPeriods.some((period) => period.periodNumber < 0 || period.periodNumber > 99)
     ) {
-      setPeriodSettingsError('ต้องมีคาบเรียนอย่างน้อย 1 คาบ หมายเลขไม่ซ้ำ และมีช่วงพักกลางวัน 1 ช่วง');
+      setPeriodSettingsError('ต้องมีคาบสอนอย่างน้อย 1 คาบ และหมายเลขคาบต้องไม่ซ้ำกัน');
       return;
     }
 
@@ -297,7 +322,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       const start = timeToMinutes(period.startTime);
       const end = timeToMinutes(period.endTime);
       if (start === null || end === null || end <= start) {
-        setPeriodSettingsError(`กรุณาตรวจสอบเวลาเริ่มและเลิกของ${period.isBreak ? 'ช่วงพักกลางวัน' : `คาบที่ ${period.periodNumber}`}`);
+        setPeriodSettingsError(`กรุณาตรวจสอบเวลาเริ่มและเลิกของ${period.labelTh || (period.isBreak ? 'ช่วงพัก' : `คาบที่ ${period.periodNumber}`)}`);
         return;
       }
       if (index > 0) {
@@ -322,6 +347,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   const handleAddPeriod = () => {
+    const draftLessons = periodDraft.filter((p) => !p.isBreak);
+    if (draftLessons.length >= MAX_LESSON_PERIODS) {
+      setPeriodSettingsError(`เพิ่มคาบสอนได้สูงสุด ${MAX_LESSON_PERIODS} คาบ`);
+      return;
+    }
     const nextPeriodNumber = Array.from({ length: MAX_LESSON_PERIODS }, (_, index) => index + 1)
       .find((number) => !periodDraft.some((period) => period.periodNumber === number));
     if (!nextPeriodNumber) {
@@ -329,14 +359,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       return;
     }
 
-    const previousPeriod = periodDraft
-      .filter((period) => !period.isBreak && period.periodNumber < nextPeriodNumber)
-      .sort((a, b) => b.periodNumber - a.periodNumber)[0];
-    let startTime = previousPeriod?.endTime || '08:30';
-    const lunchBreak = periodDraft.find((period) => period.isBreak);
-    if (lunchBreak && startTime >= lunchBreak.startTime && startTime < lunchBreak.endTime) {
-      startTime = lunchBreak.endTime;
-    }
+    const sortedAll = [...periodDraft].sort((a, b) => a.endTime.localeCompare(b.endTime));
+    const latestEnd = sortedAll[sortedAll.length - 1]?.endTime || '08:30';
+    let startTime = latestEnd;
+    const overlappingBreak = periodDraft.find((p) => p.isBreak && startTime >= p.startTime && startTime < p.endTime);
+    if (overlappingBreak) startTime = overlappingBreak.endTime;
 
     const [hours, minutes] = startTime.split(':').map(Number);
     const endMinutes = hours * 60 + minutes + 50;
@@ -347,15 +374,52 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
     setPeriodDraft((previous) => [
       ...previous,
-      { periodNumber: nextPeriodNumber, startTime, endTime },
+      { periodNumber: nextPeriodNumber, startTime, endTime, labelTh: `คาบ ${nextPeriodNumber}` },
+    ]);
+    setPeriodSettingsError(null);
+  };
+
+  const handleAddBreakPeriod = () => {
+    // Use 0 for primary break if missing, else 90..99 for extra breaks
+    const breakNumber = !periodDraft.some((p) => p.periodNumber === 0)
+      ? 0
+      : Array.from({ length: 9 }, (_, i) => 91 + i).find((n) => !periodDraft.some((p) => p.periodNumber === n));
+    if (breakNumber === undefined) {
+      setPeriodSettingsError('เพิ่มช่วงพักได้สูงสุด 10 ช่วง');
+      return;
+    }
+    const sortedAll = [...periodDraft].sort((a, b) => a.endTime.localeCompare(b.endTime));
+    const startTime = sortedAll[sortedAll.length - 1]?.endTime || '10:10';
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + 15;
+    if (endMinutes >= 24 * 60) {
+      setPeriodSettingsError('ไม่สามารถเพิ่มช่วงพักหลังเที่ยงคืนได้');
+      return;
+    }
+    const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+    setPeriodDraft((prev) => [
+      ...prev,
+      {
+        periodNumber: breakNumber,
+        startTime,
+        endTime,
+        isBreak: true,
+        labelTh: breakNumber === 0 ? 'พักกลางวัน' : 'พักเบรก',
+      },
     ]);
     setPeriodSettingsError(null);
   };
 
   const handleRemovePeriod = (periodNumber: number) => {
-    const scheduledSlots = slots.filter((slot) => slot.periodNumber === periodNumber);
-    if (scheduledSlots.length > 0) {
-      setPeriodSettingsError(`ลบคาบที่ ${periodNumber} ไม่ได้ เพราะยังมีตารางสอนใช้อยู่ ${scheduledSlots.length} รายการ กรุณาย้ายหรือลบตารางสอนก่อน`);
+    const target = periodDraft.find((p) => p.periodNumber === periodNumber);
+    if (!target?.isBreak) {
+      const scheduledSlots = slots.filter((slot) => slot.periodNumber === periodNumber);
+      if (scheduledSlots.length > 0) {
+        setPeriodSettingsError(`ลบคาบที่ ${periodNumber} ไม่ได้ เพราะยังมีตารางสอนใช้อยู่ ${scheduledSlots.length} รายการ กรุณาย้ายหรือลบตารางสอนก่อน`);
+        return;
+      }
+    } else if (periodDraft.filter((p) => p.isBreak).length <= 1 && periodNumber === 0) {
+      setPeriodSettingsError('ควรมีช่วงพักอย่างน้อย 1 ช่วง (หรือเพิ่มช่วงพักอื่นก่อนลบ)');
       return;
     }
     setPeriodDraft((previous) => previous.filter((period) => period.periodNumber !== periodNumber));
@@ -451,14 +515,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   e.currentTarget.closest('details')?.removeAttribute('open');
                   sendEduVerseNotification({
                     title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                    body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็กชื่อเข้าเรียน (Check-in)`,
+                    body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็คชื่อเข้าเรียน (Check-in)`,
                     category: 'attendance',
                     priority: 'urgent',
                   });
                 }}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-emerald-700 dark:text-emerald-300 cursor-pointer"
               >
-                ⏰ ทดสอบเริ่มคาบ &amp; เช็กอิน
+                ⏰ ทดสอบเริ่มคาบ &amp; เช็คอิน
               </button>
               <button
                 type="button"
@@ -466,29 +530,29 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   e.currentTarget.closest('details')?.removeAttribute('open');
                   sendEduVerseNotification({
                     title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                    body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็กชื่อออก (Check-out)`,
+                    body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็คชื่อออก (Check-out)`,
                     category: 'attendance',
                     priority: 'normal',
                   });
                 }}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-indigo-700 dark:text-indigo-300 cursor-pointer"
               >
-                🔔 ทดสอบหมดคาบ &amp; เช็กเอาท์
+                🔔 ทดสอบหมดคาบ &amp; เช็คเอาท์
               </button>
               <button
                 type="button"
                 onClick={(e) => {
                   e.currentTarget.closest('details')?.removeAttribute('open');
                   sendEduVerseNotification({
-                    title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็กชื่อ / มาสาย',
-                    body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็กชื่อเข้าเรียน กรุณาสแกนด่วน`,
+                    title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็คชื่อ / มาสาย',
+                    body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็คชื่อเข้าเรียน กรุณาสแกนด่วน`,
                     category: 'attendance',
                     priority: 'urgent',
                   });
                 }}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-amber-700 dark:text-amber-300 cursor-pointer"
               >
-                ⚠️ ทดสอบลืมเช็กชื่อ / มาสาย
+                ⚠️ ทดสอบลืมเช็คชื่อ / มาสาย
               </button>
             </div>
           </details>
@@ -554,6 +618,48 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </option>
               ))}
             </select>
+            {isAdmin && (
+              showAddRoomInput ? (
+                <span className="inline-flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={newCustomRoomName}
+                    onChange={(e) => setNewCustomRoomName(e.target.value)}
+                    placeholder="เช่น ม.4/3"
+                    className="w-24 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const room = newCustomRoomName.trim();
+                      if (!room) return;
+                      updatePresets({ roomOptions: [...presets.roomOptions, room] });
+                      setSelectedClassRoom(room);
+                      setNewCustomRoomName('');
+                      setShowAddRoomInput(false);
+                    }}
+                    className="px-2 py-1 rounded-lg bg-[var(--color-primary)] text-white text-[11px] font-bold cursor-pointer"
+                  >
+                    เพิ่ม
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddRoomInput(false)}
+                    className="px-1.5 py-1 text-[11px] text-[var(--color-text-muted)] cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAddRoomInput(true)}
+                  className="px-2 py-1 rounded-lg border border-dashed border-[var(--color-border)] text-[11px] font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+                >
+                  + เพิ่มห้อง
+                </button>
+              )
+            )}
             <span className="text-xs text-[var(--color-text-muted)]">
               • จัดตารางแล้ว <strong>{classroomSlots.length}</strong> คาบ/สัปดาห์
             </span>
@@ -606,16 +712,17 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           )}
 
           {/* Direct Academic Year & Semester Indicator / Editor */}
-          {onUpdateAcademicPeriod && (currentRole === 'admin' || currentRole === 'super_admin') ? (
+          {onUpdateAcademicPeriod && isAdmin ? (
             <button
               type="button"
               onClick={() => {
                 setDraftAcademicYear(academicYear);
                 setDraftSemester(currentSemester);
+                setDraftSemesterOptions(semesterOptions.length > 0 ? semesterOptions : ['1', '2', 'Summer']);
                 setShowPeriodEditor(true);
               }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold transition cursor-pointer whitespace-nowrap"
-              title="แก้ไขปีการศึกษาและภาคเรียนปัจจุบันของโรงเรียน"
+              title="แก้ไขปีการศึกษา ภาคเรียน และเพิ่ม/ลบตัวเลือกภาคเรียน"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
               <span>{formatSemesterLabel(currentSemester)} • ปีการศึกษา {academicYear}</span>
@@ -791,7 +898,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   {orderedSchoolPeriods.map((period) => (
                       <th key={period.periodNumber} className={`p-2.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
                         <div className={`font-bold ${period.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
-                          {period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`}
+                          {period.labelTh || (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
                         </div>
                         <div className={`text-[10px] font-mono mt-0.5 ${period.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>
                           {`${period.startTime} - ${period.endTime}`}
@@ -816,7 +923,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         return (
                           <td key={period.periodNumber} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
                             <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 writing-vertical rotate-180">
-                              พักกลางวัน
+                              {period.labelTh || 'พักกลางวัน'}
                             </span>
                           </td>
                         );
@@ -915,25 +1022,44 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </p>
             </div>
             <form onSubmit={handleSavePeriodSettings} className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] text-[var(--color-text-muted)]">
-                  เพิ่มหรือลบคาบได้สูงสุด {MAX_LESSON_PERIODS} คาบ; ช่วงพักกลางวันยังคงอยู่เสมอ
+                  เพิ่ม/ลบและเปลี่ยนชื่อได้ทั้งคาบเรียน (สูงสุด {MAX_LESSON_PERIODS} คาบ) และช่วงพัก
                 </p>
-                <button
-                  type="button"
-                  onClick={handleAddPeriod}
-                  disabled={isSavingPeriods || lessonPeriods.length >= MAX_LESSON_PERIODS}
-                  className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  เพิ่มคาบ
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleAddBreakPeriod}
+                    disabled={isSavingPeriods}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-200 disabled:opacity-50 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    เพิ่มช่วงพัก
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddPeriod}
+                    disabled={isSavingPeriods || periodDraft.filter((p) => !p.isBreak).length >= MAX_LESSON_PERIODS}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    เพิ่มคาบเรียน
+                  </button>
+                </div>
               </div>
               {periodDraft.slice().sort(
                 (a, b) => a.startTime.localeCompare(b.startTime)
               ).map((period) => (
-                <div key={period.periodNumber} className={`grid grid-cols-[minmax(90px,1fr)_1fr_1fr_auto] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
-                  <span className="text-xs font-bold">{period.isBreak ? 'พักกลางวัน' : `คาบที่ ${period.periodNumber}`}</span>
+                <div key={period.periodNumber} className={`grid grid-cols-[minmax(110px,1.2fr)_1fr_1fr_auto] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
+                  <label className="text-[10px] text-[var(--color-text-muted)]">
+                    {period.isBreak ? 'ชื่อช่วงพัก' : `ชื่อคาบ (${period.periodNumber})`}
+                    <input
+                      type="text"
+                      value={period.labelTh ?? (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
+                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, labelTh: event.target.value } : item))}
+                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-bold text-[var(--color-text-title)]"
+                    />
+                  </label>
                   <label className="text-[10px] text-[var(--color-text-muted)]">
                     เริ่ม
                     <input
@@ -954,19 +1080,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
                     />
                   </label>
-                  {period.isBreak ? (
-                    <span className="w-8" />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePeriod(period.periodNumber)}
-                      disabled={isSavingPeriods}
-                      aria-label={`ลบคาบที่ ${period.periodNumber}`}
-                      className="rounded-lg p-2 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePeriod(period.periodNumber)}
+                    disabled={isSavingPeriods}
+                    aria-label={`ลบ ${period.labelTh || `คาบที่ ${period.periodNumber}`}`}
+                    className="rounded-lg p-2 mt-4 text-rose-600 hover:bg-rose-100 disabled:opacity-50 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
               {periodSettingsError && (
@@ -1299,7 +1421,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 if (!draftAcademicYear.trim() || !draftSemester.trim()) return;
                 setIsSavingAcademicPeriod(true);
                 try {
-                  await onUpdateAcademicPeriod(draftAcademicYear.trim(), draftSemester.trim());
+                  const normalizedOptions = Array.from(
+                    new Set([...draftSemesterOptions.map((o) => o.trim()).filter(Boolean), draftSemester.trim()])
+                  );
+                  await onUpdateAcademicPeriod(draftAcademicYear.trim(), draftSemester.trim(), normalizedOptions);
                   setShowPeriodEditor(false);
                   setAcademicPeriodNotice(`อัปเดตเป็น ${formatSemesterLabel(draftSemester.trim())} ปีการศึกษา ${draftAcademicYear.trim()} เรียบร้อยแล้ว`);
                 } finally {
@@ -1320,34 +1445,78 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 />
               </div>
               <div>
-                <label className="block font-semibold text-[var(--color-text-title)] mb-1">ภาคเรียนที่ (Semester)</label>
+                <label className="block font-semibold text-[var(--color-text-title)] mb-1">ภาคเรียนที่ใช้งานปัจจุบัน &amp; รายการภาคเรียนของโรงเรียน</label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  {(semesterOptions.length > 0 ? semesterOptions : ['1', '2', 'Summer']).map((opt) => (
-                    <button
+                  {draftSemesterOptions.map((opt) => (
+                    <div
                       key={opt}
-                      type="button"
-                      onClick={() => setDraftSemester(opt)}
-                      className={`px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer ${
+                      className={`inline-flex items-center gap-1 rounded-lg border text-xs font-semibold ${
                         draftSemester === opt
                           ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
                           : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
                       }`}
                     >
-                      {formatSemesterLabel(opt)}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setDraftSemester(opt)}
+                        className="px-2.5 py-1 cursor-pointer"
+                      >
+                        {formatSemesterLabel(opt)}
+                      </button>
+                      {draftSemesterOptions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const remaining = draftSemesterOptions.filter((item) => item !== opt);
+                            setDraftSemesterOptions(remaining);
+                            if (draftSemester === opt && remaining[0]) {
+                              setDraftSemester(remaining[0]);
+                            }
+                          }}
+                          className="pr-2 py-1 text-[10px] opacity-80 hover:opacity-100 cursor-pointer"
+                          title="ลบตัวเลือกภาคเรียนนี้"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   ))}
+                </div>
+                <div className="flex gap-1.5 mb-2">
+                  <input
+                    type="text"
+                    value={newSemesterOptionInput}
+                    onChange={(e) => setNewSemesterOptionInput(e.target.value)}
+                    placeholder="เพิ่มชื่อภาคเรียนใหม่ เช่น 3 หรือ ภาคฤดูร้อน"
+                    className="flex-1 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = newSemesterOptionInput.trim();
+                      if (!val) return;
+                      if (!draftSemesterOptions.includes(val)) {
+                        setDraftSemesterOptions((prev) => [...prev, val]);
+                      }
+                      setDraftSemester(val);
+                      setNewSemesterOptionInput('');
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold cursor-pointer"
+                  >
+                    + เพิ่มเทอม
+                  </button>
                 </div>
                 <input
                   type="text"
                   required
                   value={draftSemester}
                   onChange={(e) => setDraftSemester(e.target.value)}
-                  placeholder="หรือระบุเอง เช่น 1, 2, Summer"
+                  placeholder="หรือพิมพ์แก้ชื่อภาคเรียนที่ใช้งานอยู่"
                   className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                 />
               </div>
               <p className="text-[11px] text-[var(--color-text-muted)]">
-                การเปลี่ยนแปลงนี้จะอัปเดตหัวตารางเรียน ปพ.5/ปพ.6 และค่าตั้งต้นของโรงเรียน {schoolName} ทันที
+                การเปลี่ยนแปลงนี้จะอัปเดตหัวตารางเรียน ปพ.5/ปพ.6 รายวิชา และตัวเลือกภาคเรียนของโรงเรียน {schoolName} ทันที
               </p>
               <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
                 <button

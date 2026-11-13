@@ -4,10 +4,15 @@ export const DEFAULT_SEMESTER_OPTIONS = ['1', '2', 'Summer'];
 
 export const DEFAULT_STAFF_POSITION_OPTIONS = [
   'นักการภารโรง',
+  'พนักงานขับรถ / รปภ.',
   'เจ้าหน้าที่ธุรการ',
+  'เจ้าหน้าที่การเงินและพัสดุ',
+  'นักวิชาการศึกษา / แนะแนว',
+  'พยาบาลประจำโรงเรียน',
   'ครูอัตราจ้าง',
   'ครูผู้ช่วย',
   'ครู',
+  'หัวหน้ากลุ่มสาระการเรียนรู้',
   'รองผู้อำนวยการ',
   'ผู้อำนวยการ',
 ];
@@ -45,6 +50,18 @@ export function calculateGrade(
   if (total >= 55) return { letter: '1.5', point: 1.5 };
   if (total >= 50) return { letter: '1', point: 1.0 };
   return { letter: '0', point: 0.0 };
+}
+
+export function getGradingSystemLabel(gradingSystem: GradingSystem): string {
+  return gradingSystem === 'international'
+    ? 'เกณฑ์สากล (A, B, C, D, F · เต็ม 4.0)'
+    : 'เกณฑ์ไทย สพฐ. (4, 3.5, 3, 2.5, 2, 1.5, 1, 0)';
+}
+
+export function getGradingScaleLegend(gradingSystem: GradingSystem): string {
+  return gradingSystem === 'international'
+    ? 'เกณฑ์สากล: A(90+) B(80-89) C(70-79) D(60-69) F(<60)'
+    : 'เกณฑ์ไทย: 4(80+) 3.5(75-79) 3(70-74) 2.5(65-69) 2(60-64) 1.5(55-59) 1(50-54) 0(<50)';
 }
 
 export function getSchoolSettingsUpdate(updates: Partial<School>) {

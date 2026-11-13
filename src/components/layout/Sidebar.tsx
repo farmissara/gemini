@@ -238,14 +238,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'attendance',
-          labelTh: 'ระบบสแกนเช็กชื่อหน้าประตู',
+          labelTh: 'ระบบสแกนเช็คชื่อหน้าประตู',
           labelEn: 'Gate QR Check-in',
           icon: QrCode,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'mobile_checkin',
-          labelTh: 'เช็กชื่อเข้าเรียนผ่านมือถือ',
+          labelTh: 'เช็คชื่อเข้าเรียนผ่านมือถือ',
           labelEn: 'Mobile Check-in',
           icon: Smartphone,
           roles: ['super_admin', 'admin', 'teacher', 'student'],

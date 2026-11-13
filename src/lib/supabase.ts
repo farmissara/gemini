@@ -16,6 +16,7 @@ import {
 import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
+import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -236,17 +237,30 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   if (schoolPeriodsResult.error && !isMissingTableError(schoolPeriodsResult.error)) {
     throw new Error(`Could not load school period times: ${schoolPeriodsResult.error.message}`);
   }
-  const savedPeriods = new Map(
-    (schoolPeriodsResult.data || []).map((row) => [
-      row.period_number,
-      {
-        periodNumber: row.period_number,
-        startTime: String(row.start_time).slice(0, 5),
-        endTime: String(row.end_time).slice(0, 5),
-        isBreak: Boolean(row.is_break),
-      },
-    ])
+  const cachedPeriods = loadCachedSchoolPeriods(schoolId);
+  const savedPeriods = new Map<number, SchoolPeriodTime>(
+    (schoolPeriodsResult.data || []).map((row) => {
+      const cachedMatch = cachedPeriods?.find((c) => c.periodNumber === row.period_number);
+      return [
+        row.period_number,
+        {
+          periodNumber: row.period_number,
+          startTime: String(row.start_time).slice(0, 5),
+          endTime: String(row.end_time).slice(0, 5),
+          isBreak: Boolean(row.is_break),
+          ...(cachedMatch?.labelTh ? { labelTh: cachedMatch.labelTh } : {}),
+          ...(cachedMatch?.labelEn ? { labelEn: cachedMatch.labelEn } : {}),
+        },
+      ];
+    })
   );
+  if (cachedPeriods) {
+    cachedPeriods.forEach((cp) => {
+      if (!savedPeriods.has(cp.periodNumber)) {
+        savedPeriods.set(cp.periodNumber, cp);
+      }
+    });
+  }
   const schoolPeriods: SchoolPeriodTime[] = savedPeriods.size > 0
     ? [...savedPeriods.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
     : DEFAULT_SCHOOL_PERIODS;
@@ -447,6 +461,9 @@ export async function saveSchoolPeriodTimes(
   schoolId: string,
   periods: SchoolPeriodTime[]
 ): Promise<void> {
+  // Always persist full custom periods (including extended periods > 7, extra breaks, and custom labels) locally
+  saveCachedSchoolPeriods(schoolId, periods);
+
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
 
@@ -458,7 +475,29 @@ export async function saveSchoolPeriodTimes(
     is_break: Boolean(period.isBreak),
   }));
   const { error } = await client.from('school_period_times').upsert(rows);
-  if (error) throw new Error(`Could not save school period times: ${error.message}`);
+  if (error) {
+    // Fallback for remote schemas still enforcing CHECK (period_number BETWEEN 0 AND 7) and ((period_number = 0) = is_break)
+    const isConstraintError =
+      error.message.includes('check') ||
+      error.message.includes('constraint') ||
+      error.code === '23514';
+    if (!isConstraintError) {
+      throw new Error(`Could not save school period times: ${error.message}`);
+    }
+    const compatRows = rows.filter(
+      (r) =>
+        r.period_number >= 0 &&
+        r.period_number <= 7 &&
+        (r.period_number === 0) === r.is_break
+    );
+    if (compatRows.length > 0) {
+      const { error: compatError } = await client.from('school_period_times').upsert(compatRows);
+      if (compatError) {
+        throw new Error(`Could not save school period times: ${compatError.message}`);
+      }
+    }
+    return;
+  }
 
   const { data: savedPeriods, error: loadError } = await client
     .from('school_period_times')

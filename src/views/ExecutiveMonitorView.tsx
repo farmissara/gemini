@@ -244,8 +244,8 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       ['ข้อมูลพื้นฐาน', 'จำนวนนักเรียนทั้งหมด', String(metrics.totalStudents), 'คน'],
       ['ข้อมูลพื้นฐาน', 'จำนวนครูและบุคลากร', String(metrics.totalTeachers), 'ท่าน'],
       ['ข้อมูลพื้นฐาน', 'จำนวนรายวิชาที่เปิดสอน', String(metrics.coursesCount), 'วิชา'],
-      ['การมาเรียน', 'อัตราเช็กชื่อนักเรียน', `${metrics.studentCheckinRate}%`, `มาตรงเวลา ${metrics.presentStudents} / สาย ${metrics.lateStudents}`],
-      ['การมาเรียน', 'อัตราเช็กชื่อครู', `${metrics.teacherCheckinRate}%`, `${metrics.teacherAttCount} ท่าน`],
+      ['การมาเรียน', 'อัตราเช็คชื่อนักเรียน', `${metrics.studentCheckinRate}%`, `มาตรงเวลา ${metrics.presentStudents} / สาย ${metrics.lateStudents}`],
+      ['การมาเรียน', 'อัตราเช็คชื่อครู', `${metrics.teacherCheckinRate}%`, `${metrics.teacherAttCount} ท่าน`],
       ['การมาเรียน', 'ใบลาที่รออนุมัติ', String(metrics.pendingLeaves), 'รายการ'],
       ['วิชาการ', 'GPAX เฉลี่ยทั้งโรงเรียน', metrics.avgGpa.toFixed(2), 'คะแนนเฉลี่ย'],
       ['วิชาการ', 'อัตราการส่งการบ้าน', `${metrics.hwCompletionRate}%`, `${metrics.hwCompleted}/${metrics.hwTotal} งาน`],
@@ -437,7 +437,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             accent: displayMode === 'tv' ? 'text-sky-400' : 'text-blue-600 dark:text-blue-400',
           },
           {
-            label: 'เช็กชื่อมาเรียน',
+            label: 'เช็คชื่อมาเรียน',
             value: `${metrics.studentCheckinRate}%`,
             sub: `ตรงเวลา ${metrics.presentStudents} · สาย ${metrics.lateStudents}`,
             icon: UserCheck,
@@ -896,7 +896,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             <span>LIVE REPORT</span>
           </span>
           <div className="flex-1 truncate text-slate-200 font-medium tabular-nums">
-            {activeSchool.nameTh} · นักเรียนเช็กชื่อ {metrics.studentCheckinRate}% · GPAX เฉลี่ย {metrics.avgGpa.toFixed(2)} · ใบลารออนุมัติ {metrics.pendingLeaves} รายการ ·{' '}
+            {activeSchool.nameTh} · นักเรียนเช็คชื่อ {metrics.studentCheckinRate}% · GPAX เฉลี่ย {metrics.avgGpa.toFixed(2)} · ใบลารออนุมัติ {metrics.pendingLeaves} รายการ ·{' '}
             {metrics.displayAnnouncements[0]?.title || 'ระบบทำงานปกติ'}
           </div>
         </div>

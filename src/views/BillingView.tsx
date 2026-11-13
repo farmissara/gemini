@@ -17,15 +17,23 @@ import {
   ArrowRight,
   Printer,
   FileCheck2,
-  XCircle
+  XCircle,
+  Plus,
+  Sliders,
+  Trash2
 } from 'lucide-react';
 import { PagedList } from '../components/PagedList';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { getInvoiceDuplicateReasons } from '../lib/duplicateRecords';
+import { getLocalDateString } from '../lib/date';
 
 interface BillingViewProps {
+  schoolId?: string;
   students: Student[];
   invoices: TuitionInvoice[];
   systemConfig: SystemConfig;
   onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
+  onAddInvoice?: (invoice: TuitionInvoice) => void;
   onSendPrivateAppReminder: (invoice: TuitionInvoice) => Promise<{ stored: number; delivered: number }>;
   onApproveSlip?: (invoiceId: string) => void;
   onRejectSlip?: (invoiceId: string, reason: string) => void;
@@ -34,24 +42,45 @@ interface BillingViewProps {
 }
 
 export const BillingView: React.FC<BillingViewProps> = ({
+  schoolId = 'default-school',
   students,
   invoices,
   systemConfig,
   onPayInvoice,
+  onAddInvoice,
   onSendPrivateAppReminder,
   onApproveSlip,
   onRejectSlip,
   currentRole,
   onOpenExamPaymentSettings,
 }) => {
+  const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const feePresets = presets.billingFeePresets;
+
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [activeInvoice, setActiveInvoice] = useState<TuitionInvoice | null>(invoices[0] || null);
   const [showPromptPayModal, setShowPromptPayModal] = useState(false);
   const [showPrintDocModal, setShowPrintDocModal] = useState(false);
+  const [showNewInvoiceModal, setShowNewInvoiceModal] = useState(false);
+  const [showFeePresetModal, setShowFeePresetModal] = useState(false);
   const [rejectReasonInput, setRejectReasonInput] = useState('');
   const [reminderToast, setReminderToast] = useState<string | null>(null);
   const [reminderError, setReminderError] = useState<string | null>(null);
   const [reminderBusy, setReminderBusy] = useState(false);
+
+  // New invoice form state
+  const [newInvStudentId, setNewInvStudentId] = useState(students[0]?.id || '');
+  const [newInvTitle, setNewInvTitle] = useState(feePresets[0]?.title || 'ค่าบำรุงการศึกษาประจำภาคเรียน');
+  const [newInvAmount, setNewInvAmount] = useState(feePresets[0]?.amount || 3500);
+  const [newInvSemester, setNewInvSemester] = useState(`${systemConfig.currentSemester}/${systemConfig.academicYear}`);
+  const [newInvDueDate, setNewInvDueDate] = useState(getLocalDateString());
+  const [allowDupInvoiceConfirm, setAllowDupInvoiceConfirm] = useState(false);
+
+  // New fee preset form state
+  const [newFeeTitle, setNewFeeTitle] = useState('');
+  const [newFeeAmount, setNewFeeAmount] = useState(1000);
+  const [newFeeCategory, setNewFeeCategory] = useState('tuition');
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filterStatus === 'all') return true;
@@ -81,6 +110,32 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   const activeStudent = activeInvoice ? students.find((s) => s.id === activeInvoice.studentId) : null;
 
+  const duplicateInvoicesCount = (() => {
+    const seenNum = new Set<string>();
+    const seenStudentTermTitle = new Set<string>();
+    let dups = 0;
+    invoices.forEach((inv) => {
+      const k1 = inv.invoiceNumber.trim().toLowerCase();
+      const k2 = `${inv.studentId}|${inv.semester.trim().toLowerCase()}|${(inv.items[0]?.title || '').trim().toLowerCase()}`;
+      if ((k1 && seenNum.has(k1)) || seenStudentTermTitle.has(k2)) dups += 1;
+      if (k1) seenNum.add(k1);
+      seenStudentTermTitle.add(k2);
+    });
+    return dups;
+  })();
+
+  const newInvoiceDupReasons = showNewInvoiceModal
+    ? getInvoiceDuplicateReasons(
+        {
+          studentId: newInvStudentId,
+          invoiceNumber: `INV-${new Date().getFullYear().toString().slice(-2)}${(invoices.length + 1).toString().padStart(4, '0')}`,
+          semester: newInvSemester,
+          title: newInvTitle,
+        },
+        invoices
+      )
+    : [];
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
@@ -104,6 +159,29 @@ export const BillingView: React.FC<BillingViewProps> = ({
               <span>{reminderError}</span>
             </div>
           )}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowFeePresetModal(true)}
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              <span>ตั้งค่าหมวดค่าธรรมเนียม</span>
+            </button>
+          )}
+          {isAdmin && onAddInvoice && (
+            <button
+              type="button"
+              onClick={() => {
+                setAllowDupInvoiceConfirm(false);
+                setShowNewInvoiceModal(true);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>ออกใบแจ้งหนี้ใหม่</span>
+            </button>
+          )}
           {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
             <button
               type="button"
@@ -116,6 +194,13 @@ export const BillingView: React.FC<BillingViewProps> = ({
           )}
         </div>
       </div>
+
+      {duplicateInvoicesCount > 0 && (
+        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span>พบใบแจ้งหนี้ซ้ำซ้อน (เลขที่ใบแจ้งหนี้หรือนักเรียน/รายการ/เทอมเดียวกัน) จำนวน {duplicateInvoicesCount} รายการ</span>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">
@@ -550,6 +635,216 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Invoice Modal */}
+      {showNewInvoiceModal && onAddInvoice && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>ออกใบแจ้งหนี้ใหม่ (Create Invoice)</span>
+              </h3>
+              <button type="button" onClick={() => setShowNewInvoiceModal(false)} className="px-2 py-0.5 rounded-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newInvoiceDupReasons.length > 0 && !allowDupInvoiceConfirm) return;
+                const stu = students.find((s) => s.id === newInvStudentId);
+                if (!stu || !newInvTitle.trim()) return;
+                const invNumber = `INV-${new Date().getFullYear().toString().slice(-2)}${Math.floor(1000 + Math.random() * 8999)}`;
+                const created: TuitionInvoice = {
+                  id: `inv-${Date.now()}`,
+                  schoolId,
+                  studentId: stu.id,
+                  invoiceNumber: invNumber,
+                  semester: newInvSemester.trim() || `${systemConfig.currentSemester}/${systemConfig.academicYear}`,
+                  academicYear: systemConfig.academicYear,
+                  issueDate: getLocalDateString(),
+                  dueDate: newInvDueDate,
+                  items: [{ id: `item-${Date.now()}`, title: newInvTitle.trim(), amount: Math.max(0, Number(newInvAmount) || 0) }],
+                  totalAmount: Math.max(0, Number(newInvAmount) || 0),
+                  status: 'pending',
+                };
+                onAddInvoice(created);
+                setActiveInvoice(created);
+                setShowNewInvoiceModal(false);
+                setAllowDupInvoiceConfirm(false);
+                setReminderToast(`ออกใบแจ้งหนี้ ${invNumber} ให้ ${stu.firstNameTh} แล้ว`);
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block font-semibold mb-1">นักเรียน</label>
+                <select
+                  value={newInvStudentId}
+                  onChange={(e) => setNewInvStudentId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                >
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>{s.firstNameTh} {s.lastNameTh} ({s.room})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">เลือกจากรายการค่าธรรมเนียมมาตรฐาน (หรือพิมพ์เอง)</label>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const found = feePresets.find((f) => f.title === e.target.value);
+                    if (found) {
+                      setNewInvTitle(found.title);
+                      setNewInvAmount(found.amount);
+                    }
+                  }}
+                  className="w-full px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] mb-1.5"
+                >
+                  <option value="">-- เลือกเทมเพลตค่าธรรมเนียม --</option>
+                  {feePresets.map((f) => (
+                    <option key={f.title} value={f.title}>{f.title} (฿{f.amount.toLocaleString()})</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  required
+                  value={newInvTitle}
+                  onChange={(e) => setNewInvTitle(e.target.value)}
+                  placeholder="ชื่อรายการค่าธรรมเนียม"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block font-semibold mb-1">จำนวนเงิน (บาท)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    required
+                    value={newInvAmount}
+                    onChange={(e) => setNewInvAmount(Number(e.target.value))}
+                    className="w-full px-2.5 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">ภาคเรียน/ปี</label>
+                  <input
+                    type="text"
+                    required
+                    value={newInvSemester}
+                    onChange={(e) => setNewInvSemester(e.target.value)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">กำหนดชำระ</label>
+                  <input
+                    type="date"
+                    required
+                    value={newInvDueDate}
+                    onChange={(e) => setNewInvDueDate(e.target.value)}
+                    className="w-full px-2 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  />
+                </div>
+              </div>
+
+              {newInvoiceDupReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>{newInvoiceDupReasons.join(', ')}</span>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowDupInvoiceConfirm}
+                      onChange={(e) => setAllowDupInvoiceConfirm(e.target.checked)}
+                      className="rounded accent-amber-600"
+                    />
+                    <span>ยืนยันต้องการออกใบแจ้งหนี้ซ้ำอีกครั้ง</span>
+                  </label>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button type="button" onClick={() => setShowNewInvoiceModal(false)} className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] cursor-pointer">ยกเลิก</button>
+                <button
+                  type="submit"
+                  disabled={newInvoiceDupReasons.length > 0 && !allowDupInvoiceConfirm}
+                  className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] disabled:opacity-50 text-white font-semibold cursor-pointer"
+                >ออกใบแจ้งหนี้</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Fee Presets Manager Modal */}
+      {showFeePresetModal && isAdmin && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 shrink-0">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>ตั้งค่าหมวดและอัตราค่าธรรมเนียมโรงเรียน (Admin)</span>
+              </h3>
+              <button type="button" onClick={() => setShowFeePresetModal(false)} className="px-2 py-0.5 rounded-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 shrink-0">
+              <input
+                type="text"
+                value={newFeeTitle}
+                onChange={(e) => setNewFeeTitle(e.target.value)}
+                placeholder="ชื่อรายการค่าธรรมเนียม..."
+                className="sm:col-span-6 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+              />
+              <input
+                type="number"
+                min={0}
+                value={newFeeAmount}
+                onChange={(e) => setNewFeeAmount(Math.max(0, Number(e.target.value) || 0))}
+                className="sm:col-span-3 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const title = newFeeTitle.trim();
+                  if (!title) return;
+                  updatePresets({
+                    billingFeePresets: [...feePresets.filter((f) => f.title !== title), { title, amount: newFeeAmount, category: newFeeCategory }],
+                  });
+                  setNewFeeTitle('');
+                }}
+                className="sm:col-span-3 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-bold cursor-pointer"
+              >
+                + เพิ่มรายการ
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
+              {feePresets.map((f) => (
+                <div key={f.title} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <span className="font-medium text-[var(--color-text-title)] truncate">{f.title}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">฿{f.amount.toLocaleString()}</span>
+                    <button
+                      type="button"
+                      onClick={() => updatePresets({ billingFeePresets: feePresets.filter((item) => item.title !== f.title) })}
+                      className="text-rose-600 hover:text-rose-800 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

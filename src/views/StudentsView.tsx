@@ -40,7 +40,8 @@ import {
   STUDENT_STATUS_DETAILS 
 } from '../data/studentAcademicData';
 import { StudentPromotionModal } from '../components/modals/StudentPromotionModal';
-import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
+import { getDuplicateRecordWarnings, getStudentDuplicateReasons } from '../lib/duplicateRecords';
+import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -125,9 +126,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'approvals'>('roster');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
+  const [bulkMode, setBulkMode] = useState<'table' | 'paste'>('table');
   const [bulkGradeLevel, setBulkGradeLevel] = useState('มัธยมศึกษาปีที่ 4 (M.4)');
   const [bulkRoom, setBulkRoom] = useState('ม.4/1');
   const [bulkStudentRows, setBulkStudentRows] = useState('');
+  const [bulkTableRows, setBulkTableRows] = useState<Array<{ studentIdNumber: string; firstNameTh: string; lastNameTh: string; gender: 'male' | 'female' | 'other' }>>([
+    { studentIdNumber: '', firstNameTh: '', lastNameTh: '', gender: 'male' },
+    { studentIdNumber: '', firstNameTh: '', lastNameTh: '', gender: 'female' },
+    { studentIdNumber: '', firstNameTh: '', lastNameTh: '', gender: 'male' },
+  ]);
   const [bulkAddError, setBulkAddError] = useState<string | null>(null);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -136,6 +143,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   const canManageApprovals = ['admin', 'super_admin'].includes(currentRole);
   const schoolId = activeSchool?.id || students[0]?.schoolId || 'sch-bkk-01';
+  const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const [showRoomPresetModal, setShowRoomPresetModal] = useState(false);
+  const [newPresetGradeInput, setNewPresetGradeInput] = useState('');
+  const [newPresetRoomInput, setNewPresetRoomInput] = useState('');
   const [accountLinks, setAccountLinks] = useState<StudentAccountLink[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -522,31 +533,90 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     setShowAddModal(false);
   };
 
+  const buildDefaultBulkRows = (count = 5) => {
+    const numericSuffixes = students
+      .map((s) => Number(String(s.studentIdNumber || '').replace(/\D+/g, '')))
+      .filter((n) => Number.isFinite(n) && n > 0 && n < 999999);
+    const baseNum = numericSuffixes.length > 0 ? Math.max(...numericSuffixes) + 1 : 69001;
+    return Array.from({ length: count }, (_, idx) => ({
+      studentIdNumber: `${baseNum + idx}`,
+      firstNameTh: '',
+      lastNameTh: '',
+      gender: 'male' as const,
+    }));
+  };
+
+  const handleOpenBulkModal = () => {
+    setBulkAddError(null);
+    setBulkGradeLevel(formData.gradeLevel || 'มัธยมศึกษาปีที่ 4 (M.4)');
+    setBulkRoom(formData.room || 'ม.4/1');
+    setBulkMode('table');
+    setBulkTableRows(buildDefaultBulkRows(5));
+    setShowBulkAddModal(true);
+  };
+
   const handleSaveBulkStudents = () => {
     if (!bulkGradeLevel.trim() || !bulkRoom.trim()) {
       setBulkAddError('กรุณาระบุระดับชั้นและห้องเรียน');
       return;
     }
 
-    const rows = bulkStudentRows
-      .split(/\r?\n/)
-      .map((row) => row.split(/[,\t]/).map((cell) => cell.trim()))
-      .filter((cells) => cells.some(Boolean))
-      .filter((cells, index) => !(index === 0 && /รหัส|student.?id/i.test(cells[0] || '')));
-    const invalidRow = rows.find((cells) => !cells[0] || !cells[1] || !cells[2]);
-    if (rows.length === 0 || invalidRow) {
-      setBulkAddError('กรุณากรอกแต่ละแถวเป็น รหัสนักเรียน, ชื่อ, นามสกุล');
-      return;
+    let parsedRows: Array<{ studentIdNumber: string; firstNameTh: string; lastNameTh: string; gender: 'male' | 'female' | 'other' }> = [];
+    if (bulkMode === 'table') {
+      const filled = bulkTableRows.filter((r) => r.firstNameTh.trim() || r.lastNameTh.trim() || r.studentIdNumber.trim());
+      const missingName = filled.find((r) => !r.firstNameTh.trim() || !r.lastNameTh.trim());
+      if (filled.length === 0 || missingName) {
+        setBulkAddError('กรุณากรอกอย่างน้อย ชื่อ และ นามสกุล ของนักเรียนที่ต้องการเพิ่มให้ครบถ้วน');
+        return;
+      }
+      parsedRows = filled.map((r, idx) => ({
+        studentIdNumber: r.studentIdNumber.trim() || `STD-${Date.now().toString().slice(-4)}${idx + 1}`,
+        firstNameTh: r.firstNameTh.trim(),
+        lastNameTh: r.lastNameTh.trim(),
+        gender: r.gender,
+      }));
+    } else {
+      const rows = bulkStudentRows
+        .split(/\r?\n/)
+        .map((row) => row.split(/[,\t]/).map((cell) => cell.trim()))
+        .filter((cells) => cells.some(Boolean))
+        .filter((cells, index) => !(index === 0 && /รหัส|student.?id/i.test(cells[0] || '')));
+      if (rows.length === 0) {
+        setBulkAddError('กรุณาวางรายชื่อนักเรียนอย่างน้อย 1 แถว');
+        return;
+      }
+      // Support 3 cols (id, first, last) OR 2 cols (first, last)
+      const invalidRow = rows.find((cells) => cells.length < 2 || !cells[0] || !cells[1]);
+      if (invalidRow) {
+        setBulkAddError('กรุณากรอกแต่ละแถวเป็น "รหัส, ชื่อ, นามสกุล" หรือ "ชื่อ, นามสกุล"');
+        return;
+      }
+      parsedRows = rows.map((cells, index) => {
+        if (cells.length >= 3) {
+          return {
+            studentIdNumber: cells[0],
+            firstNameTh: cells[1],
+            lastNameTh: cells[2],
+            gender: 'other' as const,
+          };
+        }
+        return {
+          studentIdNumber: `STD-${Date.now().toString().slice(-4)}${index + 1}`,
+          firstNameTh: cells[0],
+          lastNameTh: cells[1],
+          gender: 'other' as const,
+        };
+      });
     }
 
-    const newStudents: Student[] = rows.map(([studentIdNumber, firstNameTh, lastNameTh], index) => ({
+    const newStudents: Student[] = parsedRows.map((row, index) => ({
       id: `stu-${Date.now()}-${index}`,
-      studentIdNumber,
-      firstNameEn: firstNameTh,
-      lastNameEn: lastNameTh,
-      firstNameTh,
-      lastNameTh,
-      gender: 'other',
+      studentIdNumber: row.studentIdNumber,
+      firstNameEn: row.firstNameTh,
+      lastNameEn: row.lastNameTh,
+      firstNameTh: row.firstNameTh,
+      lastNameTh: row.lastNameTh,
+      gender: row.gender,
       dateOfBirth: '',
       gradeLevel: bulkGradeLevel.trim(),
       room: bulkRoom.trim(),
@@ -563,9 +633,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       enrolledDate: new Date().toISOString().split('T')[0],
     }));
 
+    // Check intra-batch duplicates and duplicates against existing students
+    const batchIdSet = new Set<string>();
+    const batchNameSet = new Set<string>();
+    let hasIntraDuplicate = false;
+    newStudents.forEach((s) => {
+      const idKey = s.studentIdNumber.toLowerCase();
+      const nameKey = `${s.firstNameTh}|${s.lastNameTh}`.toLowerCase();
+      if (batchIdSet.has(idKey) || batchNameSet.has(nameKey)) hasIntraDuplicate = true;
+      batchIdSet.add(idKey);
+      batchNameSet.add(nameKey);
+    });
+
     const duplicateReasons = getStudentDuplicateReasons(newStudents, students);
+    if (hasIntraDuplicate) {
+      duplicateReasons.unshift('พบข้อมูลนักเรียนซ้ำกันเองภายในรายชื่อชุดนี้');
+    }
     if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} พบข้อมูลซ้ำในรายการนี้/ทะเบียนเดิม ต้องการเพิ่มต่อหรือไม่?`)) {
+      !confirm(`${duplicateReasons.join(' และ ')} ต้องการเพิ่มนักเรียนชุดนี้ต่อหรือไม่?`)) {
       return;
     }
 
@@ -646,15 +731,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   type="button"
                   onClick={(event) => {
                     event.currentTarget.closest('details')?.removeAttribute('open');
-                    setBulkAddError(null);
-                    setBulkGradeLevel(formData.gradeLevel);
-                    setBulkRoom(formData.room);
-                    setShowBulkAddModal(true);
+                    setShowRoomPresetModal(true);
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
-                  <Users className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                  <span>เพิ่มนักเรียนหลายคน/ห้อง</span>
+                  <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
                 </button>
               )}
 
@@ -674,6 +756,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
           </details>
 
+          {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+            <button
+              type="button"
+              onClick={handleOpenBulkModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Users className="w-4 h-4" />
+              <span>เพิ่มนักเรียนทั้งห้อง</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleOpenAdd}
@@ -684,6 +777,23 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </button>
         </div>
       </div>
+
+      {(() => {
+        const studentDupWarnings = getDuplicateRecordWarnings({
+          students,
+          teachers: [],
+          courses: [],
+          grades: [],
+          invoices: [],
+          timetableSlots: [],
+        });
+        if (studentDupWarnings.length === 0) return null;
+        return (
+          <div className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+            <span><strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {studentDupWarnings.join(' • ')}</span>
+          </div>
+        );
+      })()}
 
       {/* View Tabs */}
       <div className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
@@ -1185,54 +1295,283 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {showBulkAddModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between shrink-0">
               <div>
-                <h3 className="text-base font-bold">เพิ่มนักเรียนหลายคนเข้าห้องเดียวกัน</h3>
-                <p className="text-xs text-emerald-100 mt-1">วางข้อมูลจาก Excel ได้ทีละหลายแถว</p>
+                <h3 className="text-base font-bold">เพิ่มนักเรียนทั้งห้อง (Batch Room Enrollment)</h3>
+                <p className="text-xs text-emerald-100 mt-0.5">เลือกห้องเรียน 1 ครั้ง แล้วกรอกตารางหรือวางรายชื่อจาก Excel ได้ทันที</p>
               </div>
-              <button type="button" onClick={() => setShowBulkAddModal(false)} className="p-1.5 rounded-xl hover:bg-white/20">×</button>
+              <button type="button" onClick={() => setShowBulkAddModal(false)} className="p-1.5 rounded-xl hover:bg-white/20 text-lg font-bold cursor-pointer">×</button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-xs font-semibold text-[var(--color-text-body)]">
                   ระดับชั้น
                   <input
+                    list="bulk-grade-levels"
                     value={bulkGradeLevel}
                     onChange={(event) => setBulkGradeLevel(event.target.value)}
                     className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                    placeholder="เช่น มัธยมศึกษาปีที่ 4"
+                    placeholder="เช่น มัธยมศึกษาปีที่ 4 (M.4)"
                   />
+                  <datalist id="bulk-grade-levels">
+                    {Array.from(new Set([...ALL_GRADE_LEVELS.map((g) => g.value), ...presets.gradeLevels])).map((lvl) => (
+                      <option key={lvl} value={lvl} />
+                    ))}
+                  </datalist>
                 </label>
                 <label className="text-xs font-semibold text-[var(--color-text-body)]">
-                  ห้องเรียน
+                  ห้องเรียน (กำหนดให้นักเรียนทุกคนในชุดนี้)
                   <input
+                    list="bulk-room-options"
                     value={bulkRoom}
                     onChange={(event) => setBulkRoom(event.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-bold"
                     placeholder="เช่น ม.4/1"
                   />
+                  <datalist id="bulk-room-options">
+                    {Array.from(new Set([...students.map((s) => s.room).filter(Boolean), ...presets.roomOptions])).map((rm) => (
+                      <option key={rm} value={rm} />
+                    ))}
+                  </datalist>
                 </label>
               </div>
-              <label className="block text-xs font-semibold text-[var(--color-text-body)]">
-                รายชื่อนักเรียน — หนึ่งคนต่อหนึ่งบรรทัด
-                <textarea
-                  rows={9}
-                  value={bulkStudentRows}
-                  onChange={(event) => setBulkStudentRows(event.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
-                  placeholder={'รหัสนักเรียน,ชื่อ,นามสกุล\n65001,สมชาย,ใจดี\n65002,สมหญิง,เรียนดี'}
-                />
-              </label>
-              <p className="text-[11px] text-[var(--color-text-muted)]">
-                รองรับการคั่นด้วย comma หรือ tab และตรวจรหัสนักเรียน/เลขประชาชนซ้ำก่อนเพิ่ม ระบบจะแจ้งเตือนและให้ยืนยันก่อนบันทึก
-              </p>
-              {bulkAddError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{bulkAddError}</p>}
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowBulkAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold">ยกเลิก</button>
-                <button type="button" onClick={handleSaveBulkStudents} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold">
-                  เพิ่มนักเรียน
+
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setBulkMode('table')}
+                  className={`px-3 py-1.5 rounded-lg font-bold cursor-pointer ${
+                    bulkMode === 'table' ? 'bg-emerald-600 text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                  }`}
+                >
+                  ตารางกรอกรายห้อง (สร้างรหัสอัตโนมัติ)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkMode('paste')}
+                  className={`px-3 py-1.5 rounded-lg font-bold cursor-pointer ${
+                    bulkMode === 'paste' ? 'bg-emerald-600 text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                  }`}
+                >
+                  วางข้อความจาก Excel / CSV
+                </button>
+              </div>
+
+              {bulkMode === 'table' ? (
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-[var(--color-text-muted)]">
+                      กรอกเฉพาะแถวที่ต้องการ (แถวว่างจะถูกข้ามอัตโนมัติ · ตรวจรหัส/ชื่อซ้ำให้ทันที)
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setBulkTableRows((prev) => [...prev, ...buildDefaultBulkRows(5).map((r, i) => ({
+                          ...r,
+                          studentIdNumber: `${(Number(prev[prev.length - 1]?.studentIdNumber?.replace(/\D+/g, '') || '69000') + i + 1)}`,
+                        }))])}
+                        className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold hover:bg-[var(--color-primary-light)] cursor-pointer"
+                      >
+                        + เพิ่ม 5 แถว
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBulkTableRows((prev) => [...prev, {
+                          studentIdNumber: `${(Number(prev[prev.length - 1]?.studentIdNumber?.replace(/\D+/g, '') || '69000') + 1)}`,
+                          firstNameTh: '',
+                          lastNameTh: '',
+                          gender: 'male',
+                        }])}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold cursor-pointer"
+                      >
+                        + เพิ่ม 1 แถว
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto rounded-xl border border-[var(--color-border)]">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                        <tr>
+                          <th className="p-2 w-10 text-center">#</th>
+                          <th className="p-2 w-32">รหัสนักเรียน</th>
+                          <th className="p-2">ชื่อ (ไทย) *</th>
+                          <th className="p-2">นามสกุล (ไทย) *</th>
+                          <th className="p-2 w-24">เพศ</th>
+                          <th className="p-2 w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {bulkTableRows.map((row, idx) => {
+                          const dupId = Boolean(row.studentIdNumber.trim()) && (
+                            students.some((s) => s.studentIdNumber.toLowerCase() === row.studentIdNumber.trim().toLowerCase()) ||
+                            bulkTableRows.filter((r, i) => i !== idx && r.studentIdNumber.trim().toLowerCase() === row.studentIdNumber.trim().toLowerCase()).length > 0
+                          );
+                          const dupName = Boolean(row.firstNameTh.trim() && row.lastNameTh.trim()) && (
+                            students.some((s) => s.firstNameTh === row.firstNameTh.trim() && s.lastNameTh === row.lastNameTh.trim())
+                          );
+                          return (
+                            <tr key={idx} className={dupId || dupName ? 'bg-amber-50/70 dark:bg-amber-950/30' : ''}>
+                              <td className="p-1.5 text-center text-[var(--color-text-muted)] font-mono">{idx + 1}</td>
+                              <td className="p-1.5">
+                                <input
+                                  type="text"
+                                  value={row.studentIdNumber}
+                                  onChange={(e) => setBulkTableRows((prev) => prev.map((r, i) => i === idx ? { ...r, studentIdNumber: e.target.value } : r))}
+                                  placeholder="รหัสนักเรียน"
+                                  className={`w-full px-2 py-1.5 rounded-lg border text-xs font-mono ${dupId ? 'border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200' : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'}`}
+                                />
+                              </td>
+                              <td className="p-1.5">
+                                <input
+                                  type="text"
+                                  value={row.firstNameTh}
+                                  onChange={(e) => setBulkTableRows((prev) => prev.map((r, i) => i === idx ? { ...r, firstNameTh: e.target.value } : r))}
+                                  placeholder="ชื่อ"
+                                  className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                                />
+                              </td>
+                              <td className="p-1.5">
+                                <input
+                                  type="text"
+                                  value={row.lastNameTh}
+                                  onChange={(e) => setBulkTableRows((prev) => prev.map((r, i) => i === idx ? { ...r, lastNameTh: e.target.value } : r))}
+                                  placeholder="นามสกุล"
+                                  className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                                />
+                              </td>
+                              <td className="p-1.5">
+                                <select
+                                  value={row.gender}
+                                  onChange={(e) => setBulkTableRows((prev) => prev.map((r, i) => i === idx ? { ...r, gender: e.target.value as 'male' | 'female' | 'other' } : r))}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                                >
+                                  <option value="male">ชาย</option>
+                                  <option value="female">หญิง</option>
+                                  <option value="other">อื่นๆ</option>
+                                </select>
+                              </td>
+                              <td className="p-1.5 text-center">
+                                {bulkTableRows.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setBulkTableRows((prev) => prev.filter((_, i) => i !== idx))}
+                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                    title="ลบแถว"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                    รายชื่อนักเรียน — หนึ่งคนต่อหนึ่งบรรทัด (รองรับทั้ง 3 คอลัมน์: รหัส,ชื่อ,นามสกุล หรือ 2 คอลัมน์: ชื่อ,นามสกุล)
+                    <textarea
+                      rows={8}
+                      value={bulkStudentRows}
+                      onChange={(event) => setBulkStudentRows(event.target.value)}
+                      className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
+                      placeholder={'65001,สมชาย,ใจดี\n65002,สมหญิง,เรียนดี\nหรือ\nสมชาย,ใจดี'}
+                    />
+                  </label>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    รองรับการคั่นด้วย comma (,) หรือ tab (คัดลอกวางตรงจาก Excel ได้เลย) และตรวจรหัส/ชื่อซ้ำให้อัตโนมัติ
+                  </p>
+                </>
+              )}
+              {bulkAddError && <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300">{bulkAddError}</p>}
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button type="button" onClick={() => setShowBulkAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold cursor-pointer">ยกเลิก</button>
+                <button type="button" onClick={handleSaveBulkStudents} className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer">
+                  บันทึกนักเรียนทั้งห้อง
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRoomPresetModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)]">ตั้งค่าระดับชั้นและห้องเรียนของโรงเรียน</h3>
+              <button type="button" onClick={() => setShowRoomPresetModal(false)} className="text-lg font-bold text-[var(--color-text-muted)] px-2 cursor-pointer">×</button>
+            </div>
+            <div className="space-y-2">
+              <div className="font-bold text-[var(--color-text-title)]">ระดับชั้น ({presets.gradeLevels.length})</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPresetGradeInput}
+                  onChange={(e) => setNewPresetGradeInput(e.target.value)}
+                  placeholder="เพิ่มระดับชั้น เช่น เตรียมอนุบาล หรือ ปวช.1"
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newPresetGradeInput.trim();
+                    if (!val) return;
+                    updatePresets({ gradeLevels: [...presets.gradeLevels, val] });
+                    setNewPresetGradeInput('');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] text-white font-bold cursor-pointer"
+                >
+                  + เพิ่ม
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.gradeLevels.map((lvl) => (
+                  <span key={lvl} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                    <span>{lvl}</span>
+                    {presets.gradeLevels.length > 1 && (
+                      <button type="button" onClick={() => updatePresets({ gradeLevels: presets.gradeLevels.filter((x) => x !== lvl) })} className="text-rose-600 font-bold cursor-pointer">×</button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
+              <div className="font-bold text-[var(--color-text-title)]">ห้องเรียน ({presets.roomOptions.length})</div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPresetRoomInput}
+                  onChange={(e) => setNewPresetRoomInput(e.target.value)}
+                  placeholder="เพิ่มห้องเรียน เช่น ม.4/3 หรือ EP-1"
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newPresetRoomInput.trim();
+                    if (!val) return;
+                    updatePresets({ roomOptions: [...presets.roomOptions, val] });
+                    setNewPresetRoomInput('');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold cursor-pointer"
+                >
+                  + เพิ่มห้อง
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.roomOptions.map((rm) => (
+                  <span key={rm} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                    <span>{rm}</span>
+                    {presets.roomOptions.length > 1 && (
+                      <button type="button" onClick={() => updatePresets({ roomOptions: presets.roomOptions.filter((x) => x !== rm) })} className="text-rose-600 font-bold cursor-pointer">×</button>
+                    )}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

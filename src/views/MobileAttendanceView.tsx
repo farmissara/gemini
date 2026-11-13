@@ -540,7 +540,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     if (isSavingAttendance) return;
     setSelfieActionError(null);
     if (!isSelfCheckin && effectiveUserType === 'student' && !selectedStudent) {
-      setSelfieActionError('ไม่พบข้อมูลนักเรียนสำหรับบันทึกเช็กชื่อ กรุณาเลือกนักเรียนก่อน');
+      setSelfieActionError('ไม่พบข้อมูลนักเรียนสำหรับบันทึกเช็คชื่อ กรุณาเลือกนักเรียนก่อน');
       return;
     }
     if (
@@ -548,22 +548,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       currentUser?.role === 'student' &&
       (!selectedStudent && !loggedInProfile.isLinkedToStudentRecord)
     ) {
-      setSelfieActionError('บัญชีนี้ยังไม่ได้ผูกกับระเบียนนักเรียนที่ยืนยันได้ กรุณาติดต่อผู้ดูแลระบบก่อนเช็กอิน');
+      setSelfieActionError('บัญชีนี้ยังไม่ได้ผูกกับระเบียนนักเรียนที่ยืนยันได้ กรุณาติดต่อผู้ดูแลระบบก่อนเช็คอิน');
       return;
     }
     if (!isSelfCheckin && effectiveUserType === 'teacher' && !selectedTeacher) {
-      setSelfieActionError('ไม่พบข้อมูลครูสำหรับบันทึกเช็กชื่อ กรุณาเลือกครูก่อน');
+      setSelfieActionError('ไม่พบข้อมูลครูสำหรับบันทึกเช็คชื่อ กรุณาเลือกครูก่อน');
       return;
     }
     const attendancePerson = isSelfCheckin
       ? { id: loggedInProfile.targetId }
       : (effectiveUserType === 'teacher' ? selectedTeacher : selectedStudent);
     if (!attendancePerson) {
-      setSelfieActionError('ไม่พบข้อมูลผู้ใช้งานสำหรับเช็กอิน กรุณาติดต่อผู้ดูแลระบบ');
+      setSelfieActionError('ไม่พบข้อมูลผู้ใช้งานสำหรับเช็คอิน กรุณาติดต่อผู้ดูแลระบบ');
       return;
     }
     if (currentUser?.role === 'student' && !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,')) {
-      setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็กอิน');
+      setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็คอิน');
       return;
     }
     if (!isInGeofence) {
@@ -575,8 +575,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const targetId = attendancePerson.id;
     const remarks = isSelfCheckin
-      ? `${activePersonRole} (${activePersonName}) ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก'}ผ่านมือถือ ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`
-      : `เจ้าหน้าที่ ${currentUser?.fullNameTh || 'ครูเวร'} บันทึกเช็กชื่อแทน${effectiveUserType === 'teacher' ? 'ครู' : 'นักเรียน'} (${activePersonName}) ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`;
+      ? `${activePersonRole} (${activePersonName}) ถ่ายรูปเซลฟี่${checkType === 'check_in' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก'}ผ่านมือถือ ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`
+      : `เจ้าหน้าที่ ${currentUser?.fullNameTh || 'ครูเวร'} บันทึกเช็คชื่อแทน${effectiveUserType === 'teacher' ? 'ครู' : 'นักเรียน'} (${activePersonName}) ที่${selectedGate.nameTh} (ระยะ GPS: ${currentGpsDistance} ม.)`;
 
     const [h, m] = nowTime.split(':').map(Number);
     const minutes = (h || 0) * 60 + (m || 0);
@@ -619,7 +619,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       try {
         photoStoragePath = await saveStudentSelfAttendance(attendanceRecord, currentUser.id);
       } catch (error) {
-        setSelfieActionError(error instanceof Error ? error.message : 'บันทึกการเช็กอินไม่สำเร็จ');
+        setSelfieActionError(error instanceof Error ? error.message : 'บันทึกการเช็คอินไม่สำเร็จ');
         setIsSavingAttendance(false);
         return;
       }
@@ -750,7 +750,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const handleConfirmProxySingleCheckin = () => {
     if (!matchedProxyStudent) return;
-    const actionLabel = proxyCheckType === 'check_in' ? 'เช็กชื่อเข้า' : 'เช็กชื่อออก';
+    const actionLabel = proxyCheckType === 'check_in' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก';
     onRecordAttendance(
       matchedProxyStudent.id,
       proxySingleStatus,
@@ -851,13 +851,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
     if (!isStudentEnrolledInClass) {
       setStudentPeriodCheckinError(
-        `⛔ ปฏิเสธการเช็กชื่อ: นักเรียน ${targetStudent.firstNameTh} ${targetStudent.lastNameTh} (ชั้น ${targetStudent.gradeLevel} ห้อง ${targetStudent.room || '-'}) ไม่ได้อยู่ในรายชื่อหรือห้องเรียนของวิชานี้ (${targetCourse.code || ''} ${targetCourse.titleTh || ''} ${targetCourse.room ? 'ห้อง ' + targetCourse.room : ''}) สิทธิ์เช็กชื่อรายคาบอนุญาตเฉพาะเด็กในชั้นเรียนนี้เท่านั้น`
+        `⛔ ปฏิเสธการเช็คชื่อ: นักเรียน ${targetStudent.firstNameTh} ${targetStudent.lastNameTh} (ชั้น ${targetStudent.gradeLevel} ห้อง ${targetStudent.room || '-'}) ไม่ได้อยู่ในรายชื่อหรือห้องเรียนของวิชานี้ (${targetCourse.code || ''} ${targetCourse.titleTh || ''} ${targetCourse.room ? 'ห้อง ' + targetCourse.room : ''}) สิทธิ์เช็คชื่อรายคาบอนุญาตเฉพาะเด็กในชั้นเรียนนี้เท่านั้น`
       );
       return;
     }
 
     const currentPeriodInfo = periodsList.find((p) => p.period === resolvedPeriodNum);
-    const actionLabel = periodCheckType === 'check_in' ? 'เช็กชื่อเข้าเรียน (Check-in)' : 'เช็กชื่อออกคาบเรียน (Check-out)';
+    const actionLabel = periodCheckType === 'check_in' ? 'เช็คชื่อเข้าเรียน (Check-in)' : 'เช็คชื่อออกคาบเรียน (Check-out)';
 
     const record: PeriodAttendanceRecord = {
       id: `patt-qr-${Date.now()}-${targetStudent.id}`,
@@ -882,7 +882,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setPeriodDate(resolvedDate);
     playChime();
     setStudentPeriodCheckinMsg(
-      `${periodCheckType === 'check_in' ? '🟢 เช็กชื่อเข้าเรียน (Check-in)' : '🔴 เช็กชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
+      `${periodCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
     );
     setTimeout(() => setStudentPeriodCheckinMsg(null), 5000);
   };
@@ -929,7 +929,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           <div className="flex items-center gap-1.5 min-w-0">
             <Camera className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
             <h1 className="text-xs font-bold truncate">
-              {lang === 'th' ? 'เช็กชื่อเข้า-ออก' : 'Check in / out'}
+              {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check in / out'}
             </h1>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700 shrink-0">
               GPS Geofence
@@ -957,7 +957,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-white">
-              {lang === 'th' ? 'ระบบเช็กชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
+              {lang === 'th' ? 'ระบบเช็คชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
             </h1>
             <p className="text-slate-200 text-xs">
               {lang === 'th' 
@@ -994,7 +994,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* Navigation Sub Tabs - Compact Underlined Text Links (Never overflows container edges) */}
       <nav aria-label="Attendance sub-navigation" className="shrink-0 flex flex-wrap items-center gap-x-3.5 gap-y-1 px-0.5 py-1 border-b border-[var(--color-border)] text-xs">
         {[
-          { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็กชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
+          { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็คชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
           { id: 'leave_request', icon: FileText, labelTh: 'ใบลา', labelEn: 'Leave', badge: scopedLeaveRequests.filter(r => r.status === 'pending').length, staffOnly: false },
           { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ครูลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
           { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ (QR)', labelEn: 'Periods (QR)', staffOnly: false }
@@ -1268,7 +1268,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               <div className="text-center py-1">
                 <p className={`text-[11px] text-slate-300 ${embeddedMobile ? 'hidden' : ''}`}>
-                  {isSelfCheckin ? 'กำลังเช็กชื่อบัญชีของคุณ: ' : 'กำลังบันทึกเช็กชื่อแทน: '}
+                  {isSelfCheckin ? 'กำลังเช็คชื่อบัญชีของคุณ: ' : 'กำลังบันทึกเช็คชื่อแทน: '}
                   <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
                 </p>
               </div>
@@ -1283,7 +1283,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <div className="flex items-center gap-2 min-w-0">
                   <Smartphone className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
                   <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                    {isRestrictedViewer ? 'ข้อมูลบัญชีเช็กชื่อของคุณ' : 'ตัวตนผู้ใช้งาน & บัญชีเช็กชื่อ'}
+                    {isRestrictedViewer ? 'ข้อมูลบัญชีเช็คชื่อของคุณ' : 'ตัวตนผู้ใช้งาน & บัญชีเช็คชื่อ'}
                   </h3>
                 </div>
                 {!isRestrictedViewer ? (
@@ -1351,7 +1351,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   {effectiveUserType === 'student' ? (
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-[var(--color-text-title)]">
-                        เลือกรายชื่อนักเรียนที่ต้องการเช็กชื่อแทน:
+                        เลือกรายชื่อนักเรียนที่ต้องการเช็คชื่อแทน:
                       </label>
                       <select
                         value={selectedStudentId}
@@ -1368,7 +1368,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   ) : (
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-[var(--color-text-title)]">
-                        เลือกรายชื่อครูที่ต้องการเช็กชื่อแทน:
+                        เลือกรายชื่อครูที่ต้องการเช็คชื่อแทน:
                       </label>
                       <select
                         value={selectedTeacherId}
@@ -1417,7 +1417,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็กชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็คชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
                 </div>
                 <div className="flex items-center gap-2">
                   {(currentRole === 'admin' || currentRole === 'super_admin') && (
@@ -1427,7 +1427,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       className="text-xs text-[var(--color-primary-text)] font-bold flex items-center gap-1 cursor-pointer bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] px-2.5 py-1 rounded-lg border border-[var(--color-border)] transition"
                     >
                       <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-                      <span>⚙️ แก้ไขพิกัดจุดเช็กชื่อ (Admin)</span>
+                      <span>⚙️ แก้ไขพิกัดจุดเช็คชื่อ (Admin)</span>
                     </button>
                   )}
                   <button
@@ -1443,7 +1443,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               {/* Multi-gate Selector List */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกประตูหรือจุดเช็กชื่อ:</label>
+                <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกประตูหรือจุดเช็คชื่อ:</label>
                 <div className="grid grid-cols-1 gap-2">
                   <PagedList items={campusGates} pageSize={3} renderItem={(gate) => {
                     const isSelected = gate.id === selectedGateId;
@@ -1990,7 +1990,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>ครูเช็กชื่อให้นักเรียน (กรอกรหัสนักเรียนก่อนเช็กชื่อ)</span>
+                  <span>ครูเช็คชื่อให้นักเรียน (กรอกรหัสนักเรียนก่อนเช็คชื่อ)</span>
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)]">
                   กรุณาระบุรหัสนักเรียนเพื่อตรวจสอบตัวตนก่อนบันทึกเวลาเข้า-ออกแทนนักเรียน
@@ -2051,7 +2051,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {!trimmedProxyStudentId ? (
                 <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-                  <span>กรุณาใส่รหัสนักเรียนด้านบนก่อนจึงจะสามารถเช็กชื่อให้นักเรียนได้</span>
+                  <span>กรุณาใส่รหัสนักเรียนด้านบนก่อนจึงจะสามารถเช็คชื่อให้นักเรียนได้</span>
                 </div>
               ) : !matchedProxyStudent ? (
                 <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 flex items-center gap-2">
@@ -2140,7 +2140,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
-                    <span>ยืนยันเช็กชื่อให้นักเรียน ({matchedProxyStudent.studentIdNumber})</span>
+                    <span>ยืนยันเช็คชื่อให้นักเรียน ({matchedProxyStudent.studentIdNumber})</span>
                   </button>
                 </div>
               )}
@@ -2196,12 +2196,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                   <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>เช็กชื่อเข้าเรียนรายคาบ (QR Code &amp; Link)</span>
+                  <span>เช็คชื่อเข้าเรียนรายคาบ (QR Code &amp; Link)</span>
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)]">
                   {isRestrictedViewer
-                    ? 'สแกน QR Code หรือเปิดลิงก์จากอาจารย์เพื่อเช็กชื่อเข้าคาบเรียนของตนเอง'
-                    : `สร้าง QR Code และลิงก์ให้นักเรียนสแกนเช็กชื่อเข้าคาบ (${periodStudentIds.length} นักเรียน)`}
+                    ? 'สแกน QR Code หรือเปิดลิงก์จากอาจารย์เพื่อเช็คชื่อเข้าคาบเรียนของตนเอง'
+                    : `สร้าง QR Code และลิงก์ให้นักเรียนสแกนเช็คชื่อเข้าคาบ (${periodStudentIds.length} นักเรียน)`}
                 </p>
               </div>
               {isStaffUser && (
@@ -2268,7 +2268,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <QrCodeMatrix
                   value={periodCheckinUrl}
                   size={embeddedMobile ? 132 : 148}
-                  label={`QR Code เช็กชื่อคาบเรียน ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
+                  label={`QR Code เช็คชื่อคาบเรียน ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
                 />
                 <span className="text-[10px] font-mono font-bold text-[var(--color-primary-text)] bg-[var(--color-primary-light)] border border-[var(--color-border)] px-2 py-0.5 rounded-md">
                   {expectedPeriodCode}
@@ -2279,7 +2279,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h4 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5 text-sm">
                     <Link2 className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
-                    <span>QR Code &amp; ลิงก์เช็กชื่อรายคาบ</span>
+                    <span>QR Code &amp; ลิงก์เช็คชื่อรายคาบ</span>
                   </h4>
                   <button
                     type="button"
@@ -2300,7 +2300,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     type="text"
                     readOnly
                     value={periodCheckinUrl}
-                    aria-label="ลิงก์เช็กชื่อรายคาบ"
+                    aria-label="ลิงก์เช็คชื่อรายคาบ"
                     className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-[var(--color-text-title)] focus:outline-hidden truncate"
                   />
                   <button
@@ -2325,11 +2325,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     className="font-bold text-[var(--color-primary-text)] underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>{isRestrictedViewer ? 'กดลิงก์เช็กชื่อเข้าคาบนี้ทันที' : 'เปิดลิงก์เช็กชื่อรายคาบ'}</span>
+                    <span>{isRestrictedViewer ? 'กดลิงก์เช็คชื่อเข้าคาบนี้ทันที' : 'เปิดลิงก์เช็คชื่อรายคาบ'}</span>
                   </a>
                   {isStaffUser && (
                     <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                      สแกน/เช็กชื่อแล้ว: {
+                      สแกน/เช็คชื่อแล้ว: {
                         periodAttendance.filter(
                           (p) => p.courseId === selectedCourse.id && p.periodNumber === selectedPeriod && p.date === periodDate && (p.status === 'present' || p.status === 'late')
                         ).length
@@ -2380,7 +2380,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       }`}
                     >
                       <LogIn className="w-3.5 h-3.5" />
-                      <span>เช็กชื่อเข้า (Check-in)</span>
+                      <span>เช็คชื่อเข้า (Check-in)</span>
                     </button>
                     <button
                       type="button"
@@ -2392,14 +2392,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       }`}
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>เช็กชื่อออก (Check-out)</span>
+                      <span>เช็คชื่อออก (Check-out)</span>
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-[var(--color-text-title)] block">
-                    วางลิงก์เช็กชื่อ หรือกรอกรหัส Barcode/QR คาบเรียน:
+                    วางลิงก์เช็คชื่อ หรือกรอกรหัส Barcode/QR คาบเรียน:
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
@@ -2420,7 +2420,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       }`}
                     >
                       <QrCode className="w-4 h-4" />
-                      <span>{periodCheckType === 'check_in' ? 'ยืนยันเช็กชื่อเข้าเรียน' : 'ยืนยันเช็กชื่อออกคาบ'}</span>
+                      <span>{periodCheckType === 'check_in' ? 'ยืนยันเช็คชื่อเข้าเรียน' : 'ยืนยันเช็คชื่อออกคาบ'}</span>
                     </button>
                   </div>
                 </div>
@@ -2443,11 +2443,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {/* Only this student's own period check-in history */}
               <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
                 <h4 className="font-bold text-[var(--color-text-title)]">
-                  ประวัติเช็กชื่อรายคาบของคุณ ({scopedPeriodAttendance.length})
+                  ประวัติเช็คชื่อรายคาบของคุณ ({scopedPeriodAttendance.length})
                 </h4>
                 {scopedPeriodAttendance.length === 0 ? (
                   <p className="text-[var(--color-text-muted)] text-center py-4">
-                    ยังไม่มีบันทึกเช็กชื่อรายคาบของคุณ
+                    ยังไม่มีบันทึกเช็คชื่อรายคาบของคุณ
                   </p>
                 ) : (
                   <PagedList
@@ -2460,7 +2460,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                             {rec.courseCode} • คาบที่ {rec.periodNumber}
                           </p>
                           <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                            {rec.date} ({rec.timeSlot}) • {rec.checkMethod === 'qr_code' ? 'สแกน QR/ลิงก์' : 'อาจารย์เช็กชื่อ'}
+                            {rec.date} ({rec.timeSlot}) • {rec.checkMethod === 'qr_code' ? 'สแกน QR/ลิงก์' : 'อาจารย์เช็คชื่อ'}
                           </p>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
@@ -2539,7 +2539,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div className="bg-[var(--color-card)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 border border-[var(--color-border)] shadow-2xl">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[var(--color-primary-text)]">
-                    QR Code เช็กชื่อเข้าคาบเรียน
+                    QR Code เช็คชื่อเข้าคาบเรียน
                   </span>
                   <button
                     type="button"
@@ -2574,7 +2574,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {periodQrCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span>{periodQrCopied ? 'คัดลอกลิงก์เช็กชื่อแล้ว ✓' : 'คัดลอกลิงก์ส่งให้นักเรียน'}</span>
+                  <span>{periodQrCopied ? 'คัดลอกลิงก์เช็คชื่อแล้ว ✓' : 'คัดลอกลิงก์ส่งให้นักเรียน'}</span>
                 </button>
               </div>
             </div>
@@ -2598,7 +2598,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' 
                   : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
               }`}>
-                {checkinSuccessFeedback.checkType === 'check_in' ? 'เช็กชื่อเข้าโรงเรียนสำเร็จ' : 'เช็กชื่อออกจากโรงเรียนสำเร็จ'}
+                {checkinSuccessFeedback.checkType === 'check_in' ? 'เช็คชื่อเข้าโรงเรียนสำเร็จ' : 'เช็คชื่อออกจากโรงเรียนสำเร็จ'}
               </span>
               <h3 className="text-base font-semibold text-[var(--color-text-title)] pt-1">
                 {checkinSuccessFeedback.userName}
@@ -2721,7 +2721,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-[var(--color-primary)]" />
                 <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                  ตั้งค่าและแก้ไขพิกัดจุดเช็กชื่อโรงเรียน (School GPS & Gates Management)
+                  ตั้งค่าและแก้ไขพิกัดจุดเช็คชื่อโรงเรียน (School GPS & Gates Management)
                 </h3>
               </div>
               <button

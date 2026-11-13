@@ -789,7 +789,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   onClick={() => setActiveTab('checkin')}
                   className="p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-left text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-between cursor-pointer"
                 >
-                  <span>มอนิเตอร์การเช็กชื่อ</span>
+                  <span>มอนิเตอร์การเช็คชื่อ</span>
                   <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
                 </button>
                 <button

@@ -49,6 +49,7 @@ import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
+import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -153,6 +154,22 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       ? students.find((s) => s.studentIdNumber.trim().toLowerCase() === trimmedScannerId.toLowerCase())
       : undefined;
 
+  const todayDateStr = getLocalDateString();
+  const scannerDupReasons = matchedScannerStudent
+    ? getAttendanceDuplicateReasons({ studentId: matchedScannerStudent.id, date: todayDateStr, recordType: 'check_in' }, attendance)
+    : [];
+
+  const duplicateAttendanceCount = useMemo(() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    scopedAttendance.forEach((att) => {
+      const k = `${att.studentId}|${att.date}|${att.recordType || 'check_in'}`;
+      if (seen.has(k)) dups += 1;
+      else seen.add(k);
+    });
+    return dups;
+  }, [scopedAttendance]);
+
   // Filter logs by date and scope
   const [dateFilter, setDateFilter] = useState(getLocalDateString());
   const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
@@ -224,11 +241,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         enqueueOfflineAction({
           actionType: 'attendance',
           schoolId: activeSchool?.id || currentUser?.schoolId || 'school-1',
-          description: `เช็กชื่อตนเอง (ออฟไลน์) ${loggedInProfile.userName}`,
+          description: `เช็คชื่อตนเอง (ออฟไลน์) ${loggedInProfile.userName}`,
           payload: {
             studentId: loggedInProfile.targetId,
             status,
-            remarks: remarks || 'เช็กชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
+            remarks: remarks || 'เช็คชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
             method: 'qr_scanner',
             extra: extraPayload,
           },
@@ -237,13 +254,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       onRecordAttendance(
         loggedInProfile.targetId,
         status,
-        remarks || 'เช็กชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
+        remarks || 'เช็คชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
         'qr_scanner',
         extraPayload
       );
       setIsSelfCheckingIn(false);
       setScannerResult(
-        `เช็กชื่อบัญชีของคุณสำเร็จ: ${loggedInProfile.userName} (${loggedInProfile.userRoleLabel})${offline ? ' · บันทึกคิวออฟไลน์แล้ว' : ' - บันทึกเวลาแล้ว'}`
+        `เช็คชื่อบัญชีของคุณสำเร็จ: ${loggedInProfile.userName} (${loggedInProfile.userRoleLabel})${offline ? ' · บันทึกคิวออฟไลน์แล้ว' : ' - บันทึกเวลาแล้ว'}`
       );
       setTimeout(() => setScannerResult(null), 4000);
     }, 400);
@@ -309,7 +326,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       'ชั้น/ห้อง/กลุ่มสาระ',
       'ประเภทการบันทึก',
       'สถานะ',
-      'วิธีการเช็กชื่อ',
+      'วิธีการเช็คชื่อ',
       'จุดตรวจ/ประตู',
       'ระยะห่าง GPS (ม.)',
       'มีรูปถ่ายเซลฟี่',
@@ -466,6 +483,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         </nav>
       </div>
 
+      {duplicateAttendanceCount > 0 && (
+        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span>พบข้อมูลเช็คชื่อซ้ำในวันและประเภทเดียวกัน จำนวน {duplicateAttendanceCount} รายการ</span>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}
       {/* ========================================================================= */}
@@ -478,8 +502,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
               <span>
                 {isRestrictedViewer
-                  ? 'เช็กชื่อผ่านประตูด้วยบัญชีของคุณ'
-                  : 'ศูนย์สแกนประตู & เช็กชื่อประจำจุด'}
+                  ? 'เช็คชื่อผ่านประตูด้วยบัญชีของคุณ'
+                  : 'ศูนย์สแกนประตู & เช็คชื่อประจำจุด'}
               </span>
             </h2>
 
@@ -514,7 +538,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     title="บันทึกเวลาเข้าโรงเรียน/ปฏิบัติหน้าที่สำหรับตัวคุณเอง"
                   >
                     {isSelfCheckingIn ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                    <span>เช็กชื่อบัญชีฉัน</span>
+                    <span>เช็คชื่อบัญชีฉัน</span>
                   </button>
                 </div>
               </div>
@@ -542,7 +566,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               ) : (
                 <div className="space-y-1.5 pt-1 border-t border-[var(--color-border)]">
                   <label className="text-[var(--color-text-body)] font-bold block">
-                    สแกนเช็กชื่อให้นักเรียน (กรอกรหัส Student ID) <span className="text-rose-700 dark:text-rose-300">*</span>
+                    สแกนเช็คชื่อให้นักเรียน (กรอกรหัส Student ID) <span className="text-rose-700 dark:text-rose-300">*</span>
                   </label>
                   <input
                     type="text"
@@ -605,6 +629,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 />
               </div>
 
+              {scannerDupReasons.length > 0 && (
+                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 text-[11px] flex items-center gap-1.5 font-semibold">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 shrink-0" />
+                  <span>{scannerDupReasons.join(', ')} (หากสแกนซ้ำจะเป็นการบันทึกซ้ำ)</span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleSimulateScan}
@@ -619,7 +650,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 ) : (
                   <>
                     <QrCode className="w-4 h-4" />
-                    <span>{isRestrictedViewer ? 'สแกนบัตรของฉัน' : 'สแกนเช็กชื่อให้นักเรียน'}</span>
+                    <span>{isRestrictedViewer ? 'สแกนบัตรของฉัน' : 'สแกนเช็คชื่อให้นักเรียน'}</span>
                   </>
                 )}
               </button>
@@ -693,7 +724,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <div className="divide-y divide-[var(--color-border)]">
               {displayedFilteredLogs.length === 0 ? (
                 <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">
-                  {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็กชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
+                  {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
                 </p>
               ) : (
                 <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
@@ -775,7 +806,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   <span>ระบบพิจารณาและอนุมัติใบลาออนไลน์</span>
                 </h2>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  เมื่ออนุมัติใบลา ระบบจะปรับสถานะในระบบเช็กชื่อประจำวันให้เป็น 'ลาป่วย' หรือ 'ลากิจ' โดยอัตโนมัติ
+                  เมื่ออนุมัติใบลา ระบบจะปรับสถานะในระบบเช็คชื่อประจำวันให้เป็น 'ลาป่วย' หรือ 'ลากิจ' โดยอัตโนมัติ
                 </p>
               </div>
 
@@ -1012,7 +1043,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-body)]">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
-                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็กชื่อตอนผ่านประตู</h4>
+                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็คชื่อตอนผ่านประตู</h4>
                 <p className="text-xs text-[var(--color-text-muted)]">{selectedPhotoModal.date} • {selectedPhotoModal.time} น.</p>
               </div>
               <button

@@ -701,7 +701,7 @@ export interface PeriodAttendanceRecord {
   date: string;
   studentId: string;
   status: 'present' | 'late' | 'absent' | 'excused';
-  recordType?: 'check_in' | 'check_out'; // เช็กอินเข้าคาบ หรือ เช็กเอ้าท์เลิกคาบ
+  recordType?: 'check_in' | 'check_out'; // เช็คอินเข้าคาบ หรือ เช็คเอาท์เลิกคาบ
   verifiedByTeacherId: string;
   verifiedByTeacherName: string;
   checkMethod: 'student_mobile' | 'teacher_proxy' | 'qr_code';
@@ -733,13 +733,15 @@ export interface SchoolPeriodTime {
   startTime: string;
   endTime: string;
   isBreak?: boolean;
+  labelTh?: string;
+  labelEn?: string;
 }
 
 export interface TimetableSlot {
   id: string;
   schoolId?: string;
   dayOfWeek: DayOfWeek;
-  periodNumber: number; // 1 to 8
+  periodNumber: number; // 1 to 12+
   startTime: string; // e.g. "08:30"
   endTime: string; // e.g. "09:20"
   courseCode: string; // e.g. "TH301"
