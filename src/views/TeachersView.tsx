@@ -33,9 +33,11 @@ import {
   FileSpreadsheet,
   Send,
   RefreshCw,
+  Briefcase,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
+import { StaffPositionConfigPanel } from '../components/StaffPositionConfigPanel';
 import { getDuplicateRecordWarnings, getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
@@ -111,11 +113,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [positionFilter, setPositionFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPositionConfigPanel, setShowPositionConfigPanel] = useState(false);
+  const [showPositionConfigModal, setShowPositionConfigModal] = useState(false);
   const [showStaffMetaModal, setShowStaffMetaModal] = useState(false);
-  const [newPositionInput, setNewPositionInput] = useState('');
   const [newDepartmentInput, setNewDepartmentInput] = useState('');
   const [newStandingInput, setNewStandingInput] = useState('');
-  const [savingPositions, setSavingPositions] = useState(false);
   const [customPositionMode, setCustomPositionMode] = useState(false);
   const [teacherFormStep, setTeacherFormStep] = useState<1 | 2>(1);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
@@ -182,12 +184,33 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const departments = presets.departments;
   const academicStandings = presets.academicStandings;
   const validPropPositions = staffPositionOptions.map((s) => s.trim()).filter(Boolean);
+  const configuredPositionOptions = Array.from(
+    new Set(validPropPositions.length > 0 ? validPropPositions : DEFAULT_STAFF_POSITION_OPTIONS)
+  );
   const resolvedPositionOptions = Array.from(
     new Set([
-      ...(validPropPositions.length > 0 ? validPropPositions : DEFAULT_STAFF_POSITION_OPTIONS),
+      ...configuredPositionOptions,
       ...teachers.map((t) => (t.positionTitle || '').trim()).filter(Boolean),
     ])
   );
+
+  const handleRenamePositionAcrossTeachers = (oldTitle: string, newTitle: string) => {
+    teachers.forEach((teacher) => {
+      if ((teacher.positionTitle || '').trim() === oldTitle.trim()) {
+        const updated = { ...teacher, positionTitle: newTitle };
+        onUpdateTeacher(updated);
+        if (selectedTeacherForDetail?.id === teacher.id) {
+          setSelectedTeacherForDetail(updated);
+        }
+      }
+    });
+    if ((formData.positionTitle || '').trim() === oldTitle.trim()) {
+      setFormData((prev) => ({ ...prev, positionTitle: newTitle }));
+    }
+    if (positionFilter === oldTitle) {
+      setPositionFilter(newTitle);
+    }
+  };
   const teacherDuplicateWarnings = getDuplicateRecordWarnings({
     students: [],
     teachers,
@@ -258,7 +281,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     setTeacherFormStep(1);
     setFormError(null);
     const existingPos = (teacher.positionTitle || '').trim();
-    setCustomPositionMode(Boolean(existingPos) && !resolvedPositionOptions.includes(existingPos));
+    setCustomPositionMode(Boolean(existingPos) && !configuredPositionOptions.includes(existingPos));
     setEditingTeacher(teacher);
     setFormData({
       ...teacher,
@@ -286,8 +309,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     }
     setFormError(null);
     const trimmedPosition = formData.positionTitle?.trim() || '';
-    if (trimmedPosition && onUpdateStaffPositionOptions && !resolvedPositionOptions.includes(trimmedPosition)) {
-      void onUpdateStaffPositionOptions([...resolvedPositionOptions, trimmedPosition]);
+    if (trimmedPosition && onUpdateStaffPositionOptions && !configuredPositionOptions.includes(trimmedPosition)) {
+      void onUpdateStaffPositionOptions([...configuredPositionOptions, trimmedPosition]);
     }
 
     if (editingTeacher) {
@@ -579,11 +602,28 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </button>
               <button
                 type="button"
+                onClick={() => setShowPositionConfigPanel((prev) => !prev)}
+                aria-expanded={showPositionConfigPanel}
+                className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                  showPositionConfigPanel
+                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>
+                  {lang === 'th'
+                    ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})`
+                    : `Staff Positions (${configuredPositionOptions.length})`}
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowStaffMetaModal(true)}
                 className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Tag className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                <span>จัดการตำแหน่ง/ฝ่าย</span>
+                <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & Standings'}</span>
               </button>
               <button
                 type="button"
@@ -597,6 +637,17 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           )}
         </div>
       </div>
+
+      {canManage && showPositionConfigPanel && (
+        <StaffPositionConfigPanel
+          positions={configuredPositionOptions}
+          teachers={teachers}
+          lang={lang}
+          onSavePositions={(next) => onUpdateStaffPositionOptions?.(next)}
+          onRenamePositionAcrossTeachers={handleRenamePositionAcrossTeachers}
+          onClose={() => setShowPositionConfigPanel(false)}
+        />
+      )}
 
       {inviteFeedback && !inviteModalTeacher && (
         <div
@@ -690,13 +741,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             />
           </div>
 
-          <div className="relative w-44 hidden sm:block">
+          <div className="relative w-full sm:w-44">
             <select
               value={positionFilter}
               onChange={(e) => setPositionFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
-              <option value="all">ทุกตำแหน่งบุคลากร</option>
+              <option value="all">{lang === 'th' ? 'ทุกตำแหน่งบุคลากร' : 'All Staff Positions'}</option>
               {resolvedPositionOptions.map((pos) => (
                 <option key={pos} value={pos}>{pos}</option>
               ))}
@@ -1478,10 +1529,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     {canManage && (
                       <button
                         type="button"
-                        onClick={() => setShowStaffMetaModal(true)}
+                        onClick={() => setShowPositionConfigModal(true)}
                         className="text-[10px] text-[var(--color-primary-text)] hover:underline font-semibold cursor-pointer"
                       >
-                        จัดการตัวเลือก
+                        {lang === 'th' ? 'จัดการตัวเลือก' : 'Configure'}
                       </button>
                     )}
                   </div>
@@ -1490,7 +1541,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     value={
                       customPositionMode
                         ? '__custom__'
-                        : resolvedPositionOptions.includes(formData.positionTitle || '')
+                        : configuredPositionOptions.includes(formData.positionTitle || '')
                           ? formData.positionTitle || ''
                           : formData.positionTitle
                             ? '__custom__'
@@ -1508,13 +1559,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     }}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
                   >
-                    <option value="">-- เลือกตำแหน่งบุคลากร --</option>
-                    {resolvedPositionOptions.map((position) => (
+                    <option value="">{lang === 'th' ? '-- เลือกตำแหน่งบุคลากร --' : '-- Select Staff Position --'}</option>
+                    {configuredPositionOptions.map((position) => (
                       <option key={position} value={position}>
                         {position}
                       </option>
                     ))}
-                    <option value="__custom__">+ ระบุตำแหน่งอื่นเพิ่มเติม...</option>
+                    <option value="__custom__">{lang === 'th' ? '+ ระบุตำแหน่งอื่นเพิ่มเติม...' : '+ Add custom position...'}</option>
                   </select>
                   {customPositionMode && (
                     <input
@@ -2184,17 +2235,33 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         onClose={() => setShowPhotoModal(false)}
       />
 
-      {/* Admin Staff Positions, Departments & Standings Manager Modal */}
+      {/* Dedicated Staff Position Configuration Modal (when opened from inside profile modal) */}
+      {canManage && showPositionConfigModal && (
+        <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl">
+            <StaffPositionConfigPanel
+              positions={configuredPositionOptions}
+              teachers={teachers}
+              lang={lang}
+              onSavePositions={(next) => onUpdateStaffPositionOptions?.(next)}
+              onRenamePositionAcrossTeachers={handleRenamePositionAcrossTeachers}
+              onClose={() => setShowPositionConfigModal(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Admin Departments & Standings Manager Modal */}
       {showStaffMetaModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 space-y-5 shadow-2xl text-xs">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
                 <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  จัดการตำแหน่งบุคลากร กลุ่มสาระ และวิทยฐานะ (Admin กำหนดเองได้)
+                  จัดการกลุ่มสาระ ฝ่ายงาน และวิทยฐานะ (Admin กำหนดเองได้)
                 </h3>
                 <p className="text-[11px] text-[var(--color-text-muted)]">
-                  กำหนดได้ตั้งแต่นักการภารโรง เจ้าหน้าที่ธุรการ ครูอัตราจ้าง ครู รองผู้อำนวยการ ผู้อำนวยการ หรือเพิ่มตำแหน่งใหม่
+                  เพิ่มหรือลบรายชื่อกลุ่มสาระ ฝ่ายงาน และวิทยฐานะที่ใช้ในโรงเรียน (สำหรับตำแหน่งบุคลากร จัดการได้ที่ปุ่ม "ตั้งค่าตำแหน่งบุคลากร")
                 </p>
               </div>
               <button
@@ -2206,62 +2273,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </button>
             </div>
 
-            {/* Positions */}
-            <div className="space-y-2">
-              <div className="font-bold text-[var(--color-text-title)]">1. ตำแหน่งบุคลากร ({resolvedPositionOptions.length} ตำแหน่ง)</div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newPositionInput}
-                  onChange={(e) => setNewPositionInput(e.target.value)}
-                  placeholder="เพิ่มตำแหน่งใหม่ เช่น บรรณารักษ์, แม่บ้าน, ช่างเทคนิค"
-                  className="flex-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                />
-                <button
-                  type="button"
-                  disabled={savingPositions}
-                  onClick={async () => {
-                    const val = newPositionInput.trim();
-                    if (!val) return;
-                    const next = Array.from(new Set([...resolvedPositionOptions, val]));
-                    setSavingPositions(true);
-                    try {
-                      await onUpdateStaffPositionOptions?.(next);
-                      setNewPositionInput('');
-                    } finally {
-                      setSavingPositions(false);
-                    }
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-[var(--color-primary)] text-white font-bold cursor-pointer disabled:opacity-50"
-                >
-                  + เพิ่มตำแหน่ง
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {resolvedPositionOptions.map((pos) => (
-                  <span key={pos} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold">
-                    <span>{pos}</span>
-                    {resolvedPositionOptions.length > 1 && onUpdateStaffPositionOptions && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = resolvedPositionOptions.filter((p) => p !== pos);
-                          void onUpdateStaffPositionOptions(next);
-                        }}
-                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
-                        title="ลบตำแหน่งนี้"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-
             {/* Departments */}
-            <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
-              <div className="font-bold text-[var(--color-text-title)]">2. กลุ่มสาระ / ฝ่ายงาน ({departments.length})</div>
+            <div className="space-y-2">
+              <div className="font-bold text-[var(--color-text-title)]">1. กลุ่มสาระ / ฝ่ายงาน ({departments.length})</div>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -2303,7 +2317,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
             {/* Academic Standings */}
             <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
-              <div className="font-bold text-[var(--color-text-title)]">3. วิทยฐานะ / ประเภทการจ้าง ({academicStandings.length})</div>
+              <div className="font-bold text-[var(--color-text-title)]">2. วิทยฐานะ / ประเภทการจ้าง ({academicStandings.length})</div>
               <div className="flex gap-2">
                 <input
                   type="text"
