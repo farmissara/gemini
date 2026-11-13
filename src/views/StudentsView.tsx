@@ -39,6 +39,7 @@ import {
   STUDENT_STATUS_DETAILS 
 } from '../data/studentAcademicData';
 import { StudentPromotionModal } from '../components/modals/StudentPromotionModal';
+import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -94,6 +95,7 @@ interface StudentsViewProps {
   onOpenReportCard: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
   onAddStudent: (newStudent: Student) => void;
+  onAddStudents?: (newStudents: Student[]) => void;
   onUpdateStudent?: (student: Student) => void;
   onDeleteStudent?: (studentId: string) => void;
   onPurgeSampleStudents?: () => void;
@@ -109,6 +111,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onOpenReportCard,
   onToggleLineSync,
   onAddStudent,
+  onAddStudents,
   onUpdateStudent,
   onDeleteStudent,
   onPurgeSampleStudents,
@@ -120,6 +123,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'approvals'>('roster');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkAddModal, setShowBulkAddModal] = useState(false);
+  const [bulkGradeLevel, setBulkGradeLevel] = useState('มัธยมศึกษาปีที่ 4 (M.4)');
+  const [bulkRoom, setBulkRoom] = useState('ม.4/1');
+  const [bulkStudentRows, setBulkStudentRows] = useState('');
+  const [bulkAddError, setBulkAddError] = useState<string | null>(null);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -470,6 +478,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         gpa: Number(formData.gpa),
         avatarUrl: formData.avatarUrl || editingStudent.avatarUrl,
       };
+      const duplicateReasons = getStudentDuplicateReasons([updated], students, [editingStudent.id]);
+      if (duplicateReasons.length > 0 &&
+        !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
       onUpdateStudent?.(updated);
       setEditingStudent(null);
       setShowAddModal(false);
@@ -503,8 +514,65 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       enrolledDate: new Date().toISOString().split('T')[0],
     };
 
+    const duplicateReasons = getStudentDuplicateReasons([newStudent], students);
+    if (duplicateReasons.length > 0 &&
+      !confirm(`${duplicateReasons.join(' และ ')} ต้องการเพิ่มนักเรียนต่อหรือไม่?`)) return;
     onAddStudent(newStudent);
     setShowAddModal(false);
+  };
+
+  const handleSaveBulkStudents = () => {
+    if (!bulkGradeLevel.trim() || !bulkRoom.trim()) {
+      setBulkAddError('กรุณาระบุระดับชั้นและห้องเรียน');
+      return;
+    }
+
+    const rows = bulkStudentRows
+      .split(/\r?\n/)
+      .map((row) => row.split(/[,\t]/).map((cell) => cell.trim()))
+      .filter((cells) => cells.some(Boolean))
+      .filter((cells, index) => !(index === 0 && /รหัส|student.?id/i.test(cells[0] || '')));
+    const invalidRow = rows.find((cells) => !cells[0] || !cells[1] || !cells[2]);
+    if (rows.length === 0 || invalidRow) {
+      setBulkAddError('กรุณากรอกแต่ละแถวเป็น รหัสนักเรียน, ชื่อ, นามสกุล');
+      return;
+    }
+
+    const newStudents: Student[] = rows.map(([studentIdNumber, firstNameTh, lastNameTh], index) => ({
+      id: `stu-${Date.now()}-${index}`,
+      studentIdNumber,
+      firstNameEn: firstNameTh,
+      lastNameEn: lastNameTh,
+      firstNameTh,
+      lastNameTh,
+      gender: 'other',
+      dateOfBirth: '',
+      gradeLevel: bulkGradeLevel.trim(),
+      room: bulkRoom.trim(),
+      status: 'active',
+      avatarUrl: '',
+      gpa: 0,
+      guardianName: '',
+      guardianRelation: '',
+      guardianPhone: '',
+      guardianEmail: '',
+      guardians: [],
+      lineLinked: false,
+      lineNotifyEnabled: false,
+      enrolledDate: new Date().toISOString().split('T')[0],
+    }));
+
+    const duplicateReasons = getStudentDuplicateReasons(newStudents, students);
+    if (duplicateReasons.length > 0 &&
+      !confirm(`${duplicateReasons.join(' และ ')} พบข้อมูลซ้ำในรายการนี้/ทะเบียนเดิม ต้องการเพิ่มต่อหรือไม่?`)) {
+      return;
+    }
+
+    if (onAddStudents) onAddStudents(newStudents);
+    else newStudents.forEach(onAddStudent);
+    setBulkStudentRows('');
+    setBulkAddError(null);
+    setShowBulkAddModal(false);
   };
 
   const handlePromoteBatch = (updatedStudents: Student[]) => {
@@ -574,6 +642,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             >
               <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               <span>ล้างข้อมูลตัวอย่าง</span>
+            </button>
+          )}
+
+          {['admin', 'super_admin'].includes(currentRole) && (
+            <button
+              type="button"
+              onClick={() => {
+                setBulkAddError(null);
+                setBulkGradeLevel(formData.gradeLevel);
+                setBulkRoom(formData.room);
+                setShowBulkAddModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <Users className="w-4 h-4" />
+              <span>เพิ่มนักเรียนหลายคน/ห้อง</span>
             </button>
           )}
 
@@ -1082,6 +1166,62 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showBulkAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold">เพิ่มนักเรียนหลายคนเข้าห้องเดียวกัน</h3>
+                <p className="text-xs text-emerald-100 mt-1">วางข้อมูลจาก Excel ได้ทีละหลายแถว</p>
+              </div>
+              <button type="button" onClick={() => setShowBulkAddModal(false)} className="p-1.5 rounded-xl hover:bg-white/20">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="text-xs font-semibold text-[var(--color-text-body)]">
+                  ระดับชั้น
+                  <input
+                    value={bulkGradeLevel}
+                    onChange={(event) => setBulkGradeLevel(event.target.value)}
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    placeholder="เช่น มัธยมศึกษาปีที่ 4"
+                  />
+                </label>
+                <label className="text-xs font-semibold text-[var(--color-text-body)]">
+                  ห้องเรียน
+                  <input
+                    value={bulkRoom}
+                    onChange={(event) => setBulkRoom(event.target.value)}
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    placeholder="เช่น ม.4/1"
+                  />
+                </label>
+              </div>
+              <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                รายชื่อนักเรียน — หนึ่งคนต่อหนึ่งบรรทัด
+                <textarea
+                  rows={9}
+                  value={bulkStudentRows}
+                  onChange={(event) => setBulkStudentRows(event.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
+                  placeholder={'รหัสนักเรียน,ชื่อ,นามสกุล\n65001,สมชาย,ใจดี\n65002,สมหญิง,เรียนดี'}
+                />
+              </label>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                รองรับการคั่นด้วย comma หรือ tab และตรวจรหัสนักเรียน/เลขประชาชนซ้ำก่อนเพิ่ม ระบบจะแจ้งเตือนและให้ยืนยันก่อนบันทึก
+              </p>
+              {bulkAddError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{bulkAddError}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowBulkAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold">ยกเลิก</button>
+                <button type="button" onClick={handleSaveBulkStudents} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold">
+                  เพิ่มนักเรียน
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -270,7 +270,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     credits: 1.5,
     department: 'วิชาการ',
     semester: '1',
-    academicYear: '2569',
+    academicYear: _school?.academicYear || '2569',
     room: 'ห้องเรียนรวม',
     schedule: 'จันทร์-ศุกร์ 08:30 - 15:30',
     teacherName: currentUser?.fullNameTh || 'อาจารย์ผู้สอน',

@@ -45,6 +45,7 @@ import {
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
 import { uploadSchoolLogo } from '../lib/supabase';
+import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -56,7 +57,7 @@ interface SystemSettingsViewProps {
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
-  onUpdateSchool?: (updates: Partial<School>) => void;
+  onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onUpdateConfig: (updated: SystemConfig) => void;
 }
 
@@ -76,6 +77,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts' | 'student_login_config'>('line_events');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
   const [simulatedSendState, setSimulatedSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [eventCategoryPage, setEventCategoryPage] = useState(0);
@@ -209,12 +211,33 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [generalConfig, setGeneralConfig] = useState({
     academicYear: systemConfig.academicYear,
     currentSemester: systemConfig.currentSemester,
+    semesterOptions: systemConfig.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
+    gradingSystem: systemConfig.gradingSystem || 'thai',
+    staffPositionOptions: systemConfig.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
     resendFromEmail: systemConfig.resendFromEmail,
     resendApiKeyConfigured: systemConfig.resendApiKeyConfigured,
     masterEmail: systemConfig.masterEmail || 'farmissara@gmail.com',
     replyToEmail: systemConfig.replyToEmail || 'farmissara@gmail.com',
     backupBucket: systemConfig.backupBucket,
   });
+
+  useEffect(() => {
+    setGeneralConfig((current) => ({
+      ...current,
+      academicYear: systemConfig.academicYear,
+      currentSemester: systemConfig.currentSemester,
+      semesterOptions: systemConfig.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
+      gradingSystem: systemConfig.gradingSystem || 'thai',
+      staffPositionOptions: systemConfig.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
+    }));
+  }, [
+    activeSchool.id,
+    systemConfig.academicYear,
+    systemConfig.currentSemester,
+    systemConfig.semesterOptions,
+    systemConfig.gradingSystem,
+    systemConfig.staffPositionOptions,
+  ]);
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -231,7 +254,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setSchoolLogoUploading(true);
     try {
       const logoUrl = await uploadSchoolLogo(activeSchool.id, file);
-      onUpdateSchool?.({ logoUrl });
+      await onUpdateSchool?.({ logoUrl });
       setSchoolLogoSuccess('บันทึกโลโก้โรงเรียนเรียบร้อยแล้ว');
     } catch (error) {
       setSchoolLogoError(error instanceof Error ? error.message : 'ไม่สามารถบันทึกโลโก้โรงเรียนได้');
@@ -248,11 +271,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaveError(null);
+    const semesterOptions = [...new Set(generalConfig.semesterOptions.map((term) => term.trim()).filter(Boolean))];
+    const staffPositionOptions = [...new Set(generalConfig.staffPositionOptions.map((position) => position.trim()).filter(Boolean))];
+    if (semesterOptions.length === 0 || staffPositionOptions.length === 0) {
+      setSaveError('กรุณาระบุภาคเรียนและตำแหน่งบุคลากรอย่างน้อยประเภทละ 1 รายการ');
+      return;
+    }
     const updated: SystemConfig = {
       ...systemConfig,
       academicYear: generalConfig.academicYear,
       currentSemester: generalConfig.currentSemester,
+      semesterOptions,
+      gradingSystem: generalConfig.gradingSystem,
+      staffPositionOptions,
       resendFromEmail: generalConfig.resendFromEmail,
       resendApiKeyConfigured: generalConfig.resendApiKeyConfigured,
       masterEmail: generalConfig.masterEmail,
@@ -264,9 +297,22 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       lineNotificationSettings: lineSettings,
     };
 
-    onUpdateConfig(updated);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    try {
+      if (['admin', 'super_admin'].includes(currentRole)) {
+        await onUpdateSchool?.({
+          academicYear: generalConfig.academicYear,
+          currentSemester: generalConfig.currentSemester,
+          semesterOptions,
+          gradingSystem: generalConfig.gradingSystem,
+          staffPositionOptions,
+        });
+      }
+      onUpdateConfig(updated);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'บันทึกการตั้งค่าโรงเรียนไม่สำเร็จ');
+    }
   };
 
   const handleSimulateSend = () => {
@@ -731,6 +777,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             })}
           </div>
 
+          {saveError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{saveError}</p>}
           <div className="flex justify-end pt-2">
             <button
               type="button"
@@ -1478,6 +1525,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   type="text"
                   value={generalConfig.academicYear}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, academicYear: e.target.value }))}
+                  disabled={!['admin', 'super_admin'].includes(currentRole)}
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
@@ -1488,8 +1536,60 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   type="text"
                   value={generalConfig.currentSemester}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, currentSemester: e.target.value }))}
+                  disabled={!['admin', 'super_admin'].includes(currentRole)}
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--color-text-body)]">รูปแบบเกรด</label>
+                <select
+                  value={generalConfig.gradingSystem}
+                  onChange={(e) => setGeneralConfig((prev) => ({
+                    ...prev,
+                    gradingSystem: e.target.value as SystemConfig['gradingSystem'],
+                  }))}
+                  disabled={!['admin', 'super_admin'].includes(currentRole)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                >
+                  <option value="thai">ไทย: 0–4 (8 ระดับ)</option>
+                  <option value="international">สากล: A–F (4.0)</option>
+                </select>
+                <p className="text-[10px] text-[var(--color-text-muted)]">
+                  ไทย: 4 ที่ 80%, 3.5 ที่ 75% ... 0 ต่ำกว่า 50% · สากล: A ที่ 90%, B ที่ 80%, C ที่ 70%, D ที่ 60%
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--color-text-body)]">รายการภาคเรียนที่ใช้ได้</label>
+                <textarea
+                  rows={4}
+                  value={generalConfig.semesterOptions.join('\n')}
+                  onChange={(e) => setGeneralConfig((prev) => ({
+                    ...prev,
+                    semesterOptions: e.target.value.split('\n'),
+                  }))}
+                  disabled={!['admin', 'super_admin'].includes(currentRole)}
+                  placeholder={'1\n2\nSummer'}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                />
+                <p className="text-[10px] text-[var(--color-text-muted)]">ใส่หนึ่งรายการต่อบรรทัด ชื่อที่กำหนดจะแสดงในฟอร์มรายวิชาและหัวตาราง</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--color-text-body)]">ตำแหน่งบุคลากรที่เลือกได้</label>
+                <textarea
+                  rows={5}
+                  value={generalConfig.staffPositionOptions.join('\n')}
+                  onChange={(e) => setGeneralConfig((prev) => ({
+                    ...prev,
+                    staffPositionOptions: e.target.value.split('\n'),
+                  }))}
+                  disabled={!['admin', 'super_admin'].includes(currentRole)}
+                  placeholder={DEFAULT_STAFF_POSITION_OPTIONS.join('\n')}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                />
+                <p className="text-[10px] text-[var(--color-text-muted)]">ใส่หนึ่งตำแหน่งต่อบรรทัด รวมตำแหน่งที่โรงเรียนเพิ่มเอง</p>
               </div>
 
               <div className="space-y-1">
@@ -1609,6 +1709,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
           </div>
 
+          {saveError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{saveError}</p>}
           <div className="flex justify-end pt-2">
             <button
               type="button"

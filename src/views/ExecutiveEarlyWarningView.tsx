@@ -37,9 +37,11 @@ import {
   GradeRecord, 
   SdqAssessment, 
   BehaviorRecord,
-  Course
+  Course,
+  GradingSystem
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { calculateGrade } from '../lib/schoolSettings';
 
 export interface EnrichedStudentRiskProfile {
   studentId: string;
@@ -95,6 +97,7 @@ interface ExecutiveEarlyWarningViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  gradingSystem?: GradingSystem;
   onNavigateToTab?: (tab: string) => void;
 }
 
@@ -108,6 +111,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
   lang = 'th',
   currentRole = 'super_admin',
   currentUserName = 'ผู้อำนวยการสถานศึกษา',
+  gradingSystem = 'thai',
   onNavigateToTab
 }) => {
   // Threshold Configurations
@@ -186,7 +190,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
         stuGrades.forEach(g => {
           const score = g.totalScore;
-          if (score < 50 || g.letterGrade === 'F' || g.gradePoint === 0) {
+          if (calculateGrade(score, gradingSystem).point === 0) {
             failingCoursesCount = (failingCoursesCount ?? 0) + 1;
             const cName = courseMap.get(g.courseId) || `วิชา ${g.courseId}`;
             failingCourseNames.push(cName);
@@ -325,7 +329,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         ]
       };
     });
-  }, [students, attendance, grades, courses, sdqAssessments, behaviorRecords, absenceThresholdPct, gpaThreshold, demeritThreshold, courseMap, lang]);
+  }, [students, attendance, grades, courses, sdqAssessments, behaviorRecords, absenceThresholdPct, gpaThreshold, demeritThreshold, courseMap, lang, gradingSystem]);
 
   // Profiles State
   const [profiles, setProfiles] = useState<EnrichedStudentRiskProfile[]>(computedProfiles);

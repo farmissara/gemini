@@ -27,6 +27,7 @@ interface PortfolioViewProps {
   lang: AppLanguage;
   onAddPortfolioItem: (item: PortfolioItem) => void;
   onOpenProfile?: () => void;
+  academicYear?: string;
 }
 
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
@@ -36,6 +37,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   lang,
   onAddPortfolioItem,
   onOpenProfile,
+  academicYear = '2569 (2026)',
 }) => {
   const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'teacher'>('student');
   const [portfolioStep, setPortfolioStep] = useState<0 | 1>(0);
@@ -46,7 +48,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   // New Item Form State
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<PortfolioItem['category']>('competition');
-  const [newYear, setNewYear] = useState('2569 (2026)');
+  const [newYear, setNewYear] = useState(academicYear);
   const [newDescription, setNewDescription] = useState('');
   const [newSkills, setNewSkills] = useState('Python, Computer Vision, AI');
   const [newImageUrl, setNewImageUrl] = useState('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600');
@@ -299,7 +301,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
           <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2 text-xs">
             <div className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-              <span>ความก้าวหน้าข้อตกลง PA (2569)</span>
+              <span>ความก้าวหน้าข้อตกลง PA ({academicYear})</span>
             </div>
             <div className="flex items-center justify-between text-[var(--color-text-body)] text-[11px]">
               <span>ด้านการจัดการเรียนรู้</span>

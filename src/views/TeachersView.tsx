@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
+import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -76,6 +77,8 @@ interface TeachersViewProps {
   onDeleteTeacher: (teacherId: string) => void;
   onPurgeSampleTeachers?: () => void;
   onOpenImportExport?: () => void;
+  staffPositionOptions?: string[];
+  academicYear?: string;
 }
 
 export const TeachersView: React.FC<TeachersViewProps> = ({
@@ -87,6 +90,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   onDeleteTeacher,
   onPurgeSampleTeachers,
   onOpenImportExport,
+  staffPositionOptions = [],
+  academicYear = '2569',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -106,7 +111,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [paTitle, setPaTitle] = useState('');
   const [paCategory, setPaCategory] = useState<TeacherPortfolioWork['category']>('pa_agreement');
   const [paAspect, setPaAspect] = useState<TeacherPortfolioWork['paAspect']>('ด้านที่ 1 การจัดการเรียนรู้');
-  const [paYear, setPaYear] = useState('2569');
+  const [paYear, setPaYear] = useState(academicYear);
   const [paDescription, setPaDescription] = useState('');
   const [paEvidenceType, setPaEvidenceType] = useState<TeacherPortfolioWork['evidenceType']>('pdf');
   const [paFileUrl, setPaFileUrl] = useState('');
@@ -116,6 +121,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     teacherIdNumber: `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
     fullNameTh: '',
     fullNameEn: '',
+    positionTitle: '',
     gender: 'male',
     email: '',
     phone: '',
@@ -170,6 +176,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       t.fullNameTh.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.fullNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.teacherIdNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.positionTitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.major.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.minor && t.minor.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -188,6 +195,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       teacherIdNumber: `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       fullNameTh: '',
       fullNameEn: '',
+      positionTitle: '',
       gender: 'male',
       email: '',
       phone: '',
@@ -264,6 +272,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         teacherLicenseNo: formData.teacherLicenseNo?.trim() || '',
         teachingExperienceYears: experience,
       };
+      const duplicateReasons = getTeacherDuplicateReasons(
+        [updated],
+        teachers.filter((teacher) => teacher.id !== editingTeacher.id)
+      );
+      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')} ต้องการบันทึกต่อหรือไม่?`)) return;
       onUpdateTeacher(updated);
       if (selectedTeacherForDetail && selectedTeacherForDetail.id === updated.id) {
         setSelectedTeacherForDetail(updated);
@@ -274,6 +287,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         teacherIdNumber: formData.teacherIdNumber?.trim() || `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
         fullNameTh: formData.fullNameTh.trim(),
         fullNameEn: formData.fullNameEn?.trim() || formData.fullNameTh.trim(),
+        positionTitle: formData.positionTitle?.trim() || '',
         gender: formData.gender || 'male',
         email: formData.email?.trim() || '',
         phone: formData.phone?.trim() || '',
@@ -296,6 +310,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         selfDevelopmentPlan: formData.selfDevelopmentPlan?.trim() || undefined,
         paPortfolio: formData.paPortfolio || [],
       };
+      const duplicateReasons = getTeacherDuplicateReasons([newTeacher], teachers);
+      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')} ต้องการบันทึกต่อหรือไม่?`)) return;
       onAddTeacher(newTeacher);
     }
 
@@ -358,11 +374,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   };
 
   const handleExportCSV = () => {
-    const headers = ['รหัสครู', 'ชื่อ-สกุล (ไทย)', 'Name (English)', 'กลุ่มสาระ', 'วิทยฐานะ', 'วุฒิการศึกษา', 'วิชาเอก', 'วิชาโท', 'ประสบการณ์ (ปี)', 'ความสามารถพิเศษ', 'วิชาที่สอน', 'เบอร์โทร', 'อีเมล', 'สิทธิ์แอดมิน'];
+    const headers = ['รหัสครู', 'ชื่อ-สกุล (ไทย)', 'Name (English)', 'ตำแหน่ง', 'กลุ่มสาระ', 'วิทยฐานะ', 'วุฒิการศึกษา', 'วิชาเอก', 'วิชาโท', 'ประสบการณ์ (ปี)', 'ความสามารถพิเศษ', 'วิชาที่สอน', 'เบอร์โทร', 'อีเมล', 'สิทธิ์แอดมิน'];
     const rows = filteredTeachers.map((t) => [
       `"${t.teacherIdNumber}"`,
       `"${t.fullNameTh}"`,
       `"${t.fullNameEn}"`,
+      `"${t.positionTitle || ''}"`,
       `"${t.department}"`,
       `"${t.academicStanding}"`,
       `"${t.academicDegree}"`,
@@ -575,6 +592,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       {teacher.fullNameEn.trim() && (
                         <p className="text-[11px] text-[var(--color-text-muted)]">{teacher.fullNameEn}</p>
                       )}
+                      {teacher.positionTitle && (
+                        <span className="inline-block mt-0.5 mr-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-semibold border border-blue-300 dark:border-blue-700">
+                          {teacher.positionTitle}
+                        </span>
+                      )}
                       {teacher.academicStanding.trim() && (
                         <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold border border-[var(--color-border)]">
                           {teacher.academicStanding}
@@ -688,6 +710,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <th className="px-4 py-3">ครูผู้สอน</th>
                   <th className="px-4 py-3">กลุ่มสาระ</th>
                   <th className="px-4 py-3">วิชาเอก / โท</th>
+                  <th className="px-4 py-3">ตำแหน่ง</th>
                   <th className="px-4 py-3">วิทยฐานะ (ว.PA)</th>
                   <th className="px-4 py-3">ประสบการณ์</th>
                   <th className="px-4 py-3 text-right">การจัดการ</th>
@@ -716,6 +739,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <div className="font-medium text-[var(--color-text-title)]">{teacher.major}</div>
                       {teacher.minor && <div className="text-[10px] text-[var(--color-primary-text)] font-medium">โท: {teacher.minor}</div>}
                     </td>
+                    <td className="px-4 py-3 text-[var(--color-text-body)]">{teacher.positionTitle || '—'}</td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold text-[10px]">
                         {teacher.academicStanding}
@@ -1387,6 +1411,19 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               {/* Academic Standing & Department */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ตำแหน่งบุคลากร</label>
+                  <input
+                    list="teacher-position-options"
+                    value={formData.positionTitle || ''}
+                    onChange={(e) => setFormData({ ...formData, positionTitle: e.target.value })}
+                    placeholder="เลือกหรือพิมพ์ตำแหน่ง"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
+                  />
+                  <datalist id="teacher-position-options">
+                    {staffPositionOptions.map((position) => <option key={position} value={position} />)}
+                  </datalist>
+                </div>
+                <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">
                     วิทยฐานะ (มาตรฐาน ว.PA)
                   </label>
@@ -1826,7 +1863,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     type="text"
                     value={paYear}
                     onChange={(e) => setPaYear(e.target.value)}
-                    placeholder="2569"
+                    placeholder={academicYear}
                     className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono"
                   />
                 </div>

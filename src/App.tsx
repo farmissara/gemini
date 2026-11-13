@@ -48,6 +48,7 @@ import {
 import {
   restoreSupabaseSession,
   signOutFromSupabase,
+  updateSchoolSettingsInSupabase,
   updateSchoolStatusInSupabase,
   updateUserProfileInSupabase,
 } from './lib/authDb';
@@ -62,11 +63,22 @@ import {
   SUPABASE_PATCH_MIGRATION_SQL,
   deleteStudentFromDb,
   deleteTeacherFromDb,
+  deleteCoursesFromDb,
   saveTeachersToDb,
   saveTimetableSlotsToDb,
   deleteTimetableSlotFromDb
 } from './lib/supabase';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
+import {
+  calculateGrade,
+  DEFAULT_SEMESTER_OPTIONS,
+  DEFAULT_STAFF_POSITION_OPTIONS,
+} from './lib/schoolSettings';
+import {
+  getDuplicateIdWarnings,
+  getDuplicateRecordWarnings,
+  getGradeDuplicateReasons,
+} from './lib/duplicateRecords';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { AuthLayout } from './components/layout/AuthLayout';
@@ -487,6 +499,35 @@ export const App: React.FC = () => {
   const schoolSdqAssessments = sdqAssessments.filter((s) => !s.schoolId || s.schoolId === activeSchool.id);
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
+  const duplicateWarnings = [
+    ...getDuplicateIdWarnings({
+      students: schoolStudents,
+      teachers: schoolTeachers,
+      courses: schoolCourses,
+      grades: schoolGrades,
+      attendance: schoolAttendance,
+      invoices: schoolInvoices,
+      announcements: schoolAnnouncements,
+      lessons: schoolLessons,
+      assignments: schoolAssignments,
+      questions: schoolQuestions,
+      periodAttendance: schoolPeriodAttendance,
+      portfolioItems: schoolPortfolioItems,
+      timetableSlots: schoolTimetableSlots,
+      behaviorRecords: schoolBehaviorRecords,
+      sdqAssessments: schoolSdqAssessments,
+      infirmaryVisits: schoolInfirmaryVisits,
+      homeworkSubmissions: schoolHomeworkSubmissions,
+    }),
+    ...getDuplicateRecordWarnings({
+    students: schoolStudents,
+    teachers: schoolTeachers,
+    courses: schoolCourses,
+    grades: schoolGrades,
+    invoices: schoolInvoices,
+    timetableSlots: schoolTimetableSlots,
+    }),
+  ];
 
   // Keep the live Supabase account flow separate from the local demo session.
   const handleLogin = (context: AuthContext) => {
@@ -503,6 +544,11 @@ export const App: React.FC = () => {
         ...prev,
         schoolNameEn: school.nameEn,
         schoolNameTh: school.nameTh,
+        academicYear: school.academicYear,
+        currentSemester: school.currentSemester,
+        semesterOptions: school.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
+        gradingSystem: school.gradingSystem || 'thai',
+        staffPositionOptions: school.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
       }));
     }
     // Registered real school starts clean without mock data pollution
@@ -535,26 +581,55 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleUpdateSchool = (updates: Partial<School>) => {
-    setActiveSchool((prev) => {
-      const next = { ...prev, ...updates };
-      if (typeof window !== 'undefined') {
-        try {
-          const raw = localStorage.getItem(`eduverse_school_custom_settings_${next.id}`);
-          const existing = raw ? JSON.parse(raw) : {};
-          localStorage.setItem(
-            `eduverse_school_custom_settings_${next.id}`,
-            JSON.stringify({ ...existing, ...updates })
-          );
-        } catch {
-          // ignore
-        }
+  const handleUpdateSchool = async (updates: Partial<School>) => {
+    try {
+      if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+        throw new Error('เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่แก้ไขการตั้งค่าโรงเรียนได้');
       }
-      return next;
-    });
-    setSchools((prev) =>
-      prev.map((s) => (s.id === activeSchool.id ? { ...s, ...updates } : s))
-    );
+      if (!isDemoMode) await updateSchoolSettingsInSupabase(activeSchool.id, updates);
+      if (updates.gradingSystem && updates.gradingSystem !== systemConfig.gradingSystem) {
+        setGrades((current) => current.map((grade) => {
+          if (grade.schoolId && grade.schoolId !== activeSchool.id) return grade;
+          const nextGrade = calculateGrade(grade.totalScore, updates.gradingSystem || 'thai');
+          return {
+            ...grade,
+            letterGrade: nextGrade.letter,
+            gradePoint: nextGrade.point,
+          };
+        }));
+      }
+      setActiveSchool((prev) => {
+        const next = { ...prev, ...updates };
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(`eduverse_school_custom_settings_${next.id}`);
+            const existing = raw ? JSON.parse(raw) : {};
+            localStorage.setItem(
+              `eduverse_school_custom_settings_${next.id}`,
+              JSON.stringify({ ...existing, ...updates })
+            );
+          } catch {
+            // ignore
+          }
+        }
+        return next;
+      });
+      setSchools((prev) =>
+        prev.map((school) => (school.id === activeSchool.id ? { ...school, ...updates } : school))
+      );
+      setSystemConfig((prev) => ({
+        ...prev,
+        ...(updates.academicYear !== undefined ? { academicYear: updates.academicYear } : {}),
+        ...(updates.currentSemester !== undefined ? { currentSemester: updates.currentSemester } : {}),
+        ...(updates.semesterOptions !== undefined ? { semesterOptions: updates.semesterOptions } : {}),
+        ...(updates.gradingSystem !== undefined ? { gradingSystem: updates.gradingSystem } : {}),
+        ...(updates.staffPositionOptions !== undefined ? { staffPositionOptions: updates.staffPositionOptions } : {}),
+      }));
+      setDataSyncError(null);
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
   };
 
   const handleLogout = async () => {
@@ -595,6 +670,11 @@ export const App: React.FC = () => {
       ...prev,
       schoolNameEn: school.nameEn,
       schoolNameTh: school.nameTh,
+      academicYear: school.academicYear,
+      currentSemester: school.currentSemester,
+      semesterOptions: school.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
+      gradingSystem: school.gradingSystem || 'thai',
+      staffPositionOptions: school.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
     }));
     setProgramMode('school_erp');
     setIsSuperAdminSchoolView(true);
@@ -668,7 +748,14 @@ export const App: React.FC = () => {
         setStudents(resolvedStudents);
         setTeachers(resolvedTeachers);
         setCourses(data.courses);
-        setGrades(data.grades);
+        setGrades(data.grades.map((grade) => {
+          const currentGrade = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
+          return {
+            ...grade,
+            letterGrade: currentGrade.letter,
+            gradePoint: currentGrade.point,
+          };
+        }));
         setAttendance(data.attendance);
         setInvoices(data.invoices);
         setAnnouncements(data.announcements);
@@ -766,6 +853,13 @@ export const App: React.FC = () => {
   // Domain Handlers
   const handleAddStudent = (newStudent: Student) => {
     setStudents((prev) => [{ ...newStudent, schoolId: activeSchool.id }, ...prev]);
+  };
+
+  const handleAddStudents = (newStudents: Student[]) => {
+    setStudents((prev) => [
+      ...newStudents.map((student) => ({ ...student, schoolId: activeSchool.id })),
+      ...prev,
+    ]);
   };
 
   const handleUpdateStudent = (updatedStudent: Student) => {
@@ -950,8 +1044,47 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleDeleteCourse = (courseId: string) => {
-    setCourses((prev) => prev.filter((c) => c.id !== courseId));
+  const confirmCourseDeletion = (courseIds: string[]) => {
+    const courseIdSet = new Set(courseIds);
+    const affectedGradeCount = schoolGrades.filter((grade) => courseIdSet.has(grade.courseId)).length;
+    return affectedGradeCount === 0 || window.confirm(
+      `รายวิชาที่เลือกมีผลการเรียน ${affectedGradeCount} รายการ การลบจะลบผลการเรียนเหล่านี้ถาวรด้วย ต้องการดำเนินการต่อหรือไม่?`
+    );
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!confirmCourseDeletion([courseId])) return false;
+    try {
+      if (!isDemoMode) await deleteCoursesFromDb(activeSchool.id, [courseId]);
+      setCourses((prev) => prev.filter((course) => course.id !== courseId));
+      setGrades((prev) => prev.filter((grade) => grade.courseId !== courseId));
+      setTimetableSlots((prev) => prev.map((slot) => (
+        slot.courseId === courseId ? { ...slot, courseId: undefined } : slot
+      )));
+      setDataSyncError(null);
+      return true;
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+  };
+
+  const handleDeleteCourses = async (courseIds: string[]) => {
+    if (!confirmCourseDeletion(courseIds)) return false;
+    try {
+      if (!isDemoMode) await deleteCoursesFromDb(activeSchool.id, courseIds);
+      const ids = new Set(courseIds);
+      setCourses((prev) => prev.filter((course) => !ids.has(course.id)));
+      setGrades((prev) => prev.filter((grade) => !ids.has(grade.courseId)));
+      setTimetableSlots((prev) => prev.map((slot) => (
+        slot.courseId && ids.has(slot.courseId) ? { ...slot, courseId: undefined } : slot
+      )));
+      setDataSyncError(null);
+      return true;
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
   };
 
   const handleEnrollStudent = (courseId: string, studentId: string) => {
@@ -969,10 +1102,7 @@ export const App: React.FC = () => {
   };
 
   const handleImportCourses = (newCourses: Course[]) => {
-    setCourses((prev) => [
-      ...newCourses.map((c) => ({ ...c, schoolId: activeSchool.id })),
-      ...prev.filter((existing) => !newCourses.some((n) => n.code.toLowerCase() === existing.code.toLowerCase())),
-    ]);
+    setCourses((prev) => [...newCourses.map((course) => ({ ...course, schoolId: activeSchool.id })), ...prev]);
   };
 
   const handleImportEnrollment = (courseCode: string, studentIds: string[]) => {
@@ -988,6 +1118,9 @@ export const App: React.FC = () => {
   };
 
   const handleImportGrades = (newGrades: GradeRecord[]) => {
+    const duplicateReasons = getGradeDuplicateReasons(newGrades, schoolGrades);
+    if (duplicateReasons.length > 0 &&
+      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
     setGrades((prev) => {
       const updated = [...prev];
       newGrades.forEach((ng) => {
@@ -1875,6 +2008,7 @@ export const App: React.FC = () => {
               setSelectedStudentForReport(stu);
             }}
             onToggleLineSync={handleToggleLineSync}
+            gradingSystem={systemConfig.gradingSystem}
             onUpdateStudent={(updated) => {
               handleUpdateStudent(updated);
               setSelectedStudentForProfile(updated);
@@ -1904,6 +2038,11 @@ export const App: React.FC = () => {
                 ...prev,
                 schoolNameEn: school.nameEn,
                 schoolNameTh: school.nameTh,
+                academicYear: school.academicYear,
+                currentSemester: school.currentSemester,
+                semesterOptions: school.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
+                gradingSystem: school.gradingSystem || 'thai',
+                staffPositionOptions: school.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
               }));
             }}
             onClose={() => setShowSchoolSwitcher(false)}
@@ -2041,6 +2180,13 @@ export const App: React.FC = () => {
               ✕
             </button>
           </div>
+        </div>
+      )}
+      {!useImmersiveGameLayout && isDataReady && !isDemoMode &&
+        ['admin', 'super_admin'].includes(currentRole) && duplicateWarnings.length > 0 && (
+        <div role="alert" className="shrink-0 mx-3 mt-1.5 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-950 dark:text-amber-100">
+          <strong>ตรวจพบข้อมูลซ้ำ — ยังไม่มีการลบหรือแก้ไขอัตโนมัติ:</strong>
+          <span className="ml-1">{duplicateWarnings.join(' • ')}</span>
         </div>
       )}
 
@@ -2245,6 +2391,7 @@ export const App: React.FC = () => {
                     attendance={schoolAttendance}
                     grades={schoolGrades}
                     courses={schoolCourses}
+                    gradingSystem={systemConfig.gradingSystem}
                     sdqAssessments={schoolSdqAssessments}
                     behaviorRecords={schoolBehaviorRecords}
                     onNavigateToTab={(tab: string) => navigateToAppTab(tab as NavTab)}
@@ -2282,6 +2429,7 @@ export const App: React.FC = () => {
                     onOpenReportCard={setSelectedStudentForReport}
                     onToggleLineSync={handleToggleLineSync}
                     onAddStudent={handleAddStudent}
+                    onAddStudents={handleAddStudents}
                     onUpdateStudent={handleUpdateStudent}
                     onDeleteStudent={handleDeleteStudent}
                     onPurgeSampleStudents={handlePurgeSampleStudents}
@@ -2302,6 +2450,8 @@ export const App: React.FC = () => {
                     onUpdateTeacher={handleUpdateTeacher}
                     onDeleteTeacher={handleDeleteTeacher}
                     onPurgeSampleTeachers={handlePurgeSampleTeachers}
+                    staffPositionOptions={systemConfig.staffPositionOptions}
+                    academicYear={systemConfig.academicYear}
                     onOpenImportExport={() => setShowImportExportModal(true)}
                   />
                 )}
@@ -2314,7 +2464,11 @@ export const App: React.FC = () => {
                     onAddCourse={handleAddCourse}
                     onUpdateCourse={handleUpdateCourse}
                     onDeleteCourse={handleDeleteCourse}
+                    onDeleteCourses={handleDeleteCourses}
                     onEnrollStudent={handleEnrollStudent}
+                    semesterOptions={systemConfig.semesterOptions}
+                    academicYear={systemConfig.academicYear}
+                    currentSemester={systemConfig.currentSemester}
                     onOpenImportExport={(tab = 'courses') => {
                       setImportExportInitialTab(tab);
                       setShowImportExportModal(true);
@@ -2434,6 +2588,8 @@ export const App: React.FC = () => {
                     lang={lang}
                     currentRole={currentRole}
                     schoolName={activeSchool.nameTh}
+                    academicYear={systemConfig.academicYear}
+                    currentSemester={systemConfig.currentSemester}
                   />
                 )}
 
@@ -2512,6 +2668,8 @@ export const App: React.FC = () => {
                     onAddSdqAssessment={handleAddSdqAssessment}
                     lang={lang}
                     currentRole={currentRole}
+                    academicYear={systemConfig.academicYear}
+                    currentSemester={systemConfig.currentSemester}
                   />
                 )}
 
@@ -2533,6 +2691,7 @@ export const App: React.FC = () => {
                     lang={lang}
                     onAddPortfolioItem={handleAddPortfolioItem}
                     onOpenProfile={() => setShowProfileModal(true)}
+                    academicYear={systemConfig.academicYear}
                   />
                 )}
 
@@ -2723,6 +2882,7 @@ export const App: React.FC = () => {
             setSelectedStudentForReport(stu);
           }}
           onToggleLineSync={handleToggleLineSync}
+          gradingSystem={systemConfig.gradingSystem}
           onUpdateStudent={(updated) => {
             handleUpdateStudent(updated);
             setSelectedStudentForProfile(updated);

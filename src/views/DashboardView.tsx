@@ -49,6 +49,7 @@ import {
   GradeRecord,
   PlayerScore
 } from '../types';
+import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { filterAttendanceForUser } from '../lib/attendanceScope';
@@ -287,8 +288,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
             <span>
               {lang === 'th' 
-                ? `ปีการศึกษา ${systemConfig.academicYear} • ภาคเรียนที่ 1` 
-                : `Academic Year ${systemConfig.academicYear} • Term 1`}
+                ? `ปีการศึกษา ${systemConfig.academicYear} • ${formatSemesterLabel(systemConfig.currentSemester)}`
+                : `Academic Year ${systemConfig.academicYear} • ${systemConfig.currentSemester}`}
             </span>
           </div>
 

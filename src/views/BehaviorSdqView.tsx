@@ -27,6 +27,7 @@ import {
   UserRole 
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { formatSemesterLabel } from '../lib/schoolSettings';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -68,6 +69,8 @@ interface BehaviorSdqViewProps {
   onAddSdqAssessment: (sdq: SdqAssessment) => void;
   lang: AppLanguage;
   currentRole: UserRole;
+  academicYear: string;
+  currentSemester: string;
 }
 
 const PRESET_MERITS = [
@@ -92,7 +95,9 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   onAddBehaviorRecord,
   onAddSdqAssessment,
   lang,
-  currentRole
+  currentRole,
+  academicYear,
+  currentSemester
 }) => {
   const [activeTab, setActiveTab] = useState<'merit' | 'sdq' | 'cct_poverty' | 'obec_care_steps'>('merit');
   const [searchTerm, setSearchTerm] = useState('');
@@ -179,8 +184,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       studentRoom: student.room,
       assessorType: 'teacher',
       assessorName: 'อ.ดร.ประเสริฐ ถาวร (ครูที่ปรึกษา)',
-      academicYear: '2569 (2026)',
-      semester: '1',
+      academicYear,
+      semester: currentSemester,
       emotionalScore: sdqEmotional,
       conductScore: sdqConduct,
       hyperactivityScore: sdqHyperactivity,
@@ -592,7 +597,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               </p>
             </div>
             <div className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 shrink-0">
-              รอบจัดสรร: ภาคเรียนที่ 1/2568
+              รอบจัดสรร: {formatSemesterLabel(currentSemester)}/{academicYear}
             </div>
           </div>
 

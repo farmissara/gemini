@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
+import { formatSemesterLabel } from '../lib/schoolSettings';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -42,6 +43,8 @@ interface TimetableScheduleViewProps {
   lang: AppLanguage;
   currentRole: UserRole;
   schoolName: string;
+  academicYear: string;
+  currentSemester: string;
 }
 
 const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
@@ -75,7 +78,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onSaveSchoolPeriods,
   lang,
   currentRole,
-  schoolName
+  schoolName,
+  academicYear,
+  currentSemester,
 }) => {
   // Main view mode: 'classroom' | 'teacher' | 'hours_criteria'
   const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria'>('classroom');
@@ -640,7 +645,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <span>เกณฑ์การคำนวณชั่วโมงเรียน และสิทธิ์เข้าสอบปลายภาค (เกณฑ์ 80% ปพ.5)</span>
               </h2>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                ห้องเรียน: <strong>{selectedClassRoom}</strong> • ภาคเรียนที่ 1 ปีการศึกษา 2569 (คำนวณจากภาคเรียน 20 สัปดาห์ตามหลักสูตร สพฐ.)
+                ห้องเรียน: <strong>{selectedClassRoom}</strong> • {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear} (คำนวณจากภาคเรียน 20 สัปดาห์ตามหลักสูตร สพฐ.)
               </p>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 font-semibold">
@@ -748,7 +753,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
               <span className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
-                {viewMode === 'teacher' ? `ตารางสอน: ${selectedTeacherName}` : `${selectedClassRoom}`} — ภาคเรียนที่ 1 ปีการศึกษา 2569
+                {viewMode === 'teacher' ? `ตารางสอน: ${selectedTeacherName}` : `${selectedClassRoom}`} — {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear}
               </span>
             </div>
             <span className="text-xs text-[var(--color-text-muted)]">

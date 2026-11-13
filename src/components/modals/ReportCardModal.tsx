@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Student, Course, GradeRecord, SystemConfig } from '../../types';
+import { calculateGrade } from '../../lib/schoolSettings';
 import { 
   Award, 
   Printer, 
@@ -39,8 +40,9 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   studentGrades.forEach((g) => {
     const course = courses.find((c) => c.id === g.courseId);
     if (course) {
+      const currentGrade = calculateGrade(g.totalScore, systemConfig.gradingSystem);
       totalCredits += course.credits;
-      totalPointsEarned += course.credits * g.gradePoint;
+      totalPointsEarned += course.credits * currentGrade.point;
     }
   });
 
@@ -175,6 +177,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                   visibleGrades.map((grade) => {
                     const course = courses.find((c) => c.id === grade.courseId);
                     if (!course) return null;
+                    const gradeDisplay = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
                     return (
                       <tr key={grade.id} className="hover:bg-slate-50">
                         <td className="py-2 px-2.5 font-mono font-bold text-slate-900">
@@ -192,17 +195,17 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                         </td>
                         <td className="py-2 px-2.5 text-center font-bold font-mono">
                           <span className={`inline-block px-2 py-0.5 rounded text-xs ${
-                            grade.letterGrade === 'A' 
+                            gradeDisplay.point >= 3.5
                               ? 'bg-emerald-100 text-emerald-800' 
-                              : grade.letterGrade.startsWith('B')
+                              : gradeDisplay.point >= 2.5
                               ? 'bg-blue-100 text-blue-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {grade.letterGrade}
+                            {gradeDisplay.letter}
                           </span>
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono font-bold text-slate-900">
-                          {grade.gradePoint.toFixed(1)}
+                          {gradeDisplay.point.toFixed(1)}
                         </td>
                       </tr>
                     );

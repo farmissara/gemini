@@ -247,9 +247,9 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
       },
     ])
   );
-  const schoolPeriods: SchoolPeriodTime[] = DEFAULT_SCHOOL_PERIODS.map(
-    (period) => savedPeriods.get(period.periodNumber) || period
-  );
+  const schoolPeriods: SchoolPeriodTime[] = savedPeriods.size > 0
+    ? [...savedPeriods.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
+    : DEFAULT_SCHOOL_PERIODS;
   const campusGates: CampusGateGeofence[] = (campusGatesResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -276,6 +276,7 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     major: row.major || '',
     minor: row.minor || undefined,
     academicStanding: row.academic_standing || '',
+    positionTitle: row.position_title || '',
     department: row.department || '',
     teacherLicenseNo: row.teacher_license_no || '',
     teachingSubjects: Array.isArray(row.teaching_subjects) ? row.teaching_subjects : [],
@@ -603,6 +604,7 @@ function mapTeacherToDb(teacher: Teacher, schoolId: string) {
     major: teacher.major,
     minor: teacher.minor || null,
     academic_standing: teacher.academicStanding,
+    position_title: teacher.positionTitle || null,
     department: teacher.department,
     teacher_license_no: teacher.teacherLicenseNo,
     teaching_subjects: teacher.teachingSubjects || [],
@@ -637,6 +639,19 @@ export async function saveTeachersToDb(schoolId: string, teachers: Teacher[]): P
 }
 
 // Convert camelCase models to snake_case Postgres columns and back
+export async function deleteCoursesFromDb(schoolId: string, courseIds: string[]): Promise<void> {
+  if (courseIds.length === 0) return;
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client
+    .from('courses')
+    .delete()
+    .eq('school_id', schoolId)
+    .in('id', courseIds);
+  if (error) throw new Error(`Could not delete course records: ${error.message}`);
+}
+
 export async function syncDataToSupabase(payload: {
   school: School;
   role: UserRole;

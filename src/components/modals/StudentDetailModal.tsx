@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, Course, GradeRecord, AttendanceRecord, StudentStatus } from '../../types';
+import { Student, Course, GradeRecord, AttendanceRecord, StudentStatus, GradingSystem } from '../../types';
 import { 
   X, 
   Award, 
@@ -21,6 +21,7 @@ import {
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from '../PagedList';
 import { STUDENT_STATUS_DETAILS, ALL_GRADE_LEVELS } from '../../data/studentAcademicData';
+import { calculateGrade } from '../../lib/schoolSettings';
 
 interface StudentDetailModalProps {
   student: Student;
@@ -31,6 +32,7 @@ interface StudentDetailModalProps {
   onOpenReportCard: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
   onUpdateStudent?: (student: Student) => void;
+  gradingSystem?: GradingSystem;
 }
 
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
@@ -42,6 +44,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onOpenReportCard,
   onToggleLineSync,
   onUpdateStudent,
+  gradingSystem = 'thai',
 }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [activeSection, setActiveSection] = useState<'overview' | 'grades'>('overview');
@@ -66,7 +69,10 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
   const handleCalculateGpaFromGrades = () => {
     if (studentGrades.length === 0) return;
-    const totalPoints = studentGrades.reduce((sum, g) => sum + (g.gradePoint || 0), 0);
+    const totalPoints = studentGrades.reduce(
+      (sum, grade) => sum + calculateGrade(grade.totalScore, gradingSystem).point,
+      0
+    );
     const calculated = Number((totalPoints / studentGrades.length).toFixed(2));
     setEditGpa(calculated);
   };
@@ -411,7 +417,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-[var(--color-text-body)]">{g.totalScore} pts</span>
                         <span className="font-mono font-bold text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700">
-                          {g.letterGrade}
+                          {calculateGrade(g.totalScore, gradingSystem).letter}
                         </span>
                       </div>
                     </div>

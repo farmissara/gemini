@@ -6,6 +6,8 @@ export type AppLanguage = 'th' | 'en';
 
 export type AppTheme = 'dark' | 'light';
 
+export type GradingSystem = 'thai' | 'international';
+
 export type ThemePalette = 
   | 'light_sky' 
   | 'light_warm' 
@@ -44,6 +46,9 @@ export interface School {
   teachersCount: number;
   academicYear: string;
   currentSemester: string;
+  semesterOptions?: string[];
+  gradingSystem?: GradingSystem;
+  staffPositionOptions?: string[];
   lineOaId: string;
   createdAt: string;
   status: 'active' | 'pending' | 'suspended';
@@ -209,6 +214,7 @@ export interface Teacher {
   teacherIdNumber: string;
   fullNameTh: string;
   fullNameEn: string;
+  positionTitle?: string;
   gender: 'male' | 'female' | 'other';
   email: string;
   phone: string;
@@ -409,7 +415,7 @@ export interface Course {
   schedule: string; // e.g. "Mon, Wed 09:00 - 10:30"
   room: string;
   academicYear: string;
-  semester: '1' | '2' | 'Summer';
+  semester: string;
   enrolledStudentIds: string[];
   description: string;
   coverImage?: string;
@@ -427,7 +433,7 @@ export interface GradeRecord {
   assignmentScore: number; // / 20
   quizScore: number; // / 10
   totalScore: number; // / 100
-  letterGrade: 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D+' | 'D' | 'F';
+  letterGrade: string;
   gradePoint: number; // 4.0, 3.5, etc.
 }
 
@@ -511,6 +517,9 @@ export interface SystemConfig {
   schoolNameTh: string;
   academicYear: string;
   currentSemester: string;
+  semesterOptions: string[];
+  gradingSystem: GradingSystem;
+  staffPositionOptions: string[];
   lineOaAddFriendUrl: string;
   lineChannelId: string;
   lineMessagingConfigured: boolean;

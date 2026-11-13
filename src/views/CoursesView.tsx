@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { Course, Student, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
+import { getCourseDuplicateReasons } from '../lib/duplicateRecords';
+import { formatSemesterLabel } from '../lib/schoolSettings';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -28,9 +30,13 @@ interface CoursesViewProps {
   currentRole?: UserRole;
   onAddCourse: (newCourse: Course) => void;
   onUpdateCourse?: (updatedCourse: Course) => void;
-  onDeleteCourse?: (courseId: string) => void;
+  onDeleteCourse?: (courseId: string) => Promise<boolean | void> | boolean | void;
+  onDeleteCourses?: (courseIds: string[]) => Promise<boolean | void> | boolean | void;
   onEnrollStudent: (courseId: string, studentId: string) => void;
   onOpenImportExport?: (tab?: 'courses' | 'enrollment' | 'grades') => void;
+  semesterOptions?: string[];
+  academicYear?: string;
+  currentSemester?: string;
 }
 
 export const STANDARD_CATEGORIES: { key: string; th: string; en: string; defaultColor: string }[] = [
@@ -64,8 +70,12 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   onAddCourse,
   onUpdateCourse,
   onDeleteCourse,
+  onDeleteCourses,
   onEnrollStudent,
   onOpenImportExport,
+  semesterOptions = ['1', '2', 'Summer'],
+  academicYear = '2569',
+  currentSemester = '1',
 }) => {
   const canManageCourses = currentRole !== 'student' && currentRole !== 'parent';
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,6 +83,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [activeCourseId, setActiveCourseId] = useState<string>(courses[0]?.id || '');
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [courseDeleteError, setCourseDeleteError] = useState<string | null>(null);
+  const [isDeletingCourses, setIsDeletingCourses] = useState(false);
 
   // Category selection mode in form: 'preset' or 'custom'
   const [categoryMode, setCategoryMode] = useState<'preset' | 'custom'>('preset');
@@ -110,8 +123,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     department: DEPARTMENTS[0],
     schedule: 'จันทร์, พุธ 09:00 - 10:30',
     room: 'ห้อง 401',
-    academicYear: '2569',
-    semester: '1',
+    academicYear,
+    semester: currentSemester,
     description: '',
   });
 
@@ -159,8 +172,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       department: DEPARTMENTS[0],
       schedule: 'จันทร์, พุธ 09:00 - 10:30',
       room: 'ห้องปฏิบัติการ 401',
-      academicYear: '2569',
-      semester: '1',
+      academicYear,
+      semester: currentSemester,
       description: 'คำอธิบายรายวิชาและจุดประสงค์การเรียนรู้ตามหลักสูตรแกนกลาง',
     });
     setShowAddModal(true);
@@ -197,7 +210,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       department: course.department || DEPARTMENTS[0],
       schedule: course.schedule,
       room: course.room,
-      academicYear: course.academicYear || '2569',
+      academicYear: course.academicYear || academicYear,
       semester: course.semester || '1',
       description: course.description,
     });
@@ -245,6 +258,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         semester: formData.semester,
         description: formData.description.trim(),
       };
+      const duplicateReasons = getCourseDuplicateReasons(
+        [updated],
+        courses.filter((course) => course.id !== editingCourse.id)
+      );
+      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')}。ต้องการบันทึกต่อหรือไม่?`)) return;
       onUpdateCourse?.(updated);
       setEditingCourse(null);
       setShowAddModal(false);
@@ -271,12 +289,55 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       enrolledStudentIds: [],
       description: formData.description.trim(),
     };
+    const duplicateReasons = getCourseDuplicateReasons([newCourse], courses);
+    if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join('、')}。ต้องการบันทึกต่อหรือไม่?`)) return;
     onAddCourse(newCourse);
     setActiveCourseId(newCourse.id);
     setShowAddModal(false);
   };
 
   const activeCourse = courses.find((c) => c.id === activeCourseId) || courses[0];
+  const isDuplicateCourse = (course: Course) =>
+    Boolean(course.code.trim()) && courses.filter((item) =>
+      item.code.trim().toLowerCase() === course.code.trim().toLowerCase() &&
+      item.academicYear === course.academicYear &&
+      item.semester === course.semester
+    ).length > 1;
+  const duplicateCourseIds = courses.filter(isDuplicateCourse).map((course) => course.id);
+  const handleDeleteSelectedCourses = async () => {
+    if (selectedCourseIds.length === 0) return;
+    if (!confirm(`ยืนยันลบรายวิชาที่เลือก ${selectedCourseIds.length} รายการ?`)) return;
+    setIsDeletingCourses(true);
+    setCourseDeleteError(null);
+    try {
+      if (onDeleteCourses) {
+        const deleted = await onDeleteCourses(selectedCourseIds);
+        if (deleted === false) return;
+      } else {
+        for (const courseId of selectedCourseIds) {
+          const deleted = await onDeleteCourse?.(courseId);
+          if (deleted === false) return;
+        }
+      }
+      setSelectedCourseIds([]);
+    } catch (error) {
+      setCourseDeleteError(error instanceof Error ? error.message : 'ลบรายวิชาไม่สำเร็จ');
+    } finally {
+      setIsDeletingCourses(false);
+    }
+  };
+  const handleDeleteOneCourse = async (course: Course) => {
+    if (!confirm(`ต้องการลบรายวิชา ${course.code} (${course.titleTh}) หรือไม่?`)) return;
+    setIsDeletingCourses(true);
+    setCourseDeleteError(null);
+    try {
+      await onDeleteCourse?.(course.id);
+    } catch (error) {
+      setCourseDeleteError(error instanceof Error ? error.message : 'ลบรายวิชาไม่สำเร็จ');
+    } finally {
+      setIsDeletingCourses(false);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
@@ -309,6 +370,28 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               </button>
             )}
 
+            {selectedCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+              <button
+                type="button"
+                onClick={() => void handleDeleteSelectedCourses()}
+                disabled={isDeletingCourses}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold hover:bg-rose-100"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
+              </button>
+            )}
+
+            {duplicateCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+              <button
+                type="button"
+                onClick={() => setSelectedCourseIds(duplicateCourseIds)}
+                className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100"
+              >
+                เลือกวิชารหัสซ้ำ ({duplicateCourseIds.length})
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleOpenAddCourse}
@@ -322,6 +405,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       </div>
 
       {/* Search & Category Filter Pills */}
+      {courseDeleteError && (
+        <p role="alert" className="shrink-0 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+          {courseDeleteError}
+        </p>
+      )}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -390,9 +478,28 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {canManageCourses && (
+                        <input
+                          type="checkbox"
+                          aria-label={`เลือกรายวิชา ${course.code}`}
+                          checked={selectedCourseIds.includes(course.id)}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => setSelectedCourseIds((current) => (
+                            event.target.checked
+                              ? [...current, course.id]
+                              : current.filter((id) => id !== course.id)
+                          ))}
+                          className="w-4 h-4 accent-rose-600"
+                        />
+                      )}
                       <span className="font-mono font-bold text-sm text-indigo-800 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-300 dark:border-indigo-700">
                         {course.code}
                       </span>
+                      {isDuplicateCourse(course) && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">
+                          รหัสซ้ำ
+                        </span>
+                      )}
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
                         {credits} หน่วยกิต
                       </span>
@@ -457,11 +564,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       {onDeleteCourse && (
                         <button
                           type="button"
-                          onClick={() => {
-                            if (confirm(`ต้องการลบรายวิชา ${activeCourse.code} (${activeCourse.titleTh}) หรือไม่?`)) {
-                              onDeleteCourse(activeCourse.id);
-                            }
-                          }}
+                          onClick={() => void handleDeleteOneCourse(activeCourse)}
+                          disabled={isDeletingCourses}
                           className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs cursor-pointer transition"
                           title="ลบรายวิชานี้"
                         >
@@ -478,7 +582,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       {getCategoryLabel(activeCourse.category)}
                     </span>
                     <span className="text-xs text-[var(--color-text-muted)] font-medium">
-                      ภาคเรียนที่ {activeCourse.semester || '1'} / {activeCourse.academicYear || '2569'}
+                      {formatSemesterLabel(activeCourse.semester || '1')} / {activeCourse.academicYear || academicYear}
                     </span>
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] leading-snug">
@@ -847,16 +951,16 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   <div className="flex items-center gap-1">
                     <select
                       value={formData.semester}
-                      onChange={(e) => setFormData({ ...formData, semester: e.target.value as any })}
+                      onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
                       className="w-1/2 px-2 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                     >
-                      <option value="1">เทอม 1</option>
-                      <option value="2">เทอม 2</option>
-                      <option value="Summer">ฤดูร้อน</option>
+                      {[...new Set([...semesterOptions, formData.semester])].map((semester) => (
+                        <option key={semester} value={semester}>{formatSemesterLabel(semester)}</option>
+                      ))}
                     </select>
                     <input
                       type="text"
-                      placeholder="2569"
+                      placeholder={academicYear}
                       value={formData.academicYear}
                       onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
                       className="w-1/2 px-2 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-center font-bold"

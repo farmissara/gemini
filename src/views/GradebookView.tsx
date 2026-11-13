@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Student, Course, GradeRecord, SystemConfig } from '../types';
+import { calculateGrade, formatSemesterLabel } from '../lib/schoolSettings';
 import { 
   Award, 
   FileText, 
@@ -102,17 +103,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     );
   };
 
-  // Helper to recompute letter grade and points
-  const calculateGrade = (total: number): { letter: GradeRecord['letterGrade']; point: number } => {
-    if (total >= 80) return { letter: 'A', point: 4.0 };
-    if (total >= 75) return { letter: 'B+', point: 3.5 };
-    if (total >= 70) return { letter: 'B', point: 3.0 };
-    if (total >= 65) return { letter: 'C+', point: 2.5 };
-    if (total >= 60) return { letter: 'C', point: 2.0 };
-    if (total >= 55) return { letter: 'D+', point: 1.5 };
-    if (total >= 50) return { letter: 'D', point: 1.0 };
-    return { letter: 'F', point: 0.0 };
-  };
+  const getGradeDisplay = (grade: GradeRecord) =>
+    calculateGrade(grade.totalScore, systemConfig.gradingSystem);
 
   const handleScoreChange = (
     grade: GradeRecord,
@@ -126,7 +118,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       (field === 'assignmentScore' ? val : updated.assignmentScore) +
       (field === 'quizScore' ? val : updated.quizScore);
 
-    const { letter, point } = calculateGrade(total);
+    const { letter, point } = calculateGrade(total, systemConfig.gradingSystem);
     onUpdateGrade(grade.id, {
       [field]: val,
       totalScore: total,
@@ -163,8 +155,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         g.assignmentScore,
         g.quizScore,
         g.totalScore,
-        `"${g.letterGrade}"`,
-        g.gradePoint.toFixed(1),
+        `"${getGradeDisplay(g).letter}"`,
+        getGradeDisplay(g).point.toFixed(1),
       ];
     });
 
@@ -584,14 +576,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         <td className="py-3 px-3 text-center">
                           <span
                             className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
-                              grade.letterGrade === 'A'
+                              getGradeDisplay(grade).point >= 3.5
                                 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                : grade.letterGrade.startsWith('B')
+                                : getGradeDisplay(grade).point >= 2.5
                                 ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
                                 : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                             }`}
                           >
-                            {grade.letterGrade} ({grade.gradePoint.toFixed(1)})
+                            {getGradeDisplay(grade).letter} ({getGradeDisplay(grade).point.toFixed(1)})
                           </span>
                         </td>
 
@@ -650,14 +642,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </div>
                         <span
                           className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                            grade.letterGrade === 'A'
+                            getGradeDisplay(grade).point >= 3.5
                               ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                              : grade.letterGrade.startsWith('B')
+                              : getGradeDisplay(grade).point >= 2.5
                               ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
                               : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                           }`}
                         >
-                          เกรด {grade.letterGrade}
+                          เกรด {getGradeDisplay(grade).letter}
                         </span>
                       </div>
                     </div>
@@ -762,7 +754,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <div><span className="font-bold">ครูผู้สอน:</span> {selectedCourse.teacherName}</div>
             </div>
             <div className="text-xs text-slate-600 pt-1">
-              โรงเรียน {systemConfig.schoolNameTh} • ภาคเรียนที่ {selectedCourse.semester} ปีการศึกษา {selectedCourse.academicYear}
+              โรงเรียน {systemConfig.schoolNameTh} • {formatSemesterLabel(selectedCourse.semester)} ปีการศึกษา {selectedCourse.academicYear}
             </div>
           </div>
 
@@ -839,7 +831,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       <td className="border border-slate-300 py-2 font-mono">{g.midtermScore}</td>
                       <td className="border border-slate-300 py-2 font-mono">{g.finalScore}</td>
                       <td className="border border-slate-300 py-2 font-mono font-bold bg-amber-50 text-slate-900">{g.totalScore}</td>
-                      <td className="border border-slate-300 py-2 font-mono font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-sm">{g.letterGrade}</td>
+                      <td className="border border-slate-300 py-2 font-mono font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-sm">{getGradeDisplay(g).letter}</td>
                       <td className="border border-slate-300 py-2 text-emerald-700 font-medium text-[11px]">ดีเยี่ยม (๓)</td>
                       <td className="border border-slate-300 py-2 text-emerald-700 font-medium text-[11px]">ดีเยี่ยม (๓)</td>
                     </tr>
@@ -936,7 +928,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <div><span className="font-bold">เลขประจำตัวประชาชน:</span> {selectedStudentForPp6.nationalId || '-'}</div>
                   <div><span className="font-bold">ระดับชั้น:</span> {selectedStudentForPp6.gradeLevel} {selectedStudentForPp6.room}</div>
                   <div><span className="font-bold">ผู้ปกครอง:</span> {selectedStudentForPp6.guardianName} ({selectedStudentForPp6.guardianRelation})</div>
-                  <div><span className="font-bold">ปีการศึกษา:</span> ๒๕๖๙ ภาคเรียนที่ ๑</div>
+                  <div><span className="font-bold">ปีการศึกษา:</span> {systemConfig.academicYear} {formatSemesterLabel(systemConfig.currentSemester)}</div>
                 </div>
               </div>
 
@@ -961,7 +953,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     {courses.map((course, index) => {
                       const grade = grades.find((g) => g.courseId === course.id && g.studentId === selectedStudentForPp6.id);
                       const totalScore = grade?.totalScore || 78;
-                      const letterGrade = grade?.letterGrade || 'B+';
+                      const letterGrade = grade
+                        ? getGradeDisplay(grade).letter
+                        : calculateGrade(totalScore, systemConfig.gradingSystem).letter;
                       const isVisible = index >= currentPp6CoursePage * pp6CoursePageSize && index < (currentPp6CoursePage + 1) * pp6CoursePageSize;
                       return (
                         <tr key={course.id} className={`${isVisible ? '' : 'hidden print:table-row'} border-b border-slate-300`}>

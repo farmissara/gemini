@@ -26,6 +26,11 @@ import {
 } from 'lucide-react';
 import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage, SdqAssessment } from '../../types';
 import { getLocalDateString } from '../../lib/date';
+import {
+  getCourseDuplicateReasons,
+  getStudentDuplicateReasons,
+  getTeacherDuplicateReasons,
+} from '../../lib/duplicateRecords';
 
 export type ImportExportTab = 
   | 'students' // DMC ทะเบียนนักเรียน
@@ -255,6 +260,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   const handleConfirmImportStudents = () => {
     if (previewStudents.length === 0) return;
+    const duplicateReasons = getStudentDuplicateReasons(previewStudents, students);
+    if (duplicateReasons.length > 0 &&
+      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
     onImportStudents(previewStudents);
     showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนเรียบร้อยแล้ว`);
     setPreviewStudents([]);
@@ -281,6 +289,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           teacherIdNumber: r[0] || `TCH-${100 + idx}`,
           fullNameTh: r[1] || '',
           fullNameEn: r[2] || '',
+          positionTitle: r[22] || '',
           gender: ((r[3] === 'female' || r[3] === 'หญิง') ? 'female' : 'male') as 'female' | 'male' | 'other',
           email: r[4] || '',
           phone: r[5] || '',
@@ -316,7 +325,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   };
 
   const handleExportTeachers = () => {
-    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA', 'ระดับชั้นที่สอน', 'ความสามารถพิเศษ', 'วุฒิบัตร/ใบรับรอง', 'แผนพัฒนาตนเอง', 'LINE User ID', 'ผู้ดูแลโรงเรียน', 'เชื่อมต่อ LINE'];
+    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA', 'ระดับชั้นที่สอน', 'ความสามารถพิเศษ', 'วุฒิบัตร/ใบรับรอง', 'แผนพัฒนาตนเอง', 'LINE User ID', 'ผู้ดูแลโรงเรียน', 'เชื่อมต่อ LINE', 'ตำแหน่งบุคลากร'];
     const rows = teachers.map(t => [
       t.teacherIdNumber,
       `"${t.fullNameTh}"`,
@@ -340,19 +349,23 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       t.lineUserId || '',
       t.isSchoolAdmin ? 'true' : 'false',
       t.lineLinked ? 'true' : 'false',
+      `"${t.positionTitle || ''}"`,
     ]);
     downloadFile(`hrms_teachers_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
     showToast('ส่งออกข้อมูลบุคลากร HRMS สำเร็จ (CSV)');
   };
 
   const handleDownloadTeacherTemplate = () => {
-    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked'];
+    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked', 'positionTitle'];
     downloadFile('template_hrms_teachers.csv', headers.join(','));
     showToast('ดาวน์โหลดแบบฟอร์มครู HRMS แล้ว');
   };
 
   const handleConfirmImportTeachers = async () => {
     if (previewTeachers.length === 0) return;
+    const duplicateReasons = getTeacherDuplicateReasons(previewTeachers, teachers);
+    if (duplicateReasons.length > 0 &&
+      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
     try {
       await onImportTeachers(previewTeachers);
       showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่านเรียบร้อยแล้ว`);
@@ -470,6 +483,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
   const handleConfirmImportCourses = () => {
     if (previewCourses.length === 0) return;
+    const duplicateReasons = getCourseDuplicateReasons(previewCourses, courses);
+    if (duplicateReasons.length > 0 &&
+      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
     if (onImportCourses) {
       onImportCourses(previewCourses);
       showToast(`บันทึกรายวิชาใหม่ ${previewCourses.length} วิชาเข้าสู่ระบบสำเร็จ!`);

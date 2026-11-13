@@ -1,5 +1,6 @@
 import { AuthUser, School, UserRole } from '../types';
 import { getSupabaseClient } from './supabase';
+import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS, getSchoolSettingsUpdate } from './schoolSettings';
 
 export interface AuthContext {
   user: AuthUser;
@@ -49,6 +50,9 @@ interface SchoolRow {
   teachers_count: number;
   academic_year: string;
   current_semester: string;
+  semester_options?: string[] | null;
+  grading_system?: School['gradingSystem'];
+  staff_position_options?: string[] | null;
   line_oa_id: string;
   created_at: string;
   status: School['status'];
@@ -85,6 +89,9 @@ function mapSchool(row: SchoolRow): School {
     teachersCount: row.teachers_count,
     academicYear: row.academic_year,
     currentSemester: row.current_semester,
+    semesterOptions: row.semester_options || DEFAULT_SEMESTER_OPTIONS,
+    gradingSystem: row.grading_system || 'thai',
+    staffPositionOptions: row.staff_position_options || DEFAULT_STAFF_POSITION_OPTIONS,
     lineOaId: row.line_oa_id,
     createdAt: row.created_at,
     status: row.status,
@@ -199,6 +206,26 @@ export async function updateSchoolStatusInSupabase(
     .single();
   if (error) throw new Error(`Could not update school status: ${error.message}`);
   if (!data) throw new Error('The school status was not updated.');
+}
+
+export async function updateSchoolSettingsInSupabase(
+  schoolId: string,
+  updates: Partial<School>
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const payload = getSchoolSettingsUpdate(updates);
+  if (Object.keys(payload).length === 0) return;
+
+  const { data, error } = await client
+    .from('schools')
+    .update(payload)
+    .eq('id', schoolId)
+    .select('id')
+    .single();
+  if (error) throw new Error(`Could not update school settings: ${error.message}`);
+  if (!data) throw new Error('School settings were not updated.');
 }
 
 export async function authenticateWithSupabase(

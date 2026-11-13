@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS public.schools (
     teachers_count INTEGER DEFAULT 0,
     academic_year TEXT DEFAULT '2569 (2026)',
     current_semester TEXT DEFAULT '1',
+    semester_options JSONB NOT NULL DEFAULT '["1", "2", "Summer"]'::jsonb,
+    grading_system TEXT NOT NULL DEFAULT 'thai' CHECK (grading_system IN ('thai', 'international')),
+    staff_position_options JSONB NOT NULL DEFAULT '["นักการภารโรง", "เจ้าหน้าที่ธุรการ", "ครูอัตราจ้าง", "ครูผู้ช่วย", "ครู", "รองผู้อำนวยการ", "ผู้อำนวยการ"]'::jsonb,
     line_oa_id TEXT DEFAULT '@eduverse_th',
     status TEXT DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -149,6 +152,7 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     major TEXT,
     minor TEXT,
     academic_standing TEXT,
+    position_title TEXT,
     department TEXT,
     teacher_license_no TEXT,
     teaching_subjects JSONB DEFAULT '[]'::jsonb,
