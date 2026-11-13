@@ -572,17 +572,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               : 'Register School'}
                         <ArrowRight className="w-4 h-4" />
                       </button>
-
-
-                      <div className="pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2 flex-wrap">
-                        <span>{lang === 'th' ? 'ติดต่อผู้ดูแลระบบกลาง:' : 'Master Admin Email:'}</span>
-                        <a
-                          href={`mailto:${MASTER_SYSTEM_EMAIL}`}
-                          className="font-mono font-semibold text-[var(--color-primary-text)] hover:underline"
-                        >
-                          {MASTER_SYSTEM_EMAIL}
-                        </a>
-                      </div>
                     </form>
                   </div>
 
