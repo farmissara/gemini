@@ -43,20 +43,7 @@ import {
 import {
   INITIAL_SYSTEM_CONFIG,
   INITIAL_ROLE_PERMISSIONS,
-  INITIAL_PROMOTIONS,
   INITIAL_SUBSCRIPTION_PLANS,
-  INITIAL_LESSONS,
-  INITIAL_ASSIGNMENTS,
-  INITIAL_QUESTIONS,
-  INITIAL_PLAYER_SCORES,
-  INITIAL_REWARD_ITEMS,
-  INITIAL_PERIOD_ATTENDANCE,
-  INITIAL_PORTFOLIO_ITEMS,
-  INITIAL_BEHAVIOR_RECORDS,
-  INITIAL_SDQ_ASSESSMENTS,
-  INITIAL_INFIRMARY_VISITS,
-  INITIAL_HOMEWORK_SUBMISSIONS,
-  INITIAL_LEAVE_REQUESTS,
 } from './data/mockData';
 import {
   restoreSupabaseSession,
@@ -208,7 +195,7 @@ export const App: React.FC = () => {
 
   // Super Admin Management State (RBAC, Promotions, Subscription Plans)
   const [rolePermissions, setRolePermissions] = useState<RolePermissionConfig[]>(INITIAL_ROLE_PERMISSIONS);
-  const [promotions, setPromotions] = useState<PromotionCampaign[]>(INITIAL_PROMOTIONS);
+  const [promotions, setPromotions] = useState<PromotionCampaign[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>(INITIAL_SUBSCRIPTION_PLANS);
 
   // Parse URL query params for direct Period QR / Check-in Link entry
@@ -695,19 +682,19 @@ export const App: React.FC = () => {
             console.warn('Could not cache school check-in points locally:', error);
           }
         }
-        // Real schools keep school-scoped module items; fallback to initial demo items if empty
-        setLessons(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : INITIAL_LESSONS.filter(l => !l.schoolId || l.schoolId === activeSchool.id));
-        setAssignments(prev => prev.length > 0 ? prev.filter(a => a.schoolId === activeSchool.id) : INITIAL_ASSIGNMENTS.filter(a => !a.schoolId || a.schoolId === activeSchool.id));
-        setQuestions(prev => prev.length > 0 ? prev.filter(q => q.schoolId === activeSchool.id) : INITIAL_QUESTIONS.filter(q => !q.schoolId || q.schoolId === activeSchool.id));
-        setPlayerScores(prev => prev.length > 0 ? prev : INITIAL_PLAYER_SCORES);
-        setRewardItems(prev => prev.length > 0 ? prev : INITIAL_REWARD_ITEMS);
-        setPeriodAttendance(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : INITIAL_PERIOD_ATTENDANCE.filter(p => !p.schoolId || p.schoolId === activeSchool.id));
-        setPortfolioItems(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : INITIAL_PORTFOLIO_ITEMS.filter(p => !p.schoolId || p.schoolId === activeSchool.id));
-        setBehaviorRecords(prev => prev.length > 0 ? prev.filter(b => b.schoolId === activeSchool.id) : INITIAL_BEHAVIOR_RECORDS.filter(b => !b.schoolId || b.schoolId === activeSchool.id));
-        setSdqAssessments(prev => prev.length > 0 ? prev.filter(s => s.schoolId === activeSchool.id) : INITIAL_SDQ_ASSESSMENTS.filter(s => !s.schoolId || s.schoolId === activeSchool.id));
-        setInfirmaryVisits(prev => prev.length > 0 ? prev.filter(i => i.schoolId === activeSchool.id) : INITIAL_INFIRMARY_VISITS.filter(i => !i.schoolId || i.schoolId === activeSchool.id));
-        setHomeworkSubmissions(prev => prev.length > 0 ? prev.filter(h => h.schoolId === activeSchool.id) : INITIAL_HOMEWORK_SUBMISSIONS.filter(h => !h.schoolId || h.schoolId === activeSchool.id));
-        setLeaveRequests(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : INITIAL_LEAVE_REQUESTS.filter(l => !l.schoolId || l.schoolId === activeSchool.id));
+        // Real schools keep only their own school-scoped items (no sample data)
+        setLessons(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : []);
+        setAssignments(prev => prev.length > 0 ? prev.filter(a => a.schoolId === activeSchool.id) : []);
+        setQuestions(prev => prev.length > 0 ? prev.filter(q => q.schoolId === activeSchool.id) : []);
+        setPlayerScores(prev => prev);
+        setRewardItems(prev => prev);
+        setPeriodAttendance(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : []);
+        setPortfolioItems(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : []);
+        setBehaviorRecords(prev => prev.length > 0 ? prev.filter(b => b.schoolId === activeSchool.id) : []);
+        setSdqAssessments(prev => prev.length > 0 ? prev.filter(s => s.schoolId === activeSchool.id) : []);
+        setInfirmaryVisits(prev => prev.length > 0 ? prev.filter(i => i.schoolId === activeSchool.id) : []);
+        setHomeworkSubmissions(prev => prev.length > 0 ? prev.filter(h => h.schoolId === activeSchool.id) : []);
+        setLeaveRequests(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : []);
         setIsDataReady(true);
         setLoadedSchoolId(activeSchool.id);
 

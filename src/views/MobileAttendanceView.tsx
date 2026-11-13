@@ -65,7 +65,6 @@ import {
   LeaveStatus,
   UserRole
 } from '../types';
-import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
@@ -128,7 +127,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   periodAttendance,
   currentUser,
   school: _school,
-  campusGates = DEFAULT_CAMPUS_GATES,
+  campusGates = [],
   leaveRequests = [],
   lang,
   onRecordAttendance,

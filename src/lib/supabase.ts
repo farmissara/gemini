@@ -16,17 +16,6 @@ import {
 import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
-import {
-  INITIAL_STUDENTS,
-  INITIAL_TEACHERS,
-  INITIAL_COURSES,
-  INITIAL_GRADES,
-  INITIAL_ATTENDANCE,
-  INITIAL_INVOICES,
-  INITIAL_ANNOUNCEMENTS,
-  INITIAL_TIMETABLE_SLOTS,
-  DEFAULT_CAMPUS_GATES,
-} from '../data/mockData';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -188,16 +177,16 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   const client = getSupabaseClient();
   if (!client) {
     return {
-      students: INITIAL_STUDENTS.filter(s => !s.schoolId || s.schoolId === schoolId),
-      teachers: INITIAL_TEACHERS.filter(t => !t.schoolId || t.schoolId === schoolId),
-      courses: INITIAL_COURSES.filter(c => !c.schoolId || c.schoolId === schoolId),
-      grades: INITIAL_GRADES.filter(g => !g.schoolId || g.schoolId === schoolId),
-      attendance: INITIAL_ATTENDANCE.filter(a => !a.schoolId || a.schoolId === schoolId),
-      invoices: INITIAL_INVOICES.filter(i => !i.schoolId || i.schoolId === schoolId),
-      announcements: INITIAL_ANNOUNCEMENTS.filter(a => !a.schoolId || a.schoolId === schoolId),
+      students: [],
+      teachers: [],
+      courses: [],
+      grades: [],
+      attendance: [],
+      invoices: [],
+      announcements: [],
       schoolPeriods: DEFAULT_SCHOOL_PERIODS,
-      campusGates: DEFAULT_CAMPUS_GATES.filter(g => !g.schoolId || g.schoolId === schoolId),
-      timetableSlots: INITIAL_TIMETABLE_SLOTS.filter(t => !t.schoolId || t.schoolId === schoolId),
+      campusGates: [],
+      timetableSlots: [],
     };
   }
 
@@ -208,18 +197,18 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   const failedQuery = results.find((result) => result.error);
   if (failedQuery?.error) {
     if (isMissingTableError(failedQuery.error)) {
-      console.warn('Supabase tables are not installed yet; loading initial school data.');
+      console.warn('Supabase tables are not installed yet; showing an empty school until the database is set up.');
       return {
-        students: INITIAL_STUDENTS.filter(s => !s.schoolId || s.schoolId === schoolId),
-        teachers: INITIAL_TEACHERS.filter(t => !t.schoolId || t.schoolId === schoolId),
-        courses: INITIAL_COURSES.filter(c => !c.schoolId || c.schoolId === schoolId),
-        grades: INITIAL_GRADES.filter(g => !g.schoolId || g.schoolId === schoolId),
-        attendance: INITIAL_ATTENDANCE.filter(a => !a.schoolId || a.schoolId === schoolId),
-        invoices: INITIAL_INVOICES.filter(i => !i.schoolId || i.schoolId === schoolId),
-        announcements: INITIAL_ANNOUNCEMENTS.filter(a => !a.schoolId || a.schoolId === schoolId),
+        students: [],
+        teachers: [],
+        courses: [],
+        grades: [],
+        attendance: [],
+        invoices: [],
+        announcements: [],
         schoolPeriods: DEFAULT_SCHOOL_PERIODS,
-        campusGates: DEFAULT_CAMPUS_GATES.filter(g => !g.schoolId || g.schoolId === schoolId),
-        timetableSlots: INITIAL_TIMETABLE_SLOTS.filter(t => !t.schoolId || t.schoolId === schoolId),
+        campusGates: [],
+        timetableSlots: [],
       };
     }
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);

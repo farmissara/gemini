@@ -1,6 +1,5 @@
 import { AuthUser, School, UserRole } from '../types';
 import { getSupabaseClient } from './supabase';
-import { INITIAL_SCHOOLS, DEMO_USERS } from '../data/mockData';
 
 export interface AuthContext {
   user: AuthUser;
@@ -99,15 +98,7 @@ function isUserRole(role: string): role is UserRole {
 async function loadAuthContext(userId: string, email: string): Promise<AuthContext> {
   const client = getSupabaseClient();
   if (!client) {
-    const demoUser = DEMO_USERS.find(
-      (u) => u.id === userId || u.email.toLowerCase() === email.toLowerCase()
-    ) || DEMO_USERS.find((u) => u.role === 'admin') || DEMO_USERS[0];
-    const school = INITIAL_SCHOOLS.find((s) => s.id === demoUser.schoolId) || INITIAL_SCHOOLS[0];
-    return {
-      user: demoUser,
-      school,
-      schools: INITIAL_SCHOOLS,
-    };
+    throw new Error('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล กรุณาติดต่อผู้ดูแลระบบ (Database is not configured).');
   }
 
   const { data: profile, error: profileError } = await client
@@ -178,7 +169,7 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
 export async function listActiveSchools(): Promise<School[]> {
   const client = getSupabaseClient();
   if (!client) {
-    return INITIAL_SCHOOLS;
+    return [];
   }
 
   const { data, error } = await client
@@ -187,8 +178,8 @@ export async function listActiveSchools(): Promise<School[]> {
     .eq('status', 'active')
     .order('name_th');
   if (error) {
-    console.warn(`Could not load active schools from Supabase: ${error.message}; using fallback schools.`);
-    return INITIAL_SCHOOLS;
+    console.warn(`Could not load active schools from Supabase: ${error.message}; no schools listed.`);
+    return [];
   }
   return (data as SchoolRow[]).map(mapSchool);
 }
@@ -216,24 +207,7 @@ export async function authenticateWithSupabase(
 ): Promise<AuthContext> {
   const client = getSupabaseClient();
   if (!client) {
-    const cleanEmail = email.trim().toLowerCase();
-    const matched = DEMO_USERS.find(
-      (u) => u.email.toLowerCase() === cleanEmail || u.role === cleanEmail
-    ) || DEMO_USERS.find((u) => u.role === 'admin') || DEMO_USERS[0];
-
-    const school = INITIAL_SCHOOLS.find((s) => s.id === matched.schoolId) || INITIAL_SCHOOLS[0];
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('eduverse_mock_session_user', JSON.stringify(matched));
-      } catch {
-        // ignore
-      }
-    }
-    return {
-      user: matched,
-      school,
-      schools: INITIAL_SCHOOLS,
-    };
+    throw new Error('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล กรุณาติดต่อผู้ดูแลระบบ (Database is not configured).');
   }
 
   const { data, error } = await client.auth.signInWithPassword({
