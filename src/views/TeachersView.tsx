@@ -116,6 +116,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [newDepartmentInput, setNewDepartmentInput] = useState('');
   const [newStandingInput, setNewStandingInput] = useState('');
   const [savingPositions, setSavingPositions] = useState(false);
+  const [customPositionMode, setCustomPositionMode] = useState(false);
   const [teacherFormStep, setTeacherFormStep] = useState<1 | 2>(1);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<Teacher | null>(null);
@@ -180,10 +181,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
   const departments = presets.departments;
   const academicStandings = presets.academicStandings;
+  const validPropPositions = staffPositionOptions.map((s) => s.trim()).filter(Boolean);
   const resolvedPositionOptions = Array.from(
     new Set([
-      ...(staffPositionOptions.length > 0 ? staffPositionOptions : DEFAULT_STAFF_POSITION_OPTIONS),
-      ...teachers.map((t) => t.positionTitle || '').filter(Boolean),
+      ...(validPropPositions.length > 0 ? validPropPositions : DEFAULT_STAFF_POSITION_OPTIONS),
+      ...teachers.map((t) => (t.positionTitle || '').trim()).filter(Boolean),
     ])
   );
   const teacherDuplicateWarnings = getDuplicateRecordWarnings({
@@ -216,6 +218,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const handleOpenAdd = () => {
     setTeacherFormStep(1);
     setFormError(null);
+    setCustomPositionMode(false);
     setFormData({
       teacherIdNumber: `TCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       fullNameTh: '',
@@ -254,6 +257,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const handleOpenEdit = (teacher: Teacher) => {
     setTeacherFormStep(1);
     setFormError(null);
+    const existingPos = (teacher.positionTitle || '').trim();
+    setCustomPositionMode(Boolean(existingPos) && !resolvedPositionOptions.includes(existingPos));
     setEditingTeacher(teacher);
     setFormData({
       ...teacher,
@@ -280,11 +285,16 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       return;
     }
     setFormError(null);
+    const trimmedPosition = formData.positionTitle?.trim() || '';
+    if (trimmedPosition && onUpdateStaffPositionOptions && !resolvedPositionOptions.includes(trimmedPosition)) {
+      void onUpdateStaffPositionOptions([...resolvedPositionOptions, trimmedPosition]);
+    }
 
     if (editingTeacher) {
       const updated: Teacher = {
         ...editingTeacher,
         ...formData,
+        positionTitle: formData.positionTitle?.trim() || '',
         fullNameTh: formData.fullNameTh.trim(),
         fullNameEn: formData.fullNameEn?.trim() || '',
         email: formData.email?.trim() || '',
@@ -1445,7 +1455,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
               {teacherFormStep === 1 && (
                 <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[var(--color-text-title)] font-bold">รหัสครู/บุคลากร *</label>
@@ -1459,6 +1469,62 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     placeholder="เช่น TCH-2024-0012"
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor="teacher-position-select" className="block text-[var(--color-text-title)] font-bold">
+                      ตำแหน่งบุคลากร
+                    </label>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => setShowStaffMetaModal(true)}
+                        className="text-[10px] text-[var(--color-primary-text)] hover:underline font-semibold cursor-pointer"
+                      >
+                        จัดการตัวเลือก
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    id="teacher-position-select"
+                    value={
+                      customPositionMode
+                        ? '__custom__'
+                        : resolvedPositionOptions.includes(formData.positionTitle || '')
+                          ? formData.positionTitle || ''
+                          : formData.positionTitle
+                            ? '__custom__'
+                            : ''
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        setCustomPositionMode(true);
+                        setFormData({ ...formData, positionTitle: '' });
+                      } else {
+                        setCustomPositionMode(false);
+                        setFormData({ ...formData, positionTitle: val });
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
+                  >
+                    <option value="">-- เลือกตำแหน่งบุคลากร --</option>
+                    {resolvedPositionOptions.map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ ระบุตำแหน่งอื่นเพิ่มเติม...</option>
+                  </select>
+                  {customPositionMode && (
+                    <input
+                      type="text"
+                      value={formData.positionTitle || ''}
+                      onChange={(e) => setFormData({ ...formData, positionTitle: e.target.value })}
+                      placeholder="พิมพ์ชื่อตำแหน่ง เช่น บรรณารักษ์, แม่บ้าน"
+                      className="mt-1.5 w-full px-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-primary)] text-[var(--color-text-title)]"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">เพศ</label>
@@ -1619,19 +1685,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
               {/* Academic Standing & Department */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">ตำแหน่งบุคลากร</label>
-                  <input
-                    list="teacher-position-options"
-                    value={formData.positionTitle || ''}
-                    onChange={(e) => setFormData({ ...formData, positionTitle: e.target.value })}
-                    placeholder="เลือกหรือพิมพ์ตำแหน่ง เช่น นักการภารโรง, เจ้าหน้าที่ธุรการ, ครู, ผอ."
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold"
-                  />
-                  <datalist id="teacher-position-options">
-                    {resolvedPositionOptions.map((position) => <option key={position} value={position} />)}
-                  </datalist>
-                </div>
                 <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">
                     วิทยฐานะ (มาตรฐาน ว.PA)
