@@ -632,42 +632,50 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
           {canManage && (
             <>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAccountsPanel((prev) => !prev);
-                  void refreshTeacherAccounts();
-                }}
-                className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                <span>บัญชีเข้าสู่ระบบครู ({teacherAccounts.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPositionConfigPanel((prev) => !prev)}
-                aria-expanded={showPositionConfigPanel}
-                className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                  showPositionConfigPanel
-                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                    : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>
-                  {lang === 'th'
-                    ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})`
-                    : `Staff Positions (${configuredPositionOptions.length})`}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowStaffMetaModal(true)}
-                className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <Tag className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & Standings'}</span>
-              </button>
+              <details className="relative">
+                <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]">
+                  <Briefcase className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                  <span>{lang === 'th' ? 'ตั้งค่าและบัญชี' : 'Settings & Accounts'}</span>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </summary>
+                <div className="absolute right-0 top-full z-30 mt-2 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowAccountsPanel((prev) => !prev);
+                      void refreshTeacherAccounts();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                  >
+                    <Mail className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                    <span>{lang === 'th' ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})` : `Teacher accounts (${teacherAccounts.length})`}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowPositionConfigPanel((prev) => !prev);
+                    }}
+                    aria-expanded={showPositionConfigPanel}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                  >
+                    <Briefcase className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                    <span>{lang === 'th' ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})` : `Staff positions (${configuredPositionOptions.length})`}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowStaffMetaModal(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                  >
+                    <Tag className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                    <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings'}</span>
+                  </button>
+                </div>
+              </details>
               <button
                 type="button"
                 onClick={handleOpenAdd}
@@ -1538,9 +1546,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-base text-white">
-                  {editingTeacher ? 'แก้ไขข้อมูลคณาจารย์ &amp; วิทยฐานะ' : 'เพิ่มข้อมูลคณาจารย์ใหม่'}
+                  {editingTeacher ? 'แก้ไขข้อมูลบุคลากร' : 'เพิ่มบุคลากร'}
                 </h3>
-                <p className="text-xs text-blue-100">ระบุข้อมูลวิชาเอก วิชาโท ประสบการณ์ และถ่ายรูปโปรไฟล์</p>
+                <p className="text-xs text-blue-100">เริ่มจากข้อมูลพื้นฐาน ส่วนข้อมูลการสอนและวิชาชีพเป็นข้อมูลเพิ่มเติม</p>
               </div>
               <button
                 type="button"
@@ -1569,7 +1577,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   }`}
                 >
                   <UserCheck className="w-3.5 h-3.5" />
-                  <span>1. ข้อมูลทั่วไป &amp; ประวัติครู</span>
+                  <span>1. ข้อมูลพื้นฐาน</span>
                 </button>
                 <button
                   type="button"
@@ -1581,8 +1589,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   }`}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>2. การสอน, ทักษะ &amp; ว.PA</span>
+                  <span>2. งานสอนและวิชาชีพ</span>
                 </button>
+              </div>
+              <div className="rounded-lg bg-[var(--color-card-subtle)] px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
+                ขั้นตอน {teacherFormStep} จาก 2
+                {teacherFormStep === 1
+                  ? ' · กรอกชื่อและข้อมูลติดต่อเพื่อเริ่มทะเบียนบุคลากร'
+                  : ' · ข้อมูลส่วนนี้กรอกเท่าที่มี ไม่จำเป็นต้องกรอกทุกช่อง'}
               </div>
 
               {teacherFormStep === 1 && (
@@ -1785,6 +1799,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
               {teacherFormStep === 2 && (
                 <div className="space-y-4">
+              <div className="border-b border-[var(--color-border)] pb-2">
+                <h4 className="text-sm font-bold text-[var(--color-text-title)]">ข้อมูลการสอนและวิชาชีพ</h4>
+                <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">กรอกเฉพาะข้อมูลที่เกี่ยวข้องกับบุคลากรคนนี้</p>
+              </div>
               {/* Major & Minor Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -1816,6 +1834,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </div>
 
               {/* Academic Standing & Department */}
+              <div className="border-b border-[var(--color-border)] pb-2">
+                <h4 className="text-xs font-bold text-[var(--color-text-title)]">วิทยฐานะและหน่วยงาน</h4>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">
@@ -1903,6 +1924,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               </div>
 
               {/* Other Skills (Requirement 2) */}
+              <div className="border-b border-[var(--color-border)] pb-2">
+                <h4 className="text-xs font-bold text-[var(--color-text-title)]">งานสอนและความเชี่ยวชาญ</h4>
+              </div>
               <div>
                 <label className="block text-[var(--color-text-title)] font-bold mb-1">
                   ความสามารถพิเศษอื่นๆ (เช่น Python, หุ่นยนต์, ดนตรี, ภาษาอังกฤษ, AI)
@@ -2073,6 +2097,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               </div>
 
+              <div className="border-b border-[var(--color-border)] pb-2">
+                <h4 className="text-xs font-bold text-[var(--color-text-title)]">การพัฒนาวิชาชีพ</h4>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">คะแนน PA (0–100)</label>
@@ -2190,7 +2217,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     type="submit"
                     className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer"
                   >
-                    {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
+                    {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล'}
                   </button>
                 </div>
               </div>
@@ -2217,7 +2244,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       type="submit"
                       className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold shadow-md cursor-pointer"
                     >
-                      {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลอาจารย์'}
+                      {editingTeacher ? 'บันทึกการแก้ไข' : 'บันทึกตอนนี้'}
                     </button>
                   </div>
                 </div>

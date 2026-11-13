@@ -15,7 +15,6 @@ import {
   Sparkles,
   Layers,
   Search,
-  Filter,
   ShieldCheck,
   GraduationCap,
   Users,
@@ -68,6 +67,11 @@ const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
 
 const MAX_LESSON_PERIODS = 12;
 const ALL_CLASSROOMS = '__all_classrooms__';
+const normalizeTeacherName = (name: string) => name
+  .normalize('NFC')
+  .trim()
+  .replace(/\s+/g, ' ')
+  .toLocaleLowerCase();
 
 const COLOR_CLASSES: Record<string, string> = {
   sky: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:bg-sky-200 dark:hover:bg-sky-900',
@@ -105,6 +109,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   // Main view mode: classroom, teacher, attendance-hours criteria, or staff workload summary.
   const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria' | 'workload'>('classroom');
+  const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
+  const [workloadStatusFilter, setWorkloadStatusFilter] = useState<'all' | 'scheduled' | 'unassigned' | 'low' | 'within' | 'high'>('all');
 
   // Classroom selection
   const uniqueClassRooms = Array.from(
@@ -121,14 +127,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [isSavingRoomOption, setIsSavingRoomOption] = useState(false);
 
   // Teacher selection for Teacher Workload Timetable
-  const teacherNames = Array.from(
-    new Set([
+  const teacherNames = Array.from(new Map([
       ...teachers.map((t) => t.fullNameTh),
       ...slots.map((s) => s.teacherName).filter(Boolean),
       ...courses.map((c) => c.teacherName).filter(Boolean),
-    ])
-  );
+    ]
+    .map((name) => [normalizeTeacherName(name), name.normalize('NFC').trim().replace(/\s+/g, ' ')] as const)
+    .filter(([key, name]) => key && name))
+    .values())
+    .sort((a, b) => a.localeCompare(b, 'th'));
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>(teacherNames[0] || '');
+  const [teacherSearchInput, setTeacherSearchInput] = useState('');
+  const matchingTeacherNames = teacherSearchInput.trim()
+    ? teacherNames.filter((name) => normalizeTeacherName(name).includes(normalizeTeacherName(teacherSearchInput))).slice(0, 8)
+    : [];
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -152,7 +164,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newPeriod, setNewPeriod] = useState<number>(1);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('custom');
   const [courseSearchInput, setCourseSearchInput] = useState('');
-  const [courseTeacherFilter, setCourseTeacherFilter] = useState('all');
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newTitleTh, setNewTitleTh] = useState('');
   const [newTitleEn, setNewTitleEn] = useState('');
@@ -163,25 +174,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const getPeriodTime = (periodNumber: number) => schoolPeriods.find((period) => period.periodNumber === periodNumber);
   const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
-  const catalogTeacherOptions = Array.from(new Set(courses.map((course) => course.teacherName.trim()).filter(Boolean)))
-    .sort((a, b) => a.localeCompare(b, 'th'));
   const filteredCourseCatalog = courses.filter((course) => {
-    const search = courseSearchInput.trim().toLocaleLowerCase();
-    const matchesSearch = !search || [
+    const search = normalizeTeacherName(courseSearchInput);
+    return !search || [
       course.code,
       course.titleTh,
       course.titleEn,
       course.teacherName,
       course.department,
-    ].some((value) => value?.toLocaleLowerCase().includes(search));
-    const matchesTeacher = courseTeacherFilter === 'all' || course.teacherName.trim() === courseTeacherFilter;
-    return matchesSearch && matchesTeacher;
+    ].some((value) => value && normalizeTeacherName(value).includes(search));
   });
   const selectedCatalogCourse = courses.find((course) => course.id === selectedCourseId);
 
   // Filter slots based on active view mode
   const activeSlots = viewMode === 'teacher'
-    ? slots.filter((s) => s.teacherName === selectedTeacherName)
+    ? slots.filter((s) => normalizeTeacherName(s.teacherName) === normalizeTeacherName(selectedTeacherName))
     : selectedClassRoom === ALL_CLASSROOMS
       ? slots
       : slots.filter((s) => s.classRoom === selectedClassRoom);
@@ -218,7 +225,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   });
 
   // Calculate teacher weekly workload in teaching view
-  const teacherWeeklyPeriods = slots.filter((s) => s.teacherName === selectedTeacherName).length;
+  const teacherWeeklyPeriods = slots.filter((s) => normalizeTeacherName(s.teacherName) === normalizeTeacherName(selectedTeacherName)).length;
   const parseTimeMinutes = (time: string): number | null => {
     const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
     if (!match) return null;
@@ -234,7 +241,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     return start === null || end === null || end <= start ? 0 : (end - start) / 60;
   };
   const teacherWeeklyHours = slots
-    .filter((slot) => slot.teacherName === selectedTeacherName)
+    .filter((slot) => normalizeTeacherName(slot.teacherName) === normalizeTeacherName(selectedTeacherName))
     .reduce((hours, slot) => hours + getSlotDurationHours(slot), 0);
 
   const isTeachingStaff = (teacher: Teacher) => (
@@ -246,18 +253,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   );
   const workloadPeople = new Map<string, { name: string; teacher?: Teacher }>();
   teachers.filter(isTeachingStaff).forEach((teacher) => {
-    const name = teacher.fullNameTh.trim();
-    if (name) workloadPeople.set(name.toLocaleLowerCase(), { name, teacher });
+    const name = teacher.fullNameTh.normalize('NFC').trim().replace(/\s+/g, ' ');
+    const key = normalizeTeacherName(name);
+    if (key) workloadPeople.set(key, { name, teacher });
   });
   slots.forEach((slot) => {
-    const name = slot.teacherName.trim();
-    if (name && !workloadPeople.has(name.toLocaleLowerCase())) {
-      workloadPeople.set(name.toLocaleLowerCase(), { name });
+    const name = slot.teacherName.normalize('NFC').trim().replace(/\s+/g, ' ');
+    const key = normalizeTeacherName(name);
+    if (key && !workloadPeople.has(key)) {
+      workloadPeople.set(key, { name });
     }
   });
   const workloadByTeacher = new Map<string, TimetableSlot[]>();
   slots.forEach((slot) => {
-    const key = slot.teacherName.trim().toLocaleLowerCase();
+    const key = normalizeTeacherName(slot.teacherName);
     if (!key) return;
     const teacherSlots = workloadByTeacher.get(key) || [];
     teacherSlots.push(slot);
@@ -267,24 +276,53 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     .map(([key, person]) => {
       const teacherSlots = workloadByTeacher.get(key) || [];
       const periodCount = teacherSlots.length;
+      const courseMap = new Map<string, { code: string; title: string; periodCount: number; rooms: Set<string> }>();
+      teacherSlots.forEach((slot) => {
+        const code = slot.courseCode.trim();
+        const title = slot.courseTitleTh.trim() || slot.courseTitleEn.trim();
+        const courseKey = `${code.normalize('NFC').toLocaleLowerCase()}|${title.normalize('NFC').toLocaleLowerCase()}`;
+        const course = courseMap.get(courseKey) || { code, title, periodCount: 0, rooms: new Set<string>() };
+        course.periodCount += 1;
+        if (slot.classRoom.trim()) course.rooms.add(slot.classRoom.trim());
+        courseMap.set(courseKey, course);
+      });
       return {
         ...person,
         periodCount,
         hours: teacherSlots.reduce((total, slot) => total + getSlotDurationHours(slot), 0),
-        subjects: Array.from(new Map(
-          teacherSlots.map((slot) => [slot.courseCode, `${slot.courseCode} ${slot.courseTitleTh}`.trim()])
-        ).values()),
-        status: periodCount < 12 ? 'low' as const : periodCount > 22 ? 'high' as const : 'within' as const,
+        subjects: [...courseMap.values()]
+          .map((course) => ({ ...course, rooms: [...course.rooms].sort((a, b) => a.localeCompare(b, 'th')) }))
+          .sort((a, b) => a.code.localeCompare(b.code, 'th')),
+        status: periodCount === 0
+          ? 'unassigned' as const
+          : periodCount < 12
+            ? 'low' as const
+            : periodCount > 22
+              ? 'high' as const
+              : 'within' as const,
       };
     })
     .sort((a, b) => {
-      const priority = { high: 0, low: 1, within: 2 };
+      const priority = { high: 0, low: 1, unassigned: 2, within: 3 };
       return priority[a.status] - priority[b.status]
         || b.periodCount - a.periodCount
         || a.name.localeCompare(b.name, 'th');
     });
   const lowWorkloadCount = teacherWorkloadRows.filter((teacher) => teacher.status === 'low').length;
   const highWorkloadCount = teacherWorkloadRows.filter((teacher) => teacher.status === 'high').length;
+  const unassignedWorkloadCount = teacherWorkloadRows.filter((teacher) => teacher.status === 'unassigned').length;
+  const workloadSearch = normalizeTeacherName(workloadSearchTerm);
+  const filteredTeacherWorkloadRows = teacherWorkloadRows.filter((teacher) => {
+    const matchesSearch = !workloadSearch || [
+      teacher.name,
+      teacher.teacher?.positionTitle || '',
+      ...teacher.subjects.flatMap((subject) => [subject.code, subject.title, ...subject.rooms]),
+    ].some((value) => normalizeTeacherName(value).includes(workloadSearch));
+    const matchesStatus = workloadStatusFilter === 'all'
+      || (workloadStatusFilter === 'scheduled' && teacher.periodCount > 0)
+      || teacher.status === workloadStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // Check course auto-fill when course selector changes in Add Modal
   const handleSelectCourse = (courseId: string) => {
@@ -711,7 +749,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 type="button"
                 onClick={() => {
                   setCourseSearchInput('');
-                  setCourseTeacherFilter('all');
                   if (courses.length > 0) {
                     handleSelectCourse(courses[0].id);
                   } else {
@@ -822,25 +859,56 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             {roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
           </div>
         ) : viewMode === 'teacher' ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span className="shrink-0 text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
               <User className="w-4 h-4 text-[var(--color-primary-text)]" />
-              <span>เลือกครูผู้สอน:</span>
+              <span>ครูผู้สอน:</span>
             </span>
-            <select
-              value={selectedTeacherName}
-              onChange={(e) => setSelectedTeacherName(e.target.value)}
-              className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold px-3 py-1.5 rounded-xl border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
-            >
-              {teacherNames.map((name) => {
-                const count = slots.filter((s) => s.teacherName === name).length;
-                return (
-                  <option key={name} value={name}>
-                    {name} ({count} คาบสอน/สัปดาห์)
-                  </option>
-                );
-              })}
-            </select>
+            <div className="relative min-w-48 flex-1">
+              <input
+                type="search"
+                value={teacherSearchInput}
+                onChange={(event) => setTeacherSearchInput(event.target.value)}
+                placeholder="พิมพ์ชื่อครูเพื่อค้นหา"
+                aria-label="ค้นหาครูผู้สอน"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              />
+              {teacherSearchInput.trim() && (
+                <div role="listbox" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+                  {matchingTeacherNames.length > 0 ? matchingTeacherNames.map((name) => {
+                    const count = slots.filter((slot) => normalizeTeacherName(slot.teacherName) === normalizeTeacherName(name)).length;
+                    return (
+                      <button
+                        key={normalizeTeacherName(name)}
+                        type="button"
+                        role="option"
+                        aria-selected={normalizeTeacherName(selectedTeacherName) === normalizeTeacherName(name)}
+                        onClick={() => {
+                          setSelectedTeacherName(name);
+                          setTeacherSearchInput('');
+                        }}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+                      >
+                        <span className="truncate font-semibold">{name}</span>
+                        <span className="shrink-0 text-[10px] text-[var(--color-text-muted)]">{count} คาบ</span>
+                      </button>
+                    );
+                  }) : (
+                    <p className="px-2.5 py-3 text-center text-[11px] text-[var(--color-text-muted)]">
+                      ไม่พบชื่อครูที่ตรงกับคำค้นหา
+                    </p>
+                  )}
+                  {teacherNames.length > 8 && matchingTeacherNames.length === 8 && (
+                    <p className="px-2.5 py-1 text-[10px] text-[var(--color-text-muted)]">
+                      แสดง 8 รายการแรก · พิมพ์เพิ่มเพื่อจำกัดผลการค้นหา
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            <span className="shrink-0 rounded-lg bg-[var(--color-primary-light)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-primary-text)]">
+              {selectedTeacherName || 'ยังไม่เลือกครู'}
+            </span>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -977,13 +1045,17 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 เกณฑ์แจ้งเตือน 12–22 คาบ/สัปดาห์เป็นเกณฑ์คัดกรองเบื้องต้นตามระบบ ไม่ใช่การวินิจฉัยภาระงานตามตำแหน่งหรือข้อบังคับ กรุณาตรวจสอบเวลาคาบและเกณฑ์ของโรงเรียนก่อนปรับตาราง
               </p>
             </div>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
-                <div className="text-[10px] text-[var(--color-text-muted)]">บุคลากรที่ติดตาม</div>
+                <div className="text-[10px] text-[var(--color-text-muted)]">ครูที่ติดตาม</div>
                 <div className="mt-1 text-lg font-bold tabular-nums text-[var(--color-text-title)]">{teacherWorkloadRows.length} คน</div>
               </div>
+              <div className="rounded-xl border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                <div className="text-[10px] text-slate-700 dark:text-slate-300">ยังไม่มีคาบในตาราง</div>
+                <div className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{unassignedWorkloadCount} คน</div>
+              </div>
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
-                <div className="text-[10px] text-amber-800 dark:text-amber-200">ต่ำกว่า 12 คาบ</div>
+                <div className="text-[10px] text-amber-800 dark:text-amber-200">มีสอนแต่ต่ำกว่า 12 คาบ</div>
                 <div className="mt-1 text-lg font-bold tabular-nums text-amber-900 dark:text-amber-100">{lowWorkloadCount} คน</div>
               </div>
               <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 dark:border-rose-800 dark:bg-rose-950/40">
@@ -993,8 +1065,43 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </div>
           </header>
 
+          <div className="shrink-0 grid gap-2 border-b border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(13rem,0.55fr)_auto]">
+            <label className="relative block min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <input
+                type="search"
+                value={workloadSearchTerm}
+                onChange={(event) => setWorkloadSearchTerm(event.target.value)}
+                placeholder="ค้นหาชื่อครู วิชา รหัสวิชา หรือห้อง"
+                aria-label="ค้นหาภาระงานครู"
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              />
+            </label>
+            <select
+              value={workloadStatusFilter}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (['all', 'scheduled', 'unassigned', 'low', 'within', 'high'].includes(value)) {
+                  setWorkloadStatusFilter(value as typeof workloadStatusFilter);
+                }
+              }}
+              aria-label="กรองตามสถานะภาระงาน"
+              className="w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+            >
+              <option value="all">ทุกสถานะ</option>
+              <option value="scheduled">มีคาบสอนแล้ว</option>
+              <option value="unassigned">ยังไม่มีคาบ</option>
+              <option value="low">ต่ำกว่า 12 คาบ</option>
+              <option value="within">12–22 คาบ</option>
+              <option value="high">มากกว่า 22 คาบ</option>
+            </select>
+            <span className="self-center text-[10px] text-[var(--color-text-muted)] sm:text-right">
+              พบ {filteredTeacherWorkloadRows.length} / {teacherWorkloadRows.length} คน
+            </span>
+          </div>
+
           <div className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+            <table className="w-full min-w-[820px] border-collapse text-left text-xs">
               <thead className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]">
                 <tr>
                   <th className="p-3">ครูผู้สอน</th>
@@ -1005,14 +1112,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {teacherWorkloadRows.length === 0 ? (
+                {filteredTeacherWorkloadRows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-[var(--color-text-muted)]">
-                      ยังไม่มีรายชื่อครูหรือข้อมูลผู้สอนในตารางสอน
+                      {teacherWorkloadRows.length === 0
+                        ? 'ยังไม่มีรายชื่อครูหรือข้อมูลผู้สอนในตารางสอน'
+                        : 'ไม่พบรายชื่อที่ตรงกับคำค้นหาหรือตัวกรอง'}
                     </td>
                   </tr>
-                ) : teacherWorkloadRows.map((teacher) => (
-                  <tr key={teacher.name.toLocaleLowerCase()} className="align-top hover:bg-[var(--color-card-subtle)]">
+                ) : filteredTeacherWorkloadRows.map((teacher) => (
+                  <tr key={normalizeTeacherName(teacher.name)} className="align-top hover:bg-[var(--color-card-subtle)]">
                     <td className="p-3">
                       <div className="font-bold text-[var(--color-text-title)]">{teacher.name}</div>
                       {teacher.teacher?.positionTitle && (
@@ -1021,11 +1130,26 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     </td>
                     <td className="max-w-[32rem] p-3">
                       {teacher.subjects.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="space-y-1.5">
                           {teacher.subjects.map((subject) => (
-                            <span key={subject} className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-body)]">
-                              {subject}
-                            </span>
+                            <div key={`${subject.code}-${subject.title}`} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5">
+                              <div className="flex flex-wrap items-center justify-between gap-1">
+                                <span className="font-semibold text-[var(--color-text-body)]">
+                                  <span className="font-mono font-bold text-[var(--color-primary-text)]">{subject.code}</span>
+                                  {subject.title ? ` · ${subject.title}` : ''}
+                                </span>
+                                <span className="text-[9px] text-[var(--color-text-muted)]">{subject.periodCount} คาบ</span>
+                              </div>
+                              {subject.rooms.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {subject.rooms.map((room) => (
+                                    <span key={room} className="rounded bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[9px] text-[var(--color-text-muted)]">
+                                      ชั้น/ห้อง {room}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
                       ) : (
@@ -1039,7 +1163,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       {teacher.hours.toFixed(1)}
                     </td>
                     <td className="p-3 text-center">
-                      {teacher.status === 'low' ? (
+                      {teacher.status === 'unassigned' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                          ยังไม่มีคาบ
+                        </span>
+                      ) : teacher.status === 'low' ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
                           <AlertCircle className="h-3 w-3" /> ต่ำกว่าเกณฑ์
                         </span>
@@ -1554,30 +1682,17 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
                   ค้นหาและเลือกรายวิชาที่เปิดสอน
                 </label>
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,0.65fr)]">
-                  <label className="relative block min-w-0">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                    <input
-                      type="search"
-                      value={courseSearchInput}
-                      onChange={(event) => setCourseSearchInput(event.target.value)}
-                      placeholder="ค้นหารหัสวิชา ชื่อวิชา หรือชื่อครู"
-                      aria-label="ค้นหารายวิชา"
-                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                    />
-                  </label>
-                  <select
-                    value={courseTeacherFilter}
-                    onChange={(event) => setCourseTeacherFilter(event.target.value)}
-                    aria-label="กรองรายวิชาตามครูผู้สอน"
-                    className="w-full min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                  >
-                    <option value="all">ครูผู้สอนทุกคน</option>
-                    {catalogTeacherOptions.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                </div>
+                <label className="relative block min-w-0">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                  <input
+                    type="search"
+                    value={courseSearchInput}
+                    onChange={(event) => setCourseSearchInput(event.target.value)}
+                    placeholder="ค้นหารหัสวิชา ชื่อวิชา หรือชื่อครู"
+                    aria-label="ค้นหารายวิชา"
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                  />
+                </label>
 
                 <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1.5">
                   <button
@@ -1617,7 +1732,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     </button>
                   )) : (
                     <p className="px-2.5 py-4 text-center text-[11px] text-[var(--color-text-muted)]">
-                      ไม่พบรายวิชาที่ตรงกับคำค้นหาหรือตัวกรองครู
+                      ไม่พบรายวิชาที่ตรงกับคำค้นหา
                     </p>
                   )}
                 </div>
