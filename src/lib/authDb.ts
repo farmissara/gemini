@@ -33,6 +33,33 @@ export interface StudentAccountLink {
   created_at?: string;
 }
 
+export interface StaffParentAccountLink {
+  id: string;
+  school_id: string;
+  role: 'teacher' | 'parent';
+  full_name_th: string;
+  full_name_en: string;
+  email?: string;
+  phone?: string;
+  status: 'pending' | 'active' | 'suspended';
+  linked_student_ids?: string[];
+  created_at?: string;
+}
+
+export interface SchoolLoginPortalInfo {
+  id: string;
+  code: string;
+  nameTh: string;
+  nameEn: string;
+  slug: string;
+  logoUrl?: string;
+  primaryColor: string;
+  studentLoginIdentifierType: 'student_id_only' | 'email_only' | 'both';
+  customLoginSlug?: string;
+  studentDefaultPasswordType: 'student_id' | 'birthdate' | 'custom' | 'pin';
+  studentDefaultPasswordNote?: string;
+}
+
 interface SchoolRow {
   id: string;
   code: string;
@@ -53,6 +80,10 @@ interface SchoolRow {
   semester_options?: string[] | null;
   grading_system?: School['gradingSystem'];
   staff_position_options?: string[] | null;
+  student_login_identifier_type?: School['studentLoginIdentifierType'] | null;
+  custom_login_slug?: string | null;
+  student_default_password_type?: School['studentDefaultPasswordType'] | null;
+  student_default_password_note?: string | null;
   line_oa_id: string;
   created_at: string;
   status: School['status'];
@@ -92,6 +123,10 @@ function mapSchool(row: SchoolRow): School {
     semesterOptions: row.semester_options || DEFAULT_SEMESTER_OPTIONS,
     gradingSystem: row.grading_system || 'thai',
     staffPositionOptions: row.staff_position_options || DEFAULT_STAFF_POSITION_OPTIONS,
+    studentLoginIdentifierType: row.student_login_identifier_type || 'both',
+    customLoginSlug: row.custom_login_slug || undefined,
+    studentDefaultPasswordType: row.student_default_password_type || 'birthdate',
+    studentDefaultPasswordNote: row.student_default_password_note || undefined,
     lineOaId: row.line_oa_id,
     createdAt: row.created_at,
     status: row.status,
@@ -208,6 +243,79 @@ export async function updateSchoolStatusInSupabase(
   if (!data) throw new Error('The school status was not updated.');
 }
 
+export async function fetchSchoolLoginPortalInfo(params: {
+  schoolId?: string | null;
+  schoolCode?: string | null;
+  slug?: string | null;
+}): Promise<SchoolLoginPortalInfo | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  const schoolId = params.schoolId?.trim() || null;
+  const schoolCode = params.schoolCode?.trim() || null;
+  const slug = params.slug?.trim() || null;
+  if (!schoolId && !schoolCode && !slug) return null;
+
+  const { data: rpcRows, error: rpcError } = await client.rpc('get_school_login_portal_info', {
+    lookup_school_id: schoolId,
+    lookup_school_code: schoolCode,
+    lookup_slug: slug,
+  });
+  if (!rpcError && Array.isArray(rpcRows) && rpcRows.length > 0) {
+    const row = rpcRows[0] as Record<string, unknown>;
+    return {
+      id: String(row.id || ''),
+      code: String(row.code || ''),
+      nameTh: String(row.name_th || ''),
+      nameEn: String(row.name_en || ''),
+      slug: String(row.slug || ''),
+      logoUrl: typeof row.logo_url === 'string' && row.logo_url ? row.logo_url : undefined,
+      primaryColor: String(row.primary_color || '#1e40af'),
+      studentLoginIdentifierType:
+        row.student_login_identifier_type === 'student_id_only' ||
+        row.student_login_identifier_type === 'email_only'
+          ? row.student_login_identifier_type
+          : 'both',
+      customLoginSlug: typeof row.custom_login_slug === 'string' && row.custom_login_slug ? row.custom_login_slug : undefined,
+      studentDefaultPasswordType:
+        row.student_default_password_type === 'student_id' ||
+        row.student_default_password_type === 'custom' ||
+        row.student_default_password_type === 'pin'
+          ? row.student_default_password_type
+          : 'birthdate',
+      studentDefaultPasswordNote:
+        typeof row.student_default_password_note === 'string' && row.student_default_password_note
+          ? row.student_default_password_note
+          : undefined,
+    };
+  }
+
+  // Fallback query if get_school_login_portal_info migration has not been run yet
+  const { data: activeRows } = await client
+    .from('schools')
+    .select('id, code, name_th, name_en, slug, logo_url, primary_color')
+    .eq('status', 'active');
+  const match = (activeRows || []).find((row) => {
+    if (schoolId && row.id === schoolId) return true;
+    if (schoolCode && String(row.code || '').toLowerCase() === schoolCode.toLowerCase()) return true;
+    if (slug && String(row.slug || '').toLowerCase() === slug.toLowerCase()) return true;
+    return false;
+  });
+  if (!match) return null;
+
+  return {
+    id: match.id,
+    code: match.code,
+    nameTh: match.name_th,
+    nameEn: match.name_en,
+    slug: match.slug,
+    logoUrl: match.logo_url || undefined,
+    primaryColor: match.primary_color || '#1e40af',
+    studentLoginIdentifierType: 'both',
+    studentDefaultPasswordType: 'birthdate',
+  };
+}
+
 export async function updateSchoolSettingsInSupabase(
   schoolId: string,
   updates: Partial<School>
@@ -224,21 +332,62 @@ export async function updateSchoolSettingsInSupabase(
     .eq('id', schoolId)
     .select('id')
     .single();
+  if (
+    error &&
+    (error.code === 'PGRST204' ||
+      error.code === '42703' ||
+      /student_login_identifier_type|custom_login_slug|student_default_password|schema cache|could not find the '.*' column/i.test(error.message))
+  ) {
+    const corePayload = { ...payload };
+    delete (corePayload as Record<string, unknown>).student_login_identifier_type;
+    delete (corePayload as Record<string, unknown>).custom_login_slug;
+    delete (corePayload as Record<string, unknown>).student_default_password_type;
+    delete (corePayload as Record<string, unknown>).student_default_password_note;
+    if (Object.keys(corePayload).length === 0) return;
+    const retry = await client
+      .from('schools')
+      .update(corePayload)
+      .eq('id', schoolId)
+      .select('id')
+      .single();
+    if (retry.error) throw new Error(`Could not update school settings: ${retry.error.message}`);
+    if (!retry.data) throw new Error('School settings were not updated.');
+    return;
+  }
   if (error) throw new Error(`Could not update school settings: ${error.message}`);
   if (!data) throw new Error('School settings were not updated.');
 }
 
 export async function authenticateWithSupabase(
-  email: string,
-  password: string
+  identifier: string,
+  password: string,
+  schoolId?: string
 ): Promise<AuthContext> {
   const client = getSupabaseClient();
   if (!client) {
     throw new Error('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล กรุณาติดต่อผู้ดูแลระบบ (Database is not configured).');
   }
 
+  let resolvedEmail = identifier.trim().toLowerCase();
+  if (!resolvedEmail.includes('@')) {
+    if (!schoolId) {
+      throw new Error('กรุณาเข้าผ่านลิงก์เฉพาะของโรงเรียนเพื่อเข้าสู่ระบบด้วยรหัสนักเรียน หรือกรอกอีเมลบัญชี');
+    }
+    const { data: emailFromId, error: resolveError } = await client.rpc('resolve_student_login_email', {
+      target_school_id: schoolId,
+      identifier: identifier.trim(),
+    });
+    if (resolveError) {
+      throw new Error(`ไม่สามารถตรวจสอบรหัสนักเรียนได้: ${resolveError.message}`);
+    }
+    if (typeof emailFromId !== 'string' || !emailFromId.trim()) {
+      throw new Error('Invalid login credentials');
+    }
+    resolvedEmail = emailFromId.trim().toLowerCase();
+  }
+
   const { data, error } = await client.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
+    email: resolvedEmail,
     password,
   });
   if (error) throw new Error(error.message);
@@ -313,6 +462,60 @@ export async function inviteStudentAccount(params: {
     throw new Error(typeof data?.error === 'string' ? data.error : 'The invitation service returned an invalid response.');
   }
   return data.invitationId;
+}
+
+export async function inviteTeacherOrParentAccount(params: {
+  schoolId: string;
+  inviteRole: 'teacher' | 'parent';
+  email: string;
+  fullNameTh?: string;
+  fullNameEn?: string;
+  teacherId?: string;
+  studentId?: string;
+}): Promise<string> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.functions.invoke('invite-staff-parent', {
+    body: {
+      schoolId: params.schoolId,
+      inviteRole: params.inviteRole,
+      email: params.email.trim().toLowerCase(),
+      fullNameTh: params.fullNameTh?.trim() || '',
+      fullNameEn: params.fullNameEn?.trim() || '',
+      teacherId: params.teacherId || null,
+      studentId: params.studentId || null,
+    },
+  });
+  if (error) throw new Error(`ไม่สามารถส่งคำเชิญบัญชี${params.inviteRole === 'teacher' ? 'ครู' : 'ผู้ปกครอง'}ได้: ${error.message}`);
+  if (typeof data?.invitationId !== 'string') {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบส่งคำเชิญตอบกลับไม่ถูกต้อง');
+  }
+  return data.invitationId;
+}
+
+export async function listSchoolStaffParentAccounts(schoolId: string): Promise<StaffParentAccountLink[]> {
+  const client = getSupabaseClient();
+  if (!client) return [];
+
+  const { data: rpcData, error: rpcError } = await client.rpc('list_school_staff_parent_accounts', {
+    target_school_id: schoolId,
+  });
+  if (!rpcError && Array.isArray(rpcData)) {
+    return rpcData as StaffParentAccountLink[];
+  }
+
+  const { data, error } = await client
+    .from('user_profiles')
+    .select('id, school_id, role, full_name_th, full_name_en, phone, status, created_at')
+    .eq('school_id', schoolId)
+    .in('role', ['teacher', 'parent'])
+    .order('full_name_th');
+  if (error) {
+    console.warn('Could not load staff/parent account list:', error.message);
+    return [];
+  }
+  return (data || []) as StaffParentAccountLink[];
 }
 
 export async function registerSchoolWithSupabase(params: {

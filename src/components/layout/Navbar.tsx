@@ -46,6 +46,7 @@ interface NavbarProps {
   onToggleMobileMenu?: () => void;
   onOpenProfile?: () => void;
   onOpenGuide?: () => void;
+  onOpenLoginGuide?: () => void;
   onOpenImportExport?: () => void;
   onOpenOnboardingTutor?: () => void;
   onSwitchToMobileMode?: () => void;
@@ -74,6 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleMobileMenu,
   onOpenProfile,
   onOpenGuide,
+  onOpenLoginGuide,
   onOpenImportExport,
   onOpenOnboardingTutor,
   onSwitchToMobileMode,
@@ -272,6 +274,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
                   <span>{lang === 'th' ? 'คู่มือระบบ' : 'System guide'}</span>
+                </button>
+              )}
+              {onOpenLoginGuide && (
+                <button
+                  type="button"
+                  onClick={onOpenLoginGuide}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <GraduationCap className="h-4 w-4 text-blue-700 dark:text-blue-300" />
+                  <span>{lang === 'th' ? 'วิธีเข้าระบบ (นักเรียน/ครู)' : 'Sign-In Guide'}</span>
                 </button>
               )}
               {currentTab !== 'students' && currentTab !== 'teachers' && currentTab !== 'courses'

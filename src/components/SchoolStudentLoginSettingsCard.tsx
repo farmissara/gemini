@@ -72,7 +72,12 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
     window.open(schoolLoginUrl, '_blank');
   };
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
     const updates: Partial<School> = {
       studentLoginIdentifierType: identifierType,
       customLoginSlug: customSlug.trim(),
@@ -88,12 +93,17 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       // ignore
     }
 
-    if (onUpdateSchool) {
-      onUpdateSchool(updates);
+    try {
+      if (onUpdateSchool) {
+        await onUpdateSchool(updates);
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3500);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกการตั้งค่าลงฐานข้อมูลได้');
+    } finally {
+      setSaving(false);
     }
-
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3500);
   };
 
   return (
@@ -103,6 +113,11 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
         <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 shadow-xs animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>บันทึกการตั้งค่าระบบล็อกอินนักเรียนและลิงก์เฉพาะโรงเรียนเรียบร้อยแล้ว</span>
+        </div>
+      )}
+      {saveError && (
+        <div role="alert" className="p-3.5 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center gap-2 shadow-xs">
+          <span>{saveError}</span>
         </div>
       )}
 
@@ -127,11 +142,12 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={handleSave}
-              className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-60"
             >
               <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่า</span>
+              <span>{saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}</span>
             </button>
           </div>
         </div>

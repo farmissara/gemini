@@ -72,5 +72,17 @@ export function getSchoolSettingsUpdate(updates: Partial<School>) {
     ...(updates.gradingSystem !== undefined ? { grading_system: updates.gradingSystem } : {}),
     ...(updates.staffPositionOptions !== undefined ? { staff_position_options: updates.staffPositionOptions } : {}),
     ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl || null } : {}),
+    ...(updates.studentLoginIdentifierType !== undefined
+      ? { student_login_identifier_type: updates.studentLoginIdentifierType }
+      : {}),
+    ...(updates.customLoginSlug !== undefined
+      ? { custom_login_slug: updates.customLoginSlug || null }
+      : {}),
+    ...(updates.studentDefaultPasswordType !== undefined
+      ? { student_default_password_type: updates.studentDefaultPasswordType }
+      : {}),
+    ...(updates.studentDefaultPasswordNote !== undefined
+      ? { student_default_password_note: updates.studentDefaultPasswordNote || null }
+      : {}),
   };
 }

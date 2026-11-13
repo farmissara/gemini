@@ -68,7 +68,12 @@ import {
   deleteCoursesFromDb,
   saveTeachersToDb,
   saveTimetableSlotsToDb,
-  deleteTimetableSlotFromDb
+  deleteTimetableSlotFromDb,
+  uploadSchoolAttachment,
+  saveLeaveRequestToDb,
+  updateLeaveRequestStatusInDb,
+  savePeriodAttendanceBatchToDb,
+  submitInvoiceSlipToDb
 } from './lib/supabase';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import {
@@ -115,6 +120,7 @@ import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
 import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
 import { ModuleGuideModal } from './components/modals/ModuleGuideModal';
+import { LoginGuideModal } from './components/modals/LoginGuideModal';
 import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
 import { AiDiagnosticLearningView } from './views/AiDiagnosticLearningView';
@@ -360,6 +366,7 @@ export const App: React.FC = () => {
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
+  const [showLoginGuideModal, setShowLoginGuideModal] = useState<boolean>(false);
   const [showOnboardingTutorModal, setShowOnboardingTutorModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
@@ -820,9 +827,13 @@ export const App: React.FC = () => {
             const rawSlips = localStorage.getItem(`eduverse_invoice_slips_v1_${activeSchool.id}`);
             if (rawSlips) {
               const slipMap = JSON.parse(rawSlips) as Record<string, Partial<TuitionInvoice>>;
-              resolvedInvoices = resolvedInvoices.map((inv) =>
-                slipMap[inv.id] ? { ...inv, ...slipMap[inv.id] } : inv
-              );
+              resolvedInvoices = resolvedInvoices.map((inv) => {
+                const hasDbSlip = Boolean(inv.slipImageUrl || (inv.slipStatus && inv.slipStatus !== 'none'));
+                if (!hasDbSlip && slipMap[inv.id]) {
+                  return { ...inv, ...slipMap[inv.id] };
+                }
+                return inv;
+              });
             }
           } catch {
             // ignore corrupt local slip cache
@@ -846,13 +857,13 @@ export const App: React.FC = () => {
         setQuestions(prev => prev.length > 0 ? prev.filter(q => q.schoolId === activeSchool.id) : []);
         setPlayerScores(prev => prev);
         setRewardItems(prev => prev);
-        setPeriodAttendance(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : []);
+        setPeriodAttendance(data.periodAttendance || []);
         setPortfolioItems(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : []);
         setBehaviorRecords(prev => prev.length > 0 ? prev.filter(b => b.schoolId === activeSchool.id) : []);
         setSdqAssessments(prev => prev.length > 0 ? prev.filter(s => s.schoolId === activeSchool.id) : []);
         setInfirmaryVisits(prev => prev.length > 0 ? prev.filter(i => i.schoolId === activeSchool.id) : []);
         setHomeworkSubmissions(prev => prev.length > 0 ? prev.filter(h => h.schoolId === activeSchool.id) : []);
-        setLeaveRequests(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : []);
+        setLeaveRequests(data.leaveRequests || []);
         setIsDataReady(true);
         setLoadedSchoolId(activeSchool.id);
       })
@@ -1362,11 +1373,12 @@ export const App: React.FC = () => {
   };
 
   const handleRecordPeriodAttendance = (records: PeriodAttendanceRecord[]) => {
+    const taggedRecords = records.map((r) => ({ ...r, schoolId: activeSchool.id }));
     setPeriodAttendance((prev) => {
       const updated = [...prev];
-      for (const rec of records) {
+      for (const rec of taggedRecords) {
         const idx = updated.findIndex(
-          (p) => p.id === rec.id || (p.studentId === rec.studentId && p.courseId === rec.courseId && p.date === rec.date && p.periodNumber === rec.periodNumber)
+          (p) => p.id === rec.id || (p.studentId === rec.studentId && p.courseId === rec.courseId && p.date === rec.date && p.periodNumber === rec.periodNumber && (p.recordType || 'check_in') === (rec.recordType || 'check_in'))
         );
         if (idx >= 0) {
           updated[idx] = rec;
@@ -1377,14 +1389,20 @@ export const App: React.FC = () => {
       return updated;
     });
 
-    if (records.length > 0) {
-      const firstRec = records[0];
+    if (!isDemoMode && activeSchool.id && taggedRecords.length > 0) {
+      void savePeriodAttendanceBatchToDb(activeSchool.id, taggedRecords).catch((error: unknown) => {
+        setDataSyncError(error instanceof Error ? error.message : String(error));
+      });
+    }
+
+    if (taggedRecords.length > 0) {
+      const firstRec = taggedRecords[0];
       const isCheckout = firstRec.recordType === 'check_out';
       const course = courses.find((c) => c.id === firstRec.courseId);
       const student = students.find((s) => s.id === firstRec.studentId);
       const studentName = student ? `${student.firstNameTh} ${student.lastNameTh}` : 'นักเรียน';
 
-      if (records.length === 1) {
+      if (taggedRecords.length === 1) {
         sendEduVerseNotification({
           title: isCheckout ? '🔴 เช็คชื่อออกคาบเรียนสำเร็จ (Check-out)' : '🟢 เช็คชื่อเข้าคาบเรียนสำเร็จ (Check-in)',
           body: `${studentName} • วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} (${firstRec.timeSlot})`,
@@ -1394,7 +1412,7 @@ export const App: React.FC = () => {
       } else {
         sendEduVerseNotification({
           title: '📋 บันทึกเช็คชื่อทั้งคาบเรียนสำเร็จ',
-          body: `วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} บันทึกรายชื่อแล้ว ${records.length} คน`,
+          body: `วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} บันทึกรายชื่อแล้ว ${taggedRecords.length} คน`,
           category: 'attendance',
           priority: 'normal',
         }).catch(() => {});
@@ -1403,19 +1421,50 @@ export const App: React.FC = () => {
   };
 
   const handleAddLeaveRequest = (req: LeaveRequest) => {
-    setLeaveRequests(prev => [req, ...prev]);
+    const taggedReq: LeaveRequest = { ...req, schoolId: activeSchool.id };
+    setLeaveRequests(prev => [taggedReq, ...prev]);
+
+    if (!isDemoMode && activeSchool.id) {
+      void (async () => {
+        try {
+          let finalAttachmentUrl = taggedReq.attachmentUrl;
+          if (finalAttachmentUrl && finalAttachmentUrl.startsWith('data:')) {
+            const uploadedUrl = await uploadSchoolAttachment(activeSchool.id, 'leave-attachments', finalAttachmentUrl);
+            if (uploadedUrl) {
+              finalAttachmentUrl = uploadedUrl;
+              setLeaveRequests(prev =>
+                prev.map(item => (item.id === taggedReq.id ? { ...item, attachmentUrl: uploadedUrl } : item))
+              );
+            }
+          }
+          await saveLeaveRequestToDb(activeSchool.id, {
+            ...taggedReq,
+            attachmentUrl: finalAttachmentUrl,
+          });
+        } catch (error) {
+          setDataSyncError(error instanceof Error ? error.message : String(error));
+        }
+      })();
+    }
   };
 
   const handleUpdateLeaveStatus = (reqId: string, status: LeaveStatus, remarks?: string) => {
+    const approverName = currentUser?.fullNameTh || currentUser?.fullNameEn || 'ฝ่ายบริหารวิชาการ';
     setLeaveRequests(prev => prev.map(req => {
       if (req.id !== reqId) return req;
       return {
         ...req,
         status,
         approvalRemarks: remarks || req.approvalRemarks,
-        approvedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ฝ่ายบริหารวิชาการ'
+        approvedBy: approverName
       };
     }));
+
+    if (!isDemoMode && activeSchool.id) {
+      void updateLeaveRequestStatusInDb(activeSchool.id, reqId, status, approverName, remarks).catch((error: unknown) => {
+        setDataSyncError(error instanceof Error ? error.message : String(error));
+      });
+    }
 
     // If approved and the leave covers today, automatically reflect in today's attendance
     if (status === 'approved') {
@@ -1746,6 +1795,20 @@ export const App: React.FC = () => {
       prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...patch } : inv))
     );
     saveInvoiceSlipOverlay(activeSchool.id, invoiceId, patch);
+    if (!isDemoMode && activeSchool.id) {
+      void submitInvoiceSlipToDb(activeSchool.id, invoiceId, slipDataUrl, note)
+        .then((finalUrl) => {
+          if (finalUrl && finalUrl !== slipDataUrl) {
+            setInvoices((prev) =>
+              prev.map((inv) => (inv.id === invoiceId ? { ...inv, slipImageUrl: finalUrl } : inv))
+            );
+            saveInvoiceSlipOverlay(activeSchool.id, invoiceId, { slipImageUrl: finalUrl });
+          }
+        })
+        .catch((error: unknown) => {
+          setDataSyncError(error instanceof Error ? error.message : String(error));
+        });
+    }
     if (currentUser) {
       appendAuditLog(activeSchool.id, {
         actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
@@ -2392,6 +2455,7 @@ export const App: React.FC = () => {
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
+        onOpenLoginGuide={() => setShowLoginGuideModal(true)}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
@@ -3288,6 +3352,16 @@ export const App: React.FC = () => {
               setCurrentTab(mod as NavTab);
             }
           }}
+        />
+      )}
+
+      {/* Illustrated Student & Teacher Sign-In Guide Modal */}
+      {showLoginGuideModal && (
+        <LoginGuideModal
+          isOpen={showLoginGuideModal}
+          onClose={() => setShowLoginGuideModal(false)}
+          lang={lang}
+          initialRoleTab={currentRole === 'teacher' ? 'teacher' : 'student'}
         />
       )}
 

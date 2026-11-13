@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppLanguage, School, ThemePalette } from '../../types';
 import {
   AlertCircle,
@@ -13,6 +13,8 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
+  HelpCircle,
+  Info,
   KeyRound,
   Lock,
   Mail,
@@ -25,14 +27,17 @@ import {
 } from 'lucide-react';
 import {
   authenticateWithSupabase,
+  fetchSchoolLoginPortalInfo,
   listActiveSchools,
   MASTER_SYSTEM_EMAIL,
   registerSchoolWithSupabase,
   requestPasswordReset,
   resendSignupConfirmation,
   type AuthContext,
+  type SchoolLoginPortalInfo,
 } from '../../lib/authDb';
 import { PWAInstallButton } from '../PWAInstallButton';
+import { LoginGuideModal, type LoginGuideRoleTab } from '../modals/LoginGuideModal';
 import heroImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
 interface AuthLayoutProps {
@@ -81,15 +86,71 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Secondary Modals: Forgot Password
+  // Secondary Modals: Forgot Password & Student/Teacher Login Guide
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [showLoginGuideModal, setShowLoginGuideModal] = useState(false);
+  const [loginGuideRoleTab, setLoginGuideRoleTab] = useState<LoginGuideRoleTab>('student');
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // Dedicated School Login Portal (from ?schoolId=...&schoolCode=...&school=...&loginMode=student)
+  const [portalSchool, setPortalSchool] = useState<SchoolLoginPortalInfo | null>(null);
+  const [isStudentPortalMode, setIsStudentPortalMode] = useState(false);
+
   useEffect(() => {
     if (initialError) setError(initialError);
   }, [initialError]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const schoolIdParam = params.get('schoolId');
+    const schoolCodeParam = params.get('schoolCode');
+    const slugParam = params.get('school');
+    const loginModeParam = params.get('loginMode');
+    setIsStudentPortalMode(loginModeParam === 'student');
+
+    if (!schoolIdParam && !schoolCodeParam && !slugParam) {
+      setPortalSchool(null);
+      return;
+    }
+
+    let active = true;
+    fetchSchoolLoginPortalInfo({
+      schoolId: schoolIdParam,
+      schoolCode: schoolCodeParam,
+      slug: slugParam,
+    })
+      .then((info) => {
+        if (!active) return;
+        if (info) {
+          try {
+            const rawLocal = localStorage.getItem(`eduverse_school_login_config_${info.id}`);
+            if (rawLocal) {
+              const localCfg = JSON.parse(rawLocal) as Partial<School>;
+              setPortalSchool({
+                ...info,
+                studentLoginIdentifierType: localCfg.studentLoginIdentifierType || info.studentLoginIdentifierType,
+                studentDefaultPasswordNote: localCfg.studentDefaultPasswordNote || info.studentDefaultPasswordNote,
+              });
+              return;
+            }
+          } catch {
+            // ignore localStorage error
+          }
+          setPortalSchool(info);
+        }
+      })
+      .catch(() => {
+        // fallback handled below if activeSchools already loaded
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -100,6 +161,39 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         if (!active) return;
         setSchools(availableSchools);
         setIsLoadingSchools(false);
+        if (typeof window !== 'undefined' && availableSchools.length > 0) {
+          const params = new URLSearchParams(window.location.search);
+          const schoolIdParam = params.get('schoolId');
+          const schoolCodeParam = params.get('schoolCode');
+          const slugParam = params.get('school');
+          if (schoolIdParam || schoolCodeParam || slugParam) {
+            const match = availableSchools.find(
+              (s) =>
+                (schoolIdParam && s.id === schoolIdParam) ||
+                (schoolCodeParam && s.code.toLowerCase() === schoolCodeParam.toLowerCase()) ||
+                (slugParam &&
+                  (s.slug.toLowerCase() === slugParam.toLowerCase() ||
+                    s.customLoginSlug?.toLowerCase() === slugParam.toLowerCase()))
+            );
+            if (match) {
+              setPortalSchool((prev) =>
+                prev || {
+                  id: match.id,
+                  code: match.code,
+                  nameTh: match.nameTh,
+                  nameEn: match.nameEn,
+                  slug: match.slug,
+                  logoUrl: match.logoUrl,
+                  primaryColor: match.primaryColor,
+                  studentLoginIdentifierType: match.studentLoginIdentifierType || 'both',
+                  customLoginSlug: match.customLoginSlug,
+                  studentDefaultPasswordType: match.studentDefaultPasswordType || 'birthdate',
+                  studentDefaultPasswordNote: match.studentDefaultPasswordNote,
+                }
+              );
+            }
+          }
+        }
       })
       .catch((loadError: unknown) => {
         if (!active) return;
@@ -112,6 +206,19 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     };
   }, [activeSchools]);
 
+  const identifierMode = portalSchool?.studentLoginIdentifierType || 'both';
+  const allowStudentIdInput =
+    mode === 'login' && Boolean(portalSchool) && (isStudentPortalMode || identifierMode !== 'email_only');
+
+  const handleClearPortalSchool = () => {
+    setPortalSchool(null);
+    setIsStudentPortalMode(false);
+    if (typeof window !== 'undefined') {
+      const cleanUrl = `${window.location.pathname}${window.location.hash}`;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -120,7 +227,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
     try {
       if (mode === 'login') {
-        onLogin(await authenticateWithSupabase(email, password));
+        onLogin(await authenticateWithSupabase(email, password, portalSchool?.id));
         return;
       }
 
@@ -167,8 +274,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
 
   const handleResendConfirmation = async () => {
-    if (!email.trim()) {
-      setError(lang === 'th' ? 'กรุณากรอกอีเมลก่อนขออนุมัติ' : 'Please enter your email first.');
+    if (!email.trim() || !email.includes('@')) {
+      setError(
+        lang === 'th'
+          ? 'กรุณากรอกอีเมลบัญชีก่อนขออนุมัติ'
+          : 'Please enter a valid account email first.'
+      );
       return;
     }
     setError(null);
@@ -347,6 +458,44 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               <div className="order-1 lg:order-2 w-full max-w-md mx-auto space-y-4 lg:ml-auto lg:mr-0">
                 <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg shadow-slate-900/5">
                   <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)]">
+                    {portalSchool && mode === 'login' && (
+                      <div className="mb-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/60 p-3 flex items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {portalSchool.logoUrl ? (
+                            <img
+                              src={portalSchool.logoUrl}
+                              alt={portalSchool.nameTh}
+                              className="h-9 w-9 rounded-lg object-cover border border-blue-200 dark:border-blue-700 shrink-0 bg-white"
+                            />
+                          ) : (
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-primary)] text-white shrink-0">
+                              <SchoolIcon className="h-4.5 w-4.5" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-blue-950 dark:text-blue-100 truncate">
+                              {lang === 'th' ? portalSchool.nameTh : portalSchool.nameEn || portalSchool.nameTh}
+                            </p>
+                            <p className="text-[11px] text-blue-800 dark:text-blue-300 font-mono truncate">
+                              {isStudentPortalMode
+                                ? lang === 'th'
+                                  ? `พอร์ทัลนักเรียน · ${portalSchool.code}`
+                                  : `Student Portal · ${portalSchool.code}`
+                                : `${lang === 'th' ? 'รหัสสถานศึกษา' : 'School Code'}: ${portalSchool.code}`}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearPortalSchool}
+                          className="rounded-lg p-1 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer shrink-0"
+                          title={lang === 'th' ? 'เปลี่ยนสถานศึกษา' : 'Switch school'}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-3 mb-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
                         {mode === 'login' ? <SchoolIcon className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
@@ -354,18 +503,30 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       <div>
                         <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight">
                           {mode === 'login'
-                            ? lang === 'th'
-                              ? 'เข้าสู่ระบบบัญชีโรงเรียน'
-                              : 'Sign in to EduVerse'
+                            ? isStudentPortalMode && portalSchool
+                              ? lang === 'th'
+                                ? 'เข้าสู่ระบบนักเรียน'
+                                : 'Student Sign In'
+                              : lang === 'th'
+                                ? 'เข้าสู่ระบบบัญชีโรงเรียน'
+                                : 'Sign in to EduVerse'
                             : lang === 'th'
                               ? 'ลงทะเบียนสถานศึกษาใหม่'
                               : 'Register New School'}
                         </h2>
                         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                           {mode === 'login'
-                            ? lang === 'th'
-                              ? 'กรอกอีเมล (หรือบัญชีที่โรงเรียนออกให้) และรหัสผ่าน'
-                              : 'Enter your school email/username and password'
+                            ? allowStudentIdInput
+                              ? identifierMode === 'student_id_only'
+                                ? lang === 'th'
+                                  ? 'กรอกรหัสนักเรียนและรหัสผ่านเพื่อเข้าใช้งาน'
+                                  : 'Enter your Student ID and password'
+                                : lang === 'th'
+                                  ? 'กรอกรหัสนักเรียน หรืออีเมล และรหัสผ่าน'
+                                  : 'Enter your Student ID or email and password'
+                              : lang === 'th'
+                                ? 'กรอกอีเมล (หรือบัญชีที่โรงเรียนออกให้) และรหัสผ่าน'
+                                : 'Enter your school email/username and password'
                             : lang === 'th'
                               ? 'กรอกข้อมูลเพื่อยื่นคำขอเปิดใช้งานในระบบจริง'
                               : 'Submit your details for school activation'}
@@ -492,16 +653,41 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                       <label className="block text-xs font-bold text-[var(--color-text-title)]">
                         <span className="flex items-center gap-1.5 mb-1">
-                          <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                          {lang === 'th' ? 'อีเมล' : 'Email Address'}
+                          {allowStudentIdInput ? (
+                            <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                          ) : (
+                            <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                          )}
+                          {allowStudentIdInput
+                            ? identifierMode === 'student_id_only'
+                              ? lang === 'th'
+                                ? 'รหัสนักเรียน'
+                                : 'Student ID'
+                              : lang === 'th'
+                                ? 'รหัสนักเรียน หรือ อีเมล'
+                                : 'Student ID or Email'
+                            : lang === 'th'
+                              ? 'อีเมล'
+                              : 'Email Address'}
                         </span>
                         <input
-                          type="email"
-                          autoComplete="email"
+                          ref={emailInputRef}
+                          type={allowStudentIdInput ? 'text' : 'email'}
+                          autoComplete={allowStudentIdInput ? 'username' : 'email'}
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="yourname@school.ac.th"
+                          placeholder={
+                            allowStudentIdInput
+                              ? identifierMode === 'student_id_only'
+                                ? lang === 'th'
+                                  ? 'เช่น ED-6901 หรือ 10001'
+                                  : 'e.g. ED-6901'
+                                : lang === 'th'
+                                  ? 'รหัสนักเรียน (เช่น ED-6901) หรือ อีเมล'
+                                  : 'Student ID or email@school.ac.th'
+                              : 'yourname@school.ac.th'
+                          }
                           className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20 font-medium"
                         />
                       </label>
@@ -523,6 +709,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         />
                       </label>
 
+                      {mode === 'login' && portalSchool?.studentDefaultPasswordNote && (
+                        <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-200 leading-snug">
+                          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                          <span>{portalSchool.studentDefaultPasswordNote}</span>
+                        </div>
+                      )}
+
                       {mode === 'login' && (
                         <>
                           <p className="text-[11px] text-[var(--color-text-muted)] leading-snug">
@@ -534,7 +727,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                setResetEmail(email);
+                                setResetEmail(email.includes('@') ? email : '');
                                 setResetStatus(null);
                                 setShowForgotPasswordModal(true);
                               }}
@@ -573,6 +766,47 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </form>
+
+                    {/* Illustrated Login Guide Triggers for Students & Teachers */}
+                    <div className="border-t border-[var(--color-border)] pt-3.5 space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
+                          <HelpCircle className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" aria-hidden="true" />
+                          <span>
+                            {lang === 'th' ? 'ไม่แน่ใจวิธีเข้าสู่ระบบ?' : 'Need help signing in?'}
+                          </span>
+                        </span>
+                        <span className="text-[11px] text-[var(--color-text-muted)]">
+                          {lang === 'th' ? 'คู่มือพร้อมภาพประกอบ' : 'Illustrated guide'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginGuideRoleTab('student');
+                            setShowLoginGuideModal(true);
+                          }}
+                          className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+                        >
+                          <GraduationCap className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" aria-hidden="true" />
+                          <span>{lang === 'th' ? 'คู่มือนักเรียน' : 'Student Guide'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginGuideRoleTab('teacher');
+                            setShowLoginGuideModal(true);
+                          }}
+                          className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+                        >
+                          <UserCheck className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" aria-hidden="true" />
+                          <span>{lang === 'th' ? 'คู่มือคุณครู' : 'Teacher Guide'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                 </div>
@@ -816,6 +1050,20 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal: Illustrated Login Guide for Students & Teachers */}
+      <LoginGuideModal
+        isOpen={showLoginGuideModal}
+        onClose={() => setShowLoginGuideModal(false)}
+        lang={lang}
+        initialRoleTab={loginGuideRoleTab}
+        onActionFocusLogin={() => {
+          setMode('login');
+          window.setTimeout(() => {
+            emailInputRef.current?.focus();
+          }, 50);
+        }}
+      />
 
     </div>
   );

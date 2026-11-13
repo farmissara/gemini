@@ -11,6 +11,9 @@ import {
   CampusGateGeofence,
   SchoolPeriodTime,
   TimetableSlot,
+  LeaveRequest,
+  LeaveStatus,
+  PeriodAttendanceRecord,
   UserRole,
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
@@ -172,6 +175,8 @@ export interface SchoolData {
   schoolPeriods: SchoolPeriodTime[];
   campusGates: CampusGateGeofence[];
   timetableSlots: TimetableSlot[];
+  leaveRequests: LeaveRequest[];
+  periodAttendance: PeriodAttendanceRecord[];
 }
 
 export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
@@ -188,6 +193,8 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
       schoolPeriods: DEFAULT_SCHOOL_PERIODS,
       campusGates: [],
       timetableSlots: [],
+      leaveRequests: [],
+      periodAttendance: [],
     };
   }
 
@@ -210,6 +217,8 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
         schoolPeriods: DEFAULT_SCHOOL_PERIODS,
         campusGates: [],
         timetableSlots: [],
+        leaveRequests: [],
+        periodAttendance: [],
       };
     }
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
@@ -412,6 +421,12 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     paymentMethod: row.payment_method || undefined,
     paidAt: row.paid_at || undefined,
     receiptNumber: row.receipt_number || undefined,
+    slipImageUrl: row.slip_image_url || undefined,
+    slipSubmittedAt: row.slip_submitted_at || undefined,
+    slipStatus: row.slip_status || undefined,
+    slipRejectReason: row.slip_reject_reason || undefined,
+    slipAmount: row.slip_amount == null ? undefined : Number(row.slip_amount),
+    slipReferenceNote: row.slip_reference_note || undefined,
   }));
   const announcements: Announcement[] = (announcementResult.data || []).map((row) => ({
     id: row.id,
@@ -428,12 +443,22 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     resendEmailSent: Boolean(row.resend_email_sent),
   }));
 
-  const timetableResult = await client.from('timetable_slots').select('*').eq('school_id', schoolId);
+  const [timetableResult, leaveResult, periodAttResult] = await Promise.all([
+    client.from('timetable_slots').select('*').eq('school_id', schoolId),
+    client.from('leave_requests').select('*').eq('school_id', schoolId).order('created_at', { ascending: false }),
+    client.from('period_attendance').select('*').eq('school_id', schoolId).order('date', { ascending: false }),
+  ]);
   if (timetableResult.error) {
     if (!isMissingTableError(timetableResult.error)) {
       throw new Error(`Could not load timetable slots: ${timetableResult.error.message}`);
     }
     console.warn('Timetable slots table is not installed yet; using empty or local slots.');
+  }
+  if (leaveResult.error && !isMissingTableError(leaveResult.error)) {
+    throw new Error(`Could not load leave requests: ${leaveResult.error.message}`);
+  }
+  if (periodAttResult.error && !isMissingTableError(periodAttResult.error)) {
+    throw new Error(`Could not load period attendance: ${periodAttResult.error.message}`);
   }
   const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => ({
     id: row.id,
@@ -453,8 +478,66 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     credits: Number(row.credits || 1.5),
     totalSemesterHours: Number(row.total_semester_hours || 60),
   }));
+  const leaveRequests: LeaveRequest[] = (leaveResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    userId: row.user_id,
+    userName: row.user_name,
+    userRole: row.user_role === 'teacher' ? 'teacher' : 'student',
+    gradeLevelOrDepartment: row.grade_level_or_department || undefined,
+    leaveScope: row.leave_scope === 'period_hourly' ? 'period_hourly' : 'full_day',
+    periodNumber: row.period_number == null ? undefined : Number(row.period_number),
+    courseId: row.course_id || undefined,
+    courseCode: row.course_code || undefined,
+    courseTitle: row.course_title || undefined,
+    substituteTeacherId: row.substitute_teacher_id || undefined,
+    substituteTeacherName: row.substitute_teacher_name || undefined,
+    ccEmailsOrRoles: row.cc_emails_or_roles || undefined,
+    leaveType: row.leave_type,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    reason: row.reason,
+    attachmentUrl: row.attachment_url || undefined,
+    status: row.status,
+    approvedBy: row.approved_by || undefined,
+    approvalRemarks: row.approval_remarks || undefined,
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || undefined,
+  }));
+  const periodAttendance: PeriodAttendanceRecord[] = (periodAttResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    courseId: row.course_id,
+    courseCode: row.course_code || '',
+    periodNumber: Number(row.period_number),
+    timeSlot: row.time_slot || '',
+    date: row.date,
+    studentId: row.student_id,
+    status: row.status,
+    recordType: row.record_type === 'check_out' ? 'check_out' : 'check_in',
+    verifiedByTeacherId: row.recorded_by || 'teacher',
+    verifiedByTeacherName: row.recorded_by || 'ครูผู้สอน',
+    checkMethod:
+      row.check_method === 'student_mobile' || row.check_method === 'qr_code'
+        ? row.check_method
+        : 'teacher_proxy',
+    remarks: row.notes || undefined,
+  }));
 
-  return { students, teachers, courses, grades, attendance, invoices, announcements, schoolPeriods, campusGates, timetableSlots };
+  return {
+    students,
+    teachers,
+    courses,
+    grades,
+    attendance,
+    invoices,
+    announcements,
+    schoolPeriods,
+    campusGates,
+    timetableSlots,
+    leaveRequests,
+    periodAttendance,
+  };
 }
 
 export async function saveSchoolPeriodTimes(
@@ -891,7 +974,7 @@ export async function syncDataToSupabase(payload: {
       }
     }
 
-    // 6. Upsert Invoices
+    // 6. Upsert Invoices (with fallback if slip columns migration is not yet applied)
     if (['super_admin', 'admin'].includes(payload.role) && payload.invoices.length > 0) {
       const invRows = payload.invoices.map((i) => ({
         id: i.id,
@@ -908,9 +991,41 @@ export async function syncDataToSupabase(payload: {
         payment_method: i.paymentMethod || null,
         paid_at: i.paidAt || null,
         receipt_number: i.receiptNumber || null,
+        slip_image_url: i.slipImageUrl || null,
+        slip_submitted_at: i.slipSubmittedAt || null,
+        slip_status: i.slipStatus || 'none',
+        slip_reject_reason: i.slipRejectReason || null,
+        slip_amount: i.slipAmount ?? null,
+        slip_reference_note: i.slipReferenceNote || null,
       }));
       const { error: invErr } = await client.from('invoices').upsert(invRows);
-      if (invErr) throw new Error(`Invoices sync error: ${invErr.message}`);
+      if (
+        invErr &&
+        (invErr.code === 'PGRST204' ||
+          invErr.code === '42703' ||
+          /slip_image_url|slip_status|schema cache|could not find the '.*' column/i.test(invErr.message))
+      ) {
+        const baseInvRows = payload.invoices.map((i) => ({
+          id: i.id,
+          school_id: payload.school.id,
+          invoice_number: i.invoiceNumber,
+          student_id: i.studentId,
+          semester: i.semester,
+          academic_year: i.academicYear,
+          issue_date: i.issueDate,
+          due_date: i.dueDate,
+          total_amount: i.totalAmount,
+          status: i.status,
+          items: i.items,
+          payment_method: i.paymentMethod || null,
+          paid_at: i.paidAt || null,
+          receipt_number: i.receiptNumber || null,
+        }));
+        const retryInv = await client.from('invoices').upsert(baseInvRows);
+        if (retryInv.error) throw new Error(`Invoices sync error: ${retryInv.error.message}`);
+      } else if (invErr) {
+        throw new Error(`Invoices sync error: ${invErr.message}`);
+      }
     }
 
     // 7. Upsert Announcements
@@ -1142,4 +1257,185 @@ export async function deleteTimetableSlotFromDb(schoolId: string, slotId: string
     .eq('id', slotId);
   if (error) throw new Error(`Could not delete timetable slot from Supabase: ${error.message}`);
 }
+
+export async function uploadSchoolAttachment(
+  schoolId: string,
+  folder: string,
+  fileOrDataUrl: File | string
+): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client || !schoolId) return null;
+
+  try {
+    let blob: Blob;
+    let contentType = 'image/jpeg';
+    let ext = 'jpg';
+
+    if (typeof fileOrDataUrl === 'string') {
+      if (!fileOrDataUrl.startsWith('data:')) return fileOrDataUrl;
+      const mimeMatch = /^data:([^;]+);/.exec(fileOrDataUrl);
+      if (mimeMatch?.[1]) {
+        contentType = mimeMatch[1];
+        if (contentType.includes('png')) ext = 'png';
+        else if (contentType.includes('webp')) ext = 'webp';
+        else if (contentType.includes('pdf')) ext = 'pdf';
+      }
+      blob = await (await fetch(fileOrDataUrl)).blob();
+    } else {
+      blob = fileOrDataUrl;
+      contentType = fileOrDataUrl.type || 'image/jpeg';
+      if (contentType.includes('png')) ext = 'png';
+      else if (contentType.includes('webp')) ext = 'webp';
+      else if (contentType.includes('pdf')) ext = 'pdf';
+    }
+
+    const safeFolder = folder.replace(/[^a-z0-9/_-]/gi, '');
+    const storagePath = `${schoolId}/${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+    const { error } = await client.storage
+      .from('school-attachments')
+      .upload(storagePath, blob, { contentType, upsert: false });
+    if (error) {
+      console.warn('[Storage] Could not upload attachment to school-attachments:', error.message);
+      return null;
+    }
+
+    return client.storage.from('school-attachments').getPublicUrl(storagePath).data.publicUrl;
+  } catch (err) {
+    console.warn('[Storage] Attachment upload fallback triggered:', err);
+    return null;
+  }
+}
+
+export async function saveLeaveRequestToDb(schoolId: string, req: LeaveRequest): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  const { error } = await client.from('leave_requests').upsert({
+    id: req.id,
+    school_id: schoolId,
+    user_id: req.userId,
+    user_name: req.userName,
+    user_role: req.userRole,
+    grade_level_or_department: req.gradeLevelOrDepartment || null,
+    leave_scope: req.leaveScope || 'full_day',
+    period_number: req.periodNumber ?? null,
+    course_id: req.courseId || null,
+    course_code: req.courseCode || null,
+    course_title: req.courseTitle || null,
+    substitute_teacher_id: req.substituteTeacherId || null,
+    substitute_teacher_name: req.substituteTeacherName || null,
+    cc_emails_or_roles: Array.isArray(req.ccEmailsOrRoles)
+      ? req.ccEmailsOrRoles.join(', ')
+      : req.ccEmailsOrRoles || null,
+    leave_type: req.leaveType,
+    start_date: req.startDate,
+    end_date: req.endDate,
+    reason: req.reason,
+    attachment_url: req.attachmentUrl || null,
+    status: req.status,
+    approved_by: req.approvedBy || null,
+    approval_remarks: req.approvalRemarks || null,
+    created_at: req.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    if (isMissingTableError(error)) return false;
+    throw new Error(`ไม่สามารถบันทึกใบลาลงฐานข้อมูลได้: ${error.message}`);
+  }
+  return true;
+}
+
+export async function updateLeaveRequestStatusInDb(
+  schoolId: string,
+  reqId: string,
+  status: LeaveStatus,
+  approvedBy: string,
+  approvalRemarks?: string
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  const { error } = await client
+    .from('leave_requests')
+    .update({
+      status,
+      approved_by: approvedBy,
+      approval_remarks: approvalRemarks || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('school_id', schoolId)
+    .eq('id', reqId);
+  if (error) {
+    if (isMissingTableError(error)) return false;
+    throw new Error(`ไม่สามารถอัปเดตสถานะใบลาได้: ${error.message}`);
+  }
+  return true;
+}
+
+export async function savePeriodAttendanceBatchToDb(
+  schoolId: string,
+  records: PeriodAttendanceRecord[]
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client || records.length === 0) return false;
+
+  const rows = records.map((r) => ({
+    id: r.id,
+    school_id: schoolId,
+    student_id: r.studentId,
+    course_id: r.courseId,
+    course_code: r.courseCode || '',
+    period_number: r.periodNumber,
+    date: r.date,
+    time_slot: r.timeSlot || '',
+    status: r.status,
+    check_method: r.checkMethod || 'teacher_proxy',
+    record_type: r.recordType || 'check_in',
+    recorded_by: r.verifiedByTeacherName || r.verifiedByTeacherId || null,
+    notes: r.remarks || null,
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await client
+    .from('period_attendance')
+    .upsert(rows, { onConflict: 'school_id,student_id,course_id,date,period_number,record_type' });
+  if (error) {
+    if (isMissingTableError(error)) return false;
+    throw new Error(`ไม่สามารถบันทึกการเช็คชื่อรายคาบได้: ${error.message}`);
+  }
+  return true;
+}
+
+export async function submitInvoiceSlipToDb(
+  schoolId: string,
+  invoiceId: string,
+  slipDataUrlOrUrl: string,
+  note: string
+): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  const uploadedUrl = await uploadSchoolAttachment(schoolId, 'slips', slipDataUrlOrUrl);
+  const finalUrl = uploadedUrl || slipDataUrlOrUrl;
+
+  const { error } = await client.rpc('submit_invoice_slip', {
+    target_school_id: schoolId,
+    target_invoice_id: invoiceId,
+    target_slip_url: finalUrl,
+    target_note: note,
+  });
+  if (error) {
+    if (
+      error.code === 'PGRST202' ||
+      error.code === '42883' ||
+      /could not find the function|submit_invoice_slip/i.test(error.message)
+    ) {
+      console.warn('[Billing] submit_invoice_slip RPC not installed yet; kept locally:', error.message);
+      return uploadedUrl;
+    }
+    throw new Error(`ไม่สามารถส่งหลักฐานสลิปได้: ${error.message}`);
+  }
+  return finalUrl;
+}
+
 

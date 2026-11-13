@@ -23,13 +23,18 @@ import {
   ArrowRight,
   RefreshCw,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Send,
+  X,
 } from 'lucide-react';
 import {
   approveStudentAccountInSupabase,
   inviteStudentAccount,
+  inviteTeacherOrParentAccount,
   linkStudentAccountToStudent,
+  listSchoolStaffParentAccounts,
   listStudentAccountLinks,
+  StaffParentAccountLink,
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
@@ -148,20 +153,29 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [newPresetGradeInput, setNewPresetGradeInput] = useState('');
   const [newPresetRoomInput, setNewPresetRoomInput] = useState('');
   const [accountLinks, setAccountLinks] = useState<StudentAccountLink[]>([]);
+  const [parentAccounts, setParentAccounts] = useState<StaffParentAccountLink[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [accountsSuccess, setAccountsSuccess] = useState<string | null>(null);
   const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
   const [processingAccountId, setProcessingAccountId] = useState<string | null>(null);
   const [invitingStudentId, setInvitingStudentId] = useState<string | null>(null);
+  const [inviteDialog, setInviteDialog] = useState<{ role: 'student' | 'parent'; student: Student } | null>(null);
+  const [inviteEmailInput, setInviteEmailInput] = useState('');
+  const [inviteFullNameInput, setInviteFullNameInput] = useState('');
+  const [inviteModalError, setInviteModalError] = useState<string | null>(null);
 
   const refreshAccountLinks = useCallback(async () => {
     if (!canManageApprovals) return;
     setAccountsLoading(true);
     setAccountsError(null);
     try {
-      const list = await listStudentAccountLinks(schoolId);
+      const [list, staffParents] = await Promise.all([
+        listStudentAccountLinks(schoolId),
+        listSchoolStaffParentAccounts(schoolId).catch(() => []),
+      ]);
       setAccountLinks(list);
+      setParentAccounts(staffParents.filter((item) => item.role === 'parent'));
       setLinkDrafts((prev) => {
         const next = { ...prev };
         list.forEach((acc) => {
@@ -225,18 +239,52 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     }
   };
 
-  const handleInviteStudent = async (student: Student) => {
-    const email = window.prompt(`อีเมลของนักเรียน ${student.firstNameTh} ${student.lastNameTh} สำหรับรับลิงก์ตั้งค่าบัญชี:`);
-    if (!email?.trim()) return;
+  const handleOpenInviteModal = (student: Student, role: 'student' | 'parent') => {
+    setInviteDialog({ role, student });
+    setInviteModalError(null);
+    if (role === 'parent') {
+      setInviteEmailInput(student.guardianEmail?.trim() || '');
+      setInviteFullNameInput(student.guardianName?.trim() || '');
+    } else {
+      setInviteEmailInput('');
+      setInviteFullNameInput(`${student.firstNameTh} ${student.lastNameTh}`.trim());
+    }
+  };
 
+  const handleSubmitInviteDialog = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!inviteDialog) return;
+    const email = inviteEmailInput.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setInviteModalError('กรุณากรอกอีเมลที่ถูกต้อง');
+      return;
+    }
+
+    const { role, student } = inviteDialog;
     setInvitingStudentId(student.id);
+    setInviteModalError(null);
     setAccountsError(null);
     setAccountsSuccess(null);
     try {
-      await inviteStudentAccount({ schoolId, studentId: student.id, email });
-      setAccountsSuccess(`ส่งคำเชิญตั้งค่าบัญชีไปที่ ${email.trim()} แล้ว`);
+      if (role === 'student') {
+        await inviteStudentAccount({ schoolId, studentId: student.id, email });
+        setAccountsSuccess(`ส่งคำเชิญตั้งค่าบัญชีนักเรียน (${student.firstNameTh} ${student.lastNameTh}) ไปที่ ${email} แล้ว`);
+      } else {
+        await inviteTeacherOrParentAccount({
+          schoolId,
+          inviteRole: 'parent',
+          studentId: student.id,
+          email,
+          fullNameTh: inviteFullNameInput.trim() || student.guardianName || `ผู้ปกครองของ ${student.firstNameTh}`,
+          fullNameEn: inviteFullNameInput.trim() || student.guardianName || '',
+        });
+        setAccountsSuccess(`ส่งคำเชิญผู้ปกครองของ ${student.firstNameTh} ${student.lastNameTh} ไปที่ ${email} แล้ว`);
+        await refreshAccountLinks();
+      }
+      setInviteDialog(null);
     } catch (error) {
-      setAccountsError(error instanceof Error ? error.message : 'ส่งคำเชิญบัญชีนักเรียนไม่สำเร็จ');
+      const msg = error instanceof Error ? error.message : 'ส่งคำเชิญบัญชีไม่สำเร็จ';
+      setInviteModalError(msg);
     } finally {
       setInvitingStudentId(null);
     }
@@ -842,6 +890,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </button>
       </div>
 
+      {activeTab === 'roster' && accountsSuccess && (
+        <div role="status" className="shrink-0 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3.5 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium flex items-center justify-between gap-2">
+          <span>{accountsSuccess}</span>
+          <button type="button" onClick={() => setAccountsSuccess(null)} className="text-xs font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
       {activeTab === 'roster' && (
         <>
           {/* Filter and Search Bar */}
@@ -1031,15 +1086,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           </button>
 
                           {canManageApprovals && (
-                            <button
-                              type="button"
-                              onClick={() => void handleInviteStudent(student)}
-                              disabled={invitingStudentId === student.id}
-                              className="p-1.5 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer disabled:opacity-50"
-                              title="ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี"
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenInviteModal(student, 'student')}
+                                disabled={invitingStudentId === student.id}
+                                className="p-1.5 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer disabled:opacity-50"
+                                title="ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี"
+                              >
+                                <Mail className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenInviteModal(student, 'parent')}
+                                disabled={invitingStudentId === student.id}
+                                className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
+                                title="เชิญผู้ปกครองเข้าใช้งานและผูกกับนักเรียน"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           )}
 
                           {onDeleteStudent && (
@@ -1283,6 +1349,64 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             </button>
                           </>
                         )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--color-border)]">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2">
+                  <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>บัญชีผู้ปกครองที่ได้รับคำเชิญ / เชื่อมกับนักเรียนแล้ว ({parentAccounts.length})</span>
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  สามารถกดปุ่ม <strong className="text-[var(--color-text-title)]">ส่งคำเชิญผู้ปกครอง</strong> ในแท็บทะเบียนรายชื่อ เพื่อเชิญผู้ปกครองและผูกสิทธิ์กับนักเรียนทันที
+                </p>
+              </div>
+            </div>
+
+            {parentAccounts.length === 0 ? (
+              <p className="py-5 text-center text-xs text-[var(--color-text-muted)]">
+                ยังไม่มีบัญชีผู้ปกครองที่เชื่อมในโรงเรียนนี้
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {parentAccounts.map((parent) => {
+                  const linkedNames = (parent.linked_student_ids || [])
+                    .map((sid) => students.find((st) => st.id === sid))
+                    .filter((st): st is Student => Boolean(st))
+                    .map((st) => `${st.firstNameTh} ${st.lastNameTh} (${st.studentIdNumber})`);
+                  return (
+                    <div key={parent.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-[var(--color-text-title)]">
+                            {parent.full_name_th || parent.full_name_en || 'ผู้ปกครอง'}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              parent.status === 'active'
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                            }`}
+                          >
+                            {parent.status === 'active' ? 'ใช้งานได้' : parent.status}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-2 flex-wrap">
+                          {parent.email && <span className="font-mono">{parent.email}</span>}
+                          <span>·</span>
+                          <span>
+                            {linkedNames.length > 0
+                              ? `บุตรหลานในปกครอง: ${linkedNames.join(', ')}`
+                              : 'เชื่อมบัญชีแล้ว'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2039,6 +2163,101 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         students={students}
         onPromoteStudents={handlePromoteBatch}
       />
+
+      {/* Invite Student or Parent Modal */}
+      {inviteDialog && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {inviteDialog.role === 'parent' ? <Send className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                <h3 className="text-sm font-bold">
+                  {inviteDialog.role === 'parent'
+                    ? 'เชิญผู้ปกครองเข้าใช้งานแอปและผูกกับนักเรียน'
+                    : 'เชิญนักเรียนตั้งค่าบัญชีเข้าสู่ระบบ'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInviteDialog(null)}
+                className="p-1 rounded-lg hover:bg-white/15 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={(e) => void handleSubmitInviteDialog(e)} className="p-5 space-y-4">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 text-xs space-y-1">
+                <p className="font-bold text-[var(--color-text-title)]">
+                  นักเรียน: {inviteDialog.student.firstNameTh} {inviteDialog.student.lastNameTh}
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  รหัสนักเรียน: {inviteDialog.student.studentIdNumber} · {inviteDialog.student.gradeLevel} ({inviteDialog.student.room})
+                </p>
+              </div>
+
+              {inviteModalError && (
+                <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
+                  {inviteModalError}
+                </div>
+              )}
+
+              {inviteDialog.role === 'parent' && (
+                <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
+                  <span>ชื่อ-สกุลผู้ปกครอง</span>
+                  <input
+                    type="text"
+                    required
+                    value={inviteFullNameInput}
+                    onChange={(e) => setInviteFullNameInput(e.target.value)}
+                    placeholder="เช่น คุณสมหญิง ใจดี"
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                  />
+                </label>
+              )}
+
+              <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
+                <span>
+                  {inviteDialog.role === 'parent'
+                    ? 'อีเมลของผู้ปกครองสำหรับรับลิงก์ตั้งรหัสผ่าน'
+                    : 'อีเมลของนักเรียนสำหรับรับลิงก์ตั้งรหัสผ่าน'}
+                </span>
+                <input
+                  type="email"
+                  required
+                  value={inviteEmailInput}
+                  onChange={(e) => setInviteEmailInput(e.target.value)}
+                  placeholder={inviteDialog.role === 'parent' ? 'parent@example.com' : 'student@school.ac.th'}
+                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                />
+              </label>
+
+              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                {inviteDialog.role === 'parent'
+                  ? 'เมื่อผู้ปกครองกดลิงก์ในอีเมลและตั้งรหัสผ่านแล้ว ระบบจะเชื่อมบัญชีผู้ปกครองกับข้อมูลนักเรียนคนนี้โดยอัตโนมัติ'
+                  : 'เมื่อนักเรียนกดลิงก์ในอีเมลและตั้งรหัสผ่านแล้ว บัญชีจะเชื่อมกับรหัสนักเรียนและเปิดใช้งานทันที'}
+              </p>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setInviteDialog(null)}
+                  className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={invitingStudentId === inviteDialog.student.id}
+                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{invitingStudentId === inviteDialog.student.id ? 'กำลังส่งคำเชิญ...' : 'ส่งคำเชิญ'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
