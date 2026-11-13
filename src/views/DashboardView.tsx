@@ -51,7 +51,9 @@ import {
   LeaveRequest,
   PlayerScore,
   SchoolPeriodTime,
-  TimetableSlot
+  TimetableSlot,
+  Assignment,
+  PeriodAttendanceRecord
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
@@ -60,6 +62,7 @@ import { filterAttendanceForUser } from '../lib/attendanceScope';
 import { PagedList } from '../components/PagedList';
 import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsPanel';
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
+import { PriorityActionWidget } from '../components/PriorityActionWidget';
 
 interface DashboardViewProps {
   students: Student[];
@@ -86,7 +89,10 @@ interface DashboardViewProps {
   timetableSlots?: TimetableSlot[];
   leaveRequests?: LeaveRequest[];
   homeworkSubmissions?: HomeworkSubmission[];
+  assignments?: Assignment[];
+  periodAttendance?: PeriodAttendanceRecord[];
   schoolPeriods?: SchoolPeriodTime[];
+  onSelectStudent?: (student: Student) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -109,7 +115,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   timetableSlots = [],
   leaveRequests = [],
   homeworkSubmissions = [],
+  assignments = [],
+  periodAttendance = [],
   schoolPeriods = [],
+  onSelectStudent,
 }) => {
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
@@ -641,6 +650,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* Proactive Priority Action Widget for Staff */}
+            {isStaffUser && (
+              <PriorityActionWidget
+                students={students}
+                courses={courses}
+                attendance={attendance}
+                periodAttendance={periodAttendance}
+                leaveRequests={leaveRequests}
+                homeworkSubmissions={homeworkSubmissions}
+                assignments={assignments}
+                schoolId={school?.id || currentUser?.schoolId}
+                lang={lang}
+                onNavigate={onNavigate}
+                onSelectStudent={onSelectStudent}
+              />
             )}
 
             {/* Daily Student Attendance Trends Chart + Recent Gate Feed */}

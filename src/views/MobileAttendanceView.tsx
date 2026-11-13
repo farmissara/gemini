@@ -38,6 +38,10 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import {
+  loadSavedPeriodQrSessions,
+  validatePeriodQrTokenState,
+} from '../lib/periodQrTokens';
+import {
   filterLeaveRequestsForUser,
   filterPeriodAttendanceForUser,
   getAllowedStudentScope,
@@ -113,10 +117,12 @@ interface MobileAttendanceViewProps {
   initialPeriodNumber?: number;
   initialPeriodDate?: string;
   initialPeriodCode?: string;
+  initialPeriodExpiresAt?: number;
+  initialPeriodToken?: string;
   currentRole?: UserRole;
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
-  onUpdateSchoolCoordinates?: (lat: number, lng: number, radius: number) => void;
+  onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
 }
 
 export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
@@ -140,6 +146,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   initialPeriodNumber,
   initialPeriodDate,
   initialPeriodCode,
+  initialPeriodExpiresAt,
+  initialPeriodToken,
   currentRole = 'admin',
   onUpdateCampusGates,
   onSaveCampusGates,
@@ -807,6 +815,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     let resolvedPeriodNum = selectedPeriod;
     let resolvedDate = periodDate;
     let resolvedCode = expectedPeriodCode;
+    let resolvedExpiresAt: number | null = initialPeriodExpiresAt ?? null;
+    let resolvedToken: string | null = initialPeriodToken ?? null;
+    let resolvedCheckType: 'check_in' | 'check_out' = periodCheckType;
 
     if (rawInput) {
       try {
@@ -816,25 +827,62 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           const qPeriod = parsed.searchParams.get('period');
           const qDate = parsed.searchParams.get('date');
           const qCode = parsed.searchParams.get('code');
+          const qExp = parsed.searchParams.get('exp');
+          const qToken = parsed.searchParams.get('token');
+          const qType = parsed.searchParams.get('type');
           if (qCourse) resolvedCourseId = qCourse;
           if (qPeriod && !Number.isNaN(Number(qPeriod))) resolvedPeriodNum = Number(qPeriod);
           if (qDate) resolvedDate = qDate;
           if (qCode) resolvedCode = qCode;
+          if (qExp && !Number.isNaN(Number(qExp))) resolvedExpiresAt = Number(qExp);
+          if (qToken) resolvedToken = qToken;
+          if (qType === 'check_in' || qType === 'check_out') resolvedCheckType = qType;
         } else {
           resolvedCode = rawInput;
-          const matchingCourse = courses.find((c) => rawInput.toUpperCase().startsWith((c.code || '').toUpperCase()));
-          if (matchingCourse) {
-            resolvedCourseId = matchingCourse.id;
-          }
-          const periodMatch = rawInput.match(/-P(\d+)/i);
-          if (periodMatch?.[1]) {
-            resolvedPeriodNum = Number(periodMatch[1]);
+          const activeSchoolId = _school?.id || currentUser?.schoolId || 'sch-1';
+          const savedSession = loadSavedPeriodQrSessions(activeSchoolId).find(
+            (s) =>
+              s.shortCode.toUpperCase() === rawInput.toUpperCase() ||
+              s.token.toUpperCase() === rawInput.toUpperCase()
+          );
+          if (savedSession) {
+            resolvedCourseId = savedSession.courseId;
+            resolvedPeriodNum = savedSession.periodNumber;
+            resolvedDate = savedSession.date;
+            resolvedCode = savedSession.shortCode;
+            resolvedToken = savedSession.token;
+            resolvedExpiresAt = savedSession.revokedAt ? 1 : savedSession.expiresAt;
+            resolvedCheckType = savedSession.checkType;
+          } else {
+            const matchingCourse = courses.find((c) => rawInput.toUpperCase().startsWith((c.code || '').toUpperCase()));
+            if (matchingCourse) {
+              resolvedCourseId = matchingCourse.id;
+            }
+            const periodMatch = rawInput.match(/-P(\d+)/i);
+            if (periodMatch?.[1]) {
+              resolvedPeriodNum = Number(periodMatch[1]);
+            }
           }
         }
       } catch {
         setStudentPeriodCheckinError('รูปแบบลิงก์หรือรหัส QR ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
         return;
       }
+    }
+
+    const tokenValidation = validatePeriodQrTokenState({
+      schoolId: _school?.id || currentUser?.schoolId || 'sch-1',
+      token: resolvedToken,
+      code: resolvedCode,
+      expiresAt: resolvedExpiresAt,
+    });
+    if (!tokenValidation.valid) {
+      setStudentPeriodCheckinError(
+        lang === 'th'
+          ? tokenValidation.reasonTh || 'QR Code หมดอายุหรือไม่ถูกต้อง'
+          : tokenValidation.reasonEn || 'QR Code has expired or is invalid'
+      );
+      return;
     }
 
     const targetCourse = courses.find((c) => c.id === resolvedCourseId) || selectedCourse;
@@ -857,7 +905,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
 
     const currentPeriodInfo = periodsList.find((p) => p.period === resolvedPeriodNum);
-    const actionLabel = periodCheckType === 'check_in' ? 'เช็คชื่อเข้าเรียน (Check-in)' : 'เช็คชื่อออกคาบเรียน (Check-out)';
+    const actionLabel = resolvedCheckType === 'check_in' ? 'เช็คชื่อเข้าเรียน (Check-in)' : 'เช็คชื่อออกคาบเรียน (Check-out)';
 
     const record: PeriodAttendanceRecord = {
       id: `patt-qr-${Date.now()}-${targetStudent.id}`,
@@ -869,7 +917,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       date: resolvedDate,
       studentId: targetStudent.id,
       status: 'present',
-      recordType: periodCheckType,
+      recordType: resolvedCheckType,
       verifiedByTeacherId: 'qr-self-checkin',
       verifiedByTeacherName: targetCourse.teacherName || 'ระบบ Barcode/QR รายคาบ',
       checkMethod: 'qr_code',
@@ -880,9 +928,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setSelectedCourseId(targetCourse.id);
     setSelectedPeriod(resolvedPeriodNum);
     setPeriodDate(resolvedDate);
+    setPeriodCheckType(resolvedCheckType);
     playChime();
     setStudentPeriodCheckinMsg(
-      `${periodCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
+      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
     );
     setTimeout(() => setStudentPeriodCheckinMsg(null), 5000);
   };

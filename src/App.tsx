@@ -232,6 +232,9 @@ export const App: React.FC = () => {
       const periodStr = sp.get('period');
       const date = sp.get('date') || undefined;
       const code = sp.get('code') || undefined;
+      const expStr = sp.get('exp');
+      const token = sp.get('token') || undefined;
+      const expiresAt = expStr && !Number.isNaN(Number(expStr)) ? Number(expStr) : undefined;
       const periodNumber = periodStr && !Number.isNaN(Number(periodStr)) ? Number(periodStr) : undefined;
       const isPeriodDeepLink = tab === 'mobile_checkin' || subTab === 'period_checkin' || Boolean(courseId);
       if (!isPeriodDeepLink) return null;
@@ -243,6 +246,8 @@ export const App: React.FC = () => {
         periodNumber,
         date,
         code,
+        expiresAt,
+        token,
       };
     } catch {
       return null;
@@ -2765,7 +2770,10 @@ export const App: React.FC = () => {
                     timetableSlots={schoolTimetableSlots}
                     leaveRequests={leaveRequests}
                     homeworkSubmissions={schoolHomeworkSubmissions}
+                    assignments={schoolAssignments}
+                    periodAttendance={schoolPeriodAttendance}
                     schoolPeriods={schoolPeriods}
+                    onSelectStudent={setSelectedStudentForProfile}
                   />
                 )}
 
@@ -3001,6 +3009,10 @@ export const App: React.FC = () => {
                     onUpdateCampusGates={handleUpdateCampusGates}
                     onSaveCampusGates={handleSaveCampusGates}
                     onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
+                    courses={schoolCourses}
+                    schoolPeriods={schoolPeriods}
+                    timetableSlots={schoolTimetableSlots}
+                    periodAttendance={schoolPeriodAttendance}
                   />
                 )}
 
@@ -3021,6 +3033,8 @@ export const App: React.FC = () => {
                     initialPeriodNumber={deepLinkParams?.periodNumber}
                     initialPeriodDate={deepLinkParams?.date}
                     initialPeriodCode={deepLinkParams?.code}
+                    initialPeriodExpiresAt={deepLinkParams?.expiresAt}
+                    initialPeriodToken={deepLinkParams?.token}
                     onRecordAttendance={handleRecordAttendance}
                     onRecordPeriodAttendance={handleRecordPeriodAttendance}
                     onAddLeaveRequest={handleAddLeaveRequest}

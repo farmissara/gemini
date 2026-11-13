@@ -10,7 +10,11 @@ import {
   School,
   AppLanguage,
   AuthUser,
-  UserRole
+  UserRole,
+  Course,
+  SchoolPeriodTime,
+  TimetableSlot,
+  PeriodAttendanceRecord
 } from '../types';
 import { 
   QrCode, 
@@ -48,6 +52,7 @@ import {
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
+import { PeriodQrGeneratorPanel } from '../components/PeriodQrGeneratorPanel';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
 
@@ -104,6 +109,10 @@ interface AttendanceViewProps {
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
+  courses?: Course[];
+  schoolPeriods?: SchoolPeriodTime[];
+  timetableSlots?: TimetableSlot[];
+  periodAttendance?: PeriodAttendanceRecord[];
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -121,8 +130,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
+  courses = [],
+  schoolPeriods = [],
+  timetableSlots = [],
+  periodAttendance = [],
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
+  const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
   const studentScope = getAllowedStudentScope(currentUser, students);
   const ownStudent = resolveOwnStudent(currentUser, students);
   const scopedStudents = isRestrictedViewer ? studentScope.allowedStudents : students;
@@ -136,7 +150,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   );
 
   const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
-  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'school_gps'>('gate_scanner');
+  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'period_qr' | 'school_gps'>('gate_scanner');
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
 
   // Scanner state (Staff must enter Student ID before check-in; Students only see themselves)
@@ -457,17 +471,32 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
             <span>3. ส่งออก Excel/PDF</span>
           </button>
+          {isAdminUser && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('period_qr')}
+              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
+                activeTab === 'period_qr'
+                  ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
+              }`}
+            >
+              <QrCode className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? '4. QR รายคาบ (ชั่วคราว)' : '4. Period QR'}</span>
+            </button>
+          )}
           {!isRestrictedViewer && (
             <button
               type="button"
               onClick={() => setActiveTab('school_gps')}
-              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 ${
+              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
                 activeTab === 'school_gps'
                   ? 'border-amber-600 dark:border-amber-400 text-amber-800 dark:text-amber-300'
                   : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
               }`}
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'พิกัด GPS' : 'GPS'}</span>
             </button>
           )}
 
@@ -1002,7 +1031,24 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: SCHOOL GPS & GEOFENCE SETTINGS */}
+      {/* TAB 4: ADMIN EXPIRING CLASS-PERIOD QR CODE UTILITY */}
+      {/* ========================================================================= */}
+      {activeTab === 'period_qr' && isAdminUser && (
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
+          <PeriodQrGeneratorPanel
+            schoolId={activeSchool?.id || currentUser?.schoolId || 'sch-1'}
+            courses={courses}
+            students={students}
+            schoolPeriods={schoolPeriods}
+            timetableSlots={timetableSlots}
+            periodAttendance={periodAttendance}
+            lang={lang}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 5: SCHOOL GPS & GEOFENCE SETTINGS */}
       {/* ========================================================================= */}
       {activeTab === 'school_gps' && (
         <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
