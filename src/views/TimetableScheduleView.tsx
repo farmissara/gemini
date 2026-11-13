@@ -28,6 +28,13 @@ import {
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import {
+  addCalendarDays,
+  buildTimetableIcs,
+  formatCalendarDate,
+  getBangkokDateInputValue,
+  getCalendarWeekStart,
+} from '../lib/timetableCalendar';
+import {
   DEFAULT_TEACHING_LOAD_MAX_PERIODS,
   DEFAULT_TEACHING_LOAD_MIN_PERIODS,
   formatSemesterLabel,
@@ -188,13 +195,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   ));
 
   // Main view mode: classroom schedule, attendance-hours criteria, or staff workload summary.
-  const [viewMode, setViewMode] = useState<'classroom' | 'hours_criteria' | 'workload'>('classroom');
+  const [viewMode, setViewMode] = useState<'classroom' | 'calendar' | 'hours_criteria' | 'workload'>('classroom');
   const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
   const [workloadStatusFilter, setWorkloadStatusFilter] = useState<'all' | 'scheduled' | 'unassigned' | 'low' | 'within' | 'high'>('all');
   const [workloadMinDraft, setWorkloadMinDraft] = useState(String(workloadMinPeriods));
   const [workloadMaxDraft, setWorkloadMaxDraft] = useState(String(workloadMaxPeriods));
   const [workloadSettingsError, setWorkloadSettingsError] = useState<string | null>(null);
   const [isSavingWorkloadSettings, setIsSavingWorkloadSettings] = useState(false);
+  const [calendarWeekStart, setCalendarWeekStart] = useState(() => (
+    getCalendarWeekStart(getBangkokDateInputValue())
+  ));
+  const [showIcsExportModal, setShowIcsExportModal] = useState(false);
+  const [icsStartDate, setIcsStartDate] = useState(calendarWeekStart);
+  const [icsEndDate, setIcsEndDate] = useState(addCalendarDays(calendarWeekStart, 15 * 7 + 4));
+  const [icsExportError, setIcsExportError] = useState<string | null>(null);
 
   // Classroom selection
   const uniqueClassRooms = Array.from(
@@ -463,6 +477,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     : selectedClassRoom === ALL_CLASSROOMS
       ? slots
       : slots.filter((s) => s.classRoom === selectedClassRoom);
+  const calendarWeekDays = DAYS.map((day, index) => ({
+    ...day,
+    date: addCalendarDays(calendarWeekStart, index),
+  }));
+  const calendarWeekRangeLabel = `${formatCalendarDate(calendarWeekStart)} – ${formatCalendarDate(addCalendarDays(calendarWeekStart, 4))}`;
   const isAllClassroomsView = viewMode === 'classroom' && (
     activeScheduleFilters
       ? !activeScheduleFilters.classRoom
@@ -475,6 +494,48 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       teacherName: '',
     });
     setShowScheduleSettingsModal(true);
+  };
+  const openIcsExportModal = () => {
+    setIcsStartDate(calendarWeekStart);
+    setIcsEndDate(addCalendarDays(calendarWeekStart, 15 * 7 + 4));
+    setIcsExportError(null);
+    setShowIcsExportModal(true);
+  };
+  const handleDownloadIcs = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIcsExportError(null);
+    try {
+      const filterLabel = activeScheduleFilters
+        ? [activeScheduleFilters.gradeLevel, activeScheduleFilters.classRoom, activeScheduleFilters.teacherName]
+          .filter(Boolean)
+          .join(' · ')
+        : selectedClassRoom === ALL_CLASSROOMS
+          ? 'ทุกห้อง'
+          : selectedClassRoom;
+      const calendarName = `${schoolName} · ${filterLabel || 'ตารางสอน'} · ${viewAcademicYear} ${viewSemester}`;
+      const calendarContent = buildTimetableIcs(
+        activeSlots,
+        icsStartDate,
+        icsEndDate,
+        calendarName,
+        schoolId
+      );
+      const blob = new Blob([calendarContent], { type: 'text/calendar;charset=utf-8' });
+      const objectUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      const filename = `${schoolName}-${viewAcademicYear}-${viewSemester}-calendar.ics`
+        .replace(/[\\/:*?"<>|]+/g, '-')
+        .replace(/\s+/g, '-');
+      downloadLink.href = objectUrl;
+      downloadLink.download = filename;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setShowIcsExportModal(false);
+    } catch (error) {
+      setIcsExportError(error instanceof Error ? error.message : String(error));
+    }
   };
   const handleSaveTeachingLoadThresholds = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1078,6 +1139,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </button>
               <button
                 type="button"
+                aria-pressed={viewMode === 'calendar'}
+                onClick={() => handleViewModeChange('calendar')}
+                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
+                  viewMode === 'calendar'
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>ปฏิทิน</span>
+              </button>
+              <button
+                type="button"
                 aria-pressed={viewMode === 'hours_criteria'}
                 onClick={() => handleViewModeChange('hours_criteria')}
                 className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
@@ -1572,6 +1646,130 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </table>
           </div>
         </div>
+      ) : viewMode === 'calendar' ? (
+        <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
+          <header className="shrink-0 space-y-3 border-b border-[var(--color-border)] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-[var(--color-text-title)]">ปฏิทินตารางสอนรายสัปดาห์</h2>
+                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+                  {calendarWeekRangeLabel} · {activeSlots.length} คาบ/สัปดาห์
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="สัปดาห์ก่อนหน้า"
+                  onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, -7))}
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]"
+                >
+                  <ChevronRight className="h-4 w-4 rotate-180" />
+                </button>
+                <label className="sr-only" htmlFor="timetable-calendar-week">เลือกสัปดาห์</label>
+                <input
+                  id="timetable-calendar-week"
+                  type="date"
+                  value={calendarWeekStart}
+                  onChange={(event) => {
+                    if (event.target.value) setCalendarWeekStart(getCalendarWeekStart(event.target.value));
+                  }}
+                  className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 text-xs text-[var(--color-text-title)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCalendarWeekStart(getCalendarWeekStart(getBangkokDateInputValue()))}
+                  className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+                >
+                  วันนี้
+                </button>
+                <button
+                  type="button"
+                  aria-label="สัปดาห์ถัดไป"
+                  onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, 7))}
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={openIcsExportModal}
+                  disabled={activeSlots.length === 0}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  ส่งออก Google Calendar
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {renderRoomAndTermControls()}
+              <p className="text-[10px] text-[var(--color-text-muted)]">
+                ใช้ปุ่มลูกศรเปลี่ยนสัปดาห์ · เลือกห้องเพื่อกรองตาราง
+              </p>
+            </div>
+          </header>
+          <div className="min-h-0 flex-1 overflow-auto p-3">
+            {activeSlots.length === 0 ? (
+              <p className="p-8 text-center text-xs text-[var(--color-text-muted)]">
+                ไม่มีคาบสอนในตัวกรองหรือภาคเรียนที่เลือก
+              </p>
+            ) : (
+              <div aria-label="ปฏิทินตารางสอนรายสัปดาห์" className="grid min-w-[900px] grid-cols-5 gap-2">
+                {calendarWeekDays.map((day) => {
+                  const daySlots = activeSlots
+                    .filter((slot) => slot.dayOfWeek === day.key)
+                    .sort((a, b) => (
+                      (getSlotTimeRange(a)?.start ?? 0) - (getSlotTimeRange(b)?.start ?? 0)
+                        || a.periodNumber - b.periodNumber
+                    ));
+                  return (
+                    <section key={day.key} aria-label={formatCalendarDate(day.date)} className="min-h-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2">
+                      <header className="sticky top-0 z-10 mb-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2">
+                        <h3 className="text-[11px] font-bold text-[var(--color-text-title)]">{formatCalendarDate(day.date)}</h3>
+                        <p className="mt-0.5 text-[9px] text-[var(--color-text-muted)]">{daySlots.length} คาบ</p>
+                      </header>
+                      <div className="space-y-2">
+                        {daySlots.length === 0 ? (
+                          <p className="py-6 text-center text-[10px] text-[var(--color-text-muted)]">ไม่มีคาบ</p>
+                        ) : daySlots.map((slot) => {
+                          const timeRange = getSlotTimeRange(slot);
+                          return (
+                            <button
+                              key={slot.id}
+                              type="button"
+                              onClick={() => openSlotDetails(slot)}
+                              className={`w-full rounded-lg border p-2 text-left transition hover:brightness-95 ${
+                                conflictingSlotIds.has(slot.id)
+                                  ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50'
+                                  : 'border-[var(--color-border)] bg-[var(--color-card)]'
+                              }`}
+                            >
+                              <span className="flex items-center justify-between gap-1 text-[9px] font-semibold text-[var(--color-primary-text)]">
+                                <span>{timeRange ? `${formatTimeMinutes(timeRange.start)}–${formatTimeMinutes(timeRange.end)}` : `คาบ ${slot.periodNumber}`}</span>
+                                {conflictingSlotIds.has(slot.id) && <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" />}
+                              </span>
+                              <span className="mt-1 block text-[10px] font-bold text-[var(--color-text-title)]">
+                                {slot.courseCode} · {slot.courseTitleTh}
+                              </span>
+                              <span className="mt-1 block text-[9px] text-[var(--color-text-body)]">
+                                {slot.classRoom} · {slot.teacherName || 'ไม่ระบุครู'}
+                              </span>
+                              {slot.room && (
+                                <span className="mt-0.5 block text-[9px] text-[var(--color-text-muted)]">
+                                  {slot.room}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
       ) : (
         /* TAB: Timetable 5-Day Weekly Grid View */
         <div className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
@@ -2436,6 +2634,74 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {showIcsExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="timetable-ics-export-title"
+            className="w-full max-w-md space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-text-body)] shadow-2xl"
+          >
+            <header>
+              <h2 id="timetable-ics-export-title" className="text-base font-bold text-[var(--color-text-title)]">
+                ส่งออกตารางไป Google Calendar
+              </h2>
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                ส่งออก {activeSlots.length} คาบตามห้อง/ตัวกรองและภาคเรียนที่เลือก เป็นกิจกรรมรายสัปดาห์ในช่วงวันที่กำหนด
+              </p>
+            </header>
+            <form onSubmit={handleDownloadIcs} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1 text-xs font-semibold">
+                  เริ่มวันที่
+                  <input
+                    type="date"
+                    required
+                    value={icsStartDate}
+                    onChange={(event) => setIcsStartDate(event.target.value)}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
+                  />
+                </label>
+                <label className="space-y-1 text-xs font-semibold">
+                  สิ้นสุดวันที่
+                  <input
+                    type="date"
+                    required
+                    min={icsStartDate}
+                    value={icsEndDate}
+                    onChange={(event) => setIcsEndDate(event.target.value)}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
+                  />
+                </label>
+              </div>
+              <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+                ดาวน์โหลดไฟล์ .ics แล้วนำเข้าใน Google Calendar ที่การตั้งค่า → นำเข้าและส่งออก การนำเข้าเป็นสำเนา ณ เวลาส่งออก หากมีการแก้ตารางภายหลังให้นำเข้าไฟล์ใหม่ ไฟล์นี้ยังไม่ซิงก์อัตโนมัติและไม่รวมวันหยุดพิเศษ
+              </p>
+              {icsExportError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                  {icsExportError}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowIcsExportModal(false)}
+                  className="rounded-lg border border-[var(--color-border)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--color-card-subtle)]"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]"
+                >
+                  ดาวน์โหลด .ics
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
 
