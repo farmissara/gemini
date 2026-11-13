@@ -23,6 +23,7 @@ import {
   XCircle,
   AlertCircle,
   SlidersHorizontal,
+  ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
@@ -106,8 +107,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
 
-  // Main view mode: classroom, teacher, attendance-hours criteria, or staff workload summary.
-  const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria' | 'workload'>('classroom');
+  // Main view mode: classroom schedule, attendance-hours criteria, or staff workload summary.
+  const [viewMode, setViewMode] = useState<'classroom' | 'hours_criteria' | 'workload'>('classroom');
   const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
   const [workloadStatusFilter, setWorkloadStatusFilter] = useState<'all' | 'scheduled' | 'unassigned' | 'low' | 'within' | 'high'>('all');
 
@@ -125,7 +126,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [roomOptionsError, setRoomOptionsError] = useState<string | null>(null);
   const [isSavingRoomOption, setIsSavingRoomOption] = useState(false);
 
-  // Teacher selection for Teacher Workload Timetable
+  // Teacher names are used as suggestions when assigning a teacher to a slot.
   const teacherNames = Array.from(new Map([
       ...teachers.map((t) => t.fullNameTh),
       ...slots.map((s) => s.teacherName).filter(Boolean),
@@ -135,11 +136,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     .filter(([key, name]) => key && name))
     .values())
     .sort((a, b) => a.localeCompare(b, 'th'));
-  const [selectedTeacherName, setSelectedTeacherName] = useState<string>(teacherNames[0] || '');
-  const [teacherSearchInput, setTeacherSearchInput] = useState('');
-  const matchingTeacherNames = teacherSearchInput.trim()
-    ? teacherNames.filter((name) => normalizeTeacherName(name).includes(normalizeTeacherName(teacherSearchInput))).slice(0, 8)
-    : [];
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -185,12 +181,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   });
   const selectedCatalogCourse = courses.find((course) => course.id === selectedCourseId);
 
-  // Filter slots based on active view mode
-  const activeSlots = viewMode === 'teacher'
-    ? slots.filter((s) => normalizeTeacherName(s.teacherName) === normalizeTeacherName(selectedTeacherName))
-    : selectedClassRoom === ALL_CLASSROOMS
-      ? slots
-      : slots.filter((s) => s.classRoom === selectedClassRoom);
+  const activeSlots = selectedClassRoom === ALL_CLASSROOMS
+    ? slots
+    : slots.filter((s) => s.classRoom === selectedClassRoom);
   const isAllClassroomsView = viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS;
 
   // Overall conflict detection across the school
@@ -224,8 +217,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     });
   });
 
-  // Calculate teacher weekly workload in teaching view
-  const teacherWeeklyPeriods = slots.filter((s) => normalizeTeacherName(s.teacherName) === normalizeTeacherName(selectedTeacherName)).length;
   const parseTimeMinutes = (time: string): number | null => {
     const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
     if (!match) return null;
@@ -240,9 +231,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     const end = parseTimeMinutes(slot.endTime) ?? parseTimeMinutes(period?.endTime || '');
     return start === null || end === null || end <= start ? 0 : (end - start) / 60;
   };
-  const teacherWeeklyHours = slots
-    .filter((slot) => normalizeTeacherName(slot.teacherName) === normalizeTeacherName(selectedTeacherName))
-    .reduce((hours, slot) => hours + getSlotDurationHours(slot), 0);
 
   const isTeachingStaff = (teacher: Teacher) => (
     /ครู|อาจารย์|ผู้สอน/i.test(`${teacher.positionTitle || ''} ${teacher.academicStanding || ''}`)
@@ -588,20 +576,58 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Page heading, view navigation, and schedule actions */}
+      {/* Page heading and compact schedule controls */}
       <div className="shrink-0 space-y-3 p-3 app-page-header">
-        <div className="flex items-center gap-2 min-w-0">
-          <Calendar className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
-              ตารางเรียนและตารางสอน
-            </h1>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              จัดตารางตามห้องหรือตามครู พร้อมตรวจสอบภาระงานและชั่วโมงเรียน
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Calendar className="w-5 h-5 shrink-0 text-[var(--color-primary-text)]" />
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+                ตารางเรียนและตารางสอน
+              </h1>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                จัดตารางตามห้อง พร้อมตรวจสอบภาระงานและชั่วโมงเรียน
+              </p>
+            </div>
           </div>
+          {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin')
+            && viewMode === 'classroom' && (
+            <button
+              type="button"
+              onClick={() => {
+                setCourseSearchInput('');
+                if (courses.length > 0) {
+                  handleSelectCourse(courses[0].id);
+                } else {
+                  handleSelectCourse('custom');
+                }
+                setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
+                setSlotActionError(null);
+                setShowAddModal(true);
+              }}
+              disabled={selectedClassRoom === ALL_CLASSROOMS}
+              title={selectedClassRoom === ALL_CLASSROOMS ? 'เลือกห้องเรียนเฉพาะก่อนเพิ่มคาบเรียน' : undefined}
+              className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[var(--color-primary-hover)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>เพิ่มคาบ</span>
+            </button>
+          )}
         </div>
 
+        <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+          <summary className="flex min-h-10 cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 hover:bg-[var(--color-card-subtle)]">
+            <span className="text-xs font-bold text-[var(--color-text-title)]">ตัวเลือกตาราง</span>
+            <span className="flex min-w-0 items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+              <span className="truncate">
+                {viewMode === 'classroom' ? 'ตารางตามห้อง' : viewMode === 'hours_criteria' ? 'เวลาเรียน 80%' : 'ภาระงานครู'}
+                {viewMode !== 'workload' && ` · ${selectedClassRoom === ALL_CLASSROOMS ? 'ทุกห้อง' : selectedClassRoom}`}
+                {` · ${formatSemesterLabel(currentSemester)} ${academicYear}`}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="space-y-3 border-t border-[var(--color-border)] p-3">
         <div className="space-y-2">
           <div className="grid gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2 sm:grid-cols-2">
             <div className="min-w-0">
@@ -619,24 +645,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 >
                   <Layers className="w-3.5 h-3.5" />
                   <span>ตามห้องเรียน</span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={viewMode === 'teacher'}
-                  onClick={() => {
-                    if (selectedClassRoom === ALL_CLASSROOMS) {
-                      setSelectedClassRoom(uniqueClassRooms[0] || '');
-                    }
-                    setViewMode('teacher');
-                  }}
-                  className={`flex min-h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 transition cursor-pointer ${
-                    viewMode === 'teacher'
-                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-sm font-bold'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>ตามครูผู้สอน</span>
                 </button>
               </div>
             </div>
@@ -770,33 +778,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </div>
             </details>
 
-            {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCourseSearchInput('');
-                  if (courses.length > 0) {
-                    handleSelectCourse(courses[0].id);
-                  } else {
-                    handleSelectCourse('custom');
-                  }
-                  setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
-                  setSlotActionError(null);
-                  setShowAddModal(true);
-                }}
-                disabled={viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS}
-                title={viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS
-                  ? 'เลือกห้องเรียนเฉพาะก่อนเพิ่มคาบเรียน'
-                  : undefined}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มคาบ</span>
-              </button>
-            )}
           </div>
         </div>
-      </div>
 
       {/* Context filters and summary for the selected view */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -886,58 +869,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </span>
             {roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
           </div>
-        ) : viewMode === 'teacher' ? (
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <span className="shrink-0 text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-              <User className="w-4 h-4 text-[var(--color-primary-text)]" />
-              <span>ครูผู้สอน:</span>
-            </span>
-            <div className="relative min-w-48 flex-1">
-              <input
-                type="search"
-                value={teacherSearchInput}
-                onChange={(event) => setTeacherSearchInput(event.target.value)}
-                placeholder="พิมพ์ชื่อครูเพื่อค้นหา"
-                aria-label="ค้นหาครูผู้สอน"
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-              />
-              {teacherSearchInput.trim() && (
-                <div role="listbox" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
-                  {matchingTeacherNames.length > 0 ? matchingTeacherNames.map((name) => {
-                    const count = slots.filter((slot) => normalizeTeacherName(slot.teacherName) === normalizeTeacherName(name)).length;
-                    return (
-                      <button
-                        key={normalizeTeacherName(name)}
-                        type="button"
-                        role="option"
-                        aria-selected={normalizeTeacherName(selectedTeacherName) === normalizeTeacherName(name)}
-                        onClick={() => {
-                          setSelectedTeacherName(name);
-                          setTeacherSearchInput('');
-                        }}
-                        className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-                      >
-                        <span className="truncate font-semibold">{name}</span>
-                        <span className="shrink-0 text-[10px] text-[var(--color-text-muted)]">{count} คาบ</span>
-                      </button>
-                    );
-                  }) : (
-                    <p className="px-2.5 py-3 text-center text-[11px] text-[var(--color-text-muted)]">
-                      ไม่พบชื่อครูที่ตรงกับคำค้นหา
-                    </p>
-                  )}
-                  {teacherNames.length > 8 && matchingTeacherNames.length === 8 && (
-                    <p className="px-2.5 py-1 text-[10px] text-[var(--color-text-muted)]">
-                      แสดง 8 รายการแรก · พิมพ์เพิ่มเพื่อจำกัดผลการค้นหา
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-            <span className="shrink-0 rounded-lg bg-[var(--color-primary-light)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-primary-text)]">
-              {selectedTeacherName || 'ยังไม่เลือกครู'}
-            </span>
-          </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-lg bg-[var(--color-card-subtle)] px-2.5 py-1.5 font-semibold text-[var(--color-text-body)]">
@@ -951,28 +882,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
         {/* Workload / Academic Period Control */}
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-          {viewMode === 'teacher' ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                ภาระงานสอนจริง:
-              </span>
-              <span className={`text-xs px-2.5 py-0.5 rounded-lg font-bold border tabular-nums ${
-                teacherWeeklyPeriods >= 12 && teacherWeeklyPeriods <= 22
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                  : teacherWeeklyPeriods < 12
-                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                    : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-              }`}>
-                {teacherWeeklyPeriods} คาบ/สัปดาห์ ({teacherWeeklyHours.toFixed(1)} ชม.) {
-                  teacherWeeklyPeriods < 12
-                    ? ' ⚠ ต่ำกว่า 12 คาบ'
-                    : teacherWeeklyPeriods > 22
-                      ? ' ⚠ มากกว่า 22 คาบ'
-                      : ' ✓ อยู่ในช่วงเกณฑ์เบื้องต้น'
-                }
-              </span>
-            </div>
-          ) : viewMode === 'workload' ? (
+          {viewMode === 'workload' ? (
             <span>
               บุคลากรที่ติดตามภาระงาน {teacherWorkloadRows.length} คน · รวมคาบสอน {slots.length} คาบ/สัปดาห์
             </span>
@@ -1016,6 +926,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           )}
         </div>
       </div>
+          </div>
+        </details>
+      </div>
       {academicPeriodNotice && (
         <div className="shrink-0 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 font-medium">
@@ -1030,13 +943,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         <button
           type="button"
           onClick={() => setViewMode('workload')}
-          className="shrink-0 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-left text-xs text-amber-950 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100 dark:hover:bg-amber-950"
+          className="shrink-0 flex min-h-8 flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-left text-[11px] text-amber-950 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100 dark:hover:bg-amber-950"
         >
           <span className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             <span>
               ตรวจสอบภาระงานสอน: <strong>{lowWorkloadCount}</strong> คนต่ำกว่า 12 คาบ และ <strong>{highWorkloadCount}</strong> คนเกิน 22 คาบ/สัปดาห์
-              <span className="ml-1 text-[10px] opacity-80">เกณฑ์คัดกรองเบื้องต้น</span>
+              <span className="ml-1 opacity-80">เกณฑ์คัดกรองเบื้องต้น</span>
             </span>
           </span>
           <span className="font-bold underline underline-offset-2">ดูสรุป</span>
@@ -1045,17 +958,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
       {/* Conflict Warning Banner (if any) */}
       {conflicts.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex items-start gap-3 shadow-xs">
-          <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <h4 className="text-xs font-bold text-amber-950 dark:text-amber-100">
-              ระบบตรวจพบข้อขัดแย้งตารางเรียน (Schedule Conflicts Detected)
-            </h4>
-            <p className="text-[11px] text-amber-900 dark:text-amber-200">
-              พบการจัดครูผู้สอนหรือห้องสถานที่ซ้ำซ้อนในตารางทั้งโรงเรียน {conflicts.length / 2} รายการ คาบที่เกี่ยวข้องจะมีกรอบสีส้ม
-            </p>
-          </div>
-        </div>
+        <details className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
+          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-[11px] font-semibold">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
+            <span>พบข้อขัดแย้งตารางเรียน {conflicts.length / 2} รายการ · คาบที่เกี่ยวข้องมีกรอบสีส้ม</span>
+            <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+          </summary>
+          <p className="border-t border-amber-200 px-3 py-2 text-[10px] dark:border-amber-800">
+            ตรวจสอบครูผู้สอนหรือห้องสถานที่ที่ถูกจัดซ้ำในช่วงเวลาเดียวกัน
+          </p>
+        </details>
       )}
 
       {/* MAIN VIEW CONTENT: Grid Table OR Hours Criteria */}
@@ -1337,11 +1249,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 shrink-0 text-[var(--color-primary-text)]" />
                 <span className="truncate text-xs font-bold text-[var(--color-text-title)]">
-                  {viewMode === 'teacher'
-                    ? `ตารางสอน: ${selectedTeacherName}`
-                    : selectedClassRoom === ALL_CLASSROOMS
-                      ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
-                      : `${selectedClassRoom}`} — {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear}
+                  {selectedClassRoom === ALL_CLASSROOMS
+                    ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
+                    : `${selectedClassRoom}`} — {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear}
                 </span>
               </div>
               <p className="mt-1 pl-6 text-[10px] text-[var(--color-text-muted)]">
@@ -1354,7 +1264,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
-            <table className={`table-comfortable w-full text-left border-collapse ${
+            <table className={`w-full text-left border-collapse ${
               isAllClassroomsView ? 'min-w-[1120px]' : 'min-w-[880px]'
             }`}>
               <thead>
