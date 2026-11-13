@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     minor TEXT,
     academic_standing TEXT,
     position_title TEXT,
+    reports_to_teacher_id TEXT,
     department TEXT,
     teacher_license_no TEXT,
     teaching_subjects JSONB DEFAULT '[]'::jsonb,
@@ -169,11 +170,21 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     self_development_plan TEXT,
     pa_portfolio JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT teachers_id_school_unique UNIQUE (id, school_id)
+    CONSTRAINT teachers_id_school_unique UNIQUE (id, school_id),
+    CONSTRAINT teachers_reports_to_teacher_same_school_fkey
+        FOREIGN KEY (reports_to_teacher_id, school_id)
+        REFERENCES public.teachers(id, school_id)
+        DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT teachers_no_self_manager CHECK (reports_to_teacher_id IS NULL OR reports_to_teacher_id <> id)
 );
 
 ALTER TABLE public.teachers
     ADD COLUMN IF NOT EXISTS pa_portfolio JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.teachers
+    ADD COLUMN IF NOT EXISTS reports_to_teacher_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_teachers_school_reports_to
+    ON public.teachers(school_id, reports_to_teacher_id);
 
 -- School-wide bell schedule, including the lunch break (period_number = 0).
 CREATE TABLE IF NOT EXISTS public.school_period_times (

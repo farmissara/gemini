@@ -38,6 +38,7 @@ import {
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
 import { StaffPositionConfigPanel } from '../components/StaffPositionConfigPanel';
+import { StaffOrganizationView } from './StaffOrganizationView';
 import { getDuplicateRecordWarnings, getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
@@ -94,6 +95,24 @@ interface TeachersViewProps {
   academicYear?: string;
 }
 
+const getSubordinateTeacherIds = (teachers: Teacher[], teacherId: string): Set<string> => {
+  const descendants = new Set<string>();
+  const pendingIds = [teacherId];
+
+  while (pendingIds.length > 0) {
+    const managerId = pendingIds.pop();
+    if (!managerId) continue;
+    teachers.forEach((teacher) => {
+      if (teacher.reportsToTeacherId === managerId && !descendants.has(teacher.id)) {
+        descendants.add(teacher.id);
+        pendingIds.push(teacher.id);
+      }
+    });
+  }
+
+  return descendants;
+};
+
 export const TeachersView: React.FC<TeachersViewProps> = ({
   teachers,
   lang,
@@ -124,6 +143,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<Teacher | null>(null);
   const [detailTab, setDetailTab] = useState<'profile' | 'pa_portfolio' | 'teaching_analytics'>('profile');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [staffPage, setStaffPage] = useState<'directory' | 'organization'>('directory');
   const [teacherAccounts, setTeacherAccounts] = useState<StaffParentAccountLink[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [showAccountsPanel, setShowAccountsPanel] = useState(false);
@@ -152,6 +172,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     fullNameTh: '',
     fullNameEn: '',
     positionTitle: '',
+    reportsToTeacherId: '',
     gender: 'male',
     email: '',
     phone: '',
@@ -193,6 +214,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       ...teachers.map((t) => (t.positionTitle || '').trim()).filter(Boolean),
     ])
   );
+  const unavailableManagerIds = editingTeacher
+    ? getSubordinateTeacherIds(teachers, editingTeacher.id)
+    : new Set<string>();
 
   const handleRenamePositionAcrossTeachers = (oldTitle: string, newTitle: string) => {
     teachers.forEach((teacher) => {
@@ -247,6 +271,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       fullNameTh: '',
       fullNameEn: '',
       positionTitle: '',
+      reportsToTeacherId: '',
       gender: 'male',
       email: '',
       phone: '',
@@ -307,6 +332,22 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       setTeacherFormStep(1);
       return;
     }
+    const reportsToTeacherId = formData.reportsToTeacherId?.trim() || undefined;
+    if (reportsToTeacherId) {
+      const managerExists = teachers.some((teacher) => teacher.id === reportsToTeacherId);
+      const managerIsSubordinate = editingTeacher
+        ? getSubordinateTeacherIds(teachers, editingTeacher.id).has(reportsToTeacherId)
+        : false;
+      if (
+        !managerExists
+        || reportsToTeacherId === editingTeacher?.id
+        || managerIsSubordinate
+      ) {
+        setFormError('เลือกผู้บังคับบัญชาที่มีอยู่ในโรงเรียน และไม่เป็นผู้ใต้บังคับบัญชาของบุคลากรคนนี้');
+        setTeacherFormStep(2);
+        return;
+      }
+    }
     setFormError(null);
     const trimmedPosition = formData.positionTitle?.trim() || '';
     if (trimmedPosition && onUpdateStaffPositionOptions && !configuredPositionOptions.includes(trimmedPosition)) {
@@ -317,6 +358,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       const updated: Teacher = {
         ...editingTeacher,
         ...formData,
+        reportsToTeacherId,
         positionTitle: formData.positionTitle?.trim() || '',
         fullNameTh: formData.fullNameTh.trim(),
         fullNameEn: formData.fullNameEn?.trim() || '',
@@ -347,6 +389,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         fullNameTh: formData.fullNameTh.trim(),
         fullNameEn: formData.fullNameEn?.trim() || formData.fullNameTh.trim(),
         positionTitle: formData.positionTitle?.trim() || '',
+        reportsToTeacherId,
         gender: formData.gender || 'male',
         email: formData.email?.trim() || '',
         phone: formData.phone?.trim() || '',
@@ -638,6 +681,44 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         </div>
       </div>
 
+      <div className="shrink-0 flex gap-2 border-b border-[var(--color-border)]">
+        <button
+          type="button"
+          onClick={() => setStaffPage('directory')}
+          className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition ${
+            staffPage === 'directory'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <GraduationCap className="h-3.5 w-3.5" />
+          รายชื่อบุคลากร
+        </button>
+        <button
+          type="button"
+          onClick={() => setStaffPage('organization')}
+          className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition ${
+            staffPage === 'organization'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          โครงสร้างองค์กร
+        </button>
+      </div>
+
+      {staffPage === 'organization' ? (
+        <StaffOrganizationView
+          teachers={teachers}
+          canManage={canManage}
+          onEditTeacher={canManage ? (teacher) => {
+            setStaffPage('directory');
+            handleOpenEdit(teacher);
+          } : undefined}
+        />
+      ) : (
+      <>
       {canManage && showPositionConfigPanel && (
         <StaffPositionConfigPanel
           positions={configuredPositionOptions}
@@ -1771,6 +1852,33 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">
+                  ผู้บังคับบัญชา / หัวหน้างาน
+                </label>
+                <select
+                  value={formData.reportsToTeacherId || ''}
+                  onChange={(e) => setFormData({ ...formData, reportsToTeacherId: e.target.value || undefined })}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                >
+                  <option value="">ไม่ระบุ / จุดเริ่มต้นของผัง</option>
+                  {teachers
+                    .filter((teacher) => (
+                      teacher.id !== editingTeacher?.id
+                      && !unavailableManagerIds.has(teacher.id)
+                    ))
+                    .sort((a, b) => a.fullNameTh.localeCompare(b.fullNameTh, 'th'))
+                    .map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {[teacher.positionTitle, teacher.fullNameTh].filter(Boolean).join(' · ')}
+                      </option>
+                    ))}
+                </select>
+                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+                  เลือกจากบุคลากรในโรงเรียนเดียวกัน ระบบจะป้องกันการกำหนดหัวหน้าให้เป็นผู้ใต้บังคับบัญชาของตนเอง
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[var(--color-text-title)] font-bold mb-1">วุฒิการศึกษาสูงสุด</label>
@@ -2426,6 +2534,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

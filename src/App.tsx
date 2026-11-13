@@ -1171,7 +1171,11 @@ export const App: React.FC = () => {
       try {
         await deleteTeacherFromDb(activeSchool.id, teacherId);
         setTeachers((prev) => {
-          const next = prev.filter((teacher) => teacher.id !== teacherId);
+          const next = prev
+            .filter((teacher) => teacher.id !== teacherId)
+            .map((teacher) => teacher.reportsToTeacherId === teacherId
+              ? { ...teacher, reportsToTeacherId: undefined }
+              : teacher);
           if (typeof window !== 'undefined') {
             try {
               localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
@@ -1208,10 +1212,18 @@ export const App: React.FC = () => {
         }
       }
       if (deletedIds.length > 0) {
-        setTeachers((prev) => prev.filter((teacher) => !deletedIds.includes(teacher.id)));
+        setTeachers((prev) => prev
+          .filter((teacher) => !deletedIds.includes(teacher.id))
+          .map((teacher) => deletedIds.includes(teacher.reportsToTeacherId || '')
+            ? { ...teacher, reportsToTeacherId: undefined }
+            : teacher));
         if (typeof window !== 'undefined') {
           try {
-            const remaining = teachers.filter((teacher) => !deletedIds.includes(teacher.id));
+            const remaining = teachers
+              .filter((teacher) => !deletedIds.includes(teacher.id))
+              .map((teacher) => deletedIds.includes(teacher.reportsToTeacherId || '')
+                ? { ...teacher, reportsToTeacherId: undefined }
+                : teacher);
             localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(remaining));
             const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
             localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...deletedIds])]));

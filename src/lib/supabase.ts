@@ -300,6 +300,7 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     minor: row.minor || undefined,
     academicStanding: row.academic_standing || '',
     positionTitle: row.position_title || '',
+    reportsToTeacherId: row.reports_to_teacher_id || undefined,
     department: row.department || '',
     teacherLicenseNo: row.teacher_license_no || '',
     teachingSubjects: Array.isArray(row.teaching_subjects) ? row.teaching_subjects : [],
@@ -727,6 +728,7 @@ function mapTeacherToDb(teacher: Teacher, schoolId: string) {
     minor: teacher.minor || null,
     academic_standing: teacher.academicStanding,
     position_title: teacher.positionTitle || null,
+    reports_to_teacher_id: teacher.reportsToTeacherId || null,
     department: teacher.department,
     teacher_license_no: teacher.teacherLicenseNo,
     teaching_subjects: teacher.teachingSubjects || [],
@@ -1271,6 +1273,14 @@ export async function deleteStudentFromDb(schoolId: string, studentId: string): 
 export async function deleteTeacherFromDb(schoolId: string, teacherId: string): Promise<void> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
+  const { error: reportingError } = await client
+    .from('teachers')
+    .update({ reports_to_teacher_id: null })
+    .eq('school_id', schoolId)
+    .eq('reports_to_teacher_id', teacherId);
+  if (reportingError) {
+    throw new Error(`Could not clear staff reporting links before deleting teacher: ${reportingError.message}`);
+  }
   const { error } = await client
     .from('teachers')
     .delete()

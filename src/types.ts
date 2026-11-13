@@ -217,6 +217,7 @@ export interface Teacher {
   fullNameTh: string;
   fullNameEn: string;
   positionTitle?: string;
+  reportsToTeacherId?: string;
   gender: 'male' | 'female' | 'other';
   email: string;
   phone: string;

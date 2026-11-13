@@ -290,6 +290,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           fullNameTh: r[1] || '',
           fullNameEn: r[2] || '',
           positionTitle: r[22] || '',
+          reportsToTeacherId: r[23] || undefined,
           gender: ((r[3] === 'female' || r[3] === 'หญิง') ? 'female' : 'male') as 'female' | 'male' | 'other',
           email: r[4] || '',
           phone: r[5] || '',
@@ -325,7 +326,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   };
 
   const handleExportTeachers = () => {
-    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA', 'ระดับชั้นที่สอน', 'ความสามารถพิเศษ', 'วุฒิบัตร/ใบรับรอง', 'แผนพัฒนาตนเอง', 'LINE User ID', 'ผู้ดูแลโรงเรียน', 'เชื่อมต่อ LINE', 'ตำแหน่งบุคลากร'];
+    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA', 'ระดับชั้นที่สอน', 'ความสามารถพิเศษ', 'วุฒิบัตร/ใบรับรอง', 'แผนพัฒนาตนเอง', 'LINE User ID', 'ผู้ดูแลโรงเรียน', 'เชื่อมต่อ LINE', 'ตำแหน่งบุคลากร', 'รหัสผู้บังคับบัญชา'];
     const rows = teachers.map(t => [
       t.teacherIdNumber,
       `"${t.fullNameTh}"`,
@@ -350,19 +351,28 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
       t.isSchoolAdmin ? 'true' : 'false',
       t.lineLinked ? 'true' : 'false',
       `"${t.positionTitle || ''}"`,
+      t.reportsToTeacherId || '',
     ]);
     downloadFile(`hrms_teachers_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
     showToast('ส่งออกข้อมูลบุคลากร HRMS สำเร็จ (CSV)');
   };
 
   const handleDownloadTeacherTemplate = () => {
-    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked', 'positionTitle'];
+    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked', 'positionTitle', 'reportsToTeacherId'];
     downloadFile('template_hrms_teachers.csv', headers.join(','));
     showToast('ดาวน์โหลดแบบฟอร์มครู HRMS แล้ว');
   };
 
   const handleConfirmImportTeachers = async () => {
     if (previewTeachers.length === 0) return;
+    const existingTeacherIds = new Set(teachers.map((teacher) => teacher.id));
+    const unresolvedManagerNames = previewTeachers
+      .filter((teacher) => teacher.reportsToTeacherId && !existingTeacherIds.has(teacher.reportsToTeacherId))
+      .map((teacher) => teacher.fullNameTh);
+    if (unresolvedManagerNames.length > 0) {
+      showToast(`นำเข้าไม่ได้: ไม่พบรหัสผู้บังคับบัญชาของ ${unresolvedManagerNames.join(', ')} ในทะเบียนโรงเรียนนี้`);
+      return;
+    }
     const duplicateReasons = getTeacherDuplicateReasons(previewTeachers, teachers);
     if (duplicateReasons.length > 0 &&
       !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
