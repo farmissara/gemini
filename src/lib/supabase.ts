@@ -766,12 +766,67 @@ export async function deleteCoursesFromDb(schoolId: string, courseIds: string[])
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
 
+  // Clean up dependent grades and timetable links first
+  const { error: gradeErr } = await client
+    .from('grades')
+    .delete()
+    .eq('school_id', schoolId)
+    .in('course_id', courseIds);
+  if (gradeErr && !isMissingTableError(gradeErr)) {
+    throw new Error(`Could not clean up course grades: ${gradeErr.message}`);
+  }
+
+  const { error: slotErr } = await client
+    .from('timetable_slots')
+    .update({ course_id: null })
+    .eq('school_id', schoolId)
+    .in('course_id', courseIds);
+  if (slotErr && !isMissingTableError(slotErr)) {
+    console.warn('Could not clear course_id on timetable_slots:', slotErr.message);
+  }
+
   const { error } = await client
     .from('courses')
     .delete()
     .eq('school_id', schoolId)
     .in('id', courseIds);
   if (error) throw new Error(`Could not delete course records: ${error.message}`);
+}
+
+export async function updateCourseEnrollmentInDb(
+  schoolId: string,
+  courseId: string,
+  enrolledStudentIds: string[]
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client
+    .from('courses')
+    .update({ enrolled_student_ids: enrolledStudentIds })
+    .eq('school_id', schoolId)
+    .eq('id', courseId);
+  if (error) throw new Error(`Could not update course enrollment in Supabase: ${error.message}`);
+}
+
+export async function deleteGradesForEnrollmentFromDb(
+  schoolId: string,
+  courseId: string,
+  studentIds: string[]
+): Promise<void> {
+  if (studentIds.length === 0) return;
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client
+    .from('grades')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('course_id', courseId)
+    .in('student_id', studentIds);
+  if (error && !isMissingTableError(error)) {
+    throw new Error(`Could not remove enrollment grade records: ${error.message}`);
+  }
 }
 
 export async function syncDataToSupabase(payload: {
@@ -1147,6 +1202,48 @@ export async function fetchSchoolCounts(schoolIds: string[]): Promise<Record<str
 export async function deleteStudentFromDb(schoolId: string, studentId: string): Promise<void> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
+
+  // Clean up dependent student records in database before removing student row
+  const dependentTables = ['grades', 'attendance', 'period_attendance', 'invoices'] as const;
+  for (const table of dependentTables) {
+    const { error: depErr } = await client
+      .from(table)
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId);
+    if (depErr && !isMissingTableError(depErr)) {
+      console.warn(`Could not clean ${table} for deleted student:`, depErr.message);
+    }
+  }
+
+  // Unlink any user_profiles bound to this student record
+  const { error: unlinkErr } = await client
+    .from('user_profiles')
+    .update({ student_id: null })
+    .eq('school_id', schoolId)
+    .eq('student_id', studentId);
+  if (unlinkErr && !isMissingTableError(unlinkErr)) {
+    console.warn('Could not unlink user_profiles for deleted student:', unlinkErr.message);
+  }
+
+  // Strip studentId from courses.enrolled_student_ids in Supabase
+  const { data: schoolCourseRows } = await client
+    .from('courses')
+    .select('id, enrolled_student_ids')
+    .eq('school_id', schoolId);
+  if (Array.isArray(schoolCourseRows)) {
+    for (const row of schoolCourseRows) {
+      const currentIds: string[] = Array.isArray(row.enrolled_student_ids) ? row.enrolled_student_ids : [];
+      if (currentIds.includes(studentId)) {
+        await client
+          .from('courses')
+          .update({ enrolled_student_ids: currentIds.filter((id) => id !== studentId) })
+          .eq('school_id', schoolId)
+          .eq('id', row.id);
+      }
+    }
+  }
+
   const { error } = await client
     .from('students')
     .delete()

@@ -113,3 +113,16 @@ export const upsertConsentResponse = (
   safeWrite(`${CONSENT_RESPONSES_PREFIX}${schoolId}`, updated);
   return updated;
 };
+
+export const cleanupStudentCampusData = (schoolId: string, studentId: string): void => {
+  const nextInterventions = getSchoolInterventions(schoolId).filter(
+    (item) => item.studentId !== studentId
+  );
+  safeWrite(`${INTERVENTION_PREFIX}${schoolId}`, nextInterventions);
+
+  const nextResponses = getConsentResponses(schoolId).filter(
+    (item) => item.studentId !== studentId
+  );
+  safeWrite(`${CONSENT_RESPONSES_PREFIX}${schoolId}`, nextResponses);
+};
+

@@ -31,6 +31,7 @@ import {
 } from '../lib/duplicateRecords';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -43,8 +44,8 @@ interface CoursesViewProps {
   onDeleteCourses?: (courseIds: string[]) => Promise<boolean | void> | boolean | void;
   onEnrollStudent: (courseId: string, studentId: string) => void;
   onEnrollStudentsBatch?: (courseId: string, studentIds: string[]) => void;
-  onUnenrollStudent?: (courseId: string, studentId: string) => void;
-  onUnenrollStudentsBatch?: (courseId: string, studentIds: string[]) => void;
+  onUnenrollStudent?: (courseId: string, studentId: string) => Promise<void> | void;
+  onUnenrollStudentsBatch?: (courseId: string, studentIds: string[]) => Promise<void> | void;
   onOpenImportExport?: (tab?: 'courses' | 'enrollment' | 'grades') => void;
   semesterOptions?: string[];
   academicYear?: string;
@@ -107,7 +108,14 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const [individualSearchQuery, setIndividualSearchQuery] = useState('');
   const [selectedIndividualStudentId, setSelectedIndividualStudentId] = useState('');
   const [enrolledSearchQuery, setEnrolledSearchQuery] = useState('');
-  const [confirmClearAllCourseId, setConfirmClearAllCourseId] = useState<string | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    description: string;
+    detailNote?: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [activeCourseId, setActiveCourseId] = useState<string>(courses[0]?.id || '');
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
@@ -346,9 +354,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     invoices: [],
     timetableSlots: [],
   });
-  const handleDeleteSelectedCourses = async () => {
+  const executeDeleteSelectedCourses = async () => {
     if (selectedCourseIds.length === 0) return;
-    if (!confirm(`ยืนยันลบรายวิชาที่เลือก ${selectedCourseIds.length} รายการ?`)) return;
     setIsDeletingCourses(true);
     setCourseDeleteError(null);
     try {
@@ -368,17 +375,50 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       setIsDeletingCourses(false);
     }
   };
-  const handleDeleteOneCourse = async (course: Course) => {
-    if (!confirm(`ต้องการลบรายวิชา ${course.code} (${course.titleTh}) หรือไม่?`)) return;
-    setIsDeletingCourses(true);
-    setCourseDeleteError(null);
-    try {
-      await onDeleteCourse?.(course.id);
-    } catch (error) {
-      setCourseDeleteError(error instanceof Error ? error.message : 'ลบรายวิชาไม่สำเร็จ');
-    } finally {
-      setIsDeletingCourses(false);
-    }
+
+  const handleDeleteSelectedCourses = () => {
+    if (selectedCourseIds.length === 0) return;
+    setPendingConfirm({
+      title: `ยืนยันลบรายวิชาที่เลือก (${selectedCourseIds.length} รายวิชา)`,
+      description: `ต้องการลบรายวิชาที่เลือกทั้ง ${selectedCourseIds.length} รายวิชาออกจากระบบหรือไม่?`,
+      detailNote: 'ระบบจะลบข้อมูลรายวิชา ผลการเรียนที่ผูกกับรายวิชา เคลียร์ตารางสอน และล้างข้อมูลแคชกับฐานข้อมูลที่เกี่ยวข้องทั้งหมด',
+      confirmLabel: `ยืนยันลบ ${selectedCourseIds.length} วิชา`,
+      onConfirm: executeDeleteSelectedCourses,
+    });
+  };
+
+  const handleDeleteOneCourse = (course: Course) => {
+    setPendingConfirm({
+      title: `ยืนยันลบรายวิชา ${course.code}`,
+      description: `ต้องการลบรายวิชา "${course.titleTh}" (${course.code}) ออกจากระบบหรือไม่?`,
+      detailNote: 'ระบบจะลบข้อมูลรายวิชา รายชื่อลงทะเบียน คะแนนเก็บ/เกรดในรายวิชานี้ และล้างข้อมูลในแคชและฐานข้อมูล',
+      confirmLabel: 'ยืนยันลบรายวิชา',
+      onConfirm: async () => {
+        setIsDeletingCourses(true);
+        setCourseDeleteError(null);
+        try {
+          await onDeleteCourse?.(course.id);
+        } catch (error) {
+          setCourseDeleteError(error instanceof Error ? error.message : 'ลบรายวิชาไม่สำเร็จ');
+        } finally {
+          setIsDeletingCourses(false);
+        }
+      },
+    });
+  };
+
+  const requestUnenrollStudent = (course: Course, student: Student) => {
+    setPendingConfirm({
+      title: 'ยืนยันยกเลิกการลงทะเบียนรายบุคคล',
+      description: `ต้องการยกเลิกการลงทะเบียนของ "${student.firstNameTh} ${student.lastNameTh}" (${student.studentIdNumber}) ออกจากรายวิชา ${course.code} ${course.titleTh} หรือไม่?`,
+      detailNote: 'การยกเลิกจะถอนรายชื่อออกจากรายวิชานี้ ล้างคะแนน/การส่งงานที่เกี่ยวข้อง และอัปเดตแคชในเครื่องกับฐานข้อมูลทันที',
+      confirmLabel: 'ยืนยันยกเลิกลงทะเบียน',
+      onConfirm: async () => {
+        await onUnenrollStudent?.(course.id, student.id);
+        setEnrollFeedback(`ยกเลิกลงทะเบียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) แล้ว`);
+        setTimeout(() => setEnrollFeedback(null), 3500);
+      },
+    });
   };
 
   return (
@@ -722,43 +762,33 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   </h3>
 
                   {canManageCourses && (activeCourse.enrolledStudentIds?.length || 0) > 0 && (
-                    confirmClearAllCourseId === activeCourse.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const count = activeCourse.enrolledStudentIds?.length || 0;
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allIds = [...(activeCourse.enrolledStudentIds || [])];
+                        setPendingConfirm({
+                          title: 'ยืนยันยกเลิกลงทะเบียนทั้งรายวิชา',
+                          description: `ต้องการยกเลิกการลงทะเบียนนักเรียนทั้งหมด ${allIds.length} คน ออกจากรายวิชา ${activeCourse.code} ${activeCourse.titleTh} หรือไม่?`,
+                          detailNote: 'ระบบจะถอนรายชื่อทั้งหมดออก พร้อมล้างคะแนน/การส่งงานที่เกี่ยวข้องในแคชและฐานข้อมูล',
+                          confirmLabel: `ยืนยันยกเลิกทั้ง ${allIds.length} คน`,
+                          onConfirm: async () => {
                             if (onUnenrollStudentsBatch) {
-                              onUnenrollStudentsBatch(activeCourse.id, activeCourse.enrolledStudentIds || []);
+                              await onUnenrollStudentsBatch(activeCourse.id, allIds);
                             } else if (onUnenrollStudent) {
-                              (activeCourse.enrolledStudentIds || []).forEach((id) => onUnenrollStudent(activeCourse.id, id));
+                              for (const id of allIds) {
+                                await onUnenrollStudent(activeCourse.id, id);
+                              }
                             }
-                            setConfirmClearAllCourseId(null);
-                            setEnrollFeedback(`ยกเลิกการลงทะเบียนทั้งหมด (${count} คน) ออกจากรายวิชา ${activeCourse.code} แล้ว`);
+                            setEnrollFeedback(`ยกเลิกการลงทะเบียนทั้งหมด (${allIds.length} คน) ออกจากรายวิชา ${activeCourse.code} แล้ว`);
                             setTimeout(() => setEnrollFeedback(null), 3500);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold cursor-pointer"
-                        >
-                          ยืนยันยกเลิกทั้งหมด ({activeCourse.enrolledStudentIds?.length || 0})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmClearAllCourseId(null)}
-                          className="px-2 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] text-[11px] font-semibold cursor-pointer"
-                        >
-                          ไม่ยกเลิก
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmClearAllCourseId(activeCourse.id)}
-                        className="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
-                      >
-                        <UserMinus className="w-3.5 h-3.5" />
-                        <span>ยกเลิกทั้งหมด</span>
-                      </button>
-                    )
+                          },
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <UserMinus className="w-3.5 h-3.5" />
+                      <span>ยกเลิกทั้งหมด</span>
+                    </button>
                   )}
                 </div>
 
@@ -831,13 +861,24 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                                 if (!selectedEnrollRoom) return;
                                 const idsToUnenroll = enrolledInSelectedRoom.map((s) => s.id);
                                 if (idsToUnenroll.length === 0) return;
-                                if (onUnenrollStudentsBatch) {
-                                  onUnenrollStudentsBatch(activeCourse.id, idsToUnenroll);
-                                } else if (onUnenrollStudent) {
-                                  idsToUnenroll.forEach((id) => onUnenrollStudent(activeCourse.id, id));
-                                }
-                                setEnrollFeedback(`ยกเลิกลงทะเบียนนักเรียนห้อง ${selectedEnrollRoom} จำนวน ${idsToUnenroll.length} คนเรียบร้อย`);
-                                setTimeout(() => setEnrollFeedback(null), 3500);
+                                const targetRoom = selectedEnrollRoom;
+                                setPendingConfirm({
+                                  title: `ยืนยันยกเลิกลงทะเบียนทั้งห้อง (${targetRoom})`,
+                                  description: `ต้องการยกเลิกการลงทะเบียนนักเรียนห้อง ${targetRoom} จำนวน ${idsToUnenroll.length} คน ออกจากรายวิชา ${activeCourse.code} หรือไม่?`,
+                                  detailNote: 'ระบบจะถอนรายชื่อนักเรียนทั้งห้องออกจากรายวิชา ล้างคะแนน/การส่งงานที่เกี่ยวข้อง และอัปเดตแคชกับฐานข้อมูล',
+                                  confirmLabel: `ยืนยันยกเลิก ${idsToUnenroll.length} คน`,
+                                  onConfirm: async () => {
+                                    if (onUnenrollStudentsBatch) {
+                                      await onUnenrollStudentsBatch(activeCourse.id, idsToUnenroll);
+                                    } else if (onUnenrollStudent) {
+                                      for (const id of idsToUnenroll) {
+                                        await onUnenrollStudent(activeCourse.id, id);
+                                      }
+                                    }
+                                    setEnrollFeedback(`ยกเลิกลงทะเบียนนักเรียนห้อง ${targetRoom} จำนวน ${idsToUnenroll.length} คนเรียบร้อย`);
+                                    setTimeout(() => setEnrollFeedback(null), 3500);
+                                  },
+                                });
                               }}
                               className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-rose-300 dark:border-rose-800 disabled:opacity-45 disabled:cursor-not-allowed text-rose-700 dark:text-rose-200 text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
                             >
@@ -932,11 +973,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                                       {isAlreadyEnrolled ? (
                                         <button
                                           type="button"
-                                          onClick={() => {
-                                            onUnenrollStudent?.(activeCourse.id, stu.id);
-                                            setEnrollFeedback(`ยกเลิกลงทะเบียน ${stu.firstNameTh} ${stu.lastNameTh} แล้ว`);
-                                            setTimeout(() => setEnrollFeedback(null), 3000);
-                                          }}
+                                          onClick={() => requestUnenrollStudent(activeCourse, stu)}
                                           className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 shrink-0 cursor-pointer"
                                         >
                                           <UserMinus className="w-3 h-3" />
@@ -1077,11 +1114,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                                   {canManageCourses && (
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        onUnenrollStudent?.(activeCourse.id, student.id);
-                                        setEnrollFeedback(`ยกเลิกลงทะเบียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) แล้ว`);
-                                        setTimeout(() => setEnrollFeedback(null), 3000);
-                                      }}
+                                      onClick={() => requestUnenrollStudent(activeCourse, student)}
                                       title="ยกเลิกลงทะเบียนรายวิชานี้"
                                       className="px-2 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
                                     >
@@ -1445,6 +1478,30 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           </div>
         </div>
       )}
+      <ConfirmActionModal
+        isOpen={Boolean(pendingConfirm)}
+        title={pendingConfirm?.title || ''}
+        description={pendingConfirm?.description || ''}
+        detailNote={pendingConfirm?.detailNote}
+        confirmLabel={pendingConfirm?.confirmLabel || 'ยืนยัน'}
+        isBusy={isConfirmingAction}
+        onCancel={() => {
+          if (!isConfirmingAction) setPendingConfirm(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingConfirm) return;
+          setIsConfirmingAction(true);
+          try {
+            await pendingConfirm.onConfirm();
+            setPendingConfirm(null);
+          } catch (error) {
+            setCourseDeleteError(error instanceof Error ? error.message : 'ดำเนินการไม่สำเร็จ');
+            setPendingConfirm(null);
+          } finally {
+            setIsConfirmingAction(false);
+          }
+        }}
+      />
     </div>
   );
 };

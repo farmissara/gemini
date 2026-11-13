@@ -24,14 +24,17 @@ import {
   CreditCard,
   RefreshCw,
   BookOpen,
+  Trash2,
 } from 'lucide-react';
 import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import {
   approvePendingSchoolRegistration,
+  cancelPendingSchoolRegistrationInSupabase,
   listPendingSchoolRegistrations,
   PendingSchoolRegistration,
 } from '../lib/authDb';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { fetchSchoolCounts } from '../lib/supabase';
 import { getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
@@ -105,6 +108,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
+  const [cancellingUserId, setCancellingUserId] = useState<string | null>(null);
+  const [pendingRegConfirm, setPendingRegConfirm] = useState<{
+    mode: 'approve' | 'cancel';
+    registration: PendingSchoolRegistration;
+  } | null>(null);
   const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
   const [schoolStatusError, setSchoolStatusError] = useState<string | null>(null);
   const [updatingSchoolId, setUpdatingSchoolId] = useState<string | null>(null);
@@ -188,25 +196,50 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
     setTimeout(() => setFeedbackToast(null), 3500);
   };
 
-  const handleApproveRegistration = async (registration: PendingSchoolRegistration) => {
-    const confirmation = registration.email_confirmed
-      ? `อนุมัติบัญชีผู้ดูแล ${registration.email} และเปิดใช้งานโรงเรียน ${registration.school_name_th} หรือไม่?`
-      : `อีเมล ${registration.email} ยังไม่ยืนยันจากลิงก์ กรุณาตรวจสอบตัวตนผู้สมัครผ่านช่องทางอื่นก่อนดำเนินการ ยืนยันอีเมลและเปิดใช้งานบัญชี/โรงเรียนนี้หรือไม่?`;
-    if (!window.confirm(confirmation)) return;
+  const handleApproveRegistration = (registration: PendingSchoolRegistration) => {
+    setPendingRegConfirm({ mode: 'approve', registration });
+  };
 
-    setApprovingUserId(registration.user_id);
+  const handleCancelRegistration = (registration: PendingSchoolRegistration) => {
+    setPendingRegConfirm({ mode: 'cancel', registration });
+  };
+
+  const handleConfirmRegistrationAction = async () => {
+    if (!pendingRegConfirm) return;
+    const { mode, registration } = pendingRegConfirm;
+
+    if (mode === 'approve') {
+      setApprovingUserId(registration.user_id);
+      setRegistrationError(null);
+      try {
+        await approvePendingSchoolRegistration(registration.user_id);
+        onUpdateSchools((current) => current.map((school) => (
+          school.id === registration.school_id ? { ...school, status: 'active' } : school
+        )));
+        showToast(`อนุมัติ ${registration.school_name_th} เรียบร้อยแล้ว`);
+        setRegistrationRefreshKey((current) => current + 1);
+      } catch (error) {
+        setRegistrationError(error instanceof Error ? error.message : 'อนุมัติรายการสมัครไม่สำเร็จ');
+      } finally {
+        setApprovingUserId(null);
+        setPendingRegConfirm(null);
+      }
+      return;
+    }
+
+    setCancellingUserId(registration.user_id);
     setRegistrationError(null);
     try {
-      await approvePendingSchoolRegistration(registration.user_id);
-      onUpdateSchools((current) => current.map((school) => (
-        school.id === registration.school_id ? { ...school, status: 'active' } : school
-      )));
-      showToast(`อนุมัติ ${registration.school_name_th} เรียบร้อยแล้ว`);
+      await cancelPendingSchoolRegistrationInSupabase(registration.user_id, registration.school_id);
+      setPendingRegistrations((current) => current.filter((item) => item.user_id !== registration.user_id));
+      onUpdateSchools((current) => current.filter((school) => !(school.id === registration.school_id && school.status === 'pending')));
+      showToast(`ยกเลิกและลบคำขอสมัครของ ${registration.school_name_th} เรียบร้อยแล้ว`);
       setRegistrationRefreshKey((current) => current + 1);
     } catch (error) {
-      setRegistrationError(error instanceof Error ? error.message : 'อนุมัติรายการสมัครไม่สำเร็จ');
+      setRegistrationError(error instanceof Error ? error.message : 'ยกเลิก/ลบคำขอสมัครโรงเรียนไม่สำเร็จ');
     } finally {
-      setApprovingUserId(null);
+      setCancellingUserId(null);
+      setPendingRegConfirm(null);
     }
   };
 
@@ -575,18 +608,30 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => void handleApproveRegistration(registration)}
-                              disabled={approvingUserId !== null}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50 text-[11px] font-bold cursor-pointer"
-                            >
-                              {approvingUserId === registration.user_id
-                                ? 'กำลังอนุมัติ...'
-                                : registration.email_confirmed
-                                ? 'อนุมัติบัญชี'
-                                : 'ยืนยันอีเมลและอนุมัติ'}
-                            </button>
+                            <div className="inline-flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleApproveRegistration(registration)}
+                                disabled={approvingUserId !== null || cancellingUserId !== null}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50 text-[11px] font-bold cursor-pointer"
+                              >
+                                {approvingUserId === registration.user_id
+                                  ? 'กำลังอนุมัติ...'
+                                  : registration.email_confirmed
+                                  ? 'อนุมัติบัญชี'
+                                  : 'ยืนยันอีเมลและอนุมัติ'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancelRegistration(registration)}
+                                disabled={approvingUserId !== null || cancellingUserId !== null}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 disabled:opacity-50 text-[11px] font-bold cursor-pointer"
+                                title="ยกเลิกและลบคำขอสมัครโรงเรียน"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>{cancellingUserId === registration.user_id ? 'กำลังลบ...' : 'ยกเลิก/ลบคำขอ'}</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1397,6 +1442,36 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmActionModal
+        isOpen={Boolean(pendingRegConfirm)}
+        tone={pendingRegConfirm?.mode === 'approve' ? 'primary' : 'danger'}
+        title={
+          pendingRegConfirm?.mode === 'approve'
+            ? 'ยืนยันอนุมัติคำขอลงทะเบียนโรงเรียน'
+            : 'ยืนยันยกเลิก/ลบคำขอลงทะเบียนโรงเรียน'
+        }
+        description={
+          pendingRegConfirm?.mode === 'approve'
+            ? pendingRegConfirm.registration.email_confirmed
+              ? `อนุมัติบัญชีผู้ดูแล ${pendingRegConfirm.registration.email} และเปิดใช้งานโรงเรียน "${pendingRegConfirm.registration.school_name_th}" หรือไม่?`
+              : `อีเมล ${pendingRegConfirm.registration.email} ยังไม่ยืนยันจากลิงก์ กรุณาตรวจสอบตัวตนผู้สมัครผ่านช่องทางอื่นก่อน ยืนยันเปิดใช้งานโรงเรียน "${pendingRegConfirm.registration.school_name_th}" หรือไม่?`
+            : `ต้องการยกเลิกและลบคำขอลงทะเบียนโรงเรียน "${pendingRegConfirm?.registration.school_name_th || ''}" (${pendingRegConfirm?.registration.email || ''}) ออกจากระบบหรือไม่?`
+        }
+        detailNote={
+          pendingRegConfirm?.mode === 'cancel'
+            ? 'ระบบจะลบคำขอผู้ดูแลโรงเรียนและข้อมูลโรงเรียนที่รออนุมัติออกจากฐานข้อมูลและแคชของระบบ'
+            : undefined
+        }
+        confirmLabel={pendingRegConfirm?.mode === 'approve' ? 'ยืนยันอนุมัติบัญชี' : 'ยืนยันยกเลิก/ลบคำขอ'}
+        isBusy={approvingUserId !== null || cancellingUserId !== null}
+        onCancel={() => {
+          if (approvingUserId === null && cancellingUserId === null) {
+            setPendingRegConfirm(null);
+          }
+        }}
+        onConfirm={handleConfirmRegistrationAction}
+      />
     </div>
   );
 };

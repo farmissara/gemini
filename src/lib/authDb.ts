@@ -744,3 +744,61 @@ export async function approvePendingSchoolRegistration(userId: string): Promise<
   });
   if (error) throw new Error(`Could not approve school registration: ${error.message}`);
 }
+
+export async function deleteStudentAccountRegistrationInSupabase(
+  schoolId: string,
+  userId: string
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error: rpcError } = await client.rpc('delete_student_account_registration', {
+    target_school_id: schoolId,
+    target_user_id: userId,
+  });
+  if (!rpcError) return;
+
+  const { error } = await client
+    .from('user_profiles')
+    .delete()
+    .eq('id', userId)
+    .eq('school_id', schoolId)
+    .eq('role', 'student');
+
+  if (error) {
+    throw new Error(`ไม่สามารถลบ/ยกเลิกคำขอสมัครนักเรียนได้: ${error.message}`);
+  }
+}
+
+export async function cancelPendingSchoolRegistrationInSupabase(
+  userId: string,
+  schoolId: string
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error: rpcError } = await client.rpc('cancel_pending_school_registration', {
+    target_user_id: userId,
+    target_school_id: schoolId,
+  });
+  if (!rpcError) return;
+
+  const { error: profileErr } = await client
+    .from('user_profiles')
+    .delete()
+    .eq('id', userId)
+    .eq('school_id', schoolId);
+  if (profileErr) {
+    throw new Error(`ไม่สามารถยกเลิกคำขอสมัครโรงเรียนได้: ${profileErr.message}`);
+  }
+
+  const { error: schoolErr } = await client
+    .from('schools')
+    .delete()
+    .eq('id', schoolId)
+    .eq('status', 'pending');
+  if (schoolErr) {
+    console.warn('Could not delete pending school record:', schoolErr.message);
+  }
+}
+

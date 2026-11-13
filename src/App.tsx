@@ -66,6 +66,8 @@ import {
   deleteStudentFromDb,
   deleteTeacherFromDb,
   deleteCoursesFromDb,
+  updateCourseEnrollmentInDb,
+  deleteGradesForEnrollmentFromDb,
   saveTeachersToDb,
   saveTimetableSlotsToDb,
   deleteTimetableSlotFromDb,
@@ -75,6 +77,7 @@ import {
   savePeriodAttendanceBatchToDb,
   submitInvoiceSlipToDb
 } from './lib/supabase';
+import { cleanupStudentCampusData } from './lib/campusDataStore';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import {
   calculateGrade,
@@ -800,15 +803,37 @@ export const App: React.FC = () => {
         }
         let resolvedStudents = data.students;
         let resolvedTeachers = data.teachers;
+        let resolvedCourses = data.courses;
+        let resolvedGrades = data.grades;
+        let resolvedAttendance = data.attendance;
+        let resolvedInvoices = data.invoices;
+        let resolvedTimetableSlots = data.timetableSlots || [];
         if (typeof window !== 'undefined') {
           try {
             const deletedStudentIds: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
             const deletedTeacherIds: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
-            if (deletedStudentIds.length > 0) {
-              resolvedStudents = resolvedStudents.filter(s => !deletedStudentIds.includes(s.id));
+            const deletedCourseIds: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_course_ids_${activeSchool.id}`) || '[]');
+            const deletedStudentSet = new Set(deletedStudentIds);
+            const deletedCourseSet = new Set(deletedCourseIds);
+            if (deletedStudentSet.size > 0) {
+              resolvedStudents = resolvedStudents.filter((s) => !deletedStudentSet.has(s.id));
+              resolvedGrades = resolvedGrades.filter((g) => !deletedStudentSet.has(g.studentId));
+              resolvedAttendance = resolvedAttendance.filter((a) => !deletedStudentSet.has(a.studentId));
+              resolvedInvoices = resolvedInvoices.filter((inv) => !deletedStudentSet.has(inv.studentId));
+              resolvedCourses = resolvedCourses.map((c) => ({
+                ...c,
+                enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => !deletedStudentSet.has(id)),
+              }));
             }
             if (deletedTeacherIds.length > 0) {
-              resolvedTeachers = resolvedTeachers.filter(t => !deletedTeacherIds.includes(t.id));
+              resolvedTeachers = resolvedTeachers.filter((t) => !deletedTeacherIds.includes(t.id));
+            }
+            if (deletedCourseSet.size > 0) {
+              resolvedCourses = resolvedCourses.filter((c) => !deletedCourseSet.has(c.id));
+              resolvedGrades = resolvedGrades.filter((g) => !deletedCourseSet.has(g.courseId));
+              resolvedTimetableSlots = resolvedTimetableSlots.map((slot) =>
+                slot.courseId && deletedCourseSet.has(slot.courseId) ? { ...slot, courseId: undefined } : slot
+              );
             }
           } catch (e) {
             console.warn('Could not parse deleted IDs from localStorage:', e);
@@ -816,8 +841,8 @@ export const App: React.FC = () => {
         }
         setStudents(resolvedStudents);
         setTeachers(resolvedTeachers);
-        setCourses(data.courses);
-        setGrades(data.grades.map((grade) => {
+        setCourses(resolvedCourses);
+        setGrades(resolvedGrades.map((grade) => {
           const currentGrade = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
           return {
             ...grade,
@@ -825,8 +850,7 @@ export const App: React.FC = () => {
             gradePoint: currentGrade.point,
           };
         }));
-        setAttendance(data.attendance);
-        let resolvedInvoices = data.invoices;
+        setAttendance(resolvedAttendance);
         if (typeof window !== 'undefined') {
           try {
             const rawSlips = localStorage.getItem(`eduverse_invoice_slips_v1_${activeSchool.id}`);
@@ -847,7 +871,7 @@ export const App: React.FC = () => {
         setInvoices(resolvedInvoices);
         setAnnouncements(data.announcements);
         setSchoolPeriods(data.schoolPeriods);
-        setTimetableSlots(data.timetableSlots || []);
+        setTimetableSlots(resolvedTimetableSlots);
         if (data.campusGates.length > 0) {
           setCampusGates(data.campusGates);
           try {
@@ -950,62 +974,123 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleDeleteStudent = (studentId: string) => {
-    void (async () => {
-      try {
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      if (!isDemoMode) {
         await deleteStudentFromDb(activeSchool.id, studentId);
-        setStudents((prev) => {
-          const next = prev.filter((student) => student.id !== studentId);
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
-              const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
-              if (!deleted.includes(studentId)) deleted.push(studentId);
-              localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
-            } catch (error) {
-              console.warn('Could not update deleted student in localStorage:', error);
-            }
-          }
-          return next;
-        });
-        setDataSyncError(null);
-      } catch (error) {
-        setDataSyncError(error instanceof Error ? error.message : String(error));
       }
-    })();
-  };
 
-  const handlePurgeSampleStudents = () => {
-    if (!confirm('ยืนยันล้างข้อมูลนักเรียนตัวอย่างทั้งหมด (Sample Students) ออกจากโรงเรียนนี้หรือไม่? ข้อมูลจริงที่สร้างใหม่จะไม่ได้รับผลกระทบ')) return;
-    void (async () => {
-      const sampleIds = students
-        .filter((student) => /^(std-0|std-demo|std-mock)/.test(student.id))
-        .map((student) => student.id);
-      const deletedIds: string[] = [];
-      const errors: string[] = [];
-      for (const studentId of sampleIds) {
-        try {
-          await deleteStudentFromDb(activeSchool.id, studentId);
-          deletedIds.push(studentId);
-        } catch (error) {
-          errors.push(error instanceof Error ? error.message : String(error));
-        }
-      }
-      if (deletedIds.length > 0) {
-        setStudents((prev) => prev.filter((student) => !deletedIds.includes(student.id)));
+      const removedInvoiceIds = new Set(
+        invoices.filter((inv) => inv.studentId === studentId).map((inv) => inv.id)
+      );
+
+      setStudents((prev) => {
+        const next = prev.filter((student) => student.id !== studentId);
         if (typeof window !== 'undefined') {
           try {
-            const remaining = students.filter((student) => !deletedIds.includes(student.id));
-            localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(remaining));
+            localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
             const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
-            localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...deletedIds])]));
+            if (!deleted.includes(studentId)) deleted.push(studentId);
+            localStorage.setItem(`eduverse_deleted_student_ids_${activeSchool.id}`, JSON.stringify(deleted));
           } catch (error) {
-            console.warn('Could not cache purged student IDs:', error);
+            console.warn('Could not update deleted student in localStorage:', error);
           }
         }
+        return next;
+      });
+
+      setCourses((prev) => {
+        const next = prev.map((course) => ({
+          ...course,
+          enrolledStudentIds: (course.enrolledStudentIds || []).filter((id) => id !== studentId),
+        }));
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`eduverse_courses_${activeSchool.id}`, JSON.stringify(next));
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return next;
+      });
+
+      setGrades((prev) => {
+        const next = prev.filter((grade) => grade.studentId !== studentId);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`eduverse_grades_${activeSchool.id}`, JSON.stringify(next));
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return next;
+      });
+
+      setAttendance((prev) => prev.filter((rec) => rec.studentId !== studentId));
+      setPeriodAttendance((prev) => prev.filter((rec) => rec.studentId !== studentId));
+      setInvoices((prev) => prev.filter((inv) => inv.studentId !== studentId));
+      setLessons((prev) => prev.map((lesson) => ({
+        ...lesson,
+        completedByStudentIds: (lesson.completedByStudentIds || []).filter((id) => id !== studentId),
+      })));
+      setAssignments((prev) => prev.map((assignment) => ({
+        ...assignment,
+        submittedStudentIds: (assignment.submittedStudentIds || []).filter((id) => id !== studentId),
+      })));
+      setHomeworkSubmissions((prev) => prev.filter((sub) => sub.studentId !== studentId));
+      setLeaveRequests((prev) => prev.filter((req) => !(req.userRole === 'student' && req.userId === studentId)));
+      setBehaviorRecords((prev) => prev.filter((rec) => rec.studentId !== studentId));
+      setSdqAssessments((prev) => prev.filter((rec) => rec.studentId !== studentId));
+      setInfirmaryVisits((prev) => prev.filter((visit) => visit.studentId !== studentId));
+      setPortfolioItems((prev) => prev.filter((item) => !(item.ownerRole === 'student' && item.ownerId === studentId)));
+
+      if (typeof window !== 'undefined') {
+        try {
+          if (removedInvoiceIds.size > 0) {
+            const rawSlips = localStorage.getItem(`eduverse_invoice_slips_v1_${activeSchool.id}`);
+            if (rawSlips) {
+              const slipMap = JSON.parse(rawSlips) as Record<string, unknown>;
+              removedInvoiceIds.forEach((invId) => {
+                delete slipMap[invId];
+              });
+              localStorage.setItem(`eduverse_invoice_slips_v1_${activeSchool.id}`, JSON.stringify(slipMap));
+            }
+          }
+          cleanupStudentCampusData(activeSchool.id, studentId);
+        } catch (error) {
+          console.warn('Could not clean student local cache:', error);
+        }
       }
-      setDataSyncError(errors.length ? `Could not delete ${errors.length} sample student record(s): ${errors.join('; ')}` : null);
-    })();
+
+      if (currentUser) {
+        appendAuditLog(activeSchool.id, {
+          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+          actorRole: currentUser.role,
+          actionType: 'student_delete',
+          targetLabel: studentId,
+          details: 'ลบข้อมูลทะเบียนนักเรียนและล้างข้อมูลที่เกี่ยวข้อง (รายวิชา เกรด เวลาเรียน แคช)',
+        });
+      }
+      setDataSyncError(null);
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+  };
+
+  const handlePurgeSampleStudents = async () => {
+    const sampleIds = students
+      .filter((student) => /^(std-0|std-demo|std-mock)/.test(student.id))
+      .map((student) => student.id);
+    const errors: string[] = [];
+    for (const studentId of sampleIds) {
+      try {
+        await handleDeleteStudent(studentId);
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    setDataSyncError(errors.length ? `Could not delete ${errors.length} sample student record(s): ${errors.join('; ')}` : null);
   };
 
   const handleToggleLineSync = (studentId: string) => {
@@ -1126,30 +1211,63 @@ export const App: React.FC = () => {
     );
   };
 
-  const confirmCourseDeletion = (courseIds: string[]) => {
-    const courseIdSet = new Set(courseIds);
-    const affectedGradeCount = schoolGrades.filter((grade) => courseIdSet.has(grade.courseId)).length;
-    return affectedGradeCount === 0 || window.confirm(
-      `รายวิชาที่เลือกมีผลการเรียน ${affectedGradeCount} รายการ การลบจะลบผลการเรียนเหล่านี้ถาวรด้วย ต้องการดำเนินการต่อหรือไม่?`
-    );
+  const cleanupDeletedCoursesStateAndCache = (courseIds: string[]) => {
+    const ids = new Set(courseIds);
+    setCourses((prev) => {
+      const next = prev.filter((course) => !ids.has(course.id));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_courses_${activeSchool.id}`, JSON.stringify(next));
+          const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_course_ids_${activeSchool.id}`) || '[]');
+          localStorage.setItem(`eduverse_deleted_course_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...courseIds])]));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
+    setGrades((prev) => {
+      const next = prev.filter((grade) => !ids.has(grade.courseId));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_grades_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
+    setTimetableSlots((prev) => {
+      const next = prev.map((slot) => (
+        slot.courseId && ids.has(slot.courseId) ? { ...slot, courseId: undefined } : slot
+      ));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_timetable_slots_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
+    const removedAssignmentIds = new Set(assignments.filter((assignment) => ids.has(assignment.courseId)).map((assignment) => assignment.id));
+    setLessons((prev) => prev.filter((lesson) => !ids.has(lesson.courseId)));
+    setAssignments((prev) => prev.filter((assignment) => !ids.has(assignment.courseId)));
+    setHomeworkSubmissions((prev) => prev.filter((sub) => !removedAssignmentIds.has(sub.assignmentId)));
+    setPeriodAttendance((prev) => prev.filter((rec) => !ids.has(rec.courseId)));
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (!confirmCourseDeletion([courseId])) return false;
     try {
       if (!isDemoMode) await deleteCoursesFromDb(activeSchool.id, [courseId]);
-      setCourses((prev) => prev.filter((course) => course.id !== courseId));
-      setGrades((prev) => prev.filter((grade) => grade.courseId !== courseId));
-      setTimetableSlots((prev) => prev.map((slot) => (
-        slot.courseId === courseId ? { ...slot, courseId: undefined } : slot
-      )));
+      cleanupDeletedCoursesStateAndCache([courseId]);
       if (currentUser) {
         appendAuditLog(activeSchool.id, {
           actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
           actorRole: currentUser.role,
           actionType: 'course_delete',
           targetLabel: courseId,
-          details: `ลบรายวิชาออกจากโรงเรียน`,
+          details: 'ลบรายวิชาและล้างข้อมูลผลการเรียน/ตารางสอน/แคชที่เกี่ยวข้อง',
         });
       }
       setDataSyncError(null);
@@ -1161,15 +1279,19 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteCourses = async (courseIds: string[]) => {
-    if (!confirmCourseDeletion(courseIds)) return false;
+    if (courseIds.length === 0) return false;
     try {
       if (!isDemoMode) await deleteCoursesFromDb(activeSchool.id, courseIds);
-      const ids = new Set(courseIds);
-      setCourses((prev) => prev.filter((course) => !ids.has(course.id)));
-      setGrades((prev) => prev.filter((grade) => !ids.has(grade.courseId)));
-      setTimetableSlots((prev) => prev.map((slot) => (
-        slot.courseId && ids.has(slot.courseId) ? { ...slot, courseId: undefined } : slot
-      )));
+      cleanupDeletedCoursesStateAndCache(courseIds);
+      if (currentUser) {
+        appendAuditLog(activeSchool.id, {
+          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+          actorRole: currentUser.role,
+          actionType: 'course_delete_batch',
+          targetLabel: `${courseIds.length} รายวิชา`,
+          details: 'ลบรายวิชาที่เลือกเป็นชุดและล้างข้อมูลแคช/ฐานข้อมูลที่เกี่ยวข้อง',
+        });
+      }
       setDataSyncError(null);
       return true;
     } catch (error) {
@@ -1179,8 +1301,8 @@ export const App: React.FC = () => {
   };
 
   const handleEnrollStudent = (courseId: string, studentId: string) => {
-    setCourses((prev) =>
-      prev.map((c) => {
+    setCourses((prev) => {
+      const next = prev.map((c) => {
         if (c.id === courseId && !c.enrolledStudentIds.includes(studentId)) {
           return {
             ...c,
@@ -1188,48 +1310,116 @@ export const App: React.FC = () => {
           };
         }
         return c;
-      })
-    );
+      });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_courses_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
   };
 
   const handleEnrollStudentsBatch = (courseId: string, studentIds: string[]) => {
     if (studentIds.length === 0) return;
-    setCourses((prev) =>
-      prev.map((c) => {
+    setCourses((prev) => {
+      const next = prev.map((c) => {
         if (c.id !== courseId) return c;
         const merged = Array.from(new Set([...(c.enrolledStudentIds || []), ...studentIds]));
         return {
           ...c,
           enrolledStudentIds: merged,
         };
-      })
-    );
+      });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_courses_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
   };
 
-  const handleUnenrollStudent = (courseId: string, studentId: string) => {
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id !== courseId) return c;
-        return {
-          ...c,
-          enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => id !== studentId),
-        };
-      })
-    );
-  };
-
-  const handleUnenrollStudentsBatch = (courseId: string, studentIds: string[]) => {
+  const cleanupEnrollmentCancellation = async (courseId: string, studentIds: string[]) => {
     if (studentIds.length === 0) return;
     const removeSet = new Set(studentIds);
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id !== courseId) return c;
-        return {
-          ...c,
-          enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => !removeSet.has(id)),
-        };
-      })
-    );
+    const targetCourse = courses.find((c) => c.id === courseId);
+    const nextEnrolledIds = (targetCourse?.enrolledStudentIds || []).filter((id) => !removeSet.has(id));
+
+    try {
+      if (!isDemoMode) {
+        await updateCourseEnrollmentInDb(activeSchool.id, courseId, nextEnrolledIds);
+        await deleteGradesForEnrollmentFromDb(activeSchool.id, courseId, studentIds);
+      }
+
+      setCourses((prev) => {
+        const next = prev.map((c) => (
+          c.id === courseId
+            ? { ...c, enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => !removeSet.has(id)) }
+            : c
+        ));
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`eduverse_courses_${activeSchool.id}`, JSON.stringify(next));
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return next;
+      });
+
+      setGrades((prev) => {
+        const next = prev.filter((g) => !(g.courseId === courseId && removeSet.has(g.studentId)));
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`eduverse_grades_${activeSchool.id}`, JSON.stringify(next));
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return next;
+      });
+
+      setLessons((prev) => prev.map((lesson) => (
+        lesson.courseId === courseId
+          ? { ...lesson, completedByStudentIds: (lesson.completedByStudentIds || []).filter((id) => !removeSet.has(id)) }
+          : lesson
+      )));
+      setAssignments((prev) => prev.map((assignment) => (
+        assignment.courseId === courseId
+          ? { ...assignment, submittedStudentIds: (assignment.submittedStudentIds || []).filter((id) => !removeSet.has(id)) }
+          : assignment
+      )));
+      const courseAssignmentIds = new Set(assignments.filter((assignment) => assignment.courseId === courseId).map((assignment) => assignment.id));
+      setHomeworkSubmissions((prev) => prev.filter((sub) => !(courseAssignmentIds.has(sub.assignmentId) && removeSet.has(sub.studentId))));
+      setPeriodAttendance((prev) => prev.filter((rec) => !(rec.courseId === courseId && removeSet.has(rec.studentId))));
+
+      if (currentUser) {
+        appendAuditLog(activeSchool.id, {
+          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+          actorRole: currentUser.role,
+          actionType: 'enrollment_cancel',
+          targetLabel: `${targetCourse?.code || courseId} (${studentIds.length} คน)`,
+          details: 'ยกเลิกการลงทะเบียนเรียนและล้างคะแนน/ความก้าวหน้า/แคชที่เกี่ยวข้อง',
+        });
+      }
+      setDataSyncError(null);
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+  };
+
+  const handleUnenrollStudent = async (courseId: string, studentId: string) => {
+    await cleanupEnrollmentCancellation(courseId, [studentId]);
+  };
+
+  const handleUnenrollStudentsBatch = async (courseId: string, studentIds: string[]) => {
+    await cleanupEnrollmentCancellation(courseId, studentIds);
   };
 
   const handleImportCourses = (newCourses: Course[]) => {

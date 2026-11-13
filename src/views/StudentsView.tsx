@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import {
   approveStudentAccountInSupabase,
+  deleteStudentAccountRegistrationInSupabase,
   inviteStudentAccount,
   inviteTeacherOrParentAccount,
   linkStudentAccountToStudent,
@@ -38,6 +39,7 @@ import {
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
 import { 
@@ -104,8 +106,8 @@ interface StudentsViewProps {
   onAddStudent: (newStudent: Student) => void;
   onAddStudents?: (newStudents: Student[]) => void;
   onUpdateStudent?: (student: Student) => void;
-  onDeleteStudent?: (studentId: string) => void;
-  onPurgeSampleStudents?: () => void;
+  onDeleteStudent?: (studentId: string) => Promise<void> | void;
+  onPurgeSampleStudents?: () => Promise<void> | void;
   onOpenImportExport?: () => void;
   onBatchUpdateStudents?: (updatedStudents: Student[]) => void;
 }
@@ -164,6 +166,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [inviteEmailInput, setInviteEmailInput] = useState('');
   const [inviteFullNameInput, setInviteFullNameInput] = useState('');
   const [inviteModalError, setInviteModalError] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    description: string;
+    detailNote?: string;
+    confirmLabel: string;
+    action: () => Promise<void> | void;
+  } | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   const refreshAccountLinks = useCallback(async () => {
     if (!canManageApprovals) return;
@@ -237,6 +247,73 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     } finally {
       setProcessingAccountId(null);
     }
+  };
+
+  const handleRequestDeleteStudentAccount = (account: StudentAccountLink) => {
+    const displayName = account.full_name_th || account.full_name_en || account.email || 'ไม่ระบุชื่อ';
+    setPendingConfirm({
+      title: 'ยืนยันยกเลิก/ลบคำขอลงทะเบียนนักเรียน',
+      description: `ต้องการยกเลิกและลบบัญชีลงทะเบียนของ "${displayName}" ออกจากรายการโรงเรียนหรือไม่?`,
+      detailNote: 'ระบบจะลบโปรไฟล์บัญชีผู้ใช้งานในโรงเรียนนี้ออกจากฐานข้อมูล และล้างสถานะการจับคู่ระเบียนที่เกี่ยวข้องออกทั้งหมด',
+      confirmLabel: 'ยืนยันยกเลิก/ลบคำขอ',
+      action: async () => {
+        setProcessingAccountId(account.id);
+        setAccountsError(null);
+        setAccountsSuccess(null);
+        try {
+          await deleteStudentAccountRegistrationInSupabase(schoolId, account.id);
+          setAccountLinks((prev) => prev.filter((item) => item.id !== account.id));
+          setLinkDrafts((prev) => {
+            const next = { ...prev };
+            delete next[account.id];
+            return next;
+          });
+          setAccountsSuccess(`ยกเลิกและลบคำขอลงทะเบียนของ "${displayName}" เรียบร้อยแล้ว`);
+        } catch (err) {
+          setAccountsError(err instanceof Error ? err.message : 'ไม่สามารถยกเลิก/ลบคำขอลงทะเบียนได้');
+        } finally {
+          setProcessingAccountId(null);
+        }
+      },
+    });
+  };
+
+  const handleRequestDeleteStudent = (student: Student) => {
+    if (!onDeleteStudent) return;
+    setPendingConfirm({
+      title: 'ยืนยันลบ/ยกเลิกทะเบียนนักเรียน',
+      description: `ต้องการลบข้อมูลนักเรียน "${student.firstNameTh} ${student.lastNameTh}" (${student.studentIdNumber}) ออกจากระบบหรือไม่?`,
+      detailNote: 'ระบบจะลบประวัตินักเรียน การลงทะเบียนรายวิชา คะแนนเก็บ/เกรด การเช็กชื่อ ใบแจ้งหนี้ และล้างข้อมูลออกจากแคชในเครื่องและฐานข้อมูล',
+      confirmLabel: 'ยืนยันลบข้อมูลนักเรียน',
+      action: async () => {
+        setAccountsError(null);
+        try {
+          await onDeleteStudent(student.id);
+          setAccountsSuccess(`ลบข้อมูลนักเรียน "${student.firstNameTh} ${student.lastNameTh}" (${student.studentIdNumber}) และล้างข้อมูลที่เกี่ยวข้องเรียบร้อยแล้ว`);
+        } catch (err) {
+          setAccountsError(err instanceof Error ? err.message : 'ไม่สามารถลบข้อมูลนักเรียนได้');
+        }
+      },
+    });
+  };
+
+  const handleRequestPurgeSampleStudents = () => {
+    if (!onPurgeSampleStudents) return;
+    setPendingConfirm({
+      title: 'ยืนยันล้างข้อมูลนักเรียนตัวอย่างทั้งหมด',
+      description: 'ต้องการล้างข้อมูลนักเรียนตัวอย่างทั้งหมด (รหัสอ้างอิงตัวอย่าง) ออกจากโรงเรียนนี้หรือไม่?',
+      detailNote: 'ข้อมูลนักเรียนจริงที่เพิ่มใหม่จะไม่ถูกลบ ระบบจะล้างข้อมูลตัวอย่างและรายการลงทะเบียนที่ผูกอยู่ออกจากแคชและฐานข้อมูล',
+      confirmLabel: 'ยืนยันล้างข้อมูลตัวอย่าง',
+      action: async () => {
+        setAccountsError(null);
+        try {
+          await onPurgeSampleStudents();
+          setAccountsSuccess('ล้างข้อมูลนักเรียนตัวอย่างทั้งหมดเรียบร้อยแล้ว');
+        } catch (err) {
+          setAccountsError(err instanceof Error ? err.message : 'ไม่สามารถล้างข้อมูลตัวอย่างได้');
+        }
+      },
+    });
   };
 
   const handleOpenInviteModal = (student: Student, role: 'student' | 'parent') => {
@@ -793,7 +870,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   type="button"
                   onClick={(event) => {
                     event.currentTarget.closest('details')?.removeAttribute('open');
-                    onPurgeSampleStudents();
+                    handleRequestPurgeSampleStudents();
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
                 >
@@ -1111,15 +1188,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           {onDeleteStudent && (
                             <button
                               type="button"
-                              onClick={() => {
-                                if (confirm(`ต้องการลบข้อมูลนักเรียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) ออกจากระบบหรือไม่?`)) {
-                                  onDeleteStudent(student.id);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 transition-colors cursor-pointer"
-                              title="Delete Student"
+                              onClick={() => handleRequestDeleteStudent(student)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
+                              title="ยกเลิก/ลบข้อมูลนักเรียน"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden xl:inline">ยกเลิก/ลบ</span>
                             </button>
                           )}
                         </div>
@@ -1342,13 +1416,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               type="button"
                               disabled={isBusy}
                               onClick={() => void handleUpdateStudentStatus(acc, 'suspended')}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-xs font-bold cursor-pointer disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-xs font-bold cursor-pointer disabled:opacity-50"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               <span>ระงับสิทธิ์</span>
                             </button>
                           </>
                         )}
+
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => handleRequestDeleteStudentAccount(acc)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 text-xs font-bold cursor-pointer disabled:opacity-50"
+                          title="ยกเลิกและลบคำขอสมัครนี้"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>ยกเลิก/ลบคำขอ</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -2258,6 +2343,28 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmActionModal
+        isOpen={Boolean(pendingConfirm)}
+        title={pendingConfirm?.title || ''}
+        description={pendingConfirm?.description || ''}
+        detailNote={pendingConfirm?.detailNote}
+        confirmLabel={pendingConfirm?.confirmLabel || 'ยืนยัน'}
+        isBusy={isConfirmingAction}
+        onCancel={() => {
+          if (!isConfirmingAction) setPendingConfirm(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingConfirm) return;
+          setIsConfirmingAction(true);
+          try {
+            await pendingConfirm.action();
+          } finally {
+            setIsConfirmingAction(false);
+            setPendingConfirm(null);
+          }
+        }}
+      />
     </div>
   );
 };

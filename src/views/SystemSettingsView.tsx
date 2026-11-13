@@ -32,16 +32,19 @@ import {
   Mail,
   KeyRound,
   GraduationCap,
-  Upload
+  Upload,
+  Trash2
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, SchoolTier } from '../types';
 import {
   approveStudentAccountInSupabase,
+  deleteStudentAccountRegistrationInSupabase,
   linkStudentAccountToStudent,
   listStudentAccountLinks,
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
 import { uploadSchoolLogo } from '../lib/supabase';
@@ -104,6 +107,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [studentAccountSaving, setStudentAccountSaving] = useState(false);
   const [studentAccountError, setStudentAccountError] = useState<string | null>(null);
   const [studentAccountSuccess, setStudentAccountSuccess] = useState<string | null>(null);
+  const [pendingStudentAccountConfirm, setPendingStudentAccountConfirm] = useState<StudentAccountLink | null>(null);
   const [schoolLogoUploading, setSchoolLogoUploading] = useState(false);
   const [schoolLogoError, setSchoolLogoError] = useState<string | null>(null);
   const [schoolLogoSuccess, setSchoolLogoSuccess] = useState<string | null>(null);
@@ -184,6 +188,29 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       setStudentAccountError(error instanceof Error ? error.message : 'อัปเดตสถานะไม่สำเร็จ');
     } finally {
       setStudentAccountSaving(false);
+    }
+  };
+
+  const handleConfirmDeleteStudentAccount = async () => {
+    if (!pendingStudentAccountConfirm) return;
+    const account = pendingStudentAccountConfirm;
+    const displayName = account.full_name_th || account.full_name_en || account.email || 'ไม่ระบุชื่อ';
+    setStudentAccountSaving(true);
+    setStudentAccountError(null);
+    setStudentAccountSuccess(null);
+    try {
+      await deleteStudentAccountRegistrationInSupabase(activeSchool.id, account.id);
+      setStudentAccounts((prev) => prev.filter((item) => item.id !== account.id));
+      if (selectedAccountId === account.id) {
+        setSelectedAccountId('');
+        setSelectedStudentId('');
+      }
+      setStudentAccountSuccess(`ยกเลิกและลบบัญชีลงทะเบียน "${displayName}" เรียบร้อยแล้ว`);
+    } catch (error) {
+      setStudentAccountError(error instanceof Error ? error.message : 'ไม่สามารถยกเลิก/ลบคำขอลงทะเบียนได้');
+    } finally {
+      setStudentAccountSaving(false);
+      setPendingStudentAccountConfirm(null);
     }
   };
 
@@ -1997,11 +2024,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                               type="button"
                               disabled={studentAccountSaving}
                               onClick={() => void handleApproveOrToggleStatus(account, 'suspended')}
-                              className="px-3 py-1 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-[11px] font-bold cursor-pointer disabled:opacity-50"
+                              className="px-3 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[11px] font-bold cursor-pointer disabled:opacity-50"
                             >
                               ระงับสิทธิ์
                             </button>
                           )}
+                          <button
+                            type="button"
+                            disabled={studentAccountSaving}
+                            onClick={() => setPendingStudentAccountConfirm(account)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 text-[11px] font-bold cursor-pointer disabled:opacity-50"
+                            title="ยกเลิกและลบคำขอสมัครนี้"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>ยกเลิก/ลบคำขอ</span>
+                          </button>
                         </div>
                       </div>
                     );
@@ -2167,6 +2204,19 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           );
         })()}
       </div>
+
+      <ConfirmActionModal
+        isOpen={Boolean(pendingStudentAccountConfirm)}
+        title="ยืนยันยกเลิก/ลบคำขอลงทะเบียนนักเรียน"
+        description={`ต้องการยกเลิกและลบบัญชีลงทะเบียนของ "${pendingStudentAccountConfirm?.full_name_th || pendingStudentAccountConfirm?.full_name_en || pendingStudentAccountConfirm?.email || ''}" ออกจากโรงเรียนหรือไม่?`}
+        detailNote="ระบบจะลบโปรไฟล์บัญชีนักเรียนในโรงเรียนนี้ออกจากฐานข้อมูล และล้างข้อมูลการผูกบัญชีที่เกี่ยวข้อง"
+        confirmLabel="ยืนยันยกเลิก/ลบคำขอ"
+        isBusy={studentAccountSaving}
+        onCancel={() => {
+          if (!studentAccountSaving) setPendingStudentAccountConfirm(null);
+        }}
+        onConfirm={handleConfirmDeleteStudentAccount}
+      />
     </div>
   );
 };
