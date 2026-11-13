@@ -151,6 +151,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newDay, setNewDay] = useState<DayOfWeek>('mon');
   const [newPeriod, setNewPeriod] = useState<number>(1);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('custom');
+  const [courseSearchInput, setCourseSearchInput] = useState('');
+  const [courseTeacherFilter, setCourseTeacherFilter] = useState('all');
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newTitleTh, setNewTitleTh] = useState('');
   const [newTitleEn, setNewTitleEn] = useState('');
@@ -161,6 +163,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const getPeriodTime = (periodNumber: number) => schoolPeriods.find((period) => period.periodNumber === periodNumber);
   const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
+  const catalogTeacherOptions = Array.from(new Set(courses.map((course) => course.teacherName.trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'th'));
+  const filteredCourseCatalog = courses.filter((course) => {
+    const search = courseSearchInput.trim().toLocaleLowerCase();
+    const matchesSearch = !search || [
+      course.code,
+      course.titleTh,
+      course.titleEn,
+      course.teacherName,
+      course.department,
+    ].some((value) => value?.toLocaleLowerCase().includes(search));
+    const matchesTeacher = courseTeacherFilter === 'all' || course.teacherName.trim() === courseTeacherFilter;
+    return matchesSearch && matchesTeacher;
+  });
+  const selectedCatalogCourse = courses.find((course) => course.id === selectedCourseId);
 
   // Filter slots based on active view mode
   const activeSlots = viewMode === 'teacher'
@@ -693,10 +710,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  setCourseSearchInput('');
+                  setCourseTeacherFilter('all');
                   if (courses.length > 0) {
                     handleSelectCourse(courses[0].id);
+                  } else {
+                    handleSelectCourse('custom');
                   }
                   setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
+                  setSlotActionError(null);
                   setShowAddModal(true);
                 }}
                 disabled={viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS}
@@ -1491,7 +1513,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       {/* Add Slot Modal with Course Catalog Selector */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4 shadow-2xl">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />
@@ -1528,22 +1550,83 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               )}
 
               {/* Course Selector from Course Catalog */}
-              <div>
+              <div className="space-y-2">
                 <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
-                  เลือกจากรายวิชาที่เปิดสอนในหลักสูตร (Auto-fill Course Catalog)
+                  ค้นหาและเลือกรายวิชาที่เปิดสอน
                 </label>
-                <select
-                  value={selectedCourseId}
-                  onChange={(e) => handleSelectCourse(e.target.value)}
-                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)] font-medium"
-                >
-                  <option value="custom">-- กรอกข้อมูลเองแบบอิสระ (Custom Course) --</option>
-                  {courses.map((crs) => (
-                    <option key={crs.id} value={crs.id}>
-                      {crs.code} - {crs.titleTh} ({crs.credits} หน่วยกิต • {crs.teacherName})
-                    </option>
-                  ))}
-                </select>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,0.65fr)]">
+                  <label className="relative block min-w-0">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input
+                      type="search"
+                      value={courseSearchInput}
+                      onChange={(event) => setCourseSearchInput(event.target.value)}
+                      placeholder="ค้นหารหัสวิชา ชื่อวิชา หรือชื่อครู"
+                      aria-label="ค้นหารายวิชา"
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                  </label>
+                  <select
+                    value={courseTeacherFilter}
+                    onChange={(event) => setCourseTeacherFilter(event.target.value)}
+                    aria-label="กรองรายวิชาตามครูผู้สอน"
+                    className="w-full min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                  >
+                    <option value="all">ครูผู้สอนทุกคน</option>
+                    {catalogTeacherOptions.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCourse('custom')}
+                    aria-pressed={selectedCourseId === 'custom'}
+                    className={`w-full rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold transition ${
+                      selectedCourseId === 'custom'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                        : 'border-transparent text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                    }`}
+                  >
+                    กรอกข้อมูลรายวิชาเอง
+                  </button>
+                  {filteredCourseCatalog.length > 0 ? filteredCourseCatalog.map((course) => (
+                    <button
+                      key={course.id}
+                      type="button"
+                      onClick={() => handleSelectCourse(course.id)}
+                      aria-pressed={selectedCourseId === course.id}
+                      className={`w-full rounded-lg border px-2.5 py-2 text-left transition ${
+                        selectedCourseId === course.id
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          : 'border-transparent text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                      }`}
+                    >
+                      <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                        <span className="font-mono text-[11px] font-bold">{course.code}</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)]">{course.credits} หน่วยกิต</span>
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] font-semibold">
+                        {course.titleTh || course.titleEn || 'ไม่ระบุชื่อวิชา'}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[10px] text-[var(--color-text-muted)]">
+                        ครูผู้สอน: {course.teacherName || 'ยังไม่ระบุ'}
+                      </span>
+                    </button>
+                  )) : (
+                    <p className="px-2.5 py-4 text-center text-[11px] text-[var(--color-text-muted)]">
+                      ไม่พบรายวิชาที่ตรงกับคำค้นหาหรือตัวกรองครู
+                    </p>
+                  )}
+                </div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">
+                  พบ {filteredCourseCatalog.length} จาก {courses.length} รายวิชา
+                  {selectedCatalogCourse && (
+                    <> · เลือกแล้ว: <strong className="font-mono">{selectedCatalogCourse.code}</strong></>
+                  )}
+                </p>
               </div>
 
               {/* Day & Period Selection */}
