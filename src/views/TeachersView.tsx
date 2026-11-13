@@ -39,7 +39,7 @@ import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUpload
 import { PagedList } from '../components/PagedList';
 import { StaffPositionConfigPanel } from '../components/StaffPositionConfigPanel';
 import { StaffOrganizationView } from './StaffOrganizationView';
-import { getDuplicateRecordWarnings, getTeacherDuplicateReasons } from '../lib/duplicateRecords';
+import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import {
@@ -235,15 +235,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       setPositionFilter(newTitle);
     }
   };
-  const teacherDuplicateWarnings = getDuplicateRecordWarnings({
-    students: [],
-    teachers,
-    courses: [],
-    grades: [],
-    invoices: [],
-    timetableSlots: [],
-  });
-
   const filteredTeachers = teachers.filter((t) => {
     const matchesSearch =
       t.fullNameTh.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -807,12 +798,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {teacherDuplicateWarnings.length > 0 && (
-        <div className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
-          <span><strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {teacherDuplicateWarnings.join(' • ')}</span>
         </div>
       )}
 

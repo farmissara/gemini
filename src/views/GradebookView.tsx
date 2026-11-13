@@ -14,7 +14,6 @@ import {
 } from '../types';
 import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
-import { getDuplicateRecordWarnings } from '../lib/duplicateRecords';
 import { 
   Award, 
   FileText, 
@@ -133,14 +132,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       || (gradeEligibilityFilter === 'at_risk' ? eligibility.isAtRiskMs : !eligibility.isAtRiskMs)
     )
   ));
-  const gradeDuplicateWarnings = getDuplicateRecordWarnings({
-    students: [],
-    teachers: [],
-    courses: [],
-    grades,
-    invoices: [],
-    timetableSlots: [],
-  });
   const selectedStudentForPp6 = students.find((s) => s.id === selectedStudentIdForPp6) || students[0];
   const gradePageSize = 15;
   const pp5PageSize = 15;
@@ -750,13 +741,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               {getGradingScaleLegend(systemConfig.gradingSystem)}
             </div>
           </div>
-          {gradeDuplicateWarnings.length > 0 && (
-            <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-              <span><strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {gradeDuplicateWarnings.join(' • ')}</span>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 sm:grid-cols-3 print:hidden">
             <label className="min-w-0">
               <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">ห้องเรียน</span>

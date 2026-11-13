@@ -86,10 +86,11 @@ import {
   DEFAULT_STAFF_POSITION_OPTIONS,
 } from './lib/schoolSettings';
 import {
-  getDuplicateIdWarnings,
-  getDuplicateRecordWarnings,
+  getDuplicateIdReports,
+  getDuplicateRecordReports,
   getGradeDuplicateReasons,
 } from './lib/duplicateRecords';
+import type { DuplicateRecordReport, DuplicateRecordTarget } from './lib/duplicateRecords';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { AuthLayout } from './components/layout/AuthLayout';
@@ -272,11 +273,13 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
+  const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
   const [featureFlagsBySchool, setFeatureFlagsBySchool] = useState<Record<string, SchoolFeatureFlags>>({});
 
   useEffect(() => {
     setDismissedDuplicateWarning(false);
+    setShowDuplicateDetails(false);
   }, [activeSchool.id]);
 
   // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
@@ -529,11 +532,13 @@ export const App: React.FC = () => {
   const schoolSdqAssessments = sdqAssessments.filter((s) => !s.schoolId || s.schoolId === activeSchool.id);
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
+  const schoolLeaveRequests = leaveRequests.filter((request) => !request.schoolId || request.schoolId === activeSchool.id);
   const activeFeatureFlags = activeSchool.id
     ? (featureFlagsBySchool[activeSchool.id] || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise'))
     : undefined;
-  const duplicateWarnings = [
-    ...getDuplicateIdWarnings({
+  const duplicateReportMap = new Map<DuplicateRecordTarget, DuplicateRecordReport>();
+  [
+    ...getDuplicateIdReports({
       students: schoolStudents,
       teachers: schoolTeachers,
       courses: schoolCourses,
@@ -552,7 +557,7 @@ export const App: React.FC = () => {
       infirmaryVisits: schoolInfirmaryVisits,
       homeworkSubmissions: schoolHomeworkSubmissions,
     }),
-    ...getDuplicateRecordWarnings({
+    ...getDuplicateRecordReports({
       students: schoolStudents,
       teachers: schoolTeachers,
       courses: schoolCourses,
@@ -566,9 +571,18 @@ export const App: React.FC = () => {
       sdqAssessments: schoolSdqAssessments,
       infirmaryVisits: schoolInfirmaryVisits,
       homeworkSubmissions: schoolHomeworkSubmissions,
-      leaveRequests,
+      leaveRequests: schoolLeaveRequests,
     }),
-  ];
+  ].forEach((report) => {
+    const existing = duplicateReportMap.get(report.target);
+    if (existing) existing.checks.push(...report.checks);
+    else duplicateReportMap.set(report.target, { ...report, checks: [...report.checks] });
+  });
+  const duplicateReports = [...duplicateReportMap.values()];
+  const duplicateRecordGroupCount = duplicateReports.reduce(
+    (total, report) => total + report.checks.reduce((count, check) => count + check.groups.length, 0),
+    0
+  );
 
   // Keep the live Supabase account flow separate from the local demo session.
   const handleLogin = (context: AuthContext) => {
@@ -2815,22 +2829,94 @@ export const App: React.FC = () => {
         </div>
       )}
       {!useImmersiveGameLayout && isDataReady && !isDemoMode && !dismissedDuplicateWarning &&
-        ['admin', 'super_admin'].includes(currentRole) && duplicateWarnings.length > 0 && (
-        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-950 dark:text-amber-100 flex items-center justify-between gap-2">
-          <span className="truncate">
-            <strong>ตรวจพบข้อมูลซ้ำ ({duplicateWarnings.length}):</strong>{' '}
-            {duplicateWarnings.slice(0, 2).join(' • ')}
-            {duplicateWarnings.length > 2 ? ` (+${duplicateWarnings.length - 2})` : ''}
-          </span>
-          <button
-            type="button"
-            onClick={() => setDismissedDuplicateWarning(true)}
-            aria-label="Dismiss duplicate warning"
-            className="p-0.5 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer shrink-0"
-          >
-            ✕
-          </button>
-        </div>
+        ['admin', 'super_admin'].includes(currentRole) && duplicateRecordGroupCount > 0 && (
+        <section className="shrink-0 mx-3 mt-1 overflow-hidden rounded-xl border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs font-bold">
+                ตรวจพบข้อมูลซ้ำ {duplicateRecordGroupCount} กลุ่ม ใน {duplicateReports.length} หมวด
+              </p>
+              <p className="mt-0.5 text-[10px]">
+                รวมการแจ้งเตือนไว้จุดเดียว เลือกดูค่าที่ซ้ำและหน้าที่ควรเข้าไปตรวจสอบ
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDuplicateDetails((open) => !open)}
+                aria-expanded={showDuplicateDetails}
+                className="rounded-lg border border-amber-400 bg-white/70 px-2.5 py-1.5 text-[10px] font-bold hover:bg-white dark:border-amber-600 dark:bg-slate-900/50 dark:hover:bg-slate-900 cursor-pointer"
+              >
+                {showDuplicateDetails ? 'ซ่อนรายละเอียด' : 'ดูรายการและวิธีแก้'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissedDuplicateWarning(true)}
+                aria-label="ปิดการแจ้งเตือนข้อมูลซ้ำ"
+                className="p-1 font-bold hover:text-amber-700 dark:hover:text-amber-300 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          {showDuplicateDetails && (
+            <div className="max-h-[55vh] space-y-2 overflow-y-auto border-t border-amber-200 p-3 dark:border-amber-800">
+              {duplicateReports.map((report) => {
+                const reportGroupCount = report.checks.reduce((sum, check) => sum + check.groups.length, 0);
+                return (
+                  <section key={report.target} className="rounded-lg border border-amber-200 bg-white/70 p-3 dark:border-amber-800 dark:bg-slate-950/40">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-xs font-bold">{report.module}</h3>
+                        <p className="text-[10px]">{reportGroupCount} กลุ่มที่ต้องตรวจสอบ</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (report.programMode) setProgramMode(report.programMode);
+                          navigateToAppTab(report.target);
+                        }}
+                        className="rounded-lg bg-amber-700 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer"
+                      >
+                        ไปหน้า{report.module}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] leading-relaxed">{report.guidance}</p>
+                    <div className="mt-2 space-y-1.5">
+                      {report.checks.map((check) => (
+                        <details key={check.label} className="rounded-md border border-amber-200 bg-white/60 px-2.5 py-2 dark:border-amber-900 dark:bg-slate-950/30">
+                          <summary className="cursor-pointer text-[10px] font-semibold">
+                            {check.label} · {check.groups.length} กลุ่ม
+                          </summary>
+                          <ul className="mt-2 space-y-2">
+                            {check.groups.slice(0, 25).map((group, index) => (
+                              <li key={`${group.value}-${index}`} className="rounded-md bg-amber-50/80 p-2 text-[10px] dark:bg-amber-950/30">
+                                <p className="font-bold">ค่าที่ซ้ำ: {group.value || 'ไม่ระบุ'}</p>
+                                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                                  {group.records.slice(0, 5).map((record, recordIndex) => (
+                                    <li key={`${record}-${recordIndex}`}>{record}</li>
+                                  ))}
+                                </ul>
+                                {group.records.length > 5 && (
+                                  <p className="mt-1 text-[9px] opacity-75">และอีก {group.records.length - 5} ระเบียน</p>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                          {check.groups.length > 25 && (
+                            <p className="mt-2 text-[9px]">
+                              แสดง 25 จาก {check.groups.length} กลุ่ม · ใช้ปุ่มไปยังหน้า{report.module} เพื่อค้นหารายการที่เหลือ
+                            </p>
+                          )}
+                        </details>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Mobile Drawer Overlay and Sidebar */}

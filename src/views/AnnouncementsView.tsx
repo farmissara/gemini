@@ -69,17 +69,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     ? getAnnouncementDuplicateReasons({ title: formData.title, targetAudience: formData.targetAudience }, announcements)
     : [];
 
-  const existingAnnDuplicatesCount = (() => {
-    const seen = new Set<string>();
-    let dups = 0;
-    announcements.forEach((a) => {
-      const k = `${a.title.trim().toLowerCase()}|${a.targetAudience}`;
-      if (seen.has(k)) dups += 1;
-      else seen.add(k);
-    });
-    return dups;
-  })();
-
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
@@ -155,13 +144,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           </button>
         </div>
       </div>
-
-      {existingAnnDuplicatesCount > 0 && (
-        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-          <span>พบประกาศที่มีหัวข้อและกลุ่มเป้าหมายซ้ำกันจำนวน {existingAnnDuplicatesCount} รายการ</span>
-        </div>
-      )}
 
       {broadcastToast && (
         <div className="shrink-0 p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2 font-medium">

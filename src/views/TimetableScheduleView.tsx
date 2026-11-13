@@ -24,7 +24,6 @@ import {
   AlertCircle,
   SlidersHorizontal,
   ChevronRight,
-  BellRing
 } from 'lucide-react';
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
@@ -192,6 +191,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     : selectedClassRoom === ALL_CLASSROOMS
       ? slots
       : slots.filter((s) => s.classRoom === selectedClassRoom);
+  const isAllClassroomsView = viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS;
 
   // Overall conflict detection across the school
   const conflicts: { slotId: string; reason: string }[] = [];
@@ -588,75 +588,83 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Top Header & View Mode Switcher */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-3 app-page-header">
+      {/* Page heading, view navigation, and schedule actions */}
+      <div className="shrink-0 space-y-3 p-3 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
           <Calendar className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
-            ตารางเรียน &amp; ตารางสอน
-          </h1>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+              ตารางเรียนและตารางสอน
+            </h1>
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              จัดตารางตามห้องหรือตามครู พร้อมตรวจสอบภาระงานและชั่วโมงเรียน
+            </p>
+          </div>
         </div>
 
-        {/* View Mode Switcher Tabs & Actions */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="flex items-center p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold">
+        <div className="space-y-2">
+          <div role="group" aria-label="มุมมองตาราง" className="flex w-full items-center gap-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1 text-xs font-semibold">
             <button
               type="button"
+              aria-pressed={viewMode === 'classroom'}
               onClick={() => setViewMode('classroom')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+              className={`px-3 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 viewMode === 'classroom'
-                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-sm font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>รายห้อง</span>
+              <span>ตารางห้อง</span>
             </button>
             <button
               type="button"
+              aria-pressed={viewMode === 'teacher'}
               onClick={() => {
                 if (selectedClassRoom === ALL_CLASSROOMS) {
                   setSelectedClassRoom(uniqueClassRooms[0] || '');
                 }
                 setViewMode('teacher');
               }}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+              className={`px-3 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 viewMode === 'teacher'
-                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-sm font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>รายครู (ว.PA)</span>
+              <span>ตารางครู</span>
             </button>
             <button
               type="button"
+              aria-pressed={viewMode === 'hours_criteria'}
               onClick={() => {
                 if (selectedClassRoom === ALL_CLASSROOMS) {
                   setSelectedClassRoom(uniqueClassRooms[0] || '');
                 }
                 setViewMode('hours_criteria');
               }}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+              className={`px-3 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 viewMode === 'hours_criteria'
-                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-sm font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>เกณฑ์ชั่วโมง 80%</span>
+              <span>ชั่วโมงเรียน 80%</span>
             </button>
             <button
               type="button"
+              aria-pressed={viewMode === 'workload'}
               onClick={() => setViewMode('workload')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+              className={`px-3 py-2 rounded-lg transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 viewMode === 'workload'
-                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-sm font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>ภาระงานครู</span>
+              <span>สรุปภาระงาน</span>
               {(lowWorkloadCount > 0 || highWorkloadCount > 0) && (
                 <span className="rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white">
                   {lowWorkloadCount + highWorkloadCount}
@@ -665,86 +673,92 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </button>
           </div>
 
-          <details className="relative">
-            <summary className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] transition whitespace-nowrap">
-              <BellRing className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span className="hidden md:inline">ทดสอบเตือนคาบ</span>
-            </summary>
-            <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-1 text-xs">
-              <div className="px-2 py-1 text-[10px] font-bold text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
-                แจ้งเตือนอัตโนมัติทุก 30 วินาที
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <details className="relative">
+              <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] transition whitespace-nowrap">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>เครื่องมือ</span>
+              </summary>
+              <div className="absolute left-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  พิมพ์ตาราง (A4)
+                </button>
+                {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
+                      setPeriodSettingsError(null);
+                      setShowPeriodSettings(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    ตั้งเวลาคาบเรียน
+                  </button>
+                )}
+                <div className="border-t border-[var(--color-border)] pt-1">
+                  <div className="px-2 py-1 text-[10px] font-bold text-[var(--color-text-muted)]">
+                    ทดสอบการแจ้งเตือน
+                  </div>
+                  <div className="px-2 py-1 text-[10px] text-[var(--color-text-muted)]">
+                    ส่งการแจ้งเตือนทดสอบไปยังอุปกรณ์นี้
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      sendEduVerseNotification({
+                        title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
+                        body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็คชื่อเข้าเรียน (Check-in)`,
+                        category: 'attendance',
+                        priority: 'urgent',
+                      });
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-emerald-700 dark:text-emerald-300 cursor-pointer"
+                  >
+                    ⏰ ทดสอบเริ่มคาบ &amp; เช็คอิน
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      sendEduVerseNotification({
+                        title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
+                        body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็คชื่อออก (Check-out)`,
+                        category: 'attendance',
+                        priority: 'normal',
+                      });
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-indigo-700 dark:text-indigo-300 cursor-pointer"
+                  >
+                    🔔 ทดสอบหมดคาบ &amp; เช็คเอาท์
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      sendEduVerseNotification({
+                        title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็คชื่อ / มาสาย',
+                        body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็คชื่อเข้าเรียน กรุณาสแกนด่วน`,
+                        category: 'attendance',
+                        priority: 'urgent',
+                      });
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-amber-700 dark:text-amber-300 cursor-pointer"
+                  >
+                    ⚠️ ทดสอบลืมเช็คชื่อ / มาสาย
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.currentTarget.closest('details')?.removeAttribute('open');
-                  sendEduVerseNotification({
-                    title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                    body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็คชื่อเข้าเรียน (Check-in)`,
-                    category: 'attendance',
-                    priority: 'urgent',
-                  });
-                }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-emerald-700 dark:text-emerald-300 cursor-pointer"
-              >
-                ⏰ ทดสอบเริ่มคาบ &amp; เช็คอิน
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.currentTarget.closest('details')?.removeAttribute('open');
-                  sendEduVerseNotification({
-                    title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                    body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็คชื่อออก (Check-out)`,
-                    category: 'attendance',
-                    priority: 'normal',
-                  });
-                }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-indigo-700 dark:text-indigo-300 cursor-pointer"
-              >
-                🔔 ทดสอบหมดคาบ &amp; เช็คเอาท์
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.currentTarget.closest('details')?.removeAttribute('open');
-                  sendEduVerseNotification({
-                    title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็คชื่อ / มาสาย',
-                    body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็คชื่อเข้าเรียน กรุณาสแกนด่วน`,
-                    category: 'attendance',
-                    priority: 'urgent',
-                  });
-                }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-amber-700 dark:text-amber-300 cursor-pointer"
-              >
-                ⚠️ ทดสอบลืมเช็คชื่อ / มาสาย
-              </button>
-            </div>
-          </details>
+            </details>
 
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition cursor-pointer whitespace-nowrap"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">พิมพ์ (A4)</span>
-          </button>
-
-          {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
-                  setPeriodSettingsError(null);
-                  setShowPeriodSettings(true);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-body)] transition cursor-pointer whitespace-nowrap"
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>ตั้งเวลา</span>
-              </button>
+            {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
               <button
                 type="button"
                 onClick={() => {
@@ -765,20 +779,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มคาบเรียน</span>
+                <span>เพิ่มคาบ</span>
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Secondary Controls Bar: Select Classroom or Select Teacher */}
+      {/* Context filters and summary for the selected view */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
         {viewMode === 'classroom' || viewMode === 'hours_criteria' ? (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex min-w-0 flex-1 items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
               <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
-              <span>เลือกห้องเรียน:</span>
+              <span>ห้องเรียน</span>
             </span>
             <select
               value={selectedClassRoom}
@@ -786,7 +800,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold px-3 py-1.5 rounded-xl border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
             >
               <option value={ALL_CLASSROOMS} disabled={viewMode === 'hours_criteria'}>
-                ทุกห้องเรียน ({uniqueClassRooms.length} ห้อง)
+                ทุกห้อง ({uniqueClassRooms.length})
               </option>
               {uniqueClassRooms.map((room) => (
                 <option key={room} value={room}>
@@ -854,7 +868,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               )
             )}
             <span className="text-xs text-[var(--color-text-muted)]">
-              • จัดตารางแล้ว <strong>{classroomSlots.length}</strong> คาบ/สัปดาห์
+              {selectedClassRoom === ALL_CLASSROOMS
+                ? <>รวม <strong>{classroomSlots.length}</strong> คาบ/สัปดาห์</>
+                : <>จัดตารางแล้ว <strong>{classroomSlots.length}</strong> คาบ/สัปดาห์</>}
             </span>
             {roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
           </div>
@@ -912,14 +928,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
-              ต่ำกว่า 12 คาบ: {lowWorkloadCount} คน
-            </span>
-            <span className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1 font-semibold text-rose-900 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-              มากกว่า 22 คาบ: {highWorkloadCount} คน
+            <span className="rounded-lg bg-[var(--color-card-subtle)] px-2.5 py-1.5 font-semibold text-[var(--color-text-body)]">
+              เกณฑ์คัดกรองเบื้องต้น 12–22 คาบ/สัปดาห์
             </span>
             <span className="text-[11px] text-[var(--color-text-muted)]">
-              เกณฑ์แจ้งเตือนเบื้องต้นต่อสัปดาห์ · ตรวจสอบตามนโยบายโรงเรียน
+              ไม่ใช่ข้อสรุปตามตำแหน่งหรือระเบียบ
             </span>
           </div>
         )}
@@ -953,8 +966,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </span>
           ) : (
             <div className="flex items-center gap-2">
-              <span>นักเรียน: <strong className="text-[var(--color-text-title)] tabular-nums">{classroomStudents.length}</strong> คน</span>
-              <span>• <strong className="text-[var(--color-primary-text)] tabular-nums">{classroomCoursesList.length}</strong> วิชา</span>
+              {selectedClassRoom === ALL_CLASSROOMS ? (
+                <span>รวมทุกห้อง <strong className="text-[var(--color-text-title)] tabular-nums">{uniqueClassRooms.length}</strong> ห้อง · <strong className="text-[var(--color-primary-text)] tabular-nums">{classroomSlots.length}</strong> คาบ/สัปดาห์</span>
+              ) : (
+                <>
+                  <span>นักเรียน <strong className="text-[var(--color-text-title)] tabular-nums">{classroomStudents.length}</strong> คน</span>
+                  <span>• <strong className="text-[var(--color-primary-text)] tabular-nums">{classroomCoursesList.length}</strong> วิชา</span>
+                </>
+              )}
             </div>
           )}
 
@@ -1021,7 +1040,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               ระบบตรวจพบข้อขัดแย้งตารางเรียน (Schedule Conflicts Detected)
             </h4>
             <p className="text-[11px] text-amber-900 dark:text-amber-200">
-              พบคาบเรียนที่มีครูผู้สอนหรือห้องเรียนถูกจัดซ้ำซ้อนในเวลาเดียวกัน {conflicts.length / 2} รายการ (คาบที่มีปัญหาจะมีกรอบไฮไลท์สีส้มเตือน)
+              ตรวจ              ตรวจพบการจัดครูผู้สอนหรือห้องสถานที่ซ้ำซ้อนในตารางทั้งโรงเรียน {conflicts.length / 2} รายการ คาบที่เกี่ยวข้องจะมีกรอบสีส้ม
             </p>
           </div>
         </div>
@@ -1308,7 +1327,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 {viewMode === 'teacher'
                   ? `ตารางสอน: ${selectedTeacherName}`
                   : selectedClassRoom === ALL_CLASSROOMS
-                    ? 'ตารางเรียนทุกห้อง'
+                    ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
                     : `${selectedClassRoom}`} — {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear}
               </span>
             </div>
@@ -1319,7 +1338,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
             <table className={`w-full text-left border-collapse ${
-              viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS ? 'min-w-[1120px]' : 'min-w-[880px]'
+              isAllClassroomsView ? 'min-w-[1120px]' : 'min-w-[880px]'
             }`}>
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
@@ -1374,7 +1393,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
                       return (
                         <td key={period.periodNumber} className="p-1.5 border-r border-[var(--color-border)] align-top">
-                          <div className="space-y-1.5">
+                          <div className={isAllClassroomsView ? 'space-y-1' : 'space-y-1.5'}>
                             {periodSlots.map((slot) => {
                               const hasConflict = conflicts.some((conflict) => conflict.slotId === slot.id);
                               const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
@@ -1382,14 +1401,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 <div
                                   key={slot.id}
                                   onClick={() => setSelectedSlotForDetail(slot)}
-                                  className={`min-h-22 p-2 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
+                                  className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
                                 >
                                   <div className="min-w-0">
                                     <div className="flex items-start justify-between gap-1">
                                       <span className="shrink-0 font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
                                         {slot.courseCode}
                                       </span>
-                                      <span className="max-w-[55%] truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
+                                      <span title="ชั้น/ห้องเรียน" className="max-w-[55%] truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
                                         {slot.classRoom}
                                       </span>
                                       {hasConflict && (
@@ -1398,19 +1417,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                         </span>
                                       )}
                                     </div>
-                                    <h4 className="text-[11px] font-bold mt-1 line-clamp-1 leading-tight">
+                                    <h4 className={`${isAllClassroomsView ? 'text-[10px]' : 'text-[11px]'} font-bold mt-1 line-clamp-1 leading-tight`}>
                                       {slot.courseTitleTh}
                                     </h4>
                                   </div>
 
-                                  <div className="pt-1 border-t border-current/20 space-y-0.5 text-[10px] opacity-95">
+                                  <div className={`pt-1 border-t border-current/20 space-y-0.5 ${isAllClassroomsView ? 'text-[9px]' : 'text-[10px]'} opacity-95`}>
                                     <div className="flex items-center gap-1 truncate">
                                       <User className="w-2.5 h-2.5 shrink-0" />
                                       <span className="truncate">{slot.teacherName}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 truncate">
+                                    <div className="flex items-center gap-1 truncate" title={`ห้องสถานที่: ${slot.room || 'ไม่ระบุ'}`}>
                                       <MapPin className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="truncate">{slot.room}</span>
+                                      <span className="truncate">{slot.room || 'ไม่ระบุห้องสถานที่'}</span>
                                     </div>
                                   </div>
 

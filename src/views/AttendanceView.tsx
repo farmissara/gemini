@@ -173,17 +173,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     ? getAttendanceDuplicateReasons({ studentId: matchedScannerStudent.id, date: todayDateStr, recordType: 'check_in' }, attendance)
     : [];
 
-  const duplicateAttendanceCount = useMemo(() => {
-    const seen = new Set<string>();
-    let dups = 0;
-    scopedAttendance.forEach((att) => {
-      const k = `${att.studentId}|${att.date}|${att.recordType || 'check_in'}`;
-      if (seen.has(k)) dups += 1;
-      else seen.add(k);
-    });
-    return dups;
-  }, [scopedAttendance]);
-
   // Filter logs by date and scope
   const [dateFilter, setDateFilter] = useState(getLocalDateString());
   const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
@@ -511,13 +500,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           </button>
         </nav>
       </div>
-
-      {duplicateAttendanceCount > 0 && (
-        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-          <span>พบข้อมูลเช็คชื่อซ้ำในวันและประเภทเดียวกัน จำนวน {duplicateAttendanceCount} รายการ</span>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}

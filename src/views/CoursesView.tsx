@@ -27,7 +27,6 @@ import { PagedList } from '../components/PagedList';
 import {
   getCourseDuplicateExtraIds,
   getCourseDuplicateReasons,
-  getDuplicateRecordWarnings,
 } from '../lib/duplicateRecords';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
@@ -346,14 +345,6 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       item.semester === course.semester
     ).length > 1;
   const duplicateExtraCourseIds = getCourseDuplicateExtraIds(courses);
-  const courseDuplicateWarnings = getDuplicateRecordWarnings({
-    students: [],
-    teachers: [],
-    courses,
-    grades: [],
-    invoices: [],
-    timetableSlots: [],
-  });
   const executeDeleteSelectedCourses = async () => {
     if (selectedCourseIds.length === 0) return;
     setIsDeletingCourses(true);
@@ -509,23 +500,6 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         )}
       </div>
 
-      {/* Duplicate & Error Alerts */}
-      {courseDuplicateWarnings.length > 0 && (
-        <div className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2">
-          <span>
-            <strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {courseDuplicateWarnings.join(' • ')} (พบตัวซ้ำส่วนเกิน {duplicateExtraCourseIds.length} วิชา)
-          </span>
-          {canManageCourses && duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
-            <button
-              type="button"
-              onClick={() => setSelectedCourseIds(duplicateExtraCourseIds)}
-              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] cursor-pointer"
-            >
-              เลือกเฉพาะตัวซ้ำ ({duplicateExtraCourseIds.length} วิชา) เพื่อลบ
-            </button>
-          )}
-        </div>
-      )}
       {courseDeleteError && (
         <p role="alert" className="shrink-0 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
           {courseDeleteError}

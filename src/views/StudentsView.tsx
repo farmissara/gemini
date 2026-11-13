@@ -47,7 +47,7 @@ import {
   STUDENT_STATUS_DETAILS 
 } from '../data/studentAcademicData';
 import { StudentPromotionModal } from '../components/modals/StudentPromotionModal';
-import { getDuplicateRecordWarnings, getStudentDuplicateReasons } from '../lib/duplicateRecords';
+import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 
 const PaginatedTableRows = <T,>({
@@ -930,23 +930,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </button>
         </div>
       </div>
-
-      {(() => {
-        const studentDupWarnings = getDuplicateRecordWarnings({
-          students,
-          teachers: [],
-          courses: [],
-          grades: [],
-          invoices: [],
-          timetableSlots: [],
-        });
-        if (studentDupWarnings.length === 0) return null;
-        return (
-          <div className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
-            <span><strong>แจ้งเตือนข้อมูลซ้ำ:</strong> {studentDupWarnings.join(' • ')}</span>
-          </div>
-        );
-      })()}
 
       {/* View Tabs */}
       <div className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">

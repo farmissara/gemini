@@ -154,28 +154,6 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       )
     : [];
 
-  const existingBehaviorDuplicatesCount = (() => {
-    const seen = new Set<string>();
-    let dups = 0;
-    records.forEach((r) => {
-      const k = `${r.studentId}|${r.date}|${r.type}|${r.category.trim().toLowerCase()}`;
-      if (seen.has(k)) dups += 1;
-      else seen.add(k);
-    });
-    return dups;
-  })();
-
-  const existingSdqDuplicatesCount = (() => {
-    const seen = new Set<string>();
-    let dups = 0;
-    sdqList.forEach((s) => {
-      const k = `${s.studentId}|${s.academicYear}|${s.semester}`;
-      if (seen.has(k)) dups += 1;
-      else seen.add(k);
-    });
-    return dups;
-  })();
-
   const handleCreateRecord = (e: React.FormEvent) => {
     e.preventDefault();
     const student = students.find((s) => s.id === selectedStudentId);
@@ -369,18 +347,6 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
           )}
         </div>
       </div>
-
-      {(existingBehaviorDuplicatesCount > 0 || existingSdqDuplicatesCount > 0) && (
-        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-          <span>
-            <strong>ตรวจพบข้อมูลซ้ำในระบบ:</strong>{' '}
-            {existingBehaviorDuplicatesCount > 0 && `บันทึกพฤติกรรมซ้ำ ${existingBehaviorDuplicatesCount} รายการ`}
-            {existingBehaviorDuplicatesCount > 0 && existingSdqDuplicatesCount > 0 && ' • '}
-            {existingSdqDuplicatesCount > 0 && `ผลประเมิน SDQ ซ้ำในภาคเรียนเดียว ${existingSdqDuplicatesCount} รายการ`}
-          </span>
-        </div>
-      )}
 
       {/* Tab 1: Merit & Demerit Tracker */}
       {activeTab === 'merit' && (

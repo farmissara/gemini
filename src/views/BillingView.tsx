@@ -110,20 +110,6 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   const activeStudent = activeInvoice ? students.find((s) => s.id === activeInvoice.studentId) : null;
 
-  const duplicateInvoicesCount = (() => {
-    const seenNum = new Set<string>();
-    const seenStudentTermTitle = new Set<string>();
-    let dups = 0;
-    invoices.forEach((inv) => {
-      const k1 = inv.invoiceNumber.trim().toLowerCase();
-      const k2 = `${inv.studentId}|${inv.semester.trim().toLowerCase()}|${(inv.items[0]?.title || '').trim().toLowerCase()}`;
-      if ((k1 && seenNum.has(k1)) || seenStudentTermTitle.has(k2)) dups += 1;
-      if (k1) seenNum.add(k1);
-      seenStudentTermTitle.add(k2);
-    });
-    return dups;
-  })();
-
   const newInvoiceDupReasons = showNewInvoiceModal
     ? getInvoiceDuplicateReasons(
         {
@@ -194,13 +180,6 @@ export const BillingView: React.FC<BillingViewProps> = ({
           )}
         </div>
       </div>
-
-      {duplicateInvoicesCount > 0 && (
-        <div role="alert" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs text-amber-950 dark:text-amber-100 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-          <span>พบใบแจ้งหนี้ซ้ำซ้อน (เลขที่ใบแจ้งหนี้หรือนักเรียน/รายการ/เทอมเดียวกัน) จำนวน {duplicateInvoicesCount} รายการ</span>
-        </div>
-      )}
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">
