@@ -378,80 +378,123 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Top Header & View Mode Switcher */}
-      <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-4 app-page-header">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-              <Calendar className="w-5 h-5" />
-            </span>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-                <span>ตารางเรียน ตารางสอน และเกณฑ์ชั่วโมงเรียน</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-semibold">
-                  สัมพันธ์กับวิชาการ / ครู / เกณฑ์ 80%
-                </span>
-              </h1>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                ตรวจสอบการจัดคาบเรียนให้ครบตามหน่วยกิต ตรวจสอบภาระงานสอนครู ตรวจจับคาบชน และคำนวณเกณฑ์เวลาเรียน 80% มีสิทธิ์สอบ (ปพ.5)
-              </p>
-            </div>
-          </div>
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-3 app-page-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <Calendar className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            ตารางเรียน &amp; ตารางสอน
+          </h1>
         </div>
 
-        {/* View Mode Switcher Tabs */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold">
+        {/* View Mode Switcher Tabs & Actions */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold">
             <button
               type="button"
               onClick={() => setViewMode('classroom')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 viewMode === 'classroom'
                   ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>ตารางเรียนรายห้อง</span>
+              <span>รายห้อง</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('teacher')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 viewMode === 'teacher'
                   ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>ตารางสอนรายครู (ภาระงาน ว.PA)</span>
+              <span>รายครู (ว.PA)</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('hours_criteria')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 viewMode === 'hours_criteria'
                   ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>หลักเกณฑ์ชั่วโมงเรียน &amp; สิทธิ์สอบ 80%</span>
+              <span>เกณฑ์ชั่วโมง 80%</span>
             </button>
           </div>
 
-          {/* Print Timetable Button */}
+          <details className="relative">
+            <summary className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] transition whitespace-nowrap">
+              <BellRing className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden md:inline">ทดสอบเตือนคาบ</span>
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-1 text-xs">
+              <div className="px-2 py-1 text-[10px] font-bold text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
+                แจ้งเตือนอัตโนมัติทุก 30 วินาที
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                  sendEduVerseNotification({
+                    title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
+                    body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็กชื่อเข้าเรียน (Check-in)`,
+                    category: 'attendance',
+                    priority: 'urgent',
+                  });
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-emerald-700 dark:text-emerald-300 cursor-pointer"
+              >
+                ⏰ ทดสอบเริ่มคาบ &amp; เช็กอิน
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                  sendEduVerseNotification({
+                    title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
+                    body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็กชื่อออก (Check-out)`,
+                    category: 'attendance',
+                    priority: 'normal',
+                  });
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-indigo-700 dark:text-indigo-300 cursor-pointer"
+              >
+                🔔 ทดสอบหมดคาบ &amp; เช็กเอาท์
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                  sendEduVerseNotification({
+                    title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็กชื่อ / มาสาย',
+                    body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็กชื่อเข้าเรียน กรุณาสแกนด่วน`,
+                    category: 'attendance',
+                    priority: 'urgent',
+                  });
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] font-semibold text-amber-700 dark:text-amber-300 cursor-pointer"
+              >
+                ⚠️ ทดสอบลืมเช็กชื่อ / มาสาย
+              </button>
+            </div>
+          </details>
+
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition cursor-pointer whitespace-nowrap"
           >
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">พิมพ์ตาราง (A4)</span>
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">พิมพ์ (A4)</span>
           </button>
 
-          {/* Add Slot Button (Admin / Teacher / Super Admin) */}
           {(currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
-            <div className="flex items-center gap-2">
+            <>
               <button
                 type="button"
                 onClick={() => {
@@ -459,10 +502,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   setPeriodSettingsError(null);
                   setShowPeriodSettings(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-body)] transition cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-body)] transition cursor-pointer whitespace-nowrap"
               >
-                <Clock className="w-4 h-4" />
-                <span>ตั้งเวลาเรียน</span>
+                <Clock className="w-3.5 h-3.5" />
+                <span>ตั้งเวลา</span>
               </button>
               <button
                 type="button"
@@ -473,79 +516,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
                   setShowAddModal(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>เพิ่มคาบเรียน</span>
               </button>
-            </div>
+            </>
           )}
-        </div>
-      </div>
-
-      {/* Timetable Period Automated Notification Status & Test Bar */}
-      <div className="shrink-0 p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0">
-            <BellRing className="w-4 h-4" />
-          </div>
-          <div>
-            <p className="font-bold text-indigo-950 dark:text-indigo-100 flex items-center gap-2">
-              <span>ระบบแจ้งเตือนตารางสอนอัตโนมัติ (Automated Period Notifications)</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300 dark:border-emerald-700">
-                ทำงานอัตโนมัติทุก 30 วินาที
-              </span>
-            </p>
-            <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
-              แจ้งเตือนนักเรียนและครูทุกคาบ: เตือนก่อนเริ่มคาบ 5 นาที, เตือนเช็กชื่อเข้า (Check-in), เตือนหมดคาบ (Check-out), และเตือนเมื่อเลยเวลา 10 นาที (มาสาย/ลืมเช็กชื่อ)
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ทดสอบเตือน:</span>
-          <button
-            type="button"
-            onClick={() => {
-              sendEduVerseNotification({
-                title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็กชื่อเข้าเรียน (Check-in)`,
-                category: 'attendance',
-                priority: 'urgent',
-              });
-            }}
-            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition cursor-pointer shadow-2xs"
-          >
-            ⏰ เริ่มคาบ &amp; เช็กอิน
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              sendEduVerseNotification({
-                title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็กชื่อออก (Check-out)`,
-                category: 'attendance',
-                priority: 'normal',
-              });
-            }}
-            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition cursor-pointer shadow-2xs"
-          >
-            🔔 หมดคาบ &amp; เช็กเอาท์
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              sendEduVerseNotification({
-                title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็กชื่อ / มาสาย',
-                body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็กชื่อเข้าเรียน กรุณาสแกนด่วน`,
-                category: 'attendance',
-                priority: 'urgent',
-              });
-            }}
-            className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition cursor-pointer shadow-2xs"
-          >
-            ⚠️ ลืมเช็กชื่อ / มาสาย
-          </button>
         </div>
       </div>
 

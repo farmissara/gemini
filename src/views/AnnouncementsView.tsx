@@ -81,20 +81,15 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 app-page-header">
-        <div>
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
-            <BellRing className="w-5 h-5 text-[var(--color-primary-text)]" />
-            School Announcements &amp; LINE OA Broadcast
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            Official communications synced with LINE Messaging API and Resend transactional email services.
-          </p>
-        </div>
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-3 app-page-header">
+        <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+          <BellRing className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <span>School Announcements &amp; Broadcast</span>
+        </h1>
 
         <button
           onClick={() => setShowComposeModal(true)}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition-all self-start sm:self-auto cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           <span>Publish Broadcast</span>

@@ -412,17 +412,15 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header and Controls */}
-      <div className="shrink-0 p-4 app-page-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-            <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)]" />
-            <span>{lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}</span>
+      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
           </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            {lang === 'th'
-              ? `ทะเบียนบุคลากรและแฟ้มผลงาน PA · ${filteredTeachers.length} คน`
-              : `Staff directory and PA portfolios · ${filteredTeachers.length} people`}
-          </p>
+          <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
+            · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

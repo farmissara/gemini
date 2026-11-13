@@ -70,40 +70,29 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      {/* Classroom Hero */}
-      <div className="shrink-0 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-950 border border-indigo-500/40 p-3.5 sm:p-4 shadow-lg relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 border border-indigo-400/40 text-[11px] font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              {lang === 'th' ? 'ห้องเรียนออนไลน์เสมือนจริง • EduVerse LMS' : 'Virtual Classroom • EduVerse LMS'}
-            </span>
-            <h1 className="text-lg sm:text-xl font-black text-white">
-              {lang === 'th' ? activeCourse?.titleTh : activeCourse?.titleEn}
-            </h1>
-            <p className="text-xs text-indigo-200">
-              {activeCourse?.code} • {activeCourse?.teacherName} • {activeCourse?.department}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-600 text-xs">
-              <span className="text-slate-200 block text-[10px]">
-                {lang === 'th' ? 'ความคืบหน้าบทเรียน' : 'Course Progress'}
-              </span>
-              <span className="text-emerald-300 font-bold font-mono text-sm">
-                {progressPercent}%
-              </span>
-            </div>
-          </div>
+      {/* Compact Classroom Header */}
+      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? activeCourse?.titleTh : activeCourse?.titleEn}
+          </h1>
+          <p className="text-xs text-[var(--color-text-muted)] truncate">
+            {activeCourse?.code} · {activeCourse?.teacherName} · {activeCourse?.department}
+          </p>
         </div>
 
-        {submittedAlert && (
-          <div className="mt-2.5 p-2 rounded-xl bg-emerald-950 border border-emerald-500/60 text-emerald-100 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-            <span>{submittedAlert}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {submittedAlert && (
+            <div className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>{submittedAlert}</span>
+            </div>
+          )}
+          <div className="px-3 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs flex items-center gap-1.5">
+            <span className="text-[var(--color-text-muted)]">{lang === 'th' ? 'ความคืบหน้า:' : 'Progress:'}</span>
+            <span className="text-emerald-700 dark:text-emerald-300 font-bold font-mono tabular-nums">{progressPercent}%</span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Course Switcher Tabs */}

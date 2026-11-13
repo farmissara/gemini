@@ -342,18 +342,15 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 app-page-header">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-            <BookOpen className="w-5 h-5 text-[var(--color-primary-text)]" />
-            <span>หลักสูตรและการจัดการรายวิชา (School MIS / Curriculum)</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold">
-              School MIS
-            </span>
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-3 app-page-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <BookOpen className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            หลักสูตรและรายวิชา (Curriculum)
           </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            จัดการสาระการเรียนรู้, หมวดวิชา, หน่วยกิต, เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ ปพ.5) และรายชื่อนักเรียนที่ลงทะเบียน
-          </p>
+          <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
+            · {courses.length} วิชา
+          </span>
         </div>
 
         {canManageCourses && (

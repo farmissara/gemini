@@ -73,63 +73,39 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      <div className="shrink-0 p-4 app-page-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-[var(--color-primary-text)]" />
+      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <Receipt className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
             Tuition Fees &amp; Payment Invoicing
           </h1>
-          <p className="text-xs text-[var(--color-text-body)] mt-0.5">
-            Manage school fee schedules, Thai PromptPay QR reconciliation, and private app reminders to linked guardians.
-          </p>
         </div>
 
-        {reminderToast && (
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-600 text-emerald-100 text-xs flex items-center gap-2 animate-fadeIn shrink-0">
-            <MessageSquare className="w-4 h-4 text-emerald-300 fill-current" />
-            <span>{reminderToast}</span>
-          </div>
-        )}
-        {reminderError && (
-          <div className="px-3 py-1.5 rounded-xl bg-rose-100 border border-rose-300 text-rose-900 text-xs flex items-center gap-2 shrink-0">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>{reminderError}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {reminderToast && (
+            <div className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-600 text-emerald-100 text-xs flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-300 fill-current" />
+              <span>{reminderToast}</span>
+            </div>
+          )}
+          {reminderError && (
+            <div className="px-2.5 py-1 rounded-lg bg-rose-100 border border-rose-300 text-rose-900 text-xs flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>{reminderError}</span>
+            </div>
+          )}
+          {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
+            <button
+              type="button"
+              onClick={onOpenExamPaymentSettings}
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              <span>ตั้งค่า QR ขายข้อสอบ</span>
+            </button>
+          )}
+        </div>
       </div>
-
-      {/* Super Admin Quick Link Banner: For Exam Marketplace Payment & QR Upload */}
-      {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
-        <div className="shrink-0 p-4 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/20 shadow-xs">
-              <CreditCard className="w-5 h-5 text-amber-300" />
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs sm:text-sm font-extrabold tracking-tight">
-                  สำหรับ Super Admin: ตั้งค่า QR PromptPay / อัปโหลด QR รับเงินขายข้อสอบกลาง
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-extrabold uppercase tracking-wide">
-                  Super Admin Only
-                </span>
-              </div>
-              <p className="text-[11px] sm:text-xs text-blue-100 leading-relaxed">
-                หน้านี้เป็นระบบค่าเทอมนักเรียนประจำโรงเรียน หากต้องการอัปโหลดรูปภาพ QR หรือแก้ไขบัญชีรับเงินสำหรับขายข้อสอบกลาง 8 สาระฯ
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onOpenExamPaymentSettings}
-            className="px-4 py-2 rounded-xl bg-white text-indigo-900 hover:bg-blue-50 text-xs font-bold shrink-0 transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap"
-          >
-            <CreditCard className="w-4 h-4 text-indigo-700" />
-            <span>เปิดหน้าตั้งค่า QR รับเงินขายข้อสอบ</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">

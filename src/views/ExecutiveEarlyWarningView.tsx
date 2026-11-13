@@ -531,76 +531,66 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       {/* ======================================================== */}
       {/* 1. TOP HEADER & THRESHOLD CONFIGURATION BAR               */}
       {/* ======================================================== */}
-      <div className="shrink-0 bg-gradient-to-r from-rose-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-md border border-rose-500/30 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs text-rose-300 font-medium">
-              <ShieldAlert className="w-4 h-4" />
-              <span>{lang === 'th' ? 'ระบบเฝ้าระวัง & พยากรณ์ความเสี่ยงผู้บริหาร (Executive Early Warning System)' : 'Executive Early Warning System'}</span>
-              <span aria-hidden="true">·</span>
-              <span>สพฐ. / OBEC Care</span>
-            </div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              <span>{lang === 'th' ? 'ศูนย์เฝ้าระวังนักเรียนกลุ่มเสี่ยงพหุมิติ (มส./ร./0)' : 'Predictive Student Retention Radar'}</span>
+      <div className="shrink-0 app-page-header p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+        <div className="min-w-0 flex items-center gap-2">
+          <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+              {lang === 'th' ? 'ศูนย์เฝ้าระวังนักเรียนกลุ่มเสี่ยง (มส./ร./0)' : 'Executive Early Warning Radar'}
             </h1>
-            <p className="text-slate-300 text-xs leading-relaxed max-w-2xl">
-              {lang === 'th'
-                ? `ประเมินสัญญาณจากรายการเวลาเรียนที่บันทึก (เกณฑ์ต่ำกว่า ${100 - absenceThresholdPct}%), คะแนนรายวิชาจริง, บันทึกคะแนนพฤติกรรม และแบบประเมิน SDQ โดยไม่เติมข้อมูลที่ไม่มี`
-                : 'Automated multidimensional risk detection across attendance thresholds, GPA, demerits, and SDQ screening.'}
-            </p>
+          </div>
+        </div>
+
+        {/* Quick Metrics & Persona Switcher */}
+        <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
+          {/* View Mode Toggle */}
+          <div className="inline-flex p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+            <button
+              type="button"
+              onClick={() => setViewPersona('executive')}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                viewPersona === 'executive'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ภาพรวมผู้บริหาร' : 'Executive Overview'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewPersona('teacher')}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                viewPersona === 'teacher'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'มาตรการครูประจำชั้น' : 'Advisor Intervention'}</span>
+            </button>
           </div>
 
-          {/* Quick Metrics & Persona Switcher */}
-          <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
-            {/* View Mode Toggle */}
-            <div className="inline-flex p-1 rounded-xl bg-slate-800/80 border border-slate-700">
-              <button
-                type="button"
-                onClick={() => setViewPersona('executive')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                  viewPersona === 'executive'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Award className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ภาพรวมผู้บริหาร' : 'Executive Overview'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewPersona('teacher')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                  viewPersona === 'teacher'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'มาตรการครูประจำชั้น' : 'Advisor Intervention'}</span>
-              </button>
-            </div>
-
-            {/* Threshold Adjuster Pill */}
-            <div className="bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-slate-300 font-medium">{lang === 'th' ? 'เกณฑ์ขาดเรียน:' : 'Absence Threshold:'}</span>
-              <div className="inline-flex items-center gap-1">
-                {[15, 20, 25].map((pct) => (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => setAbsenceThresholdPct(pct)}
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                      absenceThresholdPct === pct
-                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title={pct === 20 ? 'เกณฑ์ สพฐ. มาตรฐาน (เวลาเรียนต่ำกว่า 80%)' : undefined}
-                  >
-                    &gt;{pct}% {pct === 20 && '(มส.)'}
-                  </button>
-                ))}
-              </div>
+          {/* Threshold Adjuster */}
+          <div className="bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-xs">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="text-[var(--color-text-muted)] font-medium">{lang === 'th' ? 'เกณฑ์ขาดเรียน:' : 'Absence:'}</span>
+            <div className="inline-flex items-center gap-1">
+              {[15, 20, 25].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setAbsenceThresholdPct(pct)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                    absenceThresholdPct === pct
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                  title={pct === 20 ? 'เกณฑ์ สพฐ. มาตรฐาน (เวลาเรียนต่ำกว่า 80%)' : undefined}
+                >
+                  &gt;{pct}% {pct === 20 && '(มส.)'}
+                </button>
+              ))}
             </div>
           </div>
         </div>

@@ -151,24 +151,12 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
-            <HeartPulse className="w-5 h-5" />
-          </span>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-              {lang === 'th' ? 'ห้องพยาบาล & ระบบสถิติสุขภาพนักเรียน' : 'School Infirmary & Health Tracker'}
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
-                First Aid &amp; Safety
-              </span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {lang === 'th'
-                ? 'บันทึกการรักษา จ่ายยา เฝ้าระวังโรคระบาด และระบบแจ้งเตือนการแพ้ยา/แพ้อาหารฉุกเฉิน'
-                : 'Infirmary visit logs, medicine dispensing, allergy safety tags, and illness surveillance.'}
-            </p>
-          </div>
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 app-page-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <HeartPulse className="w-5 h-5 text-rose-700 dark:text-rose-300 shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'ห้องพยาบาล & สุขภาพนักเรียน' : 'School Infirmary & Health'}
+          </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

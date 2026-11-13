@@ -49,8 +49,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const courseGrades = grades.filter((g) => g.courseId === selectedCourseId);
   const selectedStudentForPp6 = students.find((s) => s.id === selectedStudentIdForPp6) || students[0];
-  const gradePageSize = 6;
-  const pp5PageSize = 6;
+  const gradePageSize = 15;
+  const pp5PageSize = 15;
   const pp6CoursePageSize = 5;
   const gradePageCount = Math.max(1, Math.ceil(courseGrades.length / gradePageSize));
   const pp5PageCount = Math.max(1, Math.ceil(courseGrades.length / pp5PageSize));
@@ -291,23 +291,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Header */}
-      <div className="shrink-0 p-4 app-page-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2">
-            <Award className="w-5 h-5 text-[var(--color-primary-text)]" />
-            ระบบวัดผลและประเมินผลการเรียนรู้ (Academic Gradebook &amp; ปพ.)
-          </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            บันทึกคะแนนเก็บ ตัดเกรด สพฐ. พิมพ์แบบ ปพ.5 (ประจำวิชา), ปพ.6 (รายบุคคล), ปพ.3 ออนไลน์ (จบ ป.6/ม.3/ม.6) และส่งออก สทศ. O-NET
-          </p>
-        </div>
+      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+        <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+          <Award className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <span>วัดผลและประเมินผล (Gradebook &amp; ปพ.)</span>
+        </h1>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {(activeTab === 'gradebook' || activeTab === 'pp5') && (
             <button
               type="button"
               onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
               <span>ส่งออก ปพ.5 (CSV)</span>
@@ -318,10 +313,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handleExportPp3CSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>ส่งออก ปพ.3 ออนไลน์ (CSV สพฐ.)</span>
+              <span>ส่งออก ปพ.3 (CSV)</span>
             </button>
           )}
 
@@ -329,10 +324,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handleExportOnetCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>ส่งออกไฟล์ สทศ. (CSV O-NET)</span>
+              <span>ส่งออก สทศ. (CSV)</span>
             </button>
           )}
 
@@ -340,24 +335,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>พิมพ์เอกสารราชการ (Print)</span>
+              <span>พิมพ์เอกสาร</span>
             </button>
           )}
+          {activeTab === 'gradebook' && renderPageControls(currentGradePage, courseGrades.length, gradePageSize, setGradePage, 'Gradebook pages')}
         </div>
-        {activeTab === 'gradebook' && renderPageControls(currentGradePage, courseGrades.length, gradePageSize, setGradePage, 'Gradebook pages')}
       </div>
 
       {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 / ปพ.3 ออนไลน์ / สทศ. O-NET */}
-      <div className="shrink-0 flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 max-w-3xl shadow-xs overflow-x-auto">
+      <div className="shrink-0 flex rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 shadow-xs overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('gradebook')}
-          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer ${
+          className={`py-1 px-2.5 text-xs font-semibold rounded-md whitespace-nowrap transition cursor-pointer ${
             activeTab === 'gradebook'
-              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              ? 'bg-[var(--color-primary)] text-white'
               : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
@@ -367,57 +362,55 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('pp5')}
-          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer ${
+          className={`py-1 px-2.5 text-xs font-semibold rounded-md whitespace-nowrap transition cursor-pointer ${
             activeTab === 'pp5'
-              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              ? 'bg-[var(--color-primary)] text-white'
               : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
-          เอกสาร ปพ.5 (ประจำวิชา)
+          ปพ.5 (ประจำวิชา)
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('pp6')}
-          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer ${
+          className={`py-1 px-2.5 text-xs font-semibold rounded-md whitespace-nowrap transition cursor-pointer ${
             activeTab === 'pp6'
-              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              ? 'bg-[var(--color-primary)] text-white'
               : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
           }`}
         >
-          เอกสาร ปพ.6 (รายบุคคล)
+          ปพ.6 (รายบุคคล)
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('pp3_online')}
-          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+          className={`py-1 px-2.5 text-xs font-semibold rounded-md whitespace-nowrap transition cursor-pointer ${
             activeTab === 'pp3_online'
-              ? 'bg-emerald-600 text-white shadow-xs'
+              ? 'bg-emerald-600 text-white'
               : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
           }`}
         >
-          <span>ปพ.3 ออนไลน์ (จบ ป.6/ม.3/ม.6)</span>
-          <span className="text-[10px] px-1 py-0.2 bg-emerald-700/30 text-white rounded">สพฐ.</span>
+          ปพ.3 ออนไลน์ (จบ ป.6/ม.3/ม.6)
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('onet_niets')}
-          className={`py-1.5 px-3 text-xs font-bold rounded-lg whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+          className={`py-1 px-2.5 text-xs font-semibold rounded-md whitespace-nowrap transition cursor-pointer ${
             activeTab === 'onet_niets'
-              ? 'bg-[var(--color-primary)] text-white shadow-xs'
+              ? 'bg-[var(--color-primary)] text-white'
               : 'text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)]'
           }`}
         >
-          <span>สทศ. O-NET (นำส่ง/ผลสอบ)</span>
-          <span className="text-[10px] px-1 py-0.2 bg-blue-700/30 text-white rounded">NIETS</span>
+          สทศ. O-NET
         </button>
       </div>
 
       {/* Course selector tabs (shown in Gradebook and ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-[var(--color-border)]">
+        <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--color-border)] no-scrollbar">
           {courses.map((course) => (
             <button
               key={course.id}
@@ -427,9 +420,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 setGradePage(0);
                 setPp5Page(0);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedCourseId === course.id
-                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  ? 'bg-[var(--color-primary)] text-white'
                   : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
               }`}
             >
@@ -441,27 +434,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       )}
 
       {/* Tab Panels Scroll Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 print:overflow-visible">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 print:overflow-visible">
         {/* ========================================================
             TAB 1: Gradebook Score Entry Table
             ======================================================== */}
         {activeTab === 'gradebook' && selectedCourse && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible shadow-sm space-y-4 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
-                <span className="text-[var(--color-text-title)] font-bold text-base">{selectedCourse.titleEn}</span>
-                <span className="text-xs text-[var(--color-text-muted)] font-thai">({selectedCourse.titleTh})</span>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                Instructor: {selectedCourse.teacherName} • Credits: {selectedCourse.credits} • Academic Year {selectedCourse.academicYear}
-              </p>
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible space-y-3 p-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
+              <span className="text-[var(--color-text-title)] font-bold text-sm">{selectedCourse.titleEn}</span>
+              <span className="text-[var(--color-text-muted)] font-thai">({selectedCourse.titleTh})</span>
+              <span className="text-[var(--color-text-muted)]">· {selectedCourse.teacherName} · {selectedCourse.credits} หน่วยกิต</span>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400"></span>
-              <span>Grading Scale: A (80+), B+ (75), B (70), C+ (65), C (60), D+ (55), D (50), F (&lt;50)</span>
+            <div className="text-[11px] text-[var(--color-text-muted)] hidden lg:block">
+              A(80+) B+(75) B(70) C+(65) C(60) D+(55) D(50) F(&lt;50)
             </div>
           </div>
 

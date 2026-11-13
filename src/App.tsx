@@ -249,6 +249,11 @@ export const App: React.FC = () => {
   const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
+
+  useEffect(() => {
+    setDismissedDuplicateWarning(false);
+  }, [activeSchool.id]);
 
   // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
   const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
@@ -784,11 +789,6 @@ export const App: React.FC = () => {
         setLeaveRequests(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : []);
         setIsDataReady(true);
         setLoadedSchoolId(activeSchool.id);
-
-        // If new or clean real school, offer onboarding tutor
-        if (data.students.length === 0 && data.teachers.length === 0) {
-          setShowOnboardingTutorModal(true);
-        }
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -2135,58 +2135,62 @@ export const App: React.FC = () => {
         </div>
       )}
       {!useImmersiveGameLayout && dataSyncWarnings.length > 0 && (
-        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/50 text-[11px] text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-start gap-2 min-w-0 flex-1">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="min-w-0 space-y-0.5">
-              <div className="font-bold">
-                {lang === 'th'
-                  ? 'บันทึกข้อมูลหลักเข้าสู่ Supabase สำเร็จแล้ว — แต่ฐานข้อมูลยังขาดการอัปเดตโครงสร้าง (SQL Migration)'
-                  : 'Core data synced to Supabase — database schema migration needed'}
-              </div>
-              {dataSyncSummary && (
-                <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">
-                  ✓ {dataSyncSummary}
-                </div>
-              )}
-              <div className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
-                {dataSyncWarnings.join(' • ')}
-              </div>
-            </div>
+        <div role="status" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/50 text-[11px] text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="truncate font-medium">
+              <strong className="font-bold">
+                {lang === 'th' ? 'ต้องอัปเดตโครงสร้าง DB (SQL Migration):' : 'DB schema migration needed:'}
+              </strong>{' '}
+              {dataSyncWarnings[0]}
+              {dataSyncWarnings.length > 1 ? ` (+${dataSyncWarnings.length - 1})` : ''}
+              {dataSyncSummary ? ` • ✓ ${dataSyncSummary}` : ''}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={handleCopyMigrationSql}
-              className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] inline-flex items-center gap-1 transition cursor-pointer"
+              className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
             >
-              {copiedMigrationSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอก SQL แล้ว' : 'SQL Copied') : (lang === 'th' ? 'คัดลอก SQL Migration' : 'Copy SQL Migration')}</span>
+              {copiedMigrationSql ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอกแล้ว' : 'Copied') : (lang === 'th' ? 'คัดลอก SQL' : 'Copy SQL')}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowSchemaMigrationModal(true)}
-              className="px-2.5 py-1 rounded-md border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-amber-950 dark:text-amber-100 font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer"
+              className="px-2 py-0.5 rounded border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-amber-950 dark:text-amber-100 font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
             >
-              <Database className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'ดูคำสั่ง & วิธีรัน' : 'View SQL & Steps'}</span>
+              <Database className="w-3 h-3" />
+              <span>{lang === 'th' ? 'วิธีรัน' : 'Steps'}</span>
             </button>
             <button
               type="button"
               onClick={() => setDataSyncWarnings([])}
               aria-label="Close warning"
-              className="p-1 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer"
+              className="p-0.5 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer"
             >
               ✕
             </button>
           </div>
         </div>
       )}
-      {!useImmersiveGameLayout && isDataReady && !isDemoMode &&
+      {!useImmersiveGameLayout && isDataReady && !isDemoMode && !dismissedDuplicateWarning &&
         ['admin', 'super_admin'].includes(currentRole) && duplicateWarnings.length > 0 && (
-        <div role="alert" className="shrink-0 mx-3 mt-1.5 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-950 dark:text-amber-100">
-          <strong>ตรวจพบข้อมูลซ้ำ — ยังไม่มีการลบหรือแก้ไขอัตโนมัติ:</strong>
-          <span className="ml-1">{duplicateWarnings.join(' • ')}</span>
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-950 dark:text-amber-100 flex items-center justify-between gap-2">
+          <span className="truncate">
+            <strong>ตรวจพบข้อมูลซ้ำ ({duplicateWarnings.length}):</strong>{' '}
+            {duplicateWarnings.slice(0, 2).join(' • ')}
+            {duplicateWarnings.length > 2 ? ` (+${duplicateWarnings.length - 2})` : ''}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDismissedDuplicateWarning(true)}
+            aria-label="Dismiss duplicate warning"
+            className="p-0.5 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer shrink-0"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -2206,20 +2210,6 @@ export const App: React.FC = () => {
                 className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
-              </button>
-            </div>
-            {/* Quick Link to Onboarding Tutor in Drawer */}
-            <div className="p-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setShowOnboardingTutorModal(true);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 text-xs font-bold hover:bg-amber-100 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>ติวเตอร์ระบบ & ข้อมูลกระทรวง</span>
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
@@ -2266,22 +2256,17 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-3 overflow-visible' : 'app-workspace p-3 sm:p-4 lg:p-5 overflow-y-auto')}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-7xl mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-2.5 overflow-visible' : 'app-workspace p-2.5 sm:p-3.5 overflow-y-auto')}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1600px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
-              <div className="mb-5 flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm font-bold text-blue-900 dark:text-blue-100">
-                    กำลังดูข้อมูลโรงเรียน: {activeSchool.nameTh}
-                  </div>
-                  <div className="text-xs text-blue-800 dark:text-blue-200">
-                    โหมดตรวจสอบรายโรงเรียน — ข้อมูลและเมนูปฏิบัติงานของโรงเรียนจะแสดงตามบริบทนี้
-                  </div>
+              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5">
+                <div className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate">
+                  โหมดตรวจสอบรายโรงเรียน: <strong>{activeSchool.nameTh}</strong>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigateToAppTab('super_admin_console')}
-                  className="shrink-0 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-slate-700"
+                  className="shrink-0 rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap"
                 >
                   กลับศูนย์ควบคุม
                 </button>

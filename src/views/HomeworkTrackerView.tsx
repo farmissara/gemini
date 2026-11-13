@@ -166,24 +166,12 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-            <FileCheck2 className="w-5 h-5" />
-          </span>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-              {lang === 'th' ? 'ระบบการบ้านและติดตามการส่งงานออนไลน์' : 'Homework & Assignment Submission Tracker'}
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
-                Online LMS Hub
-              </span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {lang === 'th'
-                ? 'ส่งไฟล์การบ้าน ตรวจให้คะแนนพร้อม Rubric และติดตามสถานะงานค้างส่งสำหรับผู้ปกครอง'
-                : 'Digital homework submission, grading with teacher feedback, and pending tasks tracker.'}
-            </p>
-          </div>
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 app-page-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <FileCheck2 className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'การบ้าน & ติดตามการส่งงาน' : 'Homework & Submissions'}
+          </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

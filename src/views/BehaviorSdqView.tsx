@@ -230,24 +230,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
       {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700">
-            <HeartHandshake className="w-5 h-5" />
-          </span>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-              {lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & บันทึกพฤติกรรม' : 'Student Care & Behavior (SDQ)'}
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
-                สพฐ. Standard
-              </span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {lang === 'th'
-                ? 'คะแนนความประพฤติ (Merit/Demerit) และแบบคัดกรองพฤติกรรม 5 ด้าน (SDQ) พร้อมแจ้งเตือนผู้ปกครอง'
-                : 'Merit/demerit tracking, SDQ 5-domain psychometric screening, and auto parent alerts.'}
-            </p>
-          </div>
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 app-page-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <HeartHandshake className="w-5 h-5 text-purple-700 dark:text-purple-300 shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & SDQ' : 'Student Care & Behavior (SDQ)'}
+          </h1>
         </div>
 
         {/* Tab switchers & action */}

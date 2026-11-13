@@ -22,7 +22,8 @@ import {
   Sparkles,
   ArrowRight,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown
 } from 'lucide-react';
 import {
   approveStudentAccountInSupabase,
@@ -45,7 +46,7 @@ const PaginatedTableRows = <T,>({
   items,
   colSpan,
   renderRow,
-  pageSize = 8
+  pageSize = 15
 }: {
   items: readonly T[];
   colSpan: number;
@@ -596,75 +597,87 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       )}
       {/* Header controls */}
-      <div className="shrink-0 p-4 app-page-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-            <Users className="w-5 h-5 text-[var(--color-primary-text)]" />
-            <span>ระบบทะเบียนนักเรียน &amp; เลื่อนชั้นเรียน (DMC / SIS)</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold">
-              อนุบาล – ม.6
-            </span>
+      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <Users className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            ทะเบียนนักเรียน (DMC / SIS)
           </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            จัดการข้อมูลนักเรียนทุกระดับชั้น (อ.1 ถึง ม.6), เลื่อนชั้นเรียนข้ามปีการศึกษา, ติดตามสถานะย้ายเข้า/ย้ายออก/สำเร็จการศึกษา, และเชื่อมต่อ LINE OA
-          </p>
+          <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
+            · {filteredStudents.length} คน
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap shrink-0">
-          {/* Academic Year Promotion Button */}
-          <button
-            type="button"
-            onClick={() => setShowPromotionModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
-            title="ฟังก์ชันเลื่อนชั้นเรียนข้ามปีการศึกษา ส่งต่อนักเรียน หรือบันทึกสำเร็จการศึกษา"
-          >
-            <GraduationCap className="w-4 h-4 text-blue-200" />
-            <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
-          </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <details className="relative">
+            <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+              <span>จัดการข้อมูล</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.closest('details')?.removeAttribute('open');
+                  setShowPromotionModal(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
+              </button>
 
-          {onOpenImportExport && (
-            <button
-              type="button"
-              onClick={onOpenImportExport}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-semibold shadow-2xs transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-              <span>นำเข้า/ส่งออก Excel</span>
-            </button>
-          )}
+              {onOpenImportExport && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onOpenImportExport();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                  <span>นำเข้า/ส่งออก Excel</span>
+                </button>
+              )}
 
-          {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
-            <button
-              type="button"
-              onClick={onPurgeSampleStudents}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold shadow-xs transition cursor-pointer"
-              title="ล้างนักเรียนตัวอย่างออกจากโรงเรียน เพื่อเริ่มใช้งานจริงแบบสะอาด"
-            >
-              <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-              <span>ล้างข้อมูลตัวอย่าง</span>
-            </button>
-          )}
+              {['admin', 'super_admin'].includes(currentRole) && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    setBulkAddError(null);
+                    setBulkGradeLevel(formData.gradeLevel);
+                    setBulkRoom(formData.room);
+                    setShowBulkAddModal(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                  <span>เพิ่มนักเรียนหลายคน/ห้อง</span>
+                </button>
+              )}
 
-          {['admin', 'super_admin'].includes(currentRole) && (
-            <button
-              type="button"
-              onClick={() => {
-                setBulkAddError(null);
-                setBulkGradeLevel(formData.gradeLevel);
-                setBulkRoom(formData.room);
-                setShowBulkAddModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
-            >
-              <Users className="w-4 h-4" />
-              <span>เพิ่มนักเรียนหลายคน/ห้อง</span>
-            </button>
-          )}
+              {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onPurgeSampleStudents();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>ล้างข้อมูลตัวอย่าง</span>
+                </button>
+              )}
+            </div>
+          </details>
 
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             <span>เพิ่มนักเรียนใหม่</span>

@@ -376,58 +376,52 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         </div>
       )}
 
-      {/* Super Admin Identity Banner */}
-      <div className="app-page-header p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold border border-[var(--color-border)]">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>พอร์ทัลแม่ข่ายระดับสูงสุด • Super Admin Master Console</span>
-            </div>
+      {/* Super Admin Identity Header */}
+      <div className="app-page-header p-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 space-y-0.5">
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+            <span className="truncate">ศูนย์ควบคุมระบบและกำกับดูแลสถานศึกษา</span>
+          </h1>
+          <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)] flex-wrap">
+            <span>Super Admin Console</span>
+            <span>·</span>
             <a
               href="mailto:farmissara@gmail.com"
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-mono font-bold border border-blue-200 dark:border-blue-800 hover:underline"
+              className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-300 font-mono hover:underline"
               title="อีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
             >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Master: farmissara@gmail.com</span>
+              <Mail className="w-3 h-3" />
+              <span>farmissara@gmail.com</span>
             </a>
           </div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-[var(--color-text-title)] tracking-tight">
-            ศูนย์ควบคุมระบบและกำกับดูแลสถานศึกษา
-          </h1>
-          <p className="text-xs text-[var(--color-text-body)] max-w-2xl">
-            ภาพรวมสถานศึกษา ตรวจสอบคำขอสมัคร และเลือกดูข้อมูลโรงเรียนเป็นรายแห่ง
-          </p>
         </div>
 
         {/* Quick KPI stats & Urgent Desk Link */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs flex items-center gap-1.5 tabular-nums">
+            <span className="text-[var(--color-text-muted)]">โรงเรียน:</span>
+            <strong className="text-[var(--color-text-title)]">{schools.length}</strong>
+          </div>
+          <div className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-xs flex items-center gap-1.5 tabular-nums">
+            <span className="text-amber-900 dark:text-amber-200 font-medium">รออนุมัติ:</span>
+            <strong className="text-amber-900 dark:text-amber-100">{pendingRegistrations.length}</strong>
+          </div>
           {onOpenCoordinationDesk && (
             <button
               type="button"
               onClick={onOpenCoordinationDesk}
-              className="px-3.5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-2 cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              <Mail className="w-4 h-4" />
+              <Mail className="w-3.5 h-3.5" />
               <span>แชต/จดหมายโรงเรียน</span>
               {coordinationUnreadCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
-                  {coordinationUnreadCount} ใหม่
+                <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
+                  {coordinationUnreadCount}
                 </span>
               )}
             </button>
           )}
-          <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-center min-w-[90px]">
-            <div className="text-xs text-[var(--color-text-muted)]">โรงเรียนในระบบ</div>
-            <div className="text-xl font-extrabold text-[var(--color-text-title)] mt-0.5 tabular-nums">{schools.length}</div>
-          </div>
-          <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-center min-w-[90px]">
-            <div className="text-xs text-amber-900 dark:text-amber-200 font-semibold">รออนุมัติ</div>
-            <div className="text-xl font-extrabold text-amber-900 dark:text-amber-100 mt-0.5 tabular-nums">
-              {pendingRegistrations.length}
-            </div>
-          </div>
         </div>
       </div>
 

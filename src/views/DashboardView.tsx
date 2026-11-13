@@ -108,7 +108,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'check_in' | 'check_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dashboardTab, setDashboardTab] = useState<'overview' | 'live_attendance' | 'innovative_hub' | 'announcements'>('overview');
-  const [overviewStep, setOverviewStep] = useState<0 | 1>(0);
   const [innovationPage, setInnovationPage] = useState(0);
   const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
   
@@ -279,615 +278,275 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Top Welcome Header - Modern Executive School Command Banner */}
-      <div className="shrink-0 rounded-2xl app-hero border border-[var(--color-border)] text-[var(--color-text-title)] p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative overflow-hidden">
-        
-        <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[var(--color-card-subtle)] text-[11px] font-medium text-[var(--color-text-muted)] border border-[var(--color-border)]">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-            <span>
-              {lang === 'th' 
-                ? `ปีการศึกษา ${systemConfig.academicYear} • ${formatSemesterLabel(systemConfig.currentSemester)}`
-                : `Academic Year ${systemConfig.academicYear} • ${systemConfig.currentSemester}`}
-            </span>
-          </div>
-
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text-title)] leading-tight">
-            {lang === 'th'
-              ? `ยินดีต้อนรับสู่ ${systemConfig.schoolNameTh}`
-              : `Welcome to ${systemConfig.schoolNameEn}`}
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+      {/* Compact Header & Subtabs Bar */}
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
           </h1>
-
-          <p className="text-xs text-[var(--color-text-muted)] max-w-2xl leading-relaxed">
+          <span className="hidden md:inline text-xs text-[var(--color-text-muted)] whitespace-nowrap">
             {lang === 'th'
-              ? 'ศูนย์รวมการบริหารงานวิชาการ ทะเบียนนักเรียน คัดกรอง SDQ ตารางสอน และระบบเช็กชื่อภาพถ่าย GPS'
-              : 'Unified executive portal for academics, registration, SDQ screenings, timetables, and GPS attendance.'}
-          </p>
+              ? `ปีการศึกษา ${systemConfig.academicYear} • ${formatSemesterLabel(systemConfig.currentSemester)}`
+              : `AY ${systemConfig.academicYear} • ${systemConfig.currentSemester}`}
+          </span>
         </div>
 
-        {/* Header Action Badges */}
-        <div className="flex flex-wrap items-center gap-2 relative z-10 shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          <button
+            type="button"
+            onClick={() => setDashboardTab('overview')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
+              dashboardTab === 'overview'
+                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'ภาพรวม' : 'Overview'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDashboardTab('live_attendance')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
+              dashboardTab === 'live_attendance'
+                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'เช็กชื่อ & GPS สด' : 'Live GPS'}</span>
+            <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
+              dashboardTab === 'live_attendance'
+                ? 'bg-white/20 text-white'
+                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'
+            }`}>
+              {displayRecords.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDashboardTab('innovative_hub')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
+              dashboardTab === 'innovative_hub'
+                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${dashboardTab === 'innovative_hub' ? 'text-amber-300' : 'text-amber-600 dark:text-amber-400'}`} />
+            <span>{lang === 'th' ? 'นวัตกรรม & เควสต์' : 'Innovations'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDashboardTab('announcements')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
+              dashboardTab === 'announcements'
+                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <BellRing className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'ประกาศ' : 'News'}</span>
+          </button>
+
           {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
             <button
               type="button"
               onClick={() => onNavigate('executive_monitor')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold transition cursor-pointer"
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              title={lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}
             >
               <Monitor className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}</span>
+              <span>{lang === 'th' ? 'จอทีวี' : 'TV'}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* ROLE-BASED QUICK ACTIONS & DAILY WORKFLOW BAR (ภารกิจด่วนประจำวัน) */}
-      {/* ======================================================== */}
-      <div className="shrink-0 p-3 sm:p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs">
-        <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[var(--color-border)]">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-title)]">
-              {lang === 'th' ? 'ทางลัดงานประจำวัน' : 'Quick actions'}
-            </h2>
-            <span className="text-[10px] text-[var(--color-text-muted)] font-medium hidden sm:inline">
-              {lang === 'th' ? 'เข้าถึงงานสำคัญได้ทันทีในคลิกเดียว' : 'Direct access to your high-priority daily tasks'}
-            </span>
-          </div>
-
-          <span className="text-[11px] font-bold text-[var(--color-primary-text)]">
-            {todayStr}
-          </span>
-        </div>
-
-        {unclaimedCentralPacksCount > 0 &&
-          (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
-            <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-100 font-bold">
-                <BookOpen className="w-4 h-4 shrink-0" />
-                <span>
-                  มีข้อสอบกลางชุดใหม่ {unclaimedCentralPacksCount} ชุด (8 กลุ่มสาระฯ) รอกดรับฟรีหรือสั่งซื้อเข้าโรงเรียน
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {currentUser?.role === 'admin' && onOpenCentralExamPopup && (
-                  <button
-                    type="button"
-                    onClick={onOpenCentralExamPopup}
-                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer"
-                  >
-                    เปิดดู & รับข้อสอบ
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onNavigate('central_exam_hub')}
-                  className="px-3 py-1.5 rounded-lg border border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-100 font-bold hover:bg-amber-100 cursor-pointer"
-                >
-                  เข้าคลังข้อสอบกลาง
-                </button>
-              </div>
-            </div>
-          )}
-
-        {/* Quick Actions Grid by User Role */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {/* TEACHER ROLE ACTIONS */}
-          {currentUser?.role === 'teacher' && (
-            <>
-              <button
-                type="button"
-                onClick={() => onNavigate('mobile_checkin')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><Camera className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">เช็คชื่อคาบนี้</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">สแกน GPS / ภาพถ่าย</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('homework')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><FileCheck2 className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ตรวจการบ้าน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ตรวจและให้คะแนน</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('gradebook')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><Award className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บันทึกคะแนน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">กลางภาค / ปลายภาค</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('timetable')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ตารางสอนวันนี้</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ดูห้องเรียน &amp; คาบ</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('behavior_sdq')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><HeartPulse className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">คัดกรอง SDQ</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">บันทึกพฤติกรรม</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('boss_raid')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><Swords className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">เปิดเรดบอสคาบนี้</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">กิจกรรมตอบโจทย์</div>
-                </div>
-              </button>
-            </>
-          )}
-
-          {/* STUDENT ROLE ACTIONS */}
-          {currentUser?.role === 'student' && (
-            <>
-              <button
-                type="button"
-                onClick={() => onNavigate('timetable')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ตารางเรียนวันนี้</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">วิชาถัดไป &amp; คาบ</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('homework')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><FileCheck2 className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">การบ้านที่ต้องส่ง</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ส่งการบ้านออนไลน์</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('mobile_checkin')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><Camera className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">สแกนเช็คชื่อเข้าเรียน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ถ่ายรูปเช็คชื่อ</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('games')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Flame className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ศูนย์เกม 7 สไตล์ +EXP</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ยิงสมการ จับคู่ คำศัพท์ 3D</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('student_id_cards')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><QrCode className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บัตรนักเรียนดิจิทัล</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">Virtual ID Card</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('gradebook')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><Award className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ดูผลการเรียน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">คะแนนสะสม &amp; เกรด</div>
-                </div>
-              </button>
-            </>
-          )}
-
-          {/* PARENT ROLE ACTIONS */}
-          {currentUser?.role === 'parent' && (
-            <>
-              <button
-                type="button"
-                onClick={() => onNavigate('attendance')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><CheckCircle2 className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">สถานะเข้าเรียนวันนี้</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">เข้าประตู 07:42 น.</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('attendance')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><FileCheck2 className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">แจ้งการลาออนไลน์</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ลาป่วย / ลากิจ</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('billing')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><Receipt className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บิลค่าเทอม &amp; ชำระเงิน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">QR PromptPay</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('homework')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ติดตามการบ้านลูก</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">เช็คงานค้าง</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('infirmary')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><HeartPulse className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ห้องพยาบาล &amp; สุขภาพ</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ประวัติเข้าห้องพยาบาล</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('announcements')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><BellRing className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ข่าวสารจากโรงเรียน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">จดหมาย &amp; นัดหมาย</div>
-                </div>
-              </button>
-            </>
-          )}
-
-          {/* ADMIN / SUPER ADMIN ROLE ACTIONS */}
-          {(!currentUser?.role || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
-            <>
-              <button
-                type="button"
-                onClick={() => onNavigate('mobile_checkin')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><Camera className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">สแกนประตู &amp; GPS</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">สถิติเข้าเรียนเรียลไทม์</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('students')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><Users className="w-4 h-4" /></span>
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">{totalStudents} คน</span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ทะเบียนนักเรียน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">จัดการข้อมูล &amp; ปพ.</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('executive_warning')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><ShieldAlert className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">Early Warning เสี่ยงหลุด</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">มส. / เสี่ยงเกรดตก</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('billing')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Receipt className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">จัดเก็บค่าเทอม</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">ใบเสร็จ &amp; PromptPay</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('student_id_cards')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><QrCode className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บัตรนักเรียน Virtual ID</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">พิมพ์บัตรบาร์โค้ด</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('timetable')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-[var(--color-text-title)] truncate">จัดตาราง &amp; เช็คชน</div>
-                  <div className="text-[10px] text-[var(--color-text-muted)]">วิเคราะห์ห้องเรียน</div>
-                </div>
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Dashboard Subtabs Navigation Bar */}
-      <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 border-b border-[var(--color-border)] no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setDashboardTab('overview')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            dashboardTab === 'overview'
-              ? 'bg-[var(--color-primary)] text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>{lang === 'th' ? '1. ภาพรวมบริหาร & สถิติ' : 'Executive Overview'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setDashboardTab('live_attendance')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            dashboardTab === 'live_attendance'
-              ? 'bg-[var(--color-primary)] text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
-        >
-          <Camera className="w-4 h-4" />
-          <span>{lang === 'th' ? '2. บันทึกสแกน & ภาพถ่าย GPS สด' : 'Live Attendance & GPS'}</span>
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
-            dashboardTab === 'live_attendance'
-              ? 'bg-white/20 text-white'
-              : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-          }`}>
-            {displayRecords.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setDashboardTab('innovative_hub')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            dashboardTab === 'innovative_hub'
-              ? 'bg-[var(--color-primary)] text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
-        >
-          <Sparkles className={`w-4 h-4 ${dashboardTab === 'innovative_hub' ? 'text-amber-300' : 'text-amber-600 dark:text-amber-400'}`} />
-          <span>{lang === 'th' ? '3. นวัตกรรมห้องเรียน & เควสต์' : 'Innovative Hub'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setDashboardTab('announcements')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            dashboardTab === 'announcements'
-              ? 'bg-[var(--color-primary)] text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
-        >
-          <BellRing className="w-4 h-4" />
-          <span>{lang === 'th' ? '4. ข่าวประกาศ & นัดหมาย' : 'Announcements'}</span>
-        </button>
-      </div>
-
       {/* Main Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
         {/* TAB 1: EXECUTIVE OVERVIEW */}
         {dashboardTab === 'overview' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setOverviewStep(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${overviewStep === 0 ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'}`}>{lang === 'th' ? 'ภาพรวม' : 'Overview'}</button>
-              <button type="button" onClick={() => setOverviewStep(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${overviewStep === 1 ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'}`}>{lang === 'th' ? 'ทางลัดและรายการล่าสุด' : 'Shortcuts & Recent Activity'}</button>
-            </div>
-            {/* 4 Balanced High-level Overview Cards with High Contrast */}
-            {overviewStep === 0 && (
-            <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-3 animate-in fade-in duration-150">
+            {unclaimedCentralPacksCount > 0 &&
+              (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
+                <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-amber-900 dark:text-amber-100 font-semibold">
+                    <BookOpen className="w-4 h-4 shrink-0" />
+                    <span>
+                      มีข้อสอบกลางชุดใหม่ {unclaimedCentralPacksCount} ชุด รอรับเข้าคลังโรงเรียน
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {currentUser?.role === 'admin' && onOpenCentralExamPopup && (
+                      <button
+                        type="button"
+                        onClick={onOpenCentralExamPopup}
+                        className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer whitespace-nowrap"
+                      >
+                        รับข้อสอบ
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('central_exam_hub')}
+                      className="px-2.5 py-1 rounded-md border border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-100 font-semibold hover:bg-amber-100 cursor-pointer whitespace-nowrap"
+                    >
+                      คลังข้อสอบกลาง
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            {/* 4 Balanced High-level Overview KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Total Students */}
-              <div className="tone-card tone-1 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students Enrolled'}
+                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'นักเรียนทั้งหมด' : 'Total Students'}
                   </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-1">
+                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
                     {totalStudents} <span className="text-xs font-medium text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'students'}</span>
                   </h3>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1 font-bold">
-                    {activeStudents} {lang === 'th' ? 'คน สถานะปกติในระบบ' : 'active accounts'}
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5 font-semibold tabular-nums">
+                    {activeStudents} {lang === 'th' ? 'คน สถานะปกติ' : 'active'}
                   </p>
                 </div>
-                <div className="h-11 w-11 rounded-xl tone-chip tone-1">
+                <div className="h-10 w-10 rounded-lg tone-chip tone-1 shrink-0">
                   <Users className="w-5 h-5" />
                 </div>
               </div>
 
               {/* Selected Date Attendance Rate */}
-              <div className="tone-card tone-2 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา' : 'On-Time Attendance Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
+                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
                   </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-1">
+                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
                     {onTimePercent}%
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1 font-medium">
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-medium tabular-nums">
                     {lang === 'th' ? `ตรงเวลา ${presentCount} • สาย ${lateCount}` : `On-time: ${presentCount} • Late: ${lateCount}`}
                   </p>
                 </div>
-                <div className="h-11 w-11 rounded-xl tone-chip tone-2">
+                <div className="h-10 w-10 rounded-lg tone-chip tone-2 shrink-0">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </div>
 
               {/* Tuition Collection */}
-              <div className="tone-card tone-3 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
+                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'จัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
                   </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-1">
+                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
                     {collectionRate}%
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1 font-medium">
-                    ฿{totalCollected.toLocaleString()} {lang === 'th' ? 'จาก' : 'of'} ฿{totalInvoiced.toLocaleString()}
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-medium tabular-nums">
+                    ฿{totalCollected.toLocaleString()} / ฿{totalInvoiced.toLocaleString()}
                   </p>
                 </div>
-                <div className="h-11 w-11 rounded-xl tone-chip tone-3">
+                <div className="h-10 w-10 rounded-lg tone-chip tone-3 shrink-0">
                   <Receipt className="w-5 h-5" />
                 </div>
               </div>
 
               {/* LINE Guardian Sync */}
-              <div className="tone-card tone-6 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-[var(--color-text-muted)]">
+                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
                   </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-1">
+                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
                     {linePercent}%
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1 font-medium">
-                    {lineConnectedCount} {lang === 'th' ? 'จาก' : 'of'} {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-medium tabular-nums">
+                    {lineConnectedCount} / {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
                   </p>
                 </div>
-                <div className="h-11 w-11 rounded-xl tone-chip tone-6">
+                <div className="h-10 w-10 rounded-lg tone-chip tone-6 shrink-0">
                   <MessageSquare className="w-5 h-5" />
                 </div>
               </div>
             </div>
 
-            {/* Daily Student Attendance Trends Chart (Current Month) */}
-            <MonthlyAttendanceChart
-              attendance={scopedAttendance}
-              students={students}
-              lang={lang}
-              selectedDate={selectedDate}
-              onSelectDate={(date) => setSelectedDate(date)}
-            />
+            {/* Daily Student Attendance Trends Chart + Recent Gate Feed */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+              <div className="xl:col-span-2 min-w-0">
+                <MonthlyAttendanceChart
+                  attendance={scopedAttendance}
+                  students={students}
+                  lang={lang}
+                  selectedDate={selectedDate}
+                  onSelectDate={(date) => setSelectedDate(date)}
+                />
+              </div>
+
+              {/* Realtime Attendance Feed Card */}
+              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-2.5 flex flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'สแกนประตู & เข้าเรียนล่าสุด' : 'Recent Check-ins'}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDashboardTab('live_attendance')}
+                    className="text-xs text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                  >
+                    {lang === 'th' ? 'ดูทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {displayRecords.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center py-6 text-xs text-[var(--color-text-muted)]">
+                    {lang === 'th' ? `ยังไม่มีบันทึกวันที่ ${selectedDate}` : `No records for ${selectedDate}`}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[var(--color-border)]">
+                    {displayRecords.slice(0, 6).map((rec) => (
+                      <div
+                        key={rec.id}
+                        onClick={() => openPhotoRecord(rec)}
+                        className="py-2 flex items-center justify-between gap-2 text-xs cursor-pointer hover:bg-[var(--color-card-subtle)] rounded px-1 -mx-1 transition"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <img
+                            src={rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                            alt={rec.userName}
+                            className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-[var(--color-text-title)] truncate">
+                              {rec.userName}
+                            </div>
+                            <div className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
+                              {rec.userDepartmentOrRoom || rec.userRole} • {rec.time} {lang === 'th' ? 'น.' : ''}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className={`text-[10px] font-bold shrink-0 ${
+                          rec.status === 'present'
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-amber-700 dark:text-amber-300'
+                        }`}>
+                          {rec.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'On-time') : (lang === 'th' ? 'มาสาย' : 'Late')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {playerScores.length > 0 && (
               <MilestoneAchievementsPanel
@@ -905,213 +564,96 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 }
               />
             )}
-            </>
-            )}
-
-            {/* Quick Navigation Cards */}
-            {overviewStep === 1 && <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-              {[
-                { name: lang === 'th' ? 'เช็กชื่อประตู' : 'Attendance', tab: 'attendance', icon: QrCode, color: 'text-indigo-800 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800' },
-                { name: lang === 'th' ? 'ทะเบียนนักเรียน' : 'Students', tab: 'students', icon: Users, color: 'text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800' },
-                { name: lang === 'th' ? 'สมุดเกรด ปพ.' : 'Gradebook', tab: 'gradebook', icon: Award, color: 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950 border border-amber-200 dark:border-amber-800' },
-                { name: lang === 'th' ? 'ตารางสอน' : 'Timetable', tab: 'timetable', icon: Calendar, color: 'text-teal-800 dark:text-teal-200 bg-teal-100 dark:bg-teal-950 border border-teal-200 dark:border-teal-800' },
-                { name: lang === 'th' ? 'พฤติกรรม & SDQ' : 'Behavior SDQ', tab: 'behavior_sdq', icon: FileCheck2, color: 'text-rose-800 dark:text-rose-200 bg-rose-100 dark:bg-rose-950 border border-rose-200 dark:border-rose-800' },
-                { name: lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary', tab: 'infirmary', icon: HeartPulse, color: 'text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800' },
-              ].map((item) => (
-                <button
-                  key={item.tab}
-                  type="button"
-                  onClick={() => onNavigate(item.tab as any)}
-                  className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] shadow-xs flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer group hover:scale-[1.02]"
-                >
-                  <div className={`p-2.5 rounded-xl ${item.color} transition group-hover:scale-110`}>
-                    <item.icon className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold text-[var(--color-text-title)]">{item.name}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Realtime Attendance Feed Card */}
-            <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนล่าสุด' : 'Recent Gate & Class Check-in Feed'}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDashboardTab('live_attendance')}
-                  className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  {lang === 'th' ? 'ดูหลักฐานภาพถ่ายทั้งหมด' : 'View All Photos'} <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="divide-y divide-[var(--color-border)]">
-                {displayRecords.slice(0, 5).map((rec) => (
-                  <div key={rec.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                        alt={rec.userName}
-                        className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)]"
-                      />
-                      <div>
-                        <div className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                          <span>{rec.userName}</span>
-                          <span className="text-[var(--color-text-muted)] font-mono text-[10px]">({rec.studentId})</span>
-                        </div>
-                        <div className="text-[11px] text-[var(--color-text-muted)]">
-                          {rec.userDepartmentOrRoom || rec.userRole} • เวลา {rec.time} น. • {rec.location?.geofenceZoneName || 'ประตูโรงเรียน'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      rec.status === 'present'
-                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                        : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                    }`}>
-                      {rec.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            </>}
           </div>
         )}
 
         {/* TAB 2: LIVE ATTENDANCE & GPS CAMERA AUDIT */}
         {dashboardTab === 'live_attendance' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Main Section: Selfie Check-in/Out Records, Detailed Graphs & Historical Viewer */}
-            <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs overflow-hidden">
-              {/* Section Header */}
-              <div className="p-5 border-b border-[var(--color-border)] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--color-card-subtle)]">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 shrink-0">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-bold text-[var(--color-text-title)]">
-                        {lang === 'th'
-                          ? 'ระบบบันทึกเวลาเข้า-ออกโรงเรียน & หลักฐานภาพถ่ายใบหน้า GPS'
-                          : 'School Gate Attendance & GPS Photo Audit Records'}
-                      </h2>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  {lang === 'th'
-                    ? 'บันทึกภาพถ่ายยืนยันตัวตนพร้อมพิกัด GPS ของนักเรียนและครู สามารถเลือกดูย้อนหลังตามวันที่'
-                    : 'Face verification with geofenced location stamps for students and teachers.'}
-                </p>
+          <div className="space-y-3 animate-in fade-in duration-150">
+            <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden">
+              {/* Compact Action & Date Filter Toolbar */}
+              <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(todayStr)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      selectedDate === todayStr 
+                        ? 'bg-[var(--color-primary)] text-white' 
+                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'วันนี้' : 'Today'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(yesterdayStr)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      selectedDate === yesterdayStr 
+                        ? 'bg-[var(--color-primary)] text-white' 
+                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(twoDaysAgoStr)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      selectedDate === twoDaysAgoStr 
+                        ? 'bg-[var(--color-primary)] text-white' 
+                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {lang === 'th' ? '2 วันก่อน' : '2 Days Ago'}
+                  </button>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] focus:outline-hidden"
+                  />
+                  <select
+                    value={selectedRoleFilter}
+                    onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] focus:outline-hidden"
+                  >
+                    <option value="all">{lang === 'th' ? 'ทุกบทบาท' : 'All Roles'}</option>
+                    <option value="student">{lang === 'th' ? 'นักเรียน' : 'Students'}</option>
+                    <option value="teacher">{lang === 'th' ? 'ครู' : 'Teachers'}</option>
+                  </select>
+                  <select
+                    value={selectedTypeFilter}
+                    onChange={(e) => setSelectedTypeFilter(e.target.value as 'all' | 'check_in' | 'check_out')}
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] focus:outline-hidden"
+                  >
+                    <option value="all">{lang === 'th' ? 'เข้า & ออก' : 'All'}</option>
+                    <option value="check_in">{lang === 'th' ? 'เข้าโรงเรียน' : 'Check-in'}</option>
+                    <option value="check_out">{lang === 'th' ? 'ออกโรงเรียน' : 'Check-out'}</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleExportSelectedDateCsv}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ส่งออก Excel' : 'Export CSV'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('mobile_checkin')}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'เปิดกล้องเช็กชื่อ' : 'Open Camera'}</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-            <button
-              type="button"
-              onClick={handleExportSelectedDateCsv}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>{lang === 'th' ? `ส่งออกรายงาน Excel (${selectedDate})` : `Export CSV (${selectedDate})`}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('mobile_checkin')}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition shadow-xs cursor-pointer"
-            >
-              <Smartphone className="w-4 h-4" />
-              <span>{lang === 'th' ? 'เปิดกล้องเช็กชื่อ' : 'Open Camera'}</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Filter and Date Selector Bar */}
-        <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-3">
-          {/* Quick Date Presets & Custom Date Picker */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-[var(--color-text-body)] flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-              <span>{lang === 'th' ? 'เลือกดูวันที่:' : 'Select Date:'}</span>
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setSelectedDate(todayStr)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedDate === todayStr 
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs' 
-                  : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {lang === 'th' ? 'วันนี้' : 'Today'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(yesterdayStr)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedDate === yesterdayStr 
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs' 
-                  : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(twoDaysAgoStr)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedDate === twoDaysAgoStr 
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs' 
-                  : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {lang === 'th' ? '2 วันก่อน' : '2 Days Ago'}
-            </button>
-
-            {/* Custom Date Picker */}
-            <div className="relative inline-flex items-center">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
-              />
-            </div>
-          </div>
-
-          {/* Role and Type Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Role Filter */}
-            <select
-              value={selectedRoleFilter}
-              onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden"
-            >
-              <option value="all">{lang === 'th' ? 'ทุกบทบาท (นักเรียน & ครู)' : 'All Roles (Students & Teachers)'}</option>
-              <option value="student">{lang === 'th' ? 'เฉพาะนักเรียน' : 'Students Only'}</option>
-              <option value="teacher">{lang === 'th' ? 'เฉพาะครูผู้สอน' : 'Teachers Only'}</option>
-            </select>
-
-            {/* Type Filter */}
-            <select
-              value={selectedTypeFilter}
-              onChange={(e) => setSelectedTypeFilter(e.target.value as 'all' | 'check_in' | 'check_out')}
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden"
-            >
-              <option value="all">{lang === 'th' ? 'เข้า & ออกทั้งหมด' : 'All Entries & Exits'}</option>
-              <option value="check_in">{lang === 'th' ? 'เฉพาะเข้าโรงเรียน' : 'Check-in Only'}</option>
-              <option value="check_out">{lang === 'th' ? 'เฉพาะออกโรงเรียน' : 'Check-out Only'}</option>
-            </select>
-          </div>
-        </div>
 
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-[var(--color-border)] bg-[var(--color-card)]">
           <button type="button" onClick={() => setAttendanceStep('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'summary' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
@@ -1532,32 +1074,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* TAB 3: INNOVATIVE CLASSROOM HUB */}
         {dashboardTab === 'innovative_hub' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-800 via-indigo-800 to-purple-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-300" />
-                  <h2 className="text-base font-bold">
-                    {lang === 'th' ? 'ศูนย์รวมนวัตกรรมการเรียนรู้ดิจิทัล & เกมมิฟิเคชัน' : 'Digital Learning & Gamification Innovation Hub'}
-                  </h2>
-                </div>
-                <p className="text-xs text-slate-100 max-w-2xl">
-                  {lang === 'th'
-                    ? 'เข้าสู่ห้องเรียนจำลอง 3D, สนามประลองความรู้, ติวเตอร์ AI อัจฉริยะ, และระบบทำนายความเสี่ยงนักเรียน'
-                    : 'Access 3D classrooms, knowledge battles, AI intelligent tutors, and predictive early warning analytics.'}
-                </p>
+          <div className="space-y-3 animate-in fade-in duration-150">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'นวัตกรรมการเรียนรู้ดิจิทัล & เกมมิฟิเคชัน' : 'Digital Learning & Gamification Hub'}
+                </h2>
               </div>
-              <span className="px-3 py-1 rounded-full bg-white/20 text-xs font-bold border border-white/30 self-start sm:self-auto">
-                {lang === 'th' ? '9 ระบบนวัตกรรม' : '9 Smart Innovations'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {[0, 1, 2].map((page) => (
-                <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${innovationPage === page ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-                  {page + 1} / 3
-                </button>
-              ))}
+              <div className="flex items-center gap-1.5">
+                {[0, 1, 2].map((page) => (
+                  <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer ${innovationPage === page ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
+                    {page + 1} / 3
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
               {[

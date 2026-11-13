@@ -53,7 +53,7 @@ const PaginatedTableRows = <T,>({
   items,
   colSpan,
   renderRow,
-  pageSize = 8
+  pageSize = 15
 }: {
   items: readonly T[];
   colSpan: number;
@@ -353,19 +353,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3.5">
       {/* Top Header */}
-      <div className="shrink-0 p-3.5 sm:p-4 app-page-header flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-[var(--color-text-body)]">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[var(--color-primary-text)] text-xs font-bold uppercase tracking-wider mb-0.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="truncate">Attendance Center • Turnstile Gate &amp; Leave</span>
-          </div>
-          <h1 className="text-base md:text-lg font-bold flex items-center gap-2 text-[var(--color-text-title)]">
-            <QrCode className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-            <span>ศูนย์ข้อมูลการเข้าเรียน &amp; สแกนประตูโรงเรียน</span>
+      <div className="shrink-0 p-3 app-page-header flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-[var(--color-text-body)]">
+        <div className="min-w-0 flex items-center gap-2">
+          <QrCode className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+            การเข้าเรียน &amp; สแกนประตูโรงเรียน
           </h1>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            บันทึกการผ่านประตูอัตโนมัติ, อนุมัติใบลา, ส่งออกรายงาน และตั้งค่าพิกัด GPS ประตูโรงเรียน
-          </p>
         </div>
 
         {/* Subtabs Navigation - Clean Compact Underlined Text Links (Never overflows) */}
