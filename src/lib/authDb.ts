@@ -1,6 +1,12 @@
 import { AuthUser, School, UserRole } from '../types';
 import { getSupabaseClient } from './supabase';
-import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS, getSchoolSettingsUpdate } from './schoolSettings';
+import {
+  DEFAULT_SEMESTER_OPTIONS,
+  DEFAULT_STAFF_POSITION_OPTIONS,
+  DEFAULT_TEACHING_LOAD_MAX_PERIODS,
+  DEFAULT_TEACHING_LOAD_MIN_PERIODS,
+  getSchoolSettingsUpdate,
+} from './schoolSettings';
 import { DEFAULT_SCHOOL_CUSTOM_PRESETS } from './schoolCustomPresets';
 
 export interface AuthContext {
@@ -79,6 +85,8 @@ interface SchoolRow {
   academic_year: string;
   current_semester: string;
   semester_options?: string[] | null;
+  teaching_load_min_periods?: number | null;
+  teaching_load_max_periods?: number | null;
   grading_system?: School['gradingSystem'];
   staff_position_options?: string[] | null;
   room_options?: string[] | null;
@@ -123,6 +131,8 @@ function mapSchool(row: SchoolRow): School {
     academicYear: row.academic_year,
     currentSemester: row.current_semester,
     semesterOptions: row.semester_options || DEFAULT_SEMESTER_OPTIONS,
+    teachingLoadMinPeriods: row.teaching_load_min_periods ?? DEFAULT_TEACHING_LOAD_MIN_PERIODS,
+    teachingLoadMaxPeriods: row.teaching_load_max_periods ?? DEFAULT_TEACHING_LOAD_MAX_PERIODS,
     gradingSystem: row.grading_system || 'thai',
     staffPositionOptions: row.staff_position_options || DEFAULT_STAFF_POSITION_OPTIONS,
     roomOptions: row.room_options?.length ? row.room_options : undefined,

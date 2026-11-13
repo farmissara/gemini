@@ -26,16 +26,18 @@
 
 1. `supabase/migrations/20261111_central_exam_marketplace.sql`
 2. `supabase/migrations/20261112_exam_audit_timetable.sql`
+3. รัน `supabase/migrations/20261113_timetable_term_scope.sql` เพื่อแยกตารางสอนตามปีการศึกษา/ภาคเรียน โดยกำหนดข้อมูลเดิมให้ตรงกับปีและภาคเรียนปัจจุบันของโรงเรียน และรองรับคาบเรียนได้สูงสุด 12 คาบ
 
 Migration ตารางเรียน/ตรวจสลิปสร้าง `school_exam_entitlements` ให้หากยังไม่มี แต่ควรรันหลัง schema หลักเพื่อให้ตารางโรงเรียน รายวิชา และฟังก์ชันตรวจ role พร้อมใช้งาน
 
-3. รัน `supabase/migrations/20261112_school_logo_storage.sql` เพื่อให้ผู้ดูแลโรงเรียนอัปโหลดโลโก้ PNG, JPEG หรือ WebP (ไม่เกิน 2 MB) ไปยัง Supabase Storage ได้
-4. สำหรับทั้งโปรเจกต์ใหม่และโปรเจกต์ที่มีอยู่ ให้นำ `supabase/migrations/20261113_secure_student_invites.sql` ไปรันใน SQL Editor หลัง schema เพื่อบังคับการสร้างบัญชีนักเรียนผ่านคำเชิญจากผู้ดูแลเท่านั้น
-5. รัน `supabase/migrations/20261114_parent_private_push.sql` เพื่อเปิดกล่องแจ้งเตือนส่วนตัวและบันทึกอุปกรณ์ Push ของผู้ปกครอง
-6. รัน `supabase/migrations/20261114_timetable_period_management.sql` เพื่ออนุญาตให้ผู้ดูแลลบคาบที่ไม่มีตารางสอนใช้งานได้
-7. รัน `supabase/migrations/20261113_school_admin_flexibility.sql` เพื่อบันทึกค่าปีการศึกษา/ภาคเรียน ระบบเกรด รายการตำแหน่งบุคลากร และรายการห้องเรียนที่โรงเรียนกำหนดเอง
-8. รัน `supabase/migrations/20261113_teacher_org_structure.sql` เพื่อเพิ่มการเชื่อมโยงผู้บังคับบัญชาในทะเบียนบุคลากร และเปิดใช้หน้าโครงสร้างองค์กร
-9. รัน `supabase/migrations/20261116_production_readiness.sql` เพื่อเปิดใช้การเก็บข้อมูลใบลาออนไลน์, เช็คชื่อรายคาบ, หลักฐานสลิปโอนเงิน (`school-attachments` bucket), การล็อกอินด้วยรหัสนักเรียนผ่านลิงก์โรงเรียน และคำเชิญบัญชีครู/ผู้ปกครองจากหน้าเว็บ
+4. รัน `supabase/migrations/20261112_school_logo_storage.sql` เพื่อให้ผู้ดูแลโรงเรียนอัปโหลดโลโก้ PNG, JPEG หรือ WebP (ไม่เกิน 2 MB) ไปยัง Supabase Storage ได้
+5. สำหรับทั้งโปรเจกต์ใหม่และโปรเจกต์ที่มีอยู่ ให้นำ `supabase/migrations/20261113_secure_student_invites.sql` ไปรันใน SQL Editor หลัง schema เพื่อบังคับการสร้างบัญชีนักเรียนผ่านคำเชิญจากผู้ดูแลเท่านั้น
+6. รัน `supabase/migrations/20261114_parent_private_push.sql` เพื่อเปิดกล่องแจ้งเตือนส่วนตัวและบันทึกอุปกรณ์ Push ของผู้ปกครอง
+7. รัน `supabase/migrations/20261114_timetable_period_management.sql` เพื่ออนุญาตให้ผู้ดูแลลบคาบที่ไม่มีตารางสอนใช้งานได้
+8. รัน `supabase/migrations/20261113_school_admin_flexibility.sql` เพื่อบันทึกค่าปีการศึกษา/ภาคเรียน ระบบเกรด รายการตำแหน่งบุคลากร และรายการห้องเรียนที่โรงเรียนกำหนดเอง
+9. รัน `supabase/migrations/20261113_teacher_org_structure.sql` เพื่อเพิ่มการเชื่อมโยงผู้บังคับบัญชาในทะเบียนบุคลากร และเปิดใช้หน้าโครงสร้างองค์กร
+10. รัน `supabase/migrations/20261116_production_readiness.sql` เพื่อเปิดใช้การเก็บข้อมูลใบลาออนไลน์, เช็คชื่อรายคาบ, หลักฐานสลิปโอนเงิน (`school-attachments` bucket), การล็อกอินด้วยรหัสนักเรียนผ่านลิงก์โรงเรียน และคำเชิญบัญชีครู/ผู้ปกครองจากหน้าเว็บ
+11. รัน `supabase/migrations/20261117_teacher_workload_thresholds.sql` เพื่อให้ผู้ดูแลกำหนดเกณฑ์ขั้นต่ำ/สูงสุดภาระงานครูแยกตามโรงเรียนได้ (ค่าเริ่มต้น 12–22 คาบ/สัปดาห์, กำหนดได้ 0–60 คาบ)
 
 หากต้องการเปิดใช้คิวอนุมัติการสมัครโรงเรียนในหน้า Super Admin ให้รัน `supabase/super_admin_registration_approval_migration.sql` เพิ่มใน SQL Editor ด้วย Migration นี้จำกัดสิทธิ์แก้ไขโปรไฟล์ไม่ให้ผู้ใช้เปลี่ยน role/สถานะของตนเอง และสร้าง RPC ที่ตรวจ role `super_admin` ฝั่งฐานข้อมูลก่อนอ่านหรืออนุมัติคำขอ
 

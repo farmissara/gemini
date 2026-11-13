@@ -464,6 +464,8 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
+    academicYear: row.academic_year || undefined,
+    semester: row.semester || undefined,
     dayOfWeek: row.day_of_week,
     periodNumber: Number(row.period_number),
     startTime: String(row.start_time).slice(0, 5),
@@ -1335,6 +1337,8 @@ export async function saveTimetableSlotsToDb(schoolId: string, slots: TimetableS
   const rows = slots.map((s) => ({
     id: s.id,
     school_id: schoolId,
+    academic_year: s.academicYear || null,
+    semester: s.semester || null,
     day_of_week: s.dayOfWeek,
     period_number: s.periodNumber,
     start_time: s.startTime,

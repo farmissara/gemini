@@ -47,6 +47,8 @@ export interface School {
   academicYear: string;
   currentSemester: string;
   semesterOptions?: string[];
+  teachingLoadMinPeriods?: number;
+  teachingLoadMaxPeriods?: number;
   gradingSystem?: GradingSystem;
   staffPositionOptions?: string[];
   roomOptions?: string[];
@@ -742,6 +744,8 @@ export interface SchoolPeriodTime {
 export interface TimetableSlot {
   id: string;
   schoolId?: string;
+  academicYear?: string;
+  semester?: string;
   dayOfWeek: DayOfWeek;
   periodNumber: number; // 1 to 12+
   startTime: string; // e.g. "08:30"

@@ -527,7 +527,19 @@ export const App: React.FC = () => {
   const schoolQuestions = questions.filter((q) => !q.schoolId || q.schoolId === activeSchool.id);
   const schoolPeriodAttendance = periodAttendance.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
   const schoolPortfolioItems = portfolioItems.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
-  const schoolTimetableSlots = timetableSlots.filter((t) => !t.schoolId || t.schoolId === activeSchool.id);
+  const timetableAcademicYear = activeSchool.academicYear || systemConfig.academicYear;
+  const timetableSemester = activeSchool.currentSemester || systemConfig.currentSemester;
+  const schoolTimetableSlotsAllTerms = timetableSlots
+    .filter((slot) => !slot.schoolId || slot.schoolId === activeSchool.id)
+    .map((slot) => ({
+      ...slot,
+      academicYear: slot.academicYear || timetableAcademicYear,
+      semester: slot.semester || timetableSemester,
+    }));
+  const schoolTimetableSlots = schoolTimetableSlotsAllTerms.filter((slot) => (
+      slot.academicYear === timetableAcademicYear &&
+      slot.semester === timetableSemester
+    ));
   const schoolBehaviorRecords = behaviorRecords.filter((b) => !b.schoolId || b.schoolId === activeSchool.id);
   const schoolSdqAssessments = sdqAssessments.filter((s) => !s.schoolId || s.schoolId === activeSchool.id);
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
@@ -826,7 +838,11 @@ export const App: React.FC = () => {
         let deletedStudentGrades: GradeRecord[] = [];
         let resolvedAttendance = data.attendance;
         let resolvedInvoices = data.invoices;
-        let resolvedTimetableSlots = data.timetableSlots || [];
+        let resolvedTimetableSlots = (data.timetableSlots || []).map((slot) => ({
+          ...slot,
+          academicYear: slot.academicYear || activeSchool.academicYear || systemConfig.academicYear,
+          semester: slot.semester || activeSchool.currentSemester || systemConfig.currentSemester,
+        }));
         if (typeof window !== 'undefined') {
           try {
             const deletedStudentIds: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_student_ids_${activeSchool.id}`) || '[]');
@@ -2363,8 +2379,33 @@ export const App: React.FC = () => {
   };
 
   const handleAddTimetableSlot = async (slot: TimetableSlot) => {
-    const fullSlot: TimetableSlot = { ...slot, schoolId: activeSchool.id };
+    const fullSlot: TimetableSlot = {
+      ...slot,
+      schoolId: activeSchool.id,
+      academicYear: slot.academicYear || activeSchool.academicYear || systemConfig.academicYear,
+      semester: slot.semester || activeSchool.currentSemester || systemConfig.currentSemester,
+    };
     const next = [fullSlot, ...timetableSlots];
+    await saveTimetableSlotsToDb(activeSchool.id, next);
+    setTimetableSlots(next);
+  };
+
+  const handleUpdateTimetableSlot = async (slot: TimetableSlot) => {
+    const updatedSlot: TimetableSlot = {
+      ...slot,
+      schoolId: activeSchool.id,
+      academicYear: slot.academicYear || activeSchool.academicYear || systemConfig.academicYear,
+      semester: slot.semester || activeSchool.currentSemester || systemConfig.currentSemester,
+    };
+    let updated = false;
+    const next = timetableSlots.map((currentSlot) => {
+      if (currentSlot.id !== slot.id || (currentSlot.schoolId && currentSlot.schoolId !== activeSchool.id)) {
+        return currentSlot;
+      }
+      updated = true;
+      return updatedSlot;
+    });
+    if (!updated) throw new Error('ไม่พบคาบเรียนที่ต้องการแก้ไข กรุณารีเฟรชหน้าแล้วลองอีกครั้ง');
     await saveTimetableSlotsToDb(activeSchool.id, next);
     setTimetableSlots(next);
   };
@@ -2384,25 +2425,38 @@ export const App: React.FC = () => {
         .filter((period) => !retainedPeriodNumbers.has(period.periodNumber))
         .map((period) => period.periodNumber)
     );
-    const scheduledSlotsInRemovedPeriods = timetableSlots.filter((slot) => (
+    const activeTermSlots = timetableSlots.filter((slot) => (
       (!slot.schoolId || slot.schoolId === activeSchool.id) &&
-      removedPeriodNumbers.has(slot.periodNumber)
+      (slot.academicYear || timetableAcademicYear) === timetableAcademicYear &&
+      (slot.semester || timetableSemester) === timetableSemester
     ));
+    const scheduledSlotsInRemovedPeriods = activeTermSlots.filter((slot) => removedPeriodNumbers.has(slot.periodNumber));
     if (scheduledSlotsInRemovedPeriods.length > 0) {
       const periodNumbers = [...new Set(scheduledSlotsInRemovedPeriods.map((slot) => slot.periodNumber))].join(', ');
       throw new Error(`ลบคาบที่ ${periodNumbers} ไม่ได้ เพราะยังมีตารางสอนใช้อยู่ ${scheduledSlotsInRemovedPeriods.length} รายการ`);
     }
-    if (!isDemoMode) {
-      await saveSchoolPeriodTimes(activeSchool.id, periods);
-    }
-    setSchoolPeriods(periods);
-    setTimetableSlots((prev) => prev.map((slot) => {
-      if (slot.schoolId && slot.schoolId !== activeSchool.id) return slot;
+    const updatedActiveTermSlots = activeTermSlots.map((slot) => {
       const period = periods.find((item) => item.periodNumber === slot.periodNumber);
       return period
-        ? { ...slot, schoolId: activeSchool.id, startTime: period.startTime, endTime: period.endTime }
+        ? {
+          ...slot,
+          schoolId: activeSchool.id,
+          academicYear: slot.academicYear || timetableAcademicYear,
+          semester: slot.semester || timetableSemester,
+          startTime: period.startTime,
+          endTime: period.endTime,
+        }
         : slot;
-    }));
+    });
+    if (!isDemoMode) {
+      await saveSchoolPeriodTimes(activeSchool.id, periods);
+      if (updatedActiveTermSlots.length > 0) {
+        await saveTimetableSlotsToDb(activeSchool.id, updatedActiveTermSlots);
+      }
+    }
+    setSchoolPeriods(periods);
+    const updatedSlotsById = new Map(updatedActiveTermSlots.map((slot) => [slot.id, slot]));
+    setTimetableSlots((prev) => prev.map((slot) => updatedSlotsById.get(slot.id) || slot));
     setDataSyncError(null);
   };
 
@@ -3343,11 +3397,12 @@ export const App: React.FC = () => {
 
                 {currentTab === 'timetable' && (
                   <TimetableScheduleView
-                    slots={schoolTimetableSlots}
+                    slots={schoolTimetableSlotsAllTerms}
                     courses={schoolCourses}
                     teachers={schoolTeachers}
                     students={schoolStudents}
                     onAddSlot={handleAddTimetableSlot}
+                    onUpdateSlot={handleUpdateTimetableSlot}
                     onDeleteSlot={handleDeleteTimetableSlot}
                     schoolPeriods={schoolPeriods}
                     onSaveSchoolPeriods={handleSaveSchoolPeriods}
@@ -3355,11 +3410,17 @@ export const App: React.FC = () => {
                     currentRole={currentRole}
                     schoolId={activeSchool.id}
                     schoolName={activeSchool.nameTh}
-                    academicYear={systemConfig.academicYear}
-                    currentSemester={systemConfig.currentSemester}
+                    academicYear={timetableAcademicYear}
+                    currentSemester={timetableSemester}
                     semesterOptions={systemConfig.semesterOptions}
+                    teachingLoadMinPeriods={activeSchool.teachingLoadMinPeriods}
+                    teachingLoadMaxPeriods={activeSchool.teachingLoadMaxPeriods}
                     roomOptions={activeSchool.roomOptions}
                     onUpdateRoomOptions={(roomOptions) => handleUpdateSchool({ roomOptions })}
+                    onUpdateTeachingLoadThresholds={(minPeriods, maxPeriods) => handleUpdateSchool({
+                      teachingLoadMinPeriods: minPeriods,
+                      teachingLoadMaxPeriods: maxPeriods,
+                    })}
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
                   />
                 )}
@@ -3661,6 +3722,11 @@ export const App: React.FC = () => {
               ...prev,
               schoolNameEn: school.nameEn,
               schoolNameTh: school.nameTh,
+              academicYear: school.academicYear,
+              currentSemester: school.currentSemester,
+              semesterOptions: school.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
+              gradingSystem: school.gradingSystem || 'thai',
+              staffPositionOptions: school.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
             }));
           }}
           onClose={() => setShowSchoolSwitcher(false)}

@@ -481,16 +481,21 @@ export function getGradeDuplicateReasons(candidates: GradeRecord[], existing: Gr
 }
 
 export function getTimetableDuplicateReasons(
-  candidate: Pick<TimetableSlot, 'classRoom' | 'dayOfWeek' | 'periodNumber' | 'teacherName' | 'room'>,
+  candidate: Pick<TimetableSlot, 'academicYear' | 'semester' | 'classRoom' | 'dayOfWeek' | 'periodNumber' | 'teacherName' | 'room'>,
   existing: TimetableSlot[],
   excludeId?: string
 ): string[] {
-  const pool = excludeId ? existing.filter((s) => s.id !== excludeId) : existing;
+  const normalize = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const pool = existing.filter((slot) => (
+    slot.id !== excludeId &&
+    (!candidate.academicYear || !slot.academicYear || slot.academicYear === candidate.academicYear) &&
+    (!candidate.semester || !slot.semester || slot.semester === candidate.semester)
+  ));
   const reasons: string[] = [];
   if (
     pool.some(
       (s) =>
-        s.classRoom.trim().toLowerCase() === candidate.classRoom.trim().toLowerCase() &&
+        normalize(s.classRoom) === normalize(candidate.classRoom) &&
         s.dayOfWeek === candidate.dayOfWeek &&
         s.periodNumber === candidate.periodNumber
     )
@@ -501,7 +506,7 @@ export function getTimetableDuplicateReasons(
     candidate.teacherName.trim() &&
     pool.some(
       (s) =>
-        s.teacherName.trim().toLowerCase() === candidate.teacherName.trim().toLowerCase() &&
+        normalize(s.teacherName) === normalize(candidate.teacherName) &&
         s.dayOfWeek === candidate.dayOfWeek &&
         s.periodNumber === candidate.periodNumber
     )
@@ -512,7 +517,7 @@ export function getTimetableDuplicateReasons(
     candidate.room.trim() &&
     pool.some(
       (s) =>
-        s.room.trim().toLowerCase() === candidate.room.trim().toLowerCase() &&
+        normalize(s.room) === normalize(candidate.room) &&
         s.dayOfWeek === candidate.dayOfWeek &&
         s.periodNumber === candidate.periodNumber
     )

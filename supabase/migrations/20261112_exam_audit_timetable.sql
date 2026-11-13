@@ -45,8 +45,10 @@ CREATE POLICY "Super admins audit exam entitlements"
 CREATE TABLE IF NOT EXISTS public.timetable_slots (
     id TEXT PRIMARY KEY,
     school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    academic_year TEXT,
+    semester TEXT,
     day_of_week TEXT NOT NULL CHECK (day_of_week IN ('mon', 'tue', 'wed', 'thu', 'fri')),
-    period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 1 AND 7),
+    period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 1 AND 12),
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     course_id TEXT,

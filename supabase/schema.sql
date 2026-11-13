@@ -51,12 +51,16 @@ CREATE TABLE IF NOT EXISTS public.schools (
     academic_year TEXT DEFAULT '2569 (2026)',
     current_semester TEXT DEFAULT '1',
     semester_options JSONB NOT NULL DEFAULT '["1", "2", "Summer"]'::jsonb,
+    teaching_load_min_periods INTEGER NOT NULL DEFAULT 12 CHECK (teaching_load_min_periods BETWEEN 0 AND 60),
+    teaching_load_max_periods INTEGER NOT NULL DEFAULT 22 CHECK (teaching_load_max_periods BETWEEN 0 AND 60),
     grading_system TEXT NOT NULL DEFAULT 'thai' CHECK (grading_system IN ('thai', 'international')),
     staff_position_options JSONB NOT NULL DEFAULT '["นักการภารโรง", "เจ้าหน้าที่ธุรการ", "ครูอัตราจ้าง", "ครูผู้ช่วย", "ครู", "รองผู้อำนวยการ", "ผู้อำนวยการ"]'::jsonb,
     room_options JSONB NOT NULL DEFAULT '[]'::jsonb,
     line_oa_id TEXT DEFAULT '@eduverse_th',
     status TEXT DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT schools_teaching_load_thresholds_check
+        CHECK (teaching_load_min_periods <= teaching_load_max_periods)
 );
 
 -- 2. STUDENTS TABLE

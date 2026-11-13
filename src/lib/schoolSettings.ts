@@ -1,6 +1,8 @@
 import { GradeRecord, GradingSystem, School } from '../types';
 
 export const DEFAULT_SEMESTER_OPTIONS = ['1', '2', 'Summer'];
+export const DEFAULT_TEACHING_LOAD_MIN_PERIODS = 12;
+export const DEFAULT_TEACHING_LOAD_MAX_PERIODS = 22;
 
 export const DEFAULT_STAFF_POSITION_OPTIONS = [
   'นักการภารโรง',
@@ -69,6 +71,12 @@ export function getSchoolSettingsUpdate(updates: Partial<School>) {
     ...(updates.academicYear !== undefined ? { academic_year: updates.academicYear } : {}),
     ...(updates.currentSemester !== undefined ? { current_semester: updates.currentSemester } : {}),
     ...(updates.semesterOptions !== undefined ? { semester_options: updates.semesterOptions } : {}),
+    ...(updates.teachingLoadMinPeriods !== undefined
+      ? { teaching_load_min_periods: updates.teachingLoadMinPeriods }
+      : {}),
+    ...(updates.teachingLoadMaxPeriods !== undefined
+      ? { teaching_load_max_periods: updates.teachingLoadMaxPeriods }
+      : {}),
     ...(updates.gradingSystem !== undefined ? { grading_system: updates.gradingSystem } : {}),
     ...(updates.staffPositionOptions !== undefined ? { staff_position_options: updates.staffPositionOptions } : {}),
     ...(updates.roomOptions !== undefined ? { room_options: updates.roomOptions } : {}),

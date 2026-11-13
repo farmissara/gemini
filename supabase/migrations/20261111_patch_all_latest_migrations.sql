@@ -867,8 +867,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.school_questions TO authenticated
 CREATE TABLE IF NOT EXISTS public.timetable_slots (
     id TEXT PRIMARY KEY,
     school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+    academic_year TEXT,
+    semester TEXT,
     day_of_week TEXT NOT NULL CHECK (day_of_week IN ('mon', 'tue', 'wed', 'thu', 'fri')),
-    period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 1 AND 7),
+    period_number SMALLINT NOT NULL CHECK (period_number BETWEEN 1 AND 12),
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     course_id TEXT,
@@ -990,6 +992,8 @@ CREATE POLICY "School admins delete school logos"
 
 ALTER TABLE public.schools
     ADD COLUMN IF NOT EXISTS semester_options JSONB NOT NULL DEFAULT '["1", "2", "Summer"]'::jsonb,
+    ADD COLUMN IF NOT EXISTS teaching_load_min_periods INTEGER NOT NULL DEFAULT 12,
+    ADD COLUMN IF NOT EXISTS teaching_load_max_periods INTEGER NOT NULL DEFAULT 22,
     ADD COLUMN IF NOT EXISTS grading_system TEXT NOT NULL DEFAULT 'thai',
     ADD COLUMN IF NOT EXISTS staff_position_options JSONB NOT NULL DEFAULT '["นักการภารโรง", "เจ้าหน้าที่ธุรการ", "ครูอัตราจ้าง", "ครูผู้ช่วย", "ครู", "รองผู้อำนวยการ", "ผู้อำนวยการ"]'::jsonb,
     ADD COLUMN IF NOT EXISTS room_options JSONB NOT NULL DEFAULT '[]'::jsonb;
@@ -1005,6 +1009,40 @@ BEGIN
         ALTER TABLE public.schools
             ADD CONSTRAINT schools_grading_system_check
             CHECK (grading_system IN ('thai', 'international'));
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'schools_teaching_load_min_periods_check'
+          AND conrelid = 'public.schools'::regclass
+    ) THEN
+        ALTER TABLE public.schools
+            ADD CONSTRAINT schools_teaching_load_min_periods_check
+            CHECK (teaching_load_min_periods BETWEEN 0 AND 60);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'schools_teaching_load_max_periods_check'
+          AND conrelid = 'public.schools'::regclass
+    ) THEN
+        ALTER TABLE public.schools
+            ADD CONSTRAINT schools_teaching_load_max_periods_check
+            CHECK (teaching_load_max_periods BETWEEN 0 AND 60);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'schools_teaching_load_thresholds_check'
+          AND conrelid = 'public.schools'::regclass
+    ) THEN
+        ALTER TABLE public.schools
+            ADD CONSTRAINT schools_teaching_load_thresholds_check
+            CHECK (teaching_load_min_periods <= teaching_load_max_periods);
     END IF;
 END $$;
 
