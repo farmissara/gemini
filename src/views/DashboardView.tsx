@@ -280,7 +280,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
       {/* Top Welcome Header - Modern Executive School Command Banner */}
-      <div className="shrink-0 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative overflow-hidden">
+      <div className="shrink-0 rounded-2xl app-hero border border-[var(--color-border)] text-[var(--color-text-title)] p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative overflow-hidden">
         
         <div className="space-y-1 relative z-10">
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[var(--color-card-subtle)] text-[11px] font-medium text-[var(--color-text-muted)] border border-[var(--color-border)]">
@@ -378,11 +378,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('mobile_checkin')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">เช็คชื่อ</span>
+                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><Camera className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">เช็คชื่อคาบนี้</div>
@@ -393,11 +392,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('homework')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">3 รอตรวจ</span>
+                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><FileCheck2 className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ตรวจการบ้าน</div>
@@ -408,11 +406,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('gradebook')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Award className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ปพ.5</span>
+                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><Award className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บันทึกคะแนน</div>
@@ -423,11 +420,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('timetable')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ตารางสอน</span>
+                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ตารางสอนวันนี้</div>
@@ -438,11 +434,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('behavior_sdq')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <HeartPulse className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">SDQ</span>
+                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><HeartPulse className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">คัดกรอง SDQ</div>
@@ -453,11 +448,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('boss_raid')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Swords className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">BOSS</span>
+                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><Swords className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">เปิดเรดบอสคาบนี้</div>
@@ -473,11 +467,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('timetable')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ตาราง</span>
+                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ตารางเรียนวันนี้</div>
@@ -488,11 +481,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('homework')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ด่วน</span>
+                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><FileCheck2 className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">การบ้านที่ต้องส่ง</div>
@@ -503,11 +495,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('mobile_checkin')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">GPS</span>
+                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><Camera className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">สแกนเช็คชื่อเข้าเรียน</div>
@@ -518,11 +509,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('games')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Flame className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">+EXP</span>
+                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Flame className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ศูนย์เกม 7 สไตล์ +EXP</div>
@@ -533,11 +523,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('student_id_cards')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ID</span>
+                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><QrCode className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บัตรนักเรียนดิจิทัล</div>
@@ -548,11 +537,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('gradebook')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Award className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">เกรด</span>
+                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><Award className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ดูผลการเรียน</div>
@@ -568,11 +556,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('attendance')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">มาเรียนแล้ว</span>
+                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><CheckCircle2 className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">สถานะเข้าเรียนวันนี้</div>
@@ -583,11 +570,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('attendance')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">แจ้งลา</span>
+                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><FileCheck2 className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">แจ้งการลาออนไลน์</div>
@@ -598,11 +584,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('billing')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ค่าเทอม</span>
+                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><Receipt className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บิลค่าเทอม &amp; ชำระเงิน</div>
@@ -613,11 +598,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('homework')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">การบ้าน</span>
+                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ติดตามการบ้านลูก</div>
@@ -628,11 +612,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('infirmary')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <HeartPulse className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">สุขภาพ</span>
+                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><HeartPulse className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ห้องพยาบาล &amp; สุขภาพ</div>
@@ -643,11 +626,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('announcements')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <BellRing className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ประกาศ</span>
+                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><BellRing className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">ข่าวสารจากโรงเรียน</div>
@@ -663,11 +645,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('mobile_checkin')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">GPS สด</span>
+                  <span className="tone-chip tone-1 w-8 h-8 rounded-lg"><Camera className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">สแกนประตู &amp; GPS</div>
@@ -678,10 +659,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('students')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Users className="w-4 h-4 text-[var(--color-primary-text)]" />
+                  <span className="tone-chip tone-2 w-8 h-8 rounded-lg"><Users className="w-4 h-4" /></span>
                   <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">{totalStudents} คน</span>
                 </div>
                 <div className="mt-2">
@@ -693,11 +674,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('executive_warning')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <ShieldAlert className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">เตือนภัย</span>
+                  <span className="tone-chip tone-3 w-8 h-8 rounded-lg"><ShieldAlert className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">Early Warning เสี่ยงหลุด</div>
@@ -708,11 +688,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('billing')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">การเงิน</span>
+                  <span className="tone-chip tone-4 w-8 h-8 rounded-lg"><Receipt className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">จัดเก็บค่าเทอม</div>
@@ -723,11 +702,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('student_id_cards')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">พิมพ์ A4</span>
+                  <span className="tone-chip tone-5 w-8 h-8 rounded-lg"><QrCode className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">บัตรนักเรียน Virtual ID</div>
@@ -738,11 +716,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('timetable')}
-                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-card-subtle)] text-left transition flex flex-col justify-between group cursor-pointer"
+                className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:shadow-sm hover:-translate-y-0.5 text-left transition flex flex-col justify-between group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]">ตารางสอน</span>
+                  <span className="tone-chip tone-6 w-8 h-8 rounded-lg"><Calendar className="w-4 h-4" /></span>
                 </div>
                 <div className="mt-2">
                   <div className="text-xs font-bold text-[var(--color-text-title)] truncate">จัดตาราง &amp; เช็คชน</div>
@@ -830,7 +807,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Students */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="tone-card tone-1 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students Enrolled'}
@@ -842,13 +819,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {activeStudents} {lang === 'th' ? 'คน สถานะปกติในระบบ' : 'active accounts'}
                   </p>
                 </div>
-                <div className="h-10 w-10 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                <div className="h-11 w-11 rounded-xl tone-chip tone-1">
                   <Users className="w-5 h-5" />
                 </div>
               </div>
 
               {/* Selected Date Attendance Rate */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="tone-card tone-2 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา' : 'On-Time Attendance Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
@@ -860,13 +837,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {lang === 'th' ? `ตรงเวลา ${presentCount} • สาย ${lateCount}` : `On-time: ${presentCount} • Late: ${lateCount}`}
                   </p>
                 </div>
-                <div className="h-10 w-10 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                <div className="h-11 w-11 rounded-xl tone-chip tone-2">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </div>
 
               {/* Tuition Collection */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="tone-card tone-3 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
@@ -878,13 +855,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     ฿{totalCollected.toLocaleString()} {lang === 'th' ? 'จาก' : 'of'} ฿{totalInvoiced.toLocaleString()}
                   </p>
                 </div>
-                <div className="h-10 w-10 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                <div className="h-11 w-11 rounded-xl tone-chip tone-3">
                   <Receipt className="w-5 h-5" />
                 </div>
               </div>
 
               {/* LINE Guardian Sync */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
+              <div className="tone-card tone-6 p-4 pl-5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
@@ -896,7 +873,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {lineConnectedCount} {lang === 'th' ? 'จาก' : 'of'} {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
                   </p>
                 </div>
-                <div className="h-10 w-10 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                <div className="h-11 w-11 rounded-xl tone-chip tone-6">
                   <MessageSquare className="w-5 h-5" />
                 </div>
               </div>

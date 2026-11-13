@@ -477,26 +477,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       .filter((i): i is NavItemDef => Boolean(i));
   }, [categories, currentRole]);
 
+  const toneOf = (id: NavTab) => {
+    const idx = categories.findIndex(c => c.items.some(i => i.id === id));
+    return `tone-${(Math.max(idx, 0) % 6) + 1}`;
+  };
+  const pinnedIds = new Set(pinned.map(p => p.id));
+
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
     const Icon = item.icon;
     const isActive = currentTab === item.id;
+    const tone = toneOf(item.id);
     return (
       <button
         key={item.id}
         type="button"
         onClick={() => { setCurrentTab(item.id); onClick?.(); }}
-        className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-[12.5px] transition cursor-pointer ${
+        className={`${tone} w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-[12.5px] transition cursor-pointer ${
           isActive
-            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
+            ? 'tone-active font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
         <span className="flex items-center gap-2.5 truncate">
-          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
+          <span className="tone-chip w-6 h-6 rounded-md"><Icon className="w-3.5 h-3.5" /></span>
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
         </span>
-        {item.badge && (
-          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)] font-medium">
+        {item.badge && !/^\d+$/.test(String(item.badge)) && (
+          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full tone-chip font-semibold">
             {item.badge}
           </span>
         )}
@@ -543,8 +550,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {pinned.map(item => renderItem(item))}
               </div>
             )}
-            {categories.map(cat => {
-              const items = cat.items.filter(i => i.roles.includes(currentRole));
+            {categories.map((cat, catIdx) => {
+              const items = cat.items.filter(i => i.roles.includes(currentRole) && !pinnedIds.has(i.id));
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
               return (
@@ -554,10 +561,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setCollapsed(prev => ({ ...prev, [cat.id]: !isCollapsed }))}
                     className="w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
                   >
-                    <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
+                    <span className={`tone-${(catIdx % 6) + 1} flex items-center gap-2 truncate`}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--tone)' }} /><span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span></span>
                     <span className="flex items-center gap-1.5">
                       {cat.badge && <span className="normal-case text-[9px] px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">{cat.badge}</span>}
-                      <span className="font-mono normal-case">{items.length}</span>
                       {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </span>
                   </button>

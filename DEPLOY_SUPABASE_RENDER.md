@@ -49,7 +49,7 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
    ```bash
    supabase link --project-ref <project-ref>
    supabase functions deploy invite-student
-   supabase secrets set APP_SITE_URL=https://your-app.onrender.com
+   supabase secrets set APP_SITE_URL=https://khaonangtuam-eduverse.onrender.com
    ```
 
    Function ใช้ `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ฝั่งเซิร์ฟเวอร์ของ Supabase; ห้ามใส่ service-role key ใน frontend หรือ `VITE_*` secret `APP_SITE_URL` เป็น URL ของเว็บที่ต้องการให้ลิงก์เชิญกลับมา
@@ -157,7 +157,7 @@ Render.com ให้บริการโฮสต์เว็บประเภ
    - `VITE_SUPABASE_URL` = `https://your-project.supabase.co`
    - `VITE_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
 7. คลิกปุ่ม **"Create Static Site"**
-8. Render จะเริ่มรัน `npm run build` และเผยแพร่เว็บของคุณให้พร้อมใช้งานภายใน 1-2 นาที จะได้ URL เช่น `https://eduverse-school.onrender.com`
+8. Render จะเริ่มรัน `npm run build` และเผยแพร่เว็บของคุณให้พร้อมใช้งานภายใน 1-2 นาที จะได้ URL เช่น `https://khaonangtuam-eduverse.onrender.com`
 
 ---
 

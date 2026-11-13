@@ -379,20 +379,6 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             </button>
           </div>
 
-          {/* Quick random simulator button for test demo */}
-          <button
-            type="button"
-            onClick={() => {
-              if (students.length > 0) {
-                const randomStudent = students[Math.floor(Math.random() * students.length)];
-                processScannedCode(randomStudent.studentIdNumber);
-              }
-            }}
-            className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold text-[11px] hover:bg-purple-100 transition cursor-pointer flex items-center gap-1"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            <span>{lang === 'th' ? 'แตะจำลองสแกน' : 'Simulate Scan'}</span>
-          </button>
         </div>
 
         {/* Viewfinder Section */}

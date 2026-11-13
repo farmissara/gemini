@@ -45,7 +45,6 @@ import {
   resolveOwnStudent,
   resolveCurrentUserAttendanceProfile,
 } from '../lib/attendanceScope';
-import { DEFAULT_CAMPUS_GATES } from '../data/mockData';
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
@@ -110,7 +109,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   teachers = [],
   attendance,
   leaveRequests = [],
-  campusGates = DEFAULT_CAMPUS_GATES,
+  campusGates = [],
   activeSchool,
   currentUser,
   currentRole = 'student',

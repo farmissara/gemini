@@ -25,7 +25,6 @@ import {
   UserRole,
   Assignment
 } from '../types';
-import { INITIAL_ASSIGNMENTS } from '../data/mockData';
 import { PagedList } from '../components/PagedList';
 
 const PaginatedTableRows = <T,>({
@@ -75,7 +74,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   submissions,
   students,
   courses,
-  assignments = INITIAL_ASSIGNMENTS,
+  assignments = [],
   onAddSubmission,
   onGradeSubmission,
   lang,
