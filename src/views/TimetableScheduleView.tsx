@@ -67,6 +67,7 @@ const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
 ];
 
 const MAX_LESSON_PERIODS = 12;
+const ALL_CLASSROOMS = '__all_classrooms__';
 
 const COLOR_CLASSES: Record<string, string> = {
   sky: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:bg-sky-200 dark:hover:bg-sky-900',
@@ -102,8 +103,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
 
-  // Main view mode: 'classroom' | 'teacher' | 'hours_criteria'
-  const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria'>('classroom');
+  // Main view mode: classroom, teacher, attendance-hours criteria, or staff workload summary.
+  const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria' | 'workload'>('classroom');
 
   // Classroom selection
   const uniqueClassRooms = Array.from(
@@ -164,7 +165,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   // Filter slots based on active view mode
   const activeSlots = viewMode === 'teacher'
     ? slots.filter((s) => s.teacherName === selectedTeacherName)
-    : slots.filter((s) => s.classRoom === selectedClassRoom);
+    : selectedClassRoom === ALL_CLASSROOMS
+      ? slots
+      : slots.filter((s) => s.classRoom === selectedClassRoom);
 
   // Overall conflict detection across the school
   const conflicts: { slotId: string; reason: string }[] = [];
@@ -199,7 +202,72 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   // Calculate teacher weekly workload in teaching view
   const teacherWeeklyPeriods = slots.filter((s) => s.teacherName === selectedTeacherName).length;
-  const teacherWeeklyHours = teacherWeeklyPeriods * 0.833; // 50 mins = ~0.833 hr
+  const parseTimeMinutes = (time: string): number | null => {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours > 23 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  };
+  const getSlotDurationHours = (slot: TimetableSlot) => {
+    const period = getPeriodTime(slot.periodNumber);
+    const start = parseTimeMinutes(slot.startTime) ?? parseTimeMinutes(period?.startTime || '');
+    const end = parseTimeMinutes(slot.endTime) ?? parseTimeMinutes(period?.endTime || '');
+    return start === null || end === null || end <= start ? 0 : (end - start) / 60;
+  };
+  const teacherWeeklyHours = slots
+    .filter((slot) => slot.teacherName === selectedTeacherName)
+    .reduce((hours, slot) => hours + getSlotDurationHours(slot), 0);
+
+  const isTeachingStaff = (teacher: Teacher) => (
+    /ครู|อาจารย์|ผู้สอน/i.test(`${teacher.positionTitle || ''} ${teacher.academicStanding || ''}`)
+    || Boolean(teacher.teacherLicenseNo.trim())
+    || teacher.teachingSubjects.length > 0
+    || teacher.homeroomClasses.length > 0
+    || teacher.teachingGrades.length > 0
+  );
+  const workloadPeople = new Map<string, { name: string; teacher?: Teacher }>();
+  teachers.filter(isTeachingStaff).forEach((teacher) => {
+    const name = teacher.fullNameTh.trim();
+    if (name) workloadPeople.set(name.toLocaleLowerCase(), { name, teacher });
+  });
+  slots.forEach((slot) => {
+    const name = slot.teacherName.trim();
+    if (name && !workloadPeople.has(name.toLocaleLowerCase())) {
+      workloadPeople.set(name.toLocaleLowerCase(), { name });
+    }
+  });
+  const workloadByTeacher = new Map<string, TimetableSlot[]>();
+  slots.forEach((slot) => {
+    const key = slot.teacherName.trim().toLocaleLowerCase();
+    if (!key) return;
+    const teacherSlots = workloadByTeacher.get(key) || [];
+    teacherSlots.push(slot);
+    workloadByTeacher.set(key, teacherSlots);
+  });
+  const teacherWorkloadRows = [...workloadPeople.entries()]
+    .map(([key, person]) => {
+      const teacherSlots = workloadByTeacher.get(key) || [];
+      const periodCount = teacherSlots.length;
+      return {
+        ...person,
+        periodCount,
+        hours: teacherSlots.reduce((total, slot) => total + getSlotDurationHours(slot), 0),
+        subjects: Array.from(new Map(
+          teacherSlots.map((slot) => [slot.courseCode, `${slot.courseCode} ${slot.courseTitleTh}`.trim()])
+        ).values()),
+        status: periodCount < 12 ? 'low' as const : periodCount > 22 ? 'high' as const : 'within' as const,
+      };
+    })
+    .sort((a, b) => {
+      const priority = { high: 0, low: 1, within: 2 };
+      return priority[a.status] - priority[b.status]
+        || b.periodCount - a.periodCount
+        || a.name.localeCompare(b.name, 'th');
+    });
+  const lowWorkloadCount = teacherWorkloadRows.filter((teacher) => teacher.status === 'low').length;
+  const highWorkloadCount = teacherWorkloadRows.filter((teacher) => teacher.status === 'high').length;
 
   // Check course auto-fill when course selector changes in Add Modal
   const handleSelectCourse = (courseId: string) => {
@@ -242,6 +310,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   const handleCreateSlot = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedClassRoom === ALL_CLASSROOMS) {
+      setSlotActionError('กรุณาเลือกห้องเรียนเฉพาะก่อนเพิ่มคาบเรียน');
+      return;
+    }
     if (!newCourseCode || !newTitleTh) return;
 
     const periodTime = getPeriodTime(newPeriod);
@@ -434,7 +506,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   // Compute academic hours breakdown per course in this classroom
-  const classroomSlots = slots.filter((s) => s.classRoom === selectedClassRoom);
+  const classroomSlots = selectedClassRoom === ALL_CLASSROOMS
+    ? slots
+    : slots.filter((s) => s.classRoom === selectedClassRoom);
   const classroomCourseMap: Record<string, { code: string; titleTh: string; titleEn: string; teacher: string; scheduledPeriods: number; course?: Course }> = {};
   
   classroomSlots.forEach((s) => {
@@ -453,7 +527,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   });
 
   const classroomCoursesList = Object.values(classroomCourseMap);
-  const classroomStudents = students.filter((st) => st.room === selectedClassRoom);
+  const classroomStudents = selectedClassRoom === ALL_CLASSROOMS
+    ? students
+    : students.filter((st) => st.room === selectedClassRoom);
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
@@ -483,7 +559,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('teacher')}
+              onClick={() => {
+                if (selectedClassRoom === ALL_CLASSROOMS) {
+                  setSelectedClassRoom(uniqueClassRooms[0] || '');
+                }
+                setViewMode('teacher');
+              }}
               className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 viewMode === 'teacher'
                   ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
@@ -495,7 +576,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('hours_criteria')}
+              onClick={() => {
+                if (selectedClassRoom === ALL_CLASSROOMS) {
+                  setSelectedClassRoom(uniqueClassRooms[0] || '');
+                }
+                setViewMode('hours_criteria');
+              }}
               className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 viewMode === 'hours_criteria'
                   ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
@@ -504,6 +590,23 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>เกณฑ์ชั่วโมง 80%</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('workload')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                viewMode === 'workload'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs font-bold'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>ภาระงานครู</span>
+              {(lowWorkloadCount > 0 || highWorkloadCount > 0) && (
+                <span className="rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white">
+                  {lowWorkloadCount + highWorkloadCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -596,7 +699,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
                   setShowAddModal(true);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer whitespace-nowrap"
+                disabled={viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS}
+                title={viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS
+                  ? 'เลือกห้องเรียนเฉพาะก่อนเพิ่มคาบเรียน'
+                  : undefined}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>เพิ่มคาบเรียน</span>
@@ -619,6 +726,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               onChange={(e) => setSelectedClassRoom(e.target.value)}
               className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold px-3 py-1.5 rounded-xl border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
             >
+              <option value={ALL_CLASSROOMS} disabled={viewMode === 'hours_criteria'}>
+                ทุกห้องเรียน ({uniqueClassRooms.length} ห้อง)
+              </option>
               {uniqueClassRooms.map((room) => (
                 <option key={room} value={room}>
                   {room} ({students.filter((s) => s.room === room).length} นักเรียน)
@@ -689,7 +799,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </span>
             {roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
           </div>
-        ) : (
+        ) : viewMode === 'teacher' ? (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
               <User className="w-4 h-4 text-[var(--color-primary-text)]" />
@@ -710,6 +820,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               })}
             </select>
           </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+              ต่ำกว่า 12 คาบ: {lowWorkloadCount} คน
+            </span>
+            <span className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1 font-semibold text-rose-900 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+              มากกว่า 22 คาบ: {highWorkloadCount} คน
+            </span>
+            <span className="text-[11px] text-[var(--color-text-muted)]">
+              เกณฑ์แจ้งเตือนเบื้องต้นต่อสัปดาห์ · ตรวจสอบตามนโยบายโรงเรียน
+            </span>
+          </div>
         )}
 
         {/* Workload / Academic Period Control */}
@@ -726,9 +848,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                     : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
               }`}>
-                {teacherWeeklyPeriods} คาบ/สัปดาห์ ({teacherWeeklyHours.toFixed(1)} ชม.) {teacherWeeklyPeriods >= 12 ? '✓ ผ่านเกณฑ์ ก.ค.ศ.' : '⚠ ต่ำกว่า 12 คาบ'}
+                {teacherWeeklyPeriods} คาบ/สัปดาห์ ({teacherWeeklyHours.toFixed(1)} ชม.) {
+                  teacherWeeklyPeriods < 12
+                    ? ' ⚠ ต่ำกว่า 12 คาบ'
+                    : teacherWeeklyPeriods > 22
+                      ? ' ⚠ มากกว่า 22 คาบ'
+                      : ' ✓ อยู่ในช่วงเกณฑ์เบื้องต้น'
+                }
               </span>
             </div>
+          ) : viewMode === 'workload' ? (
+            <span>
+              บุคลากรที่ติดตามภาระงาน {teacherWorkloadRows.length} คน · รวมคาบสอน {slots.length} คาบ/สัปดาห์
+            </span>
           ) : (
             <div className="flex items-center gap-2">
               <span>นักเรียน: <strong className="text-[var(--color-text-title)] tabular-nums">{classroomStudents.length}</strong> คน</span>
@@ -773,6 +905,23 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
+      {(lowWorkloadCount > 0 || highWorkloadCount > 0) && viewMode !== 'workload' && (
+        <button
+          type="button"
+          onClick={() => setViewMode('workload')}
+          className="shrink-0 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-left text-xs text-amber-950 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100 dark:hover:bg-amber-950"
+        >
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              ตรวจสอบภาระงานสอน: <strong>{lowWorkloadCount}</strong> คนต่ำกว่า 12 คาบ และ <strong>{highWorkloadCount}</strong> คนเกิน 22 คาบ/สัปดาห์
+              <span className="ml-1 text-[10px] opacity-80">เกณฑ์คัดกรองเบื้องต้น</span>
+            </span>
+          </span>
+          <span className="font-bold underline underline-offset-2">ดูสรุป</span>
+        </button>
+      )}
+
       {/* Conflict Warning Banner (if any) */}
       {conflicts.length > 0 && (
         <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex items-start gap-3 shadow-xs">
@@ -789,7 +938,106 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       )}
 
       {/* MAIN VIEW CONTENT: Grid Table OR Hours Criteria */}
-      {viewMode === 'hours_criteria' ? (
+      {viewMode === 'workload' ? (
+        <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
+          <header className="shrink-0 border-b border-[var(--color-border)] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text-title)]">
+                  <Users className="h-4 w-4 text-[var(--color-primary-text)]" />
+                  ภาระงานสอนรายบุคคล
+                </h2>
+                <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                  คำนวณคาบและชั่วโมงต่อสัปดาห์จากตารางสอนจริง แสดงจำนวนวิชาไม่ซ้ำต่อคน
+                </p>
+              </div>
+              <p className="max-w-xl rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+                เกณฑ์แจ้งเตือน 12–22 คาบ/สัปดาห์เป็นเกณฑ์คัดกรองเบื้องต้นตามระบบ ไม่ใช่การวินิจฉัยภาระงานตามตำแหน่งหรือข้อบังคับ กรุณาตรวจสอบเวลาคาบและเกณฑ์ของโรงเรียนก่อนปรับตาราง
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
+                <div className="text-[10px] text-[var(--color-text-muted)]">บุคลากรที่ติดตาม</div>
+                <div className="mt-1 text-lg font-bold tabular-nums text-[var(--color-text-title)]">{teacherWorkloadRows.length} คน</div>
+              </div>
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+                <div className="text-[10px] text-amber-800 dark:text-amber-200">ต่ำกว่า 12 คาบ</div>
+                <div className="mt-1 text-lg font-bold tabular-nums text-amber-900 dark:text-amber-100">{lowWorkloadCount} คน</div>
+              </div>
+              <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 dark:border-rose-800 dark:bg-rose-950/40">
+                <div className="text-[10px] text-rose-800 dark:text-rose-200">มากกว่า 22 คาบ</div>
+                <div className="mt-1 text-lg font-bold tabular-nums text-rose-900 dark:text-rose-100">{highWorkloadCount} คน</div>
+              </div>
+            </div>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+              <thead className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]">
+                <tr>
+                  <th className="p-3">ครูผู้สอน</th>
+                  <th className="p-3">รายวิชาที่สอน</th>
+                  <th className="p-3 text-center">คาบ/สัปดาห์</th>
+                  <th className="p-3 text-center">ชั่วโมง/สัปดาห์</th>
+                  <th className="p-3 text-center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {teacherWorkloadRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-[var(--color-text-muted)]">
+                      ยังไม่มีรายชื่อครูหรือข้อมูลผู้สอนในตารางสอน
+                    </td>
+                  </tr>
+                ) : teacherWorkloadRows.map((teacher) => (
+                  <tr key={teacher.name.toLocaleLowerCase()} className="align-top hover:bg-[var(--color-card-subtle)]">
+                    <td className="p-3">
+                      <div className="font-bold text-[var(--color-text-title)]">{teacher.name}</div>
+                      {teacher.teacher?.positionTitle && (
+                        <div className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">{teacher.teacher.positionTitle}</div>
+                      )}
+                    </td>
+                    <td className="max-w-[32rem] p-3">
+                      {teacher.subjects.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {teacher.subjects.map((subject) => (
+                            <span key={subject} className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-body)]">
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-[var(--color-text-muted)]">ยังไม่มีคาบสอนในตาราง</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-center font-mono font-bold tabular-nums text-[var(--color-text-title)]">
+                      {teacher.periodCount}
+                    </td>
+                    <td className="p-3 text-center font-mono tabular-nums text-[var(--color-text-body)]">
+                      {teacher.hours.toFixed(1)}
+                    </td>
+                    <td className="p-3 text-center">
+                      {teacher.status === 'low' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+                          <AlertCircle className="h-3 w-3" /> ต่ำกว่าเกณฑ์
+                        </span>
+                      ) : teacher.status === 'high' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-900 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200">
+                          <AlertTriangle className="h-3 w-3" /> ภาระงานสูง
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" /> อยู่ในช่วง
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : viewMode === 'hours_criteria' ? (
         /* TAB: Academic Hours Criteria & 80% Attendance Table */
         <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col p-4 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
@@ -907,7 +1155,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
               <span className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
-                {viewMode === 'teacher' ? `ตารางสอน: ${selectedTeacherName}` : `${selectedClassRoom}`} — {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear}
+                {viewMode === 'teacher'
+                  ? `ตารางสอน: ${selectedTeacherName}`
+                  : selectedClassRoom === ALL_CLASSROOMS
+                    ? 'ตารางเรียนทุกห้อง'
+                    : `${selectedClassRoom}`} — {formatSemesterLabel(currentSemester)} ปีการศึกษา {academicYear}
               </span>
             </div>
             <span className="text-xs text-[var(--color-text-muted)]">
@@ -916,7 +1168,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
-            <table className="w-full text-left border-collapse min-w-[880px]">
+            <table className={`w-full text-left border-collapse ${
+              viewMode === 'classroom' && selectedClassRoom === ALL_CLASSROOMS ? 'min-w-[1120px]' : 'min-w-[880px]'
+            }`}>
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
                   <th className="p-3 w-28 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
@@ -954,14 +1208,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         );
                       }
 
-                      // Find matching slot
-                      const slot = activeSlots.find(
+                      const periodSlots = activeSlots.filter(
                         (s) => s.dayOfWeek === day.key && s.periodNumber === period.periodNumber
                       );
 
-                      const hasConflict = slot && conflicts.some((c) => c.slotId === slot.id);
-
-                      if (!slot) {
+                      if (periodSlots.length === 0) {
                         return (
                           <td key={period.periodNumber} className="p-1.5 text-center border-r border-[var(--color-border)]">
                             <div className="h-22 rounded-xl border border-dashed border-[var(--color-border)] flex items-center justify-center text-[10px] text-[var(--color-text-muted)] transition">
@@ -971,57 +1222,66 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         );
                       }
 
-                      const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
-
                       return (
                         <td key={period.periodNumber} className="p-1.5 border-r border-[var(--color-border)] align-top">
-                          <div 
-                            onClick={() => setSelectedSlotForDetail(slot)}
-                            className={`p-2 rounded-xl border transition group relative flex flex-col justify-between h-22 cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
-                          >
-                            <div>
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
-                                  {slot.courseCode}
-                                </span>
-                                {hasConflict && (
-                                  <span title="ตรวจพบคาบชนกัน!" className="text-amber-700 dark:text-amber-300">
-                                    <AlertTriangle className="w-3.5 h-3.5" />
-                                  </span>
-                                )}
-                              </div>
-                              <h4 className="text-[11px] font-bold mt-1 line-clamp-1 leading-tight">
-                                {slot.courseTitleTh}
-                              </h4>
-                            </div>
+                          <div className="space-y-1.5">
+                            {periodSlots.map((slot) => {
+                              const hasConflict = conflicts.some((conflict) => conflict.slotId === slot.id);
+                              const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
+                              return (
+                                <div
+                                  key={slot.id}
+                                  onClick={() => setSelectedSlotForDetail(slot)}
+                                  className={`min-h-22 p-2 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
+                                >
+                                  <div className="min-w-0">
+                                    <div className="flex items-start justify-between gap-1">
+                                      <span className="shrink-0 font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
+                                        {slot.courseCode}
+                                      </span>
+                                      <span className="max-w-[55%] truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
+                                        {slot.classRoom}
+                                      </span>
+                                      {hasConflict && (
+                                        <span title="ตรวจพบคาบชนกัน!" className="shrink-0 text-amber-700 dark:text-amber-300">
+                                          <AlertTriangle className="w-3.5 h-3.5" />
+                                        </span>
+                                      )}
+                                    </div>
+                                    <h4 className="text-[11px] font-bold mt-1 line-clamp-1 leading-tight">
+                                      {slot.courseTitleTh}
+                                    </h4>
+                                  </div>
 
-                            <div className="pt-1 border-t border-current/20 space-y-0.5 text-[10px] opacity-95">
-                              <div className="flex items-center gap-1 truncate">
-                                <User className="w-2.5 h-2.5 shrink-0" />
-                                <span className="truncate">{viewMode === 'teacher' ? slot.classRoom : slot.teacherName}</span>
-                              </div>
-                              <div className="flex items-center gap-1 truncate">
-                                <MapPin className="w-2.5 h-2.5 shrink-0" />
-                                <span className="truncate">{slot.room}</span>
-                              </div>
-                            </div>
+                                  <div className="pt-1 border-t border-current/20 space-y-0.5 text-[10px] opacity-95">
+                                    <div className="flex items-center gap-1 truncate">
+                                      <User className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">{slot.teacherName}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 truncate">
+                                      <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">{slot.room}</span>
+                                    </div>
+                                  </div>
 
-                            {/* Delete Button on hover */}
-                            {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (confirm(`ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) หรือไม่?`)) {
-                                    onDeleteSlot(slot.id);
-                                  }
-                                }}
-                                className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
-                                title="ลบคาบนี้"
-                              >
-                                <Trash2 className="w-2.5 h-2.5" />
-                              </button>
-                            )}
+                                  {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm(`ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) หรือไม่?`)) {
+                                          onDeleteSlot(slot.id);
+                                        }
+                                      }}
+                                      className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
+                                      title="ลบคาบนี้"
+                                    >
+                                      <Trash2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </td>
                       );
