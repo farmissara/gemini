@@ -84,15 +84,55 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [selectedStudentIdForPp6, setSelectedStudentIdForPp6] = useState<string>(students[0]?.id || '');
   const [pp3LevelFilter, setPp3LevelFilter] = useState<'all' | 'p6' | 'm3' | 'm6'>('all');
   const [onetLevelFilter, setOnetLevelFilter] = useState<'p6' | 'm3' | 'm6'>('m3');
   const [gradePage, setGradePage] = useState(0);
   const [pp5Page, setPp5Page] = useState(0);
   const [pp6CoursePage, setPp6CoursePage] = useState(0);
+  const [gradeRoomFilter, setGradeRoomFilter] = useState('all');
+  const [gradeLevelFilter, setGradeLevelFilter] = useState('all');
+  const [gradeEligibilityFilter, setGradeEligibilityFilter] = useState<'all' | 'eligible' | 'at_risk'>('all');
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const courseGrades = grades.filter((g) => g.courseId === selectedCourseId);
+  const filteredCourses = courses.filter((course) => {
+    const search = courseSearchTerm.trim().toLocaleLowerCase();
+    return !search || [course.code, course.titleTh, course.titleEn, course.teacherName]
+      .some((value) => value?.toLocaleLowerCase().includes(search));
+  });
+  const courseSelectOptions = selectedCourse && !filteredCourses.some((course) => course.id === selectedCourse.id)
+    ? [selectedCourse, ...filteredCourses]
+    : filteredCourses;
+  const studentsById = new Map(students.map((student) => [student.id, student]));
+  const gradebookRows = courseGrades.flatMap((grade) => {
+    const student = studentsById.get(grade.studentId);
+    if (!student) return [];
+    return [{
+      grade,
+      student,
+      eligibility: calculateStudentCourseEligibility({
+        student,
+        course: selectedCourse,
+        timetableSlots,
+        attendance,
+        periodAttendance,
+      }),
+    }];
+  });
+  const gradeRoomOptions = Array.from(new Set(gradebookRows.map(({ student }) => student.room).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'th'));
+  const gradeLevelOptions = Array.from(new Set(gradebookRows.map(({ student }) => student.gradeLevel).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'th'));
+  const filteredGradebookRows = gradebookRows.filter(({ student, eligibility }) => (
+    (gradeRoomFilter === 'all' || student.room === gradeRoomFilter)
+    && (gradeLevelFilter === 'all' || student.gradeLevel === gradeLevelFilter)
+    && (
+      gradeEligibilityFilter === 'all'
+      || (gradeEligibilityFilter === 'at_risk' ? eligibility.isAtRiskMs : !eligibility.isAtRiskMs)
+    )
+  ));
   const gradeDuplicateWarnings = getDuplicateRecordWarnings({
     students: [],
     teachers: [],
@@ -105,7 +145,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const gradePageSize = 15;
   const pp5PageSize = 15;
   const pp6CoursePageSize = 5;
-  const gradePageCount = Math.max(1, Math.ceil(courseGrades.length / gradePageSize));
+  const gradePageCount = Math.max(1, Math.ceil(filteredGradebookRows.length / gradePageSize));
   const pp5PageCount = Math.max(1, Math.ceil(courseGrades.length / pp5PageSize));
   const pp6CoursePageCount = Math.max(1, Math.ceil(courses.length / pp6CoursePageSize));
   const currentGradePage = Math.min(gradePage, gradePageCount - 1);
@@ -559,7 +599,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <span>พิมพ์เอกสาร</span>
             </button>
           )}
-          {activeTab === 'gradebook' && renderPageControls(currentGradePage, courseGrades.length, gradePageSize, setGradePage, 'Gradebook pages')}
+          {activeTab === 'gradebook' && renderPageControls(currentGradePage, filteredGradebookRows.length, gradePageSize, setGradePage, 'Gradebook pages')}
         </div>
       </div>
 
@@ -628,26 +668,66 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
       {/* Course selector tabs (shown in Gradebook and ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--color-border)] no-scrollbar">
-          {courses.map((course) => (
-            <button
-              key={course.id}
-              type="button"
-              onClick={() => {
-                setSelectedCourseId(course.id);
-                setGradePage(0);
-                setPp5Page(0);
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                selectedCourseId === course.id
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-              }`}
-            >
-              <span className="font-mono">{course.code}</span>
-              <span>{course.titleEn}</span>
-            </button>
-          ))}
+        <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 print:hidden">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,1.3fr)]">
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">
+                ค้นหารายวิชา ({courses.length})
+              </span>
+              <span className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                <input
+                  type="search"
+                  value={courseSearchTerm}
+                  onChange={(event) => setCourseSearchTerm(event.target.value)}
+                  placeholder="ค้นหาจากรหัส ชื่อวิชา หรือครูผู้สอน"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                />
+              </span>
+            </label>
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">เลือกรายวิชา</span>
+              <select
+                value={selectedCourseId}
+                onChange={(event) => {
+                  setSelectedCourseId(event.target.value);
+                  setGradePage(0);
+                  setPp5Page(0);
+                  setGradeRoomFilter('all');
+                  setGradeLevelFilter('all');
+                  setGradeEligibilityFilter('all');
+                  setCourseSearchTerm('');
+                }}
+                disabled={courseSelectOptions.length === 0}
+                className="w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] disabled:opacity-60"
+              >
+                {courseSelectOptions.length === 0 ? (
+                  <option value="">ไม่พบรายวิชาที่ตรงกับคำค้นหา</option>
+                ) : (
+                  courseSelectOptions.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {[course.code, course.titleTh || course.titleEn, course.titleEn && course.titleEn !== course.titleTh ? course.titleEn : '']
+                        .filter(Boolean)
+                        .join(' — ')}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+          </div>
+          {courseSearchTerm.trim() && filteredCourses.length === 0 && (
+            <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+              ไม่พบรายวิชาที่ตรงกับคำค้นหา
+            </p>
+          )}
+          {selectedCourse && (
+            <p className="mt-2 truncate text-[11px] text-[var(--color-text-muted)]">
+              วิชาที่เลือก: <strong className="font-mono text-[var(--color-primary-text)]">{selectedCourse.code}</strong>
+              {' · '}
+              <strong className="text-[var(--color-text-title)]">{selectedCourse.titleTh || selectedCourse.titleEn}</strong>
+              {selectedCourse.teacherName ? ` · ${selectedCourse.teacherName}` : ''}
+            </p>
+          )}
         </div>
       )}
 
@@ -677,6 +757,72 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
           )}
 
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 sm:grid-cols-3 print:hidden">
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">ห้องเรียน</span>
+              <select
+                value={gradeRoomFilter}
+                onChange={(event) => {
+                  setGradeRoomFilter(event.target.value);
+                  setGradePage(0);
+                }}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
+              >
+                <option value="all">ทุกห้อง</option>
+                {gradeRoomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
+              </select>
+            </label>
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">ระดับชั้น</span>
+              <select
+                value={gradeLevelFilter}
+                onChange={(event) => {
+                  setGradeLevelFilter(event.target.value);
+                  setGradePage(0);
+                }}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
+              >
+                <option value="all">ทุกระดับชั้น</option>
+                {gradeLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
+              </select>
+            </label>
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">สถานะเวลาเรียน</span>
+              <select
+                value={gradeEligibilityFilter}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === 'all' || value === 'eligible' || value === 'at_risk') {
+                    setGradeEligibilityFilter(value);
+                  }
+                  setGradePage(0);
+                }}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
+              >
+                <option value="all">ทุกสถานะ</option>
+                <option value="eligible">มีสิทธิ์สอบ (เวลาเรียนถึงเกณฑ์)</option>
+                <option value="at_risk">เสี่ยง มส. (เวลาเรียนไม่ถึง 80%)</option>
+              </select>
+            </label>
+            <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] sm:col-span-3">
+              <span>แสดง {filteredGradebookRows.length} / {gradebookRows.length} คน</span>
+              {(gradeRoomFilter !== 'all' || gradeLevelFilter !== 'all' || gradeEligibilityFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGradeRoomFilter('all');
+                    setGradeLevelFilter('all');
+                    setGradeEligibilityFilter('all');
+                    setGradePage(0);
+                  }}
+                  className="font-semibold text-[var(--color-primary-text)] hover:underline"
+                >
+                  ล้างตัวกรอง
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -695,24 +841,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {courseGrades.length === 0 ? (
+                {filteredGradebookRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-[var(--color-text-muted)]">
-                      No grades entered for this course yet.
+                    <td colSpan={10} className="py-8 text-center text-[var(--color-text-muted)]">
+                      {gradebookRows.length === 0
+                        ? 'No grades entered for this course yet.'
+                        : 'ไม่พบรายการที่ตรงกับตัวกรองที่เลือก'}
                     </td>
                   </tr>
                 ) : (
-                  courseGrades.map((grade, index) => {
-                    const student = students.find((s) => s.id === grade.studentId);
-                    if (!student) return null;
+                  filteredGradebookRows.map(({ grade, student, eligibility }, index) => {
                     const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
-                    const eligibility = calculateStudentCourseEligibility({
-                      student,
-                      course: selectedCourse,
-                      timetableSlots,
-                      attendance,
-                      periodAttendance,
-                    });
                     return (
                       <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-[var(--color-card-subtle)] transition-colors`}>
                         <td className="py-3 px-3">
@@ -864,12 +1003,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* MOBILE VIEW (< 768px): Card List View for Easy Touch Interaction */}
           <div className="md:hidden space-y-3">
-            {courseGrades.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">ไม่มีข้อมูลผลการเรียนในรายวิชานี้</p>
+            {filteredGradebookRows.length === 0 ? (
+              <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">
+                {gradebookRows.length === 0 ? 'ไม่มีข้อมูลผลการเรียนในรายวิชานี้' : 'ไม่พบรายการที่ตรงกับตัวกรองที่เลือก'}
+              </p>
             ) : (
-              courseGrades.map((grade, index) => {
-                const student = students.find((s) => s.id === grade.studentId);
-                if (!student) return null;
+              filteredGradebookRows.map(({ grade, student }, index) => {
                 const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
                 if (!isVisible) return null;
 
