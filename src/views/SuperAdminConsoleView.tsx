@@ -33,8 +33,12 @@ import {
   PendingSchoolRegistration,
 } from '../lib/authDb';
 import { fetchSchoolCounts } from '../lib/supabase';
+import { getAuditLogs } from '../lib/auditLog';
+import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 import { 
   School, 
+  SchoolTier,
+  SchoolFeatureFlags,
   AuthUser, 
   UserRole, 
   RolePermissionConfig, 
@@ -58,9 +62,10 @@ interface SuperAdminConsoleViewProps {
   isDemoMode: boolean;
   onViewSchool: (school: School) => void;
   onToggleSchoolStatus: (schoolId: string, status: School['status']) => Promise<void>;
+  onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
   coordinationUnreadCount?: number;
   onOpenCoordinationDesk?: () => void;
-  initialSubTab?: 'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment';
+  initialSubTab?: 'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs';
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -77,13 +82,17 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   isDemoMode,
   onViewSchool,
   onToggleSchoolStatus,
+  onUpdateSchoolFeatureFlags,
   coordinationUnreadCount = 0,
   onOpenCoordinationDesk,
   initialSubTab,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>(
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs'>(
     initialSubTab || 'approvals'
   );
+  const [flagEditorSchool, setFlagEditorSchool] = useState<School | null>(null);
+  const [flagDraft, setFlagDraft] = useState<SchoolFeatureFlags | null>(null);
+  const [auditSchoolFilter, setAuditSchoolFilter] = useState<string>('all');
 
   useEffect(() => {
     if (initialSubTab) {
@@ -474,6 +483,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         >
           <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span>ตั้งค่า QR PromptPay รับเงินข้อสอบ</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('audit_logs')}
+          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
+            activeSubTab === 'audit_logs'
+              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
+              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>Audit Log ตรวจสอบระบบ</span>
         </button>
       </div>
 
@@ -1035,6 +1056,16 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     <td className="py-3 px-3 text-right whitespace-nowrap">
                       <button
                         type="button"
+                        onClick={() => {
+                          setFlagEditorSchool(s);
+                          setFlagDraft(getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise'));
+                        }}
+                        className="text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline mr-3 cursor-pointer"
+                      >
+                        ตั้งค่าโมดูล ({getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise').tier})
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => onViewSchool(s)}
                         className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline mr-3 cursor-pointer"
                       >
@@ -1079,6 +1110,144 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       {/* View 5: Central Exam Payment & PromptPay Settings (Requirement 2) */}
       {activeSubTab === 'exam_payment' && (
         <CentralExamPaymentSettingsView adminEmail="farmissara@gmail.com" />
+      )}
+
+      {/* View 6: Multi-School Audit Logs */}
+      {activeSubTab === 'audit_logs' && (() => {
+        const targetSchools = auditSchoolFilter === 'all' ? schools : schools.filter((s) => s.id === auditSchoolFilter);
+        const entries = targetSchools
+          .flatMap((s) => getAuditLogs(s.id).map((log) => ({ ...log, schoolName: s.nameTh })))
+          .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        return (
+          <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                  ประวัติการเปลี่ยนแปลงข้อมูลสำคัญระดับโรงเรียน (Audit Log · {entries.length})
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  ตรวจสอบย้อนหลังการแก้เกรด เปลี่ยนภาคเรียน อนุมัติสลิป และเปิดปิดโมดูลทุกสถานศึกษา
+                </p>
+              </div>
+              <select
+                value={auditSchoolFilter}
+                onChange={(e) => setAuditSchoolFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs"
+              >
+                <option value="all">ทุกโรงเรียน ({schools.length})</option>
+                {schools.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nameTh}</option>
+                ))}
+              </select>
+            </div>
+
+            {entries.length === 0 ? (
+              <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">
+                ยังไม่มีบันทึกเหตุการณ์ในระบบ
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)]">
+                    <tr>
+                      <th className="py-2 px-3">เวลา</th>
+                      <th className="py-2 px-3">โรงเรียน</th>
+                      <th className="py-2 px-3">ผู้ดำเนินการ</th>
+                      <th className="py-2 px-3">เป้าหมาย</th>
+                      <th className="py-2 px-3">รายละเอียด</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-border)]">
+                    {entries.slice(0, 50).map((log) => (
+                      <tr key={log.id} className="hover:bg-[var(--color-card-subtle)]">
+                        <td className="py-2 px-3 font-mono text-[11px] whitespace-nowrap">{new Date(log.timestamp).toLocaleString('th-TH')}</td>
+                        <td className="py-2 px-3 font-semibold text-[var(--color-text-title)]">{log.schoolName}</td>
+                        <td className="py-2 px-3">{log.actorName} ({log.actorRole})</td>
+                        <td className="py-2 px-3 font-medium">{log.targetLabel}</td>
+                        <td className="py-2 px-3 text-[var(--color-text-body)]">{log.details}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Modal: School Feature Flags & Tier Editor */}
+      {flagEditorSchool && flagDraft && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                  แพ็กเกจ &amp; โมดูลใช้งาน: {flagEditorSchool.nameTh}
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)]">เลือกขนาดโรงเรียนหรือเปิด/ปิดแต่ละโมดูลเฉพาะแห่ง</p>
+              </div>
+              <button type="button" onClick={() => setFlagEditorSchool(null)} className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(['small', 'standard', 'enterprise'] as SchoolTier[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFlagDraft({ ...TIER_PRESETS[t] })}
+                  className={`px-3 py-1.5 rounded-lg font-bold border cursor-pointer ${
+                    flagDraft.tier === t
+                      ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                      : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
+                  }`}
+                >
+                  {t === 'small' ? 'ขนาดเล็ก (Small)' : t === 'standard' ? 'ขนาดกลาง (Standard)' : 'ครบทุกโมดูล (Enterprise)'}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {FEATURE_FLAG_LABELS.map((item) => {
+                const enabled = flagDraft[item.key];
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setFlagDraft((prev) => prev ? { ...prev, [item.key]: !prev[item.key] } : prev)}
+                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer ${
+                      enabled ? 'border-[var(--color-primary)] bg-[var(--color-card)]' : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-75'
+                    }`}
+                  >
+                    <span className="font-semibold text-[var(--color-text-title)]">{item.labelTh}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                      {enabled ? 'เปิด' : 'ปิด'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+              <button type="button" onClick={() => setFlagEditorSchool(null)} className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] cursor-pointer">
+                ปิด
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  saveSchoolFeatureFlags(flagEditorSchool.id, flagDraft);
+                  onUpdateSchoolFeatureFlags?.(flagEditorSchool.id, flagDraft);
+                  showToast(`อัปเดตโมดูลใช้งานของ ${flagEditorSchool.nameTh} สำเร็จแล้ว`);
+                  setFlagEditorSchool(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+              >
+                บันทึกแพ็กเกจโมดูล
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal: Create New Promotion */}

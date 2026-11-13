@@ -19,19 +19,26 @@ import {
   Coins
 } from 'lucide-react';
 import { PagedList } from '../components/PagedList';
-import { RealWorldSnapQuest, AppLanguage, UserRole } from '../types';
+import { RealWorldSnapQuest, AppLanguage, UserRole, AuthUser, PortfolioItem } from '../types';
 import { INITIAL_REAL_WORLD_QUESTS } from '../data/innovativeFeaturesData';
 
 interface RealWorldSnapQuestViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
+  schoolId?: string;
+  currentUser?: AuthUser | null;
+  onAwardPortfolioItem?: (item: PortfolioItem) => void;
 }
 
 export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
   lang = 'th',
-  currentRole = 'student'
+  currentRole = 'student',
+  schoolId,
+  currentUser,
+  onAwardPortfolioItem,
 }) => {
   const [quests, setQuests] = useState<RealWorldSnapQuest[]>(INITIAL_REAL_WORLD_QUESTS);
+  const [savedPortfolioQuestIds, setSavedPortfolioQuestIds] = useState<string[]>([]);
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
   const [activeQuestForUpload, setActiveQuestForUpload] = useState<RealWorldSnapQuest | null>(null);
 
@@ -276,7 +283,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </div>
 
               {/* Action Toolbar */}
-              <div className="mt-5 pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+              <div className="mt-5 pt-4 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
                   {isVerified
                     ? (lang === 'th' ? 'ครูยืนยันแล้ว' : 'Teacher verified')
@@ -285,18 +292,49 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                     : (lang === 'th' ? 'รอส่งรูปถ่าย' : 'Ready for photo upload')}
                 </span>
 
-                <button
-                  type="button"
-                  onClick={() => handleStartUpload(quest)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    hasDemoResult
-                      ? 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90' 
-                      : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
-                  }`}
-                >
-                  <Camera className="w-4 h-4" />
-                  <span>{hasDemoResult ? (lang === 'th' ? 'ลองตัวอย่างอีกครั้ง' : 'Try demo again') : (lang === 'th' ? 'ดูตัวอย่าง' : 'View demo')}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {hasDemoResult && onAwardPortfolioItem && (
+                    <button
+                      type="button"
+                      disabled={savedPortfolioQuestIds.includes(quest.id)}
+                      onClick={() => {
+                        onAwardPortfolioItem({
+                          id: `port-quest-${quest.id}-${Date.now()}`,
+                          schoolId,
+                          ownerId: currentUser?.studentRecordId || currentUser?.id || 'stu-quest',
+                          ownerRole: currentRole === 'teacher' || currentRole === 'admin' ? 'teacher' : 'student',
+                          ownerName: currentUser?.fullNameTh || 'ผู้เรียน EduVerse',
+                          title: `ภารกิจสำรวจจริง: ${quest.titleTh}`,
+                          category: 'activity',
+                          year: String(new Date().getFullYear() + 543),
+                          description:
+                            quest.aiVerificationResult?.identifiedObject || quest.scenarioTh,
+                          imageUrl: quest.submittedPhotoUrl,
+                          skills: [quest.subject, 'Real-World Application'],
+                          certifiedBySchool: isVerified,
+                          scoreBonus: 10,
+                        });
+                        setSavedPortfolioQuestIds((prev) => [...prev, quest.id]);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {savedPortfolioQuestIds.includes(quest.id) ? '✓ ลง Portfolio แล้ว' : 'เพิ่มลง Portfolio'}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleStartUpload(quest)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      hasDemoResult
+                        ? 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90' 
+                        : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
+                    }`}
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>{hasDemoResult ? (lang === 'th' ? 'ลองตัวอย่างอีกครั้ง' : 'Try demo again') : (lang === 'th' ? 'ดูตัวอย่าง' : 'View demo')}</span>
+                  </button>
+                </div>
               </div>
             </div>
           );

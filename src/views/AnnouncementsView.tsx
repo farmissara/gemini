@@ -15,21 +15,31 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
+import { addConsentForm } from '../lib/campusDataStore';
 
 interface AnnouncementsViewProps {
+  schoolId?: string;
   announcements: Announcement[];
   systemConfig: SystemConfig;
   onAddAnnouncement: (announcement: Announcement) => void;
   onBroadcastLine: (announcementId: string) => void;
+  onConsentPublished?: (title: string) => void;
 }
 
 export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
+  schoolId = 'default-school',
   announcements,
   systemConfig,
   onAddAnnouncement,
   onBroadcastLine,
+  onConsentPublished,
 }) => {
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentTitle, setConsentTitle] = useState('');
+  const [consentDesc, setConsentDesc] = useState('');
+  const [consentEventDate, setConsentEventDate] = useState(getLocalDateString());
+  const [consentDueDate, setConsentDueDate] = useState(getLocalDateString());
   const [filterAudience, setFilterAudience] = useState<string>('all');
   const [broadcastToast, setBroadcastToast] = useState<string | null>(null);
 
@@ -87,13 +97,24 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           <span>School Announcements &amp; Broadcast</span>
         </h1>
 
-        <button
-          onClick={() => setShowComposeModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Publish Broadcast</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowConsentModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>สร้างหนังสือขออนุญาตผู้ปกครอง</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowComposeModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Publish Broadcast</span>
+          </button>
+        </div>
       </div>
 
       {broadcastToast && (
@@ -305,6 +326,76 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                   <Send className="w-3.5 h-3.5" />
                   Publish &amp; Broadcast
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Consent Form Modal */}
+      {showConsentModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5">
+              <h3 className="font-bold text-sm text-[var(--color-text-title)]">สร้างหนังสือขออนุญาตผู้ปกครอง (Digital Consent)</h3>
+              <button type="button" onClick={() => setShowConsentModal(false)} className="text-sm font-bold text-[var(--color-text-muted)] px-2 cursor-pointer">✕</button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!consentTitle.trim() || !consentDesc.trim()) return;
+                addConsentForm(schoolId, {
+                  titleTh: consentTitle.trim(),
+                  descriptionTh: consentDesc.trim(),
+                  eventDate: consentEventDate,
+                  dueDate: consentDueDate,
+                  targetRoom: 'all',
+                  createdBy: systemConfig.schoolNameTh,
+                });
+                onConsentPublished?.(consentTitle.trim());
+                setShowConsentModal(false);
+                setConsentTitle('');
+                setConsentDesc('');
+                setBroadcastToast('เผยแพร่หนังสือขออนุญาตไปยัง Parent Portal แล้ว');
+                setTimeout(() => setBroadcastToast(null), 4000);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="block font-semibold mb-1">หัวข้อกิจกรรม / ขออนุญาต</label>
+                <input
+                  type="text"
+                  required
+                  value={consentTitle}
+                  onChange={(e) => setConsentTitle(e.target.value)}
+                  placeholder="เช่น ขออนุญาตฉีดวัคซีน / ทัศนศึกษา"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold mb-1">วันจัดกิจกรรม</label>
+                  <input type="date" value={consentEventDate} onChange={(e) => setConsentEventDate(e.target.value)} className="w-full px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]" />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">กำหนดตอบกลับ</label>
+                  <input type="date" value={consentDueDate} onChange={(e) => setConsentDueDate(e.target.value)} className="w-full px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]" />
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">รายละเอียดและข้อตกลง</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={consentDesc}
+                  onChange={(e) => setConsentDesc(e.target.value)}
+                  placeholder="ระบุสถานที่ เวลา การดูแล และหมายเหตุ..."
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button type="button" onClick={() => setShowConsentModal(false)} className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] font-semibold cursor-pointer">ยกเลิก</button>
+                <button type="submit" className="px-4 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">ส่งให้ผู้ปกครองลงนาม</button>
               </div>
             </form>
           </div>

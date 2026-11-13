@@ -25,6 +25,7 @@ import {
   UserRole 
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -105,6 +106,8 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
     (s) => (s.allergies && s.allergies.length > 0) || (s.chronicDiseases && s.chronicDiseases.length > 0)
   );
 
+  const [offlineSavedNote, setOfflineSavedNote] = useState<string | null>(null);
+
   const handleCreateVisit = (e: React.FormEvent) => {
     e.preventDefault();
     const student = students.find((s) => s.id === selectedStudentId);
@@ -129,6 +132,17 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
       parentNotified: notifyParent,
       notes: student.allergies?.length ? `ผู้ป่วยมีประวัติแพ้: ${student.allergies.join(', ')}` : undefined
     };
+
+    if (!isOnlineNow()) {
+      enqueueOfflineAction({
+        actionType: 'health_visit',
+        schoolId: student.schoolId || 'school-1',
+        description: `ห้องพยาบาล (ออฟไลน์): ${newVisit.studentName} - ${newVisit.symptoms}`,
+        payload: newVisit,
+      });
+      setOfflineSavedNote(`ไม่มีอินเทอร์เน็ต · บันทึกเคส ${newVisit.studentName} ลงคิวออฟไลน์แล้ว`);
+      setTimeout(() => setOfflineSavedNote(null), 3500);
+    }
 
     onAddVisit(newVisit);
     setShowAddModal(false);
@@ -200,6 +214,12 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
           </button>
         </div>
       </div>
+
+      {offlineSavedNote && (
+        <div role="status" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs font-bold text-amber-900 dark:text-amber-200">
+          {offlineSavedNote}
+        </div>
+      )}
 
       {/* TAB 1: VISITS LOG TABLE */}
       {infirmaryTab === 'visits' && (

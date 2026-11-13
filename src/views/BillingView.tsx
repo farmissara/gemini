@@ -14,7 +14,10 @@ import {
   DollarSign,
   CreditCard,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Printer,
+  FileCheck2,
+  XCircle
 } from 'lucide-react';
 import { PagedList } from '../components/PagedList';
 
@@ -24,6 +27,8 @@ interface BillingViewProps {
   systemConfig: SystemConfig;
   onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
   onSendPrivateAppReminder: (invoice: TuitionInvoice) => Promise<{ stored: number; delivered: number }>;
+  onApproveSlip?: (invoiceId: string) => void;
+  onRejectSlip?: (invoiceId: string, reason: string) => void;
   currentRole?: string;
   onOpenExamPaymentSettings?: () => void;
 }
@@ -34,18 +39,23 @@ export const BillingView: React.FC<BillingViewProps> = ({
   systemConfig,
   onPayInvoice,
   onSendPrivateAppReminder,
+  onApproveSlip,
+  onRejectSlip,
   currentRole,
   onOpenExamPaymentSettings,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [activeInvoice, setActiveInvoice] = useState<TuitionInvoice | null>(invoices[0] || null);
   const [showPromptPayModal, setShowPromptPayModal] = useState(false);
+  const [showPrintDocModal, setShowPrintDocModal] = useState(false);
+  const [rejectReasonInput, setRejectReasonInput] = useState('');
   const [reminderToast, setReminderToast] = useState<string | null>(null);
   const [reminderError, setReminderError] = useState<string | null>(null);
   const [reminderBusy, setReminderBusy] = useState(false);
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filterStatus === 'all') return true;
+    if (filterStatus === 'slip_pending') return inv.slipStatus === 'pending_review';
     return inv.status === filterStatus;
   });
 
@@ -110,17 +120,19 @@ export const BillingView: React.FC<BillingViewProps> = ({
       {/* Filter Tabs */}
       <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          {['all', 'paid', 'pending', 'overdue'].map((st) => (
+          {['all', 'slip_pending', 'paid', 'pending', 'overdue'].map((st) => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer whitespace-nowrap ${
                 filterStatus === st
                   ? 'bg-[var(--color-primary)] text-white shadow-xs'
                   : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
               }`}
             >
-              {st}
+              {st === 'slip_pending'
+                ? `รอตรวจสลิป (${invoices.filter((i) => i.slipStatus === 'pending_review').length})`
+                : st}
             </button>
           ))}
         </div>
@@ -263,12 +275,86 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 </div>
               </div>
 
-              {/* Payment or Paid Status */}
+              {/* Payment / Slip Verification / Paid Status */}
+              {activeInvoice.slipImageUrl && (
+                <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                      <FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />
+                      <span>หลักฐานการโอนจากผู้ปกครอง</span>
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      activeInvoice.slipStatus === 'approved'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                        : activeInvoice.slipStatus === 'rejected'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+                    }`}>
+                      {activeInvoice.slipStatus === 'approved' ? 'อนุมัติแล้ว' : activeInvoice.slipStatus === 'rejected' ? 'ปฏิเสธแล้ว' : 'รอการตรวจสอบ'}
+                    </span>
+                  </div>
+                  <img
+                    src={activeInvoice.slipImageUrl}
+                    alt="Transfer slip"
+                    className="w-full max-h-48 object-contain rounded-lg border border-[var(--color-border)] bg-white"
+                  />
+                  {activeInvoice.slipReferenceNote && (
+                    <p className="text-[11px] text-[var(--color-text-muted)]">หมายเหตุผู้ปกครอง: {activeInvoice.slipReferenceNote}</p>
+                  )}
+                  {activeInvoice.slipStatus === 'pending_review' && activeInvoice.status !== 'paid' && (
+                    <div className="space-y-2 pt-1">
+                      <input
+                        type="text"
+                        value={rejectReasonInput}
+                        onChange={(e) => setRejectReasonInput(e.target.value)}
+                        placeholder="เหตุผลหากปฏิเสธสลิป (เช่น ยอดไม่ตรง/รูปไม่ชัด)"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onApproveSlip) onApproveSlip(activeInvoice.id);
+                            else onPayInvoice(activeInvoice.id, 'promptpay');
+                            setReminderToast(`อนุมัติสลิปและออกใบเสร็จสำหรับ ${activeInvoice.invoiceNumber} แล้ว`);
+                          }}
+                          className="py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+                        >
+                          อนุมัติ &amp; ออกใบเสร็จ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onRejectSlip?.(activeInvoice.id, rejectReasonInput.trim() || 'ภาพหลักฐานไม่ชัดเจน กรุณาอัปโหลดใหม่');
+                            setRejectReasonInput('');
+                            setReminderToast(`ส่งคำขอให้ผู้ปกครองแนบสลิป ${activeInvoice.invoiceNumber} ใหม่แล้ว`);
+                          }}
+                          className="py-2 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>ปฏิเสธสลิป</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeInvoice.status === 'paid' ? (
                 <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 space-y-1.5 text-xs text-emerald-900 dark:text-emerald-200">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Payment Received &amp; Verified</span>
+                  <div className="flex items-center justify-between gap-2 font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Payment Received &amp; Verified</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPrintDocModal(true)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>พิมพ์ใบเสร็จ PDF</span>
+                    </button>
                   </div>
                   <p className="text-[11px]">
                     Method: <span className="uppercase font-mono font-semibold">{activeInvoice.paymentMethod}</span>
@@ -281,13 +367,22 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 pt-2">
+                <div className="space-y-2.5 pt-2">
                   <button
                     onClick={() => setShowPromptPayModal(true)}
                     className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <QrCode className="w-4 h-4" />
                     <span>Pay with Thai PromptPay QR / Bank Transfer</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPrintDocModal(true)}
+                    className="w-full py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>พิมพ์ใบแจ้งหนี้ PDF พร้อม QR พร้อมเพย์</span>
                   </button>
 
                   <button
@@ -356,6 +451,105 @@ export const BillingView: React.FC<BillingViewProps> = ({
               >
                 Confirm Payment
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Printable Invoice / Receipt A4 Modal */}
+      {showPrintDocModal && activeInvoice && activeStudent && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white text-slate-900 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden print:shadow-none print:max-w-none print:w-full">
+            <div className="p-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
+              <span className="text-xs font-bold">
+                {activeInvoice.status === 'paid' ? 'ใบเสร็จรับเงินค่าธรรมเนียมการศึกษา (PDF)' : 'ใบแจ้งหนี้ค่าธรรมเนียมการศึกษา (PDF)'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>พิมพ์ / บันทึก PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintDocModal(false)}
+                  className="px-2 py-1 rounded-lg hover:bg-white/10 text-xs font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="flex items-start justify-between border-b border-slate-300 pb-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">{systemConfig.schoolNameTh}</h2>
+                  <p className="text-[11px] text-slate-600">{systemConfig.schoolNameEn}</p>
+                  <p className="text-[11px] font-bold text-slate-800 mt-2">
+                    {activeInvoice.status === 'paid' ? 'ใบเสร็จรับเงิน (Official Receipt)' : 'ใบแจ้งชำระค่าธรรมเนียมการศึกษา (Tuition Invoice)'}
+                  </p>
+                </div>
+                <div className="text-right font-mono text-[11px] space-y-0.5">
+                  <div>เลขที่ใบแจ้งหนี้: <strong>{activeInvoice.invoiceNumber}</strong></div>
+                  {activeInvoice.receiptNumber && (
+                    <div>เลขที่ใบเสร็จ: <strong>{activeInvoice.receiptNumber}</strong></div>
+                  )}
+                  <div>วันออกเอกสาร: {activeInvoice.issueDate}</div>
+                  <div>กำหนดชำระ: {activeInvoice.dueDate}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div><strong>นักเรียน:</strong> {activeStudent.firstNameTh} {activeStudent.lastNameTh}</div>
+                <div><strong>รหัสนักเรียน:</strong> {activeStudent.studentIdNumber}</div>
+                <div><strong>ระดับชั้น:</strong> {activeStudent.gradeLevel} ({activeStudent.room})</div>
+                <div><strong>ผู้ปกครอง:</strong> {activeStudent.guardianName}</div>
+              </div>
+
+              <table className="w-full border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-800 font-bold">
+                    <th className="border border-slate-300 p-2 text-left">รายการค่าธรรมเนียม</th>
+                    <th className="border border-slate-300 p-2 text-right w-28">จำนวนเงิน (บาท)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeInvoice.items.map((item) => (
+                    <tr key={item.id}>
+                      <td className="border border-slate-300 p-2">{item.title}</td>
+                      <td className="border border-slate-300 p-2 text-right font-mono">{item.amount.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-50 font-bold">
+                    <td className="border border-slate-300 p-2 text-right">รวมทั้งสิ้น</td>
+                    <td className="border border-slate-300 p-2 text-right font-mono text-sm">฿{activeInvoice.totalAmount.toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="grid grid-cols-2 gap-4 pt-3 items-end">
+                <div className="border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+                  <QrCode className="w-16 h-16 text-slate-900 shrink-0" />
+                  <div className="text-[10px] text-slate-700 space-y-0.5">
+                    <p className="font-bold text-slate-900">QR PromptPay พร้อมเพย์</p>
+                    <p>Biller: 0105558992019</p>
+                    <p>Ref: {activeInvoice.invoiceNumber}</p>
+                    <p>สถานะ: {activeInvoice.status === 'paid' ? 'ชำระแล้ว' : 'รอชำระ'}</p>
+                  </div>
+                </div>
+                <div className="text-center space-y-6 text-[11px]">
+                  <p className="text-emerald-700 font-mono font-bold">
+                    [ลายเซ็นดิจิทัลยืนยัน • {activeInvoice.paidAt || new Date().toISOString().split('T')[0]}]
+                  </p>
+                  <div className="border-t border-dashed border-slate-400 pt-1">
+                    <p className="font-bold">เจ้าหน้าที่การเงิน / ผู้รับเงิน</p>
+                    <p className="text-slate-500">{systemConfig.schoolNameTh}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

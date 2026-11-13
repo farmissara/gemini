@@ -27,9 +27,12 @@ import {
 } from '../lib/centralExamBank';
 import {
   CentralExamPack,
+  Course,
+  GradeRecord,
   LearningStrandId,
   QuizQuestion,
   SchoolExamEntitlement,
+  Student,
   UserRole,
 } from '../types';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
@@ -581,8 +584,16 @@ interface CentralExamHubViewProps {
   packs: CentralExamPack[];
   entitlements: SchoolExamEntitlement[];
   schoolQuestions: QuizQuestion[];
+  courses?: Course[];
+  students?: Student[];
+  grades?: GradeRecord[];
   onClaimFreePack: (pack: CentralExamPack) => Promise<void>;
   onPurchasePack: (pack: CentralExamPack, method: 'promptpay' | 'invoice', slipUrl?: string) => Promise<void>;
+  onSyncQuizScoresToGradebook?: (
+    courseId: string,
+    packTitle: string,
+    entries: { studentId: string; quizScore: number }[]
+  ) => void;
   onOpenQuestionBankInEduBattle?: () => void;
   onOpenCoordinationDesk?: () => void;
 }
@@ -593,8 +604,12 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   packs,
   entitlements,
   schoolQuestions,
+  courses = [],
+  students = [],
+  grades = [],
   onClaimFreePack,
   onPurchasePack,
+  onSyncQuizScoresToGradebook,
   onOpenQuestionBankInEduBattle,
   onOpenCoordinationDesk,
 }) => {
@@ -606,6 +621,42 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   const [checkoutPack, setCheckoutPack] = useState<CentralExamPack | null>(null);
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [quizSyncPack, setQuizSyncPack] = useState<CentralExamPack | null>(null);
+  const [quizSyncCourseId, setQuizSyncCourseId] = useState<string>('');
+  const [quizScoreDrafts, setQuizScoreDrafts] = useState<Record<string, number>>({});
+
+  const openQuizSyncModal = (pack: CentralExamPack) => {
+    const firstCourse =
+      courses.find((c) => (c.room && pack.gradeLevel.includes(c.room)) || (c.titleTh && pack.gradeLevel.includes(c.titleTh))) || courses[0];
+    const targetCourseId = firstCourse?.id || '';
+    const initialScores: Record<string, number> = {};
+    const targetStudents = firstCourse?.enrolledStudentIds?.length
+      ? students.filter((s) => firstCourse.enrolledStudentIds.includes(s.id))
+      : students.slice(0, 10);
+    targetStudents.forEach((stu) => {
+      const existing = grades.find(
+        (g) => g.courseId === targetCourseId && g.studentId === stu.id
+      );
+      initialScores[stu.id] = existing?.quizScore ?? 8;
+    });
+    setQuizSyncCourseId(targetCourseId);
+    setQuizScoreDrafts(initialScores);
+    setQuizSyncPack(pack);
+  };
+
+  const handleSelectQuizCourse = (courseId: string) => {
+    setQuizSyncCourseId(courseId);
+    const selectedCourse = courses.find((c) => c.id === courseId);
+    const nextScores: Record<string, number> = {};
+    const targetStudents = selectedCourse?.enrolledStudentIds?.length
+      ? students.filter((s) => selectedCourse.enrolledStudentIds.includes(s.id))
+      : students.slice(0, 10);
+    targetStudents.forEach((stu) => {
+      const existing = grades.find((g) => g.courseId === courseId && g.studentId === stu.id);
+      nextScores[stu.id] = existing?.quizScore ?? 8;
+    });
+    setQuizScoreDrafts(nextScores);
+  };
 
   const publishedPacks = useMemo(
     () => packs.filter((p) => p.status === 'published'),
@@ -837,14 +888,25 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                 </button>
 
                 {entitlement ? (
-                  <button
-                    type="button"
-                    onClick={onOpenQuestionBankInEduBattle}
-                    className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>เปิดใช้ในคลังข้อสอบ</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                    {courses.length > 0 && onSyncQuizScoresToGradebook && (
+                      <button
+                        type="button"
+                        onClick={() => openQuizSyncModal(pack)}
+                        className="px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+                      >
+                        ส่ง Quiz เข้าสมุดคะแนน
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={onOpenQuestionBankInEduBattle}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>เปิดใช้ในคลังข้อสอบ</span>
+                    </button>
+                  </div>
                 ) : canSchoolAdminAcquire ? (
                   isFree ? (
                     <button
@@ -948,6 +1010,120 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
             }
           }}
         />
+      )}
+
+      {quizSyncPack && (
+        <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-bold text-[var(--color-primary-text)]">
+                  ส่งคะแนนทดสอบย่อย (Quiz /10) เข้าสมุดคะแนน
+                </div>
+                <h3 className="text-sm font-extrabold text-[var(--color-text-title)]">
+                  {quizSyncPack.titleTh}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuizSyncPack(null)}
+                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
+              <div>
+                <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                  เลือกรายวิชาปลายทางในสมุดคะแนน
+                </label>
+                <select
+                  value={quizSyncCourseId}
+                  onChange={(e) => handleSelectQuizCourse(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} · {c.titleTh} ({c.room || c.semester})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-body)]">
+                    <tr>
+                      <th className="py-2 px-3">รหัส</th>
+                      <th className="py-2 px-3">ชื่อ-นามสกุล</th>
+                      <th className="py-2 px-3 text-right">คะแนน Quiz (/10)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-border)]">
+                    {Object.keys(quizScoreDrafts).map((stuId) => {
+                      const stu = students.find((s) => s.id === stuId);
+                      if (!stu) return null;
+                      return (
+                        <tr key={stu.id}>
+                          <td className="py-2 px-3 font-mono text-[var(--color-text-muted)]">
+                            {stu.studentIdNumber}
+                          </td>
+                          <td className="py-2 px-3 font-medium text-[var(--color-text-title)]">
+                            {stu.firstNameTh} {stu.lastNameTh}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.5}
+                              value={quizScoreDrafts[stu.id] ?? 0}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(10, Number(e.target.value) || 0));
+                                setQuizScoreDrafts((prev) => ({ ...prev, [stu.id]: val }));
+                              }}
+                              className="w-20 px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-right font-mono font-bold tabular-nums"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[var(--color-border)] flex items-center justify-end gap-2 bg-[var(--color-card-subtle)]">
+              <button
+                type="button"
+                onClick={() => setQuizSyncPack(null)}
+                className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={!quizSyncCourseId || Object.keys(quizScoreDrafts).length === 0}
+                onClick={() => {
+                  if (!quizSyncPack || !quizSyncCourseId || !onSyncQuizScoresToGradebook) return;
+                  const entries = Object.entries(quizScoreDrafts).map(([studentId, quizScore]) => ({
+                    studentId,
+                    quizScore,
+                  }));
+                  onSyncQuizScoresToGradebook(quizSyncCourseId, quizSyncPack.titleTh, entries);
+                  setToastMessage(
+                    `บันทึกคะแนน Quiz จาก "${quizSyncPack.titleTh}" เข้าสมุดคะแนนจำนวน ${entries.length} คนเรียบร้อยแล้ว`
+                  );
+                  setQuizSyncPack(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
+              >
+                บันทึกคะแนนเก็บเข้าสมุดคะแนน
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

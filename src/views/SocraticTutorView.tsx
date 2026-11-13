@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BrainCircuit, 
   Sparkles, 
@@ -20,6 +20,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { 
+  AdaptivePracticeTopic,
   SocraticChatMessage, 
   TeacherStruggleInsight, 
   AppLanguage, 
@@ -35,17 +36,23 @@ interface SocraticTutorViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  initialFocusTopic?: AdaptivePracticeTopic | null;
+  onClearFocusTopic?: () => void;
 }
 
 export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   lang = 'th',
   currentRole = 'student',
-  currentUserName = 'ด.ช. ภูมิใจ รักเรียน'
+  currentUserName = 'ด.ช. ภูมิใจ รักเรียน',
+  initialFocusTopic = null,
+  onClearFocusTopic,
 }) => {
   const canViewTeacherInsights = currentRole === 'teacher' || currentRole === 'admin';
   const [activeTab, setActiveTab] = useState<'tutor_chat' | 'teacher_insights'>(
-    canViewTeacherInsights
-      ? 'teacher_insights' 
+    initialFocusTopic
+      ? 'tutor_chat'
+      : canViewTeacherInsights
+      ? 'teacher_insights'
       : 'tutor_chat'
   );
 
@@ -59,6 +66,27 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   const [insights, setInsights] = useState<TeacherStruggleInsight[]>(INITIAL_TEACHER_INSIGHTS);
   const [selectedInsight, setSelectedInsight] = useState<TeacherStruggleInsight | null>(INITIAL_TEACHER_INSIGHTS[0]);
   const [generatedTalkingPoints, setGeneratedTalkingPoints] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialFocusTopic) return;
+    setActiveTab('tutor_chat');
+    const scoreText =
+      typeof initialFocusTopic.score === 'number'
+        ? ` (คะแนนปัจจุบัน ${initialFocusTopic.score}/100)`
+        : '';
+    const focusSubject = initialFocusTopic.subjectName || initialFocusTopic.subject;
+    const focusMsg: SocraticChatMessage = {
+      id: `focus-${Date.now()}`,
+      sender: 'socratic_tutor',
+      textTh: `ยินดีต้อนรับสู่โหมดซ่อมเสริมเจาะจงสำหรับวิชา "${focusSubject}"${scoreText}${initialFocusTopic.studentName ? ` · นักเรียน: ${initialFocusTopic.studentName}` : ''}`,
+      timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+      scaffoldingHint: 'ระบุหัวข้อหรือบทที่รู้สึกสับสน แล้วมาช่วยกันไล่ทีละขั้นตอนโดยไม่ข้ามขั้นครับ',
+      followUpPrompt: `ในวิชา ${focusSubject} เรื่องใดที่อยากทบทวนก่อนเป็นอันดับแรก?`,
+    };
+    setMessages((prev) => [...prev, focusMsg]);
+    setInputText(`ขอทบทวนเนื้อหาพื้นฐานวิชา ${focusSubject} เพื่อเตรียมซ่อมเสริม`);
+    onClearFocusTopic?.();
+  }, [initialFocusTopic]);
 
   // Send message in chat
   const handleSendMessage = (textToSend?: string) => {

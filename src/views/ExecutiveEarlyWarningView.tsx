@@ -29,7 +29,6 @@ import {
   Info
 } from 'lucide-react';
 import { 
-  AtRiskStudentForecast, 
   AppLanguage, 
   UserRole,
   Student, 
@@ -38,10 +37,14 @@ import {
   SdqAssessment, 
   BehaviorRecord,
   Course,
-  GradingSystem
+  GradingSystem,
+  InfirmaryVisit,
+  HomeworkSubmission,
+  RiskInterventionRecord
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { calculateGrade } from '../lib/schoolSettings';
+import { addSchoolIntervention, getSchoolInterventions, updateSchoolInterventionStatus } from '../lib/campusDataStore';
 
 export interface EnrichedStudentRiskProfile {
   studentId: string;
@@ -60,12 +63,14 @@ export interface EnrichedStudentRiskProfile {
   homeworkCompletionRate: number | null;
   demeritPoints: number;
   demeritCount: number;
+  infirmaryVisitsCount: number;
   sdqRiskStatus: 'normal' | 'risk' | 'problem' | null;
   sdqTotalScore: number | null;
+  riskScore: number; // 0-100 unified 4D risk score
   
   // Evaluation
   riskLevel: 'high' | 'moderate' | 'low' | 'unknown';
-  riskFactors: ('attendance' | 'academic' | 'behavior' | 'sdq')[];
+  riskFactors: ('attendance' | 'academic' | 'behavior' | 'sdq' | 'infirmary')[];
   predictedOutcome: string;
   primaryAlertReasonTh: string;
   primaryAlertReasonEn: string;
@@ -88,31 +93,39 @@ export interface EnrichedStudentRiskProfile {
 }
 
 interface ExecutiveEarlyWarningViewProps {
+  schoolId?: string;
   students?: Student[];
   attendance?: AttendanceRecord[];
   grades?: GradeRecord[];
   courses?: Course[];
   sdqAssessments?: SdqAssessment[];
   behaviorRecords?: BehaviorRecord[];
+  infirmaryVisits?: InfirmaryVisit[];
+  homeworkSubmissions?: HomeworkSubmission[];
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
   gradingSystem?: GradingSystem;
   onNavigateToTab?: (tab: string) => void;
+  onLogIntervention?: (studentName: string, actionTitle: string) => void;
 }
 
 export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps> = ({
+  schoolId = 'default-school',
   students = [],
   attendance = [],
   grades = [],
   courses = [],
   sdqAssessments = [],
   behaviorRecords = [],
+  infirmaryVisits = [],
+  homeworkSubmissions = [],
   lang = 'th',
   currentRole = 'super_admin',
   currentUserName = 'ผู้อำนวยการสถานศึกษา',
   gradingSystem = 'thai',
-  onNavigateToTab
+  onNavigateToTab,
+  onLogIntervention
 }) => {
   // Threshold Configurations
   const [absenceThresholdPct, setAbsenceThresholdPct] = useState<number>(20); // 20% absence => <80% attendance (OBEC standard)
@@ -133,6 +146,10 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
   const [activeDetailStudent, setActiveDetailStudent] = useState<EnrichedStudentRiskProfile | null>(null);
   const [officialNoticeStudent, setOfficialNoticeStudent] = useState<EnrichedStudentRiskProfile | null>(null);
   const [interventionNoteInput, setInterventionNoteInput] = useState('');
+  const [interventionTypeInput, setInterventionTypeInput] = useState<RiskInterventionRecord['interventionType']>('follow_up_14d');
+  const [savedInterventions, setSavedInterventions] = useState<RiskInterventionRecord[]>(() =>
+    getSchoolInterventions(schoolId)
+  );
 
   // Course map for quick name resolution
   const courseMap = useMemo(() => {
@@ -149,7 +166,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
     const attendanceMinRate = 100 - absenceThresholdPct;
 
-    return students.map((stu) => {
+    return students.map((stu): EnrichedStudentRiskProfile => {
       // 1. Attendance Analysis
       const attendanceByDate = new Map<string, AttendanceRecord>();
       attendance
@@ -198,7 +215,10 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         });
       }
 
-      const homeworkRate: number | null = null;
+      const stuHomework = homeworkSubmissions.filter(h => h.studentId === stu.id);
+      const homeworkRate: number | null = stuHomework.length > 0
+        ? Math.round((stuHomework.filter(h => h.status === 'submitted' || h.status === 'graded').length / stuHomework.length) * 100)
+        : null;
 
       // 3. Behavior Infractions & Demerits Analysis
       const stuBehaviors = behaviorRecords.filter(b => b.studentId === stu.id);
@@ -214,7 +234,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         }
       });
 
-      // 4. SDQ Psychological Screening
+      // 4. SDQ Psychological Screening + Infirmary Visit Frequency
       const stuSdq = sdqAssessments.find(s => s.studentId === stu.id);
       let sdqRiskStatus: 'normal' | 'risk' | 'problem' | null = null;
       let sdqTotalScore: number | null = null;
@@ -224,12 +244,32 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         sdqTotalScore = stuSdq.totalDifficultiesScore;
       }
 
-      // 5. Evaluate Multi-Factor Risks
-      const riskFactors: ('attendance' | 'academic' | 'behavior' | 'sdq')[] = [];
-      if (attendanceRate !== null && attendanceRate < attendanceMinRate) riskFactors.push('attendance');
-      if (stu.gpa < gpaThreshold || (avgScore !== null && avgScore < 50) || (failingCoursesCount !== null && failingCoursesCount > 0)) riskFactors.push('academic');
-      if (demeritPoints >= demeritThreshold) riskFactors.push('behavior');
-      if (sdqRiskStatus !== null && sdqRiskStatus !== 'normal') riskFactors.push('sdq');
+      const stuInfirmaryVisits = infirmaryVisits.filter(v => v.studentId === stu.id).length;
+
+      // 5. Evaluate 4D Multi-Factor Risks + Unified 0-100 Score
+      const riskFactors: ('attendance' | 'academic' | 'behavior' | 'sdq' | 'infirmary')[] = [];
+      let riskScore = 0;
+      if (attendanceRate !== null && attendanceRate < attendanceMinRate) {
+        riskFactors.push('attendance');
+        riskScore += Math.min(35, Math.max(15, (attendanceMinRate - attendanceRate) * 2 + 15));
+      }
+      if (stu.gpa < gpaThreshold || (avgScore !== null && avgScore < 50) || (failingCoursesCount !== null && failingCoursesCount > 0)) {
+        riskFactors.push('academic');
+        riskScore += Math.min(30, 12 + (failingCoursesCount || 1) * 8);
+      }
+      if (demeritPoints >= demeritThreshold) {
+        riskFactors.push('behavior');
+        riskScore += Math.min(20, 8 + demeritPoints);
+      }
+      if (sdqRiskStatus !== null && sdqRiskStatus !== 'normal') {
+        riskFactors.push('sdq');
+        riskScore += sdqRiskStatus === 'problem' ? 20 : 12;
+      }
+      if (stuInfirmaryVisits >= 3) {
+        riskFactors.push('infirmary');
+        riskScore += Math.min(15, stuInfirmaryVisits * 4);
+      }
+      riskScore = Math.min(100, Math.round(riskScore));
 
       // Risk Level Determination
       let riskLevel: 'high' | 'moderate' | 'low' | 'unknown' = 'low';
@@ -287,8 +327,10 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         homeworkCompletionRate: homeworkRate,
         demeritPoints,
         demeritCount,
+        infirmaryVisitsCount: stuInfirmaryVisits,
         sdqRiskStatus,
         sdqTotalScore,
+        riskScore,
         riskLevel,
         riskFactors,
         predictedOutcome: outcome,
@@ -301,35 +343,35 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
           {
             id: `act-${stu.id}-1`,
             actionType: 'line_parent_alert',
-            titleTh: 'บันทึกการติดต่อผู้ปกครอง (ดำเนินการเอง)',
-            titleEn: 'Record parent contact (manual)',
+            titleTh: 'นัดพบผู้ปกครอง / ติดต่อครอบครัว',
+            titleEn: 'Parent Meeting / Contact',
             status: 'pending'
           },
           {
             id: `act-${stu.id}-2`,
             actionType: 'counselor_meeting',
-            titleTh: 'บันทึกการประสานครูแนะแนว (ดำเนินการเอง)',
-            titleEn: 'Record counselor referral (manual)',
+            titleTh: 'แผนเยี่ยมบ้าน & แนะแนว',
+            titleEn: 'Home Visit & Counselor Plan',
             status: 'pending'
           },
           {
             id: `act-${stu.id}-3`,
             actionType: 'remedial_course',
-            titleTh: 'บันทึกแผนซ่อมเสริม (ดำเนินการเอง)',
-            titleEn: 'Record remedial plan (manual)',
+            titleTh: 'ติวซ่อมเสริม & ติดตาม 14 วัน',
+            titleEn: 'Remedial & 14-Day Follow-up',
             status: 'pending'
           },
           {
             id: `act-${stu.id}-4`,
             actionType: 'official_notice_letter',
-            titleTh: 'เปิดร่างหนังสือติดตามเวลาเรียน (ต้องตรวจสอบ)',
+            titleTh: 'ร่างหนังสือติดตามเวลาเรียน (มส.)',
             titleEn: 'Print Official Notice Letter (มส.)',
             status: 'pending'
           }
         ]
       };
-    });
-  }, [students, attendance, grades, courses, sdqAssessments, behaviorRecords, absenceThresholdPct, gpaThreshold, demeritThreshold, courseMap, lang, gradingSystem]);
+    }).sort((a, b) => b.riskScore - a.riskScore);
+  }, [students, attendance, grades, courses, sdqAssessments, behaviorRecords, infirmaryVisits, homeworkSubmissions, absenceThresholdPct, gpaThreshold, demeritThreshold, courseMap, lang, gradingSystem]);
 
   // Profiles State
   const [profiles, setProfiles] = useState<EnrichedStudentRiskProfile[]>(computedProfiles);
@@ -437,8 +479,25 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       return;
     }
 
-    const confirmation = `คุณได้ดำเนินการ "${action.titleTh}" ด้วยตนเองแล้วหรือไม่? ระบบนี้ยังไม่ส่ง LINE หรือบันทึกข้อมูลถาวร`;
-    if (!window.confirm(confirmation)) return;
+    const mappedType: RiskInterventionRecord['interventionType'] =
+      actionType === 'line_parent_alert'
+        ? 'parent_meeting'
+        : actionType === 'counselor_meeting'
+          ? 'home_visit'
+          : 'follow_up_14d';
+
+    const newLog = addSchoolIntervention(schoolId, {
+      studentId,
+      studentName,
+      interventionType: mappedType,
+      titleTh: action.titleTh,
+      notes: customNote?.trim() || `เปิดบันทึกติดตามเคส (${action.titleTh})`,
+      ownerName: currentUserName,
+      followUpDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      status: 'in_progress',
+    });
+    setSavedInterventions((prev) => [newLog, ...prev]);
+    onLogIntervention?.(studentName, action.titleTh);
 
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
@@ -448,7 +507,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         ? {
             ...item,
             status: 'completed',
-            sentAt: `${lang === 'th' ? 'บันทึกในหน้าจอเมื่อ' : 'Recorded in this session at'} ${nowTime}`,
+            sentAt: `บันทึกเมื่อ ${nowTime}`,
             note: customNote || item.note,
           }
         : item),
@@ -460,7 +519,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       setActiveDetailStudent(prev => prev ? updateAction(prev) : null);
     }
 
-    setNotificationToast(`บันทึกสถานะของ ${studentName} ในหน้าจอนี้แล้ว (ไม่มีการส่งแจ้งเตือนและข้อมูลจะไม่คงอยู่หลังรีเฟรช)`);
+    setNotificationToast(`บันทึกเคสช่วยเหลือของ ${studentName} (${action.titleTh}) ลงแฟ้มโรงเรียนเรียบร้อย`);
     setTimeout(() => setNotificationToast(null), 3500);
   };
 
@@ -907,20 +966,28 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                       </div>
                     </div>
 
-                    {/* 4-Metric Quadrant Pills */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                    {/* 4D Risk Quadrant + Infirmary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                      {/* Unified Risk Score */}
+                      <div className="px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] tabular-nums">
+                        <span className="text-[9px] font-normal text-[var(--color-text-muted)]">Risk Score 4 มิติ</span>
+                        <span className={stu.riskScore >= 50 ? 'text-rose-600 dark:text-rose-400' : stu.riskScore >= 25 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-300'}>
+                          {stu.riskScore} / 100
+                        </span>
+                      </div>
+
                       {/* Attendance % */}
-                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center ${
+                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center tabular-nums ${
                         stu.attendanceRate !== null && stu.attendanceRate < 100 - absenceThresholdPct
                           ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800' 
                           : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)]'
                       }`}>
                         <span className="text-[9px] font-normal text-[var(--color-text-muted)]">เวลาเรียน</span>
-                        <span>{stu.attendanceRate === null ? 'ไม่มีข้อมูล' : `${stu.attendanceRate}% จากรายการที่บันทึก ${stu.attendanceRate < 100 - absenceThresholdPct ? '(ต่ำกว่าเกณฑ์)' : ''}`}</span>
+                        <span>{stu.attendanceRate === null ? 'ไม่มีข้อมูล' : `${stu.attendanceRate}%`}</span>
                       </div>
 
                       {/* Academic GPA */}
-                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center ${
+                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center tabular-nums ${
                         stu.gpa < 2.0 
                           ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800' 
                           : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)]'
@@ -930,25 +997,27 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                       </div>
 
                       {/* Behavior Demerits */}
-                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center ${
+                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center tabular-nums ${
                         stu.demeritPoints >= 10
                           ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
                           : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)]'
                       }`}>
-                        <span className="text-[9px] font-normal text-[var(--color-text-muted)]">ตัดพฤติกรรม</span>
-                        <span>{stu.demeritCount > 0 ? `-${stu.demeritPoints} แต้ม` : 'ไม่มีรายการตัดคะแนน'}</span>
+                        <span className="text-[9px] font-normal text-[var(--color-text-muted)]">ความประพฤติ</span>
+                        <span>{stu.demeritCount > 0 ? `-${stu.demeritPoints} แต้ม` : 'ปกติ'}</span>
                       </div>
 
-                      {/* SDQ Health */}
-                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center ${
-                        stu.sdqRiskStatus === 'problem'
+                      {/* SDQ & Infirmary */}
+                      <div className={`px-2.5 py-1 rounded-xl font-bold flex flex-col justify-center tabular-nums ${
+                        stu.sdqRiskStatus === 'problem' || stu.infirmaryVisitsCount >= 3
                           ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
                           : stu.sdqRiskStatus === 'risk'
                           ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
                           : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)]'
                       }`}>
-                        <span className="text-[9px] font-normal text-[var(--color-text-muted)]">คัดกรอง SDQ</span>
-                        <span>{stu.sdqRiskStatus === 'problem' ? 'มีปัญหา' : stu.sdqRiskStatus === 'risk' ? 'เสี่ยง' : stu.sdqRiskStatus === 'normal' ? 'ปกติ' : 'ไม่มีข้อมูล'}</span>
+                        <span className="text-[9px] font-normal text-[var(--color-text-muted)]">SDQ / ห้องพยาบาล</span>
+                        <span>
+                          {stu.sdqRiskStatus === 'problem' ? 'SDQ มีปัญหา' : stu.sdqRiskStatus === 'risk' ? 'SDQ เสี่ยง' : 'ปกติ'} • ป่วย {stu.infirmaryVisitsCount} ครั้ง
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1013,6 +1082,60 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               )}
             />
           )}
+
+          {/* Cohort & Room Comparison + Persistent Intervention Log */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-2">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 space-y-2">
+              <h3 className="text-xs font-bold text-[var(--color-text-title)]">เปรียบเทียบความเสี่ยง &amp; GPA รายห้อง (Cohort Comparison)</h3>
+              <div className="space-y-1.5 max-h-44 overflow-y-auto text-xs">
+                {roomRiskBreakdown.map((item) => {
+                  const roomProfiles = profiles.filter((p) => (p.studentRoom || 'ทั่วไป') === item.room);
+                  const avgGpa = roomProfiles.length > 0 ? (roomProfiles.reduce((s, p) => s + p.gpa, 0) / roomProfiles.length).toFixed(2) : '0.00';
+                  return (
+                    <div key={item.room} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] tabular-nums">
+                      <span className="font-semibold text-[var(--color-text-title)]">{item.room} ({item.total} คน)</span>
+                      <div className="flex items-center gap-3 text-[11px]">
+                        <span>GPA {avgGpa}</span>
+                        <span className={item.riskRate >= 30 ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-[var(--color-text-muted)]'}>
+                          เสี่ยง {item.high + item.moderate} ({item.riskRate}%)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 space-y-2">
+              <h3 className="text-xs font-bold text-[var(--color-text-title)]">ประวัติเคสช่วยเหลือและเยี่ยมบ้าน ({savedInterventions.length})</h3>
+              {savedInterventions.length === 0 ? (
+                <p className="text-xs text-[var(--color-text-muted)] py-4 text-center">ยังไม่มีบันทึกการติดตามเคส กดปุ่มมาตรการช่วยเหลือหรือดูแฟ้มวิเคราะห์เพื่อเริ่มต้นติดตามผล 14 วัน</p>
+              ) : (
+                <div className="space-y-1.5 max-h-44 overflow-y-auto text-xs">
+                  {savedInterventions.slice(0, 8).map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[var(--color-text-title)] truncate">{item.studentName} — {item.titleTh}</div>
+                        <div className="text-[10px] text-[var(--color-text-muted)] truncate">{item.notes} • นัดติดตาม {item.followUpDate}</div>
+                      </div>
+                      <select
+                        value={item.status}
+                        onChange={(e) => {
+                          const next = updateSchoolInterventionStatus(schoolId, item.id, e.target.value as RiskInterventionRecord['status']);
+                          setSavedInterventions(next);
+                        }}
+                        className="text-[10px] font-semibold px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] shrink-0"
+                      >
+                        <option value="planned">วางแผน</option>
+                        <option value="in_progress">ติดตามผล</option>
+                        <option value="completed">ปิดเคส</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1150,8 +1273,56 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               <div className="p-3.5 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5">
                 <h4 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  แผนปฏิบัติการช่วยเหลือรายบุคคล (Individual Action Plan)
+                  แผนปฏิบัติการช่วยเหลือรายบุคคล &amp; บันทึกเยี่ยมบ้าน
                 </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <select
+                    value={interventionTypeInput}
+                    onChange={(e) => setInterventionTypeInput(e.target.value as RiskInterventionRecord['interventionType'])}
+                    className="px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                  >
+                    <option value="follow_up_14d">ติดตามผล 14 วัน</option>
+                    <option value="home_visit">บันทึกเยี่ยมบ้าน</option>
+                    <option value="parent_meeting">นัดพบผู้ปกครอง</option>
+                    <option value="remedial_plan">แผนซ่อมเสริมรายวิชา</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={interventionNoteInput}
+                    onChange={(e) => setInterventionNoteInput(e.target.value)}
+                    placeholder="ระบุรายละเอียดการช่วยเหลือ/นัดหมาย..."
+                    className="sm:col-span-2 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const labels: Record<RiskInterventionRecord['interventionType'], string> = {
+                      follow_up_14d: 'ติดตามผลต่อเนื่อง 14 วัน',
+                      home_visit: 'แผนเยี่ยมบ้านนักเรียน',
+                      parent_meeting: 'นัดพบผู้ปกครองที่โรงเรียน',
+                      remedial_plan: 'แผนติวซ่อมเสริมรายวิชา',
+                    };
+                    const created = addSchoolIntervention(schoolId, {
+                      studentId: activeDetailStudent.studentId,
+                      studentName: activeDetailStudent.studentName,
+                      interventionType: interventionTypeInput,
+                      titleTh: labels[interventionTypeInput],
+                      notes: interventionNoteInput.trim() || 'เปิดเคสติดตามโดยครูที่ปรึกษา',
+                      ownerName: currentUserName,
+                      followUpDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+                      status: 'in_progress',
+                    });
+                    setSavedInterventions((prev) => [created, ...prev]);
+                    onLogIntervention?.(activeDetailStudent.studentName, labels[interventionTypeInput]);
+                    setInterventionNoteInput('');
+                    setNotificationToast(`บันทึก ${labels[interventionTypeInput]} ของ ${activeDetailStudent.studentName} แล้ว`);
+                    setTimeout(() => setNotificationToast(null), 3000);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
+                >
+                  บันทึกเคสติดตามลงแฟ้มนักเรียน
+                </button>
                 
                 <div className="space-y-2">
                   {activeDetailStudent.earlyInterventionActions.map((act) => (
@@ -1162,7 +1333,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                       <div>
                         <p className="font-bold text-[var(--color-text-title)]">{act.titleTh}</p>
                         <p className="text-[10px] text-[var(--color-text-muted)]">
-                          สถานะ: {act.status === 'completed' ? `✓ ${act.sentAt || 'บันทึกแล้วในหน้าจอนี้'}` : '⏳ รอดำเนินการ'}
+                          สถานะ: {act.status === 'completed' ? `✓ ${act.sentAt || 'บันทึกแล้ว'}` : '⏳ รอดำเนินการ'}
                         </p>
                       </div>
 
@@ -1172,7 +1343,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                         disabled={act.status === 'completed'}
                         className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer disabled:opacity-60 disabled:cursor-default ${
                           act.status === 'completed'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
                             : 'bg-[var(--color-primary)] text-white hover:opacity-90'
                         }`}
                       >

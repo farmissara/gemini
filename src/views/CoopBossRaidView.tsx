@@ -22,12 +22,14 @@ import {
   ZoomOut
 } from 'lucide-react';
 import { 
+  AppLanguage, 
+  AuthUser,
   BossRaidConfig, 
+  PortfolioItem,
+  QuizQuestion,
   RaidParty, 
   RaidPartyMember, 
-  AppLanguage, 
   UserRole,
-  QuizQuestion 
 } from '../types';
 import { 
   INITIAL_BOSS_RAID_CONFIG, 
@@ -41,6 +43,9 @@ interface CoopBossRaidViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  schoolId?: string;
+  currentUser?: AuthUser | null;
+  onAwardPortfolioItem?: (item: PortfolioItem) => void;
   onExit?: () => void;
 }
 
@@ -49,8 +54,12 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   lang = 'th',
   currentRole = 'student',
   currentUserName = 'นักเรียน',
+  schoolId,
+  currentUser,
+  onAwardPortfolioItem,
   onExit
 }) => {
+  const [savedToPortfolio, setSavedToPortfolio] = useState(false);
   const canManageRaid = currentRole === 'teacher' || currentRole === 'admin';
   const [bossConfig, setBossConfig] = useState<BossRaidConfig>(INITIAL_BOSS_RAID_CONFIG);
   const [parties, setParties] = useState<RaidParty[]>(INITIAL_RAID_PARTIES);
@@ -655,9 +664,39 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               📦 ปลดล็อกหีบสมบัติ: "การ์ดยกเว้นการบ้านประจำสัปดาห์"
             </div>
 
+            {onAwardPortfolioItem && (
+              <button
+                type="button"
+                disabled={savedToPortfolio}
+                onClick={() => {
+                  onAwardPortfolioItem({
+                    id: `port-boss-${Date.now()}`,
+                    schoolId,
+                    ownerId: currentUser?.studentRecordId || currentUser?.id || 'stu-boss-winner',
+                    ownerRole: currentRole === 'teacher' || currentRole === 'admin' ? 'teacher' : 'student',
+                    ownerName: currentUser?.fullNameTh || currentUserName,
+                    title: `เกียรติบัตรผู้พิชิต Co-op Boss Raid: ${bossConfig.bossNameTh}`,
+                    category: 'competition',
+                    year: String(new Date().getFullYear() + 543),
+                    description: `ร่วมมือกับทีมพิชิตโจทย์วิชา ${bossConfig.subject} (${bossConfig.topicTh}) สำเร็จ`,
+                    skills: [bossConfig.subject, 'Teamwork', 'Problem Solving'],
+                    certifiedBySchool: true,
+                    scoreBonus: 15,
+                  });
+                  setSavedToPortfolio(true);
+                }}
+                className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-900 disabled:opacity-75 text-white font-bold text-xs shadow-sm transition cursor-pointer"
+              >
+                {savedToPortfolio ? '✓ บันทึกเกียรติบัตรลง Portfolio แล้ว' : 'บันทึกเกียรติบัตรลง Digital Portfolio'}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={handleRestartBoss}
+              onClick={() => {
+                setSavedToPortfolio(false);
+                handleRestartBoss();
+              }}
               className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-sm shadow-md transition cursor-pointer"
             >
               {lang === 'th' ? 'รับรางวัลและเริ่มรอบใหม่' : 'Claim Loot & Continue'}

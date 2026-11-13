@@ -1,6 +1,16 @@
-import React, { useState, useRef } from 'react';
-import { Student, Course, GradeRecord, SystemConfig } from '../types';
+import React, { useState } from 'react';
+import {
+  AdaptivePracticeTopic,
+  AttendanceRecord,
+  Course,
+  GradeRecord,
+  PeriodAttendanceRecord,
+  Student,
+  SystemConfig,
+  TimetableSlot,
+} from '../types';
 import { calculateGrade, formatSemesterLabel } from '../lib/schoolSettings';
+import { calculateStudentCourseEligibility } from '../lib/examEligibility';
 import { 
   Award, 
   FileText, 
@@ -15,7 +25,8 @@ import {
   BookOpen,
   UserCheck,
   CheckCircle2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertTriangle
 } from 'lucide-react';
 
 interface GradebookViewProps {
@@ -25,6 +36,10 @@ interface GradebookViewProps {
   systemConfig: SystemConfig;
   onUpdateGrade: (gradeId: string, updates: Partial<GradeRecord>) => void;
   onOpenReportCard: (student: Student) => void;
+  timetableSlots?: TimetableSlot[];
+  attendance?: AttendanceRecord[];
+  periodAttendance?: PeriodAttendanceRecord[];
+  onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
 }
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
@@ -34,6 +49,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   systemConfig,
   onUpdateGrade,
   onOpenReportCard,
+  timetableSlots = [],
+  attendance = [],
+  periodAttendance = [],
+  onPracticeInAi,
 }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
@@ -284,6 +303,115 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     link.remove();
   };
 
+  // One-Click Official Thai Exports: DMC & SchoolMIS Templates
+  const handleExportDmcCsv = () => {
+    const headers = [
+      'รหัสสถานศึกษา',
+      'เลขประจำตัวประชาชน (13 หลัก)',
+      'รหัสประจำตัวนักเรียน',
+      'คำนำหน้า',
+      'ชื่อ',
+      'นามสกุล',
+      'เพศ',
+      'ระดับชั้น',
+      'ห้องเรียน',
+      'GPAX',
+      'เวลาเรียนร้อยละ',
+      'สถานะนักเรียน',
+    ];
+    const rows = students.map((s, idx) => {
+      const eligibility = calculateStudentCourseEligibility({
+        student: s,
+        timetableSlots,
+        attendance,
+        periodAttendance,
+      });
+      return [
+        `"${s.schoolId || ''}"`,
+        `"${s.nationalId || `1100${idx.toString().padStart(9, '0')}`}"`,
+        `"${s.studentIdNumber}"`,
+        `"${s.gender === 'female' ? 'เด็กหญิง' : 'เด็กชาย'}"`,
+        `"${s.firstNameTh}"`,
+        `"${s.lastNameTh}"`,
+        `"${s.gender === 'female' ? 'หญิง' : 'ชาย'}"`,
+        `"${s.gradeLevel}"`,
+        `"${s.room}"`,
+        s.gpa.toFixed(2),
+        eligibility.attendancePercent,
+        `"${s.status === 'active' ? 'กำลังศึกษา' : s.status}"`,
+      ];
+    });
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `DMC_สพฐ_${systemConfig.academicYear}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportSchoolMisCsv = () => {
+    const course = selectedCourse || courses[0];
+    if (!course) return;
+    const targetGrades = grades.filter((g) => g.courseId === course.id);
+    const headers = [
+      'รหัสวิชา',
+      'ชื่อรายวิชา',
+      'ภาคเรียน',
+      'ปีการศึกษา',
+      'รหัสนักเรียน',
+      'ชื่อ-นามสกุล',
+      'ห้องเรียน',
+      'มาเรียน (%)',
+      'สถานะสิทธิ์สอบ',
+      'คะแนนระหว่างภาค (60)',
+      'คะแนนปลายภาค (40)',
+      'คะแนนรวม (100)',
+      'ผลการเรียน',
+    ];
+    const rows = targetGrades.map((g) => {
+      const stu = students.find((s) => s.id === g.studentId);
+      const eligibility = stu
+        ? calculateStudentCourseEligibility({
+            student: stu,
+            course,
+            timetableSlots,
+            attendance,
+            periodAttendance,
+          })
+        : { attendancePercent: 95, isAtRiskMs: false };
+      const disp = getGradeDisplay(g);
+      return [
+        `"${course.code}"`,
+        `"${course.titleTh}"`,
+        `"${course.semester || systemConfig.currentSemester}"`,
+        `"${course.academicYear || systemConfig.academicYear}"`,
+        `"${stu?.studentIdNumber || ''}"`,
+        `"${stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : ''}"`,
+        `"${stu?.room || ''}"`,
+        eligibility.attendancePercent,
+        `"${eligibility.isAtRiskMs ? 'มส. (เวลาเรียนไม่ถึง 80%)' : 'มีสิทธิ์สอบ'}"`,
+        g.midtermScore + g.assignmentScore + g.quizScore,
+        g.finalScore,
+        g.totalScore,
+        `"${eligibility.isAtRiskMs ? 'มส.' : disp.letter}"`,
+      ];
+    });
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `SchoolMIS_${course.code}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -299,14 +427,34 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-              <span>ส่งออก ปพ.5 (CSV)</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+                <span>ส่งออก ปพ.5</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportDmcCsv}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                title="ส่งออกข้อมูลนักเรียนรูปแบบ DMC สพฐ."
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                <span>DMC</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportSchoolMisCsv}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                title="ส่งออกผลสัมฤทธิ์รายวิชารูปแบบ SchoolMIS"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>SchoolMIS</span>
+              </button>
+            </>
           )}
 
           {activeTab === 'pp3_online' && (
@@ -460,6 +608,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 <tr>
                   <th className="py-3 px-3">Student</th>
                   <th className="py-3 px-3">Room</th>
+                  <th className="py-3 px-3 text-center">เวลาเรียน (80%)</th>
                   <th className="py-3 px-3 text-center">Midterm (30)</th>
                   <th className="py-3 px-3 text-center">Final (40)</th>
                   <th className="py-3 px-3 text-center">Homework (20)</th>
@@ -481,6 +630,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     const student = students.find((s) => s.id === grade.studentId);
                     if (!student) return null;
                     const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;
+                    const eligibility = calculateStudentCourseEligibility({
+                      student,
+                      course: selectedCourse,
+                      timetableSlots,
+                      attendance,
+                      periodAttendance,
+                    });
                     return (
                       <tr key={grade.id} className={`${isVisible ? '' : 'hidden'} hover:bg-[var(--color-card-subtle)] transition-colors`}>
                         <td className="py-3 px-3">
@@ -503,6 +659,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                         <td className="py-3 px-3 text-[var(--color-text-body)]">
                           {student.room}
+                        </td>
+
+                        <td className="py-3 px-3 text-center tabular-nums">
+                          {eligibility.isAtRiskMs ? (
+                            <span
+                              title={`เข้าเรียน ${eligibility.attendedHours}/${eligibility.totalScheduledHours} ชม. (ต่ำกว่า 80% เสี่ยง มส.)`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-[10px] font-bold"
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              มส. ({eligibility.attendancePercent}%)
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                              {eligibility.attendancePercent}% ({eligibility.attendedHours}/{eligibility.totalScheduledHours} ชม.)
+                            </span>
+                          )}
                         </td>
 
                         <td className="py-3 px-3 text-center">
@@ -576,13 +748,35 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </td>
 
                         <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => onOpenReportCard(student)}
-                            className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>Transcript</span>
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            {onPracticeInAi && grade.totalScore < 65 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onPracticeInAi({
+                                    subject: selectedCourse.titleTh,
+                                    topicTh: `${selectedCourse.code} ${selectedCourse.titleTh}`,
+                                    studentName: `${student.firstNameTh} ${student.lastNameTh}`,
+                                    score: grade.totalScore,
+                                    targetTab: 'socratic_tutor',
+                                  })
+                                }
+                                className="px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                                title="ส่งนักเรียนไปฝึกซ่อมเสริมใน AI Socratic Tutor"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                <span>ซ่อมเสริม AI</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onOpenReportCard(student)}
+                              className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Transcript</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -796,9 +990,16 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 {courseGrades.map((g, idx) => {
                   const student = students.find((s) => s.id === g.studentId);
                   if (!student) return null;
-                  const attendedPeriods = 38; // standard simulation
-                  const attendanceRate = ((attendedPeriods / 40) * 100).toFixed(0);
-                  const isAttendancePass = Number(attendanceRate) >= 80;
+                  const eligibility = calculateStudentCourseEligibility({
+                    student,
+                    course: selectedCourse,
+                    timetableSlots,
+                    attendance,
+                    periodAttendance,
+                  });
+                  const attendedPeriods = eligibility.attendedHours;
+                  const attendanceRate = String(eligibility.attendancePercent);
+                  const isAttendancePass = !eligibility.isAtRiskMs;
                   const isVisible = idx >= currentPp5Page * pp5PageSize && idx < (currentPp5Page + 1) * pp5PageSize;
 
                   return (
@@ -809,9 +1010,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         <span className="block text-[10px] text-slate-600 font-mono">{student.studentIdNumber}</span>
                       </td>
                       <td className="border border-slate-300 py-2">{student.room}</td>
-                      <td className="border border-slate-300 py-2 font-mono">{attendedPeriods}</td>
+                      <td className="border border-slate-300 py-2 font-mono">{attendedPeriods}/{eligibility.totalScheduledHours}</td>
                       <td className={`border border-slate-300 py-2 font-mono font-bold ${isAttendancePass ? 'text-emerald-700' : 'text-rose-600'}`}>
-                        {attendanceRate}%
+                        {attendanceRate}% {!isAttendancePass && '(มส.)'}
                       </td>
                       <td className="border border-slate-300 py-2 font-mono">{(g.assignmentScore * 0.5).toFixed(0)}</td>
                       <td className="border border-slate-300 py-2 font-mono">{(g.assignmentScore * 0.5).toFixed(0)}</td>

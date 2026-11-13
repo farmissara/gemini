@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BrainCircuit, 
   Sparkles, 
@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { 
+  AdaptivePracticeTopic,
   CompetencyDimension, 
   StudentWeaknessDiagnostic, 
   AppLanguage, 
@@ -31,12 +32,16 @@ interface AiDiagnosticLearningViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  initialFocusTopic?: AdaptivePracticeTopic | null;
+  onPracticeInSocraticTutor?: (topic: AdaptivePracticeTopic) => void;
 }
 
 export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> = ({
   lang = 'th',
   currentRole = 'teacher',
-  currentUserName = 'อาจารย์ผู้สอน'
+  currentUserName = 'อาจารย์ผู้สอน',
+  initialFocusTopic = null,
+  onPracticeInSocraticTutor,
 }) => {
   const [dimensions, setDimensions] = useState<CompetencyDimension[]>(INITIAL_COMPETENCY_DIMENSIONS);
   const [diagnostics, setDiagnostics] = useState<StudentWeaknessDiagnostic[]>(INITIAL_WEAKNESS_DIAGNOSTICS);
@@ -51,7 +56,15 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
 
   // Filter student
   const [selectedStudentFilter, setSelectedStudentFilter] = useState<'all' | string>('all');
-  const [activePanel, setActivePanel] = useState<'competencies' | 'diagnostics'>('competencies');
+  const [activePanel, setActivePanel] = useState<'competencies' | 'diagnostics'>(
+    initialFocusTopic ? 'diagnostics' : 'competencies'
+  );
+
+  useEffect(() => {
+    if (initialFocusTopic) {
+      setActivePanel('diagnostics');
+    }
+  }, [initialFocusTopic]);
 
   const studentNames = Array.from(new Set(diagnostics.map(d => d.studentName)));
 
@@ -185,6 +198,31 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
           </div>
         </div>
       </div>
+
+      {initialFocusTopic && (
+        <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div>
+            <p className="font-bold text-amber-900 dark:text-amber-200">
+              โฟกัสซ่อมเสริมจากสมุดคะแนน: {initialFocusTopic.subjectName || initialFocusTopic.subject}
+              {typeof initialFocusTopic.score === 'number' ? ` (${initialFocusTopic.score}/100 คะแนน)` : ''}
+            </p>
+            {initialFocusTopic.studentName && (
+              <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                นักเรียน: {initialFocusTopic.studentName}
+              </p>
+            )}
+          </div>
+          {onPracticeInSocraticTutor && (
+            <button
+              type="button"
+              onClick={() => onPracticeInSocraticTutor(initialFocusTopic)}
+              className="px-3.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold cursor-pointer"
+            >
+              ติวตัวต่อตัวใน AI Socratic Tutor
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <button type="button" onClick={() => setActivePanel('competencies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'competencies' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>

@@ -34,7 +34,7 @@ import {
   GraduationCap,
   Upload
 } from 'lucide-react';
-import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole } from '../types';
+import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, SchoolTier } from '../types';
 import {
   approveStudentAccountInSupabase,
   linkStudentAccountToStudent,
@@ -46,6 +46,8 @@ import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
+import { getAuditLogs } from '../lib/auditLog';
+import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -59,6 +61,8 @@ interface SystemSettingsViewProps {
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onUpdateConfig: (updated: SystemConfig) => void;
+  featureFlags?: SchoolFeatureFlags;
+  onUpdateFeatureFlags?: (flags: SchoolFeatureFlags) => void;
 }
 
 export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
@@ -73,8 +77,17 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   onUpdateSchoolCoordinates,
   onUpdateSchool,
   onUpdateConfig,
+  featureFlags: externalFeatureFlags,
+  onUpdateFeatureFlags,
 }) => {
-  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts' | 'student_login_config'>('line_events');
+  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts' | 'student_login_config' | 'saas_audit'>('line_events');
+  const [localFlags, setLocalFlags] = useState<SchoolFeatureFlags>(
+    () => externalFeatureFlags || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise')
+  );
+  const [auditFilter, setAuditFilter] = useState<string>('all');
+  useEffect(() => {
+    setLocalFlags(externalFeatureFlags || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise'));
+  }, [activeSchool.id, externalFeatureFlags]);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -644,6 +657,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           >
             <GraduationCap className="w-4 h-4 text-amber-300" />
             <span>{lang === 'th' ? 'รูปแบบล็อกอินนักเรียน & ลิงก์โรงเรียน' : 'Student Login & School Link'}</span>
+          </button>
+        )}
+
+        {['admin', 'super_admin'].includes(currentRole) && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('saas_audit')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
+              activeTab === 'saas_audit'
+                ? 'bg-[var(--color-primary)] text-white shadow-md'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>{lang === 'th' ? 'แพ็กเกจโมดูล & Audit Log' : 'Modules & Audit Log'}</span>
           </button>
         )}
       </div>
@@ -1530,8 +1558,25 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-[var(--color-text-body)]">ภาคเรียนปัจจุบัน (Current Semester)</label>
+                <div className="flex flex-wrap gap-1.5 pb-1">
+                  {generalConfig.semesterOptions.map((sem) => (
+                    <button
+                      key={sem}
+                      type="button"
+                      disabled={!['admin', 'super_admin'].includes(currentRole)}
+                      onClick={() => setGeneralConfig(prev => ({ ...prev, currentSemester: sem }))}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer disabled:opacity-50 ${
+                        generalConfig.currentSemester === sem
+                          ? 'bg-emerald-700 border-emerald-700 text-white'
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      ภาคเรียนที่ {sem}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="text"
                   value={generalConfig.currentSemester}
@@ -1894,6 +1939,149 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             />
           </div>
         )}
+
+      {/* TAB 9: SaaS Module Feature Flags & Audit Log */}
+      {activeTab === 'saas_audit' &&
+        ['admin', 'super_admin'].includes(currentRole) && (() => {
+          const allLogs = getAuditLogs(activeSchool.id);
+          const filteredLogs = auditFilter === 'all' ? allLogs : allLogs.filter(l => l.actionType === auditFilter);
+          const applyTier = (tier: SchoolTier) => {
+            const next = { ...TIER_PRESETS[tier] };
+            setLocalFlags(next);
+            saveSchoolFeatureFlags(activeSchool.id, next);
+            onUpdateFeatureFlags?.(next);
+          };
+          const toggleFlag = (key: keyof Omit<SchoolFeatureFlags, 'tier'>) => {
+            const next = { ...localFlags, [key]: !localFlags[key] };
+            setLocalFlags(next);
+            saveSchoolFeatureFlags(activeSchool.id, next);
+            onUpdateFeatureFlags?.(next);
+          };
+          return (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                      ขนาดโรงเรียน &amp; เปิด/ปิดโมดูลใช้งาน (Feature Flags)
+                    </h3>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      ปรับความซับซ้อนของเมนูตามขนาดสถานศึกษาเพื่อลดความรกหน้าจอให้ครูและผู้ปกครอง
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {(['small', 'standard', 'enterprise'] as SchoolTier[]).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => applyTier(t)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                          localFlags.tier === t
+                            ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)]'
+                        }`}
+                      >
+                        {t === 'small' ? 'โรงเรียนขนาดเล็ก' : t === 'standard' ? 'ขนาดกลาง' : 'ครบทุกฟีเจอร์'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+                  {FEATURE_FLAG_LABELS.map((item) => {
+                    const enabled = localFlags[item.key];
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => toggleFlag(item.key)}
+                        className={`p-3 rounded-xl border text-left flex items-center justify-between gap-2 transition cursor-pointer ${
+                          enabled
+                            ? 'bg-[var(--color-card)] border-[var(--color-primary)]'
+                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] opacity-75'
+                        }`}
+                      >
+                        <span className="font-semibold text-[var(--color-text-title)]">{item.labelTh}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          enabled
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        }`}>
+                          {enabled ? 'เปิด' : 'ปิด'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                      ประวัติการเปลี่ยนแปลงข้อมูลสำคัญ (Audit Log · {filteredLogs.length})
+                    </h3>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      บันทึกอัตโนมัติเมื่อมีการแก้เกรด อนุมัติสลิป เปลี่ยนภาคเรียน หรือลบรายวิชา
+                    </p>
+                  </div>
+                  <select
+                    value={auditFilter}
+                    onChange={(e) => setAuditFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+                  >
+                    <option value="all">ทุกประเภทเหตุการณ์ ({allLogs.length})</option>
+                    <option value="grade_update">แก้ไขคะแนน/เกรด</option>
+                    <option value="academic_period_update">เปลี่ยนปี/ภาคเรียน</option>
+                    <option value="invoice_slip_approved">อนุมัติสลิปการเงิน</option>
+                    <option value="invoice_slip_rejected">ปฏิเสธสลิปการเงิน</option>
+                    <option value="feature_flags_update">ตั้งค่าโมดูลโรงเรียน</option>
+                    <option value="quiz_grade_sync">ส่ง Quiz เข้าสมุดคะแนน</option>
+                  </select>
+                </div>
+
+                {filteredLogs.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">
+                    ยังไม่มีรายการ Audit Log ในหมวดที่เลือก (เมื่อมีการแก้ไขข้อมูลสำคัญ ระบบจะบันทึกที่นี่ทันที)
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)]">
+                        <tr>
+                          <th className="py-2 px-3">เวลา</th>
+                          <th className="py-2 px-3">ผู้ดำเนินการ</th>
+                          <th className="py-2 px-3">ประเภท</th>
+                          <th className="py-2 px-3">เป้าหมาย</th>
+                          <th className="py-2 px-3">รายละเอียด</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {filteredLogs.slice(0, 30).map((log) => (
+                          <tr key={log.id} className="hover:bg-[var(--color-card-subtle)]">
+                            <td className="py-2 px-3 font-mono text-[11px] text-[var(--color-text-muted)] whitespace-nowrap">
+                              {new Date(log.timestamp).toLocaleString('th-TH')}
+                            </td>
+                            <td className="py-2 px-3 font-semibold text-[var(--color-text-title)]">
+                              {log.actorName} <span className="text-[10px] text-[var(--color-text-muted)]">({log.actorRole})</span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className="px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-mono text-[10px]">
+                                {log.actionType}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 font-medium text-[var(--color-text-title)]">{log.targetLabel}</td>
+                            <td className="py-2 px-3 text-[var(--color-text-body)]">{log.details}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

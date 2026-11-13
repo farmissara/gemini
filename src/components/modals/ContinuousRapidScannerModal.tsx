@@ -14,16 +14,22 @@ import {
   Keyboard, 
   ArrowRight,
   ShieldCheck,
-  Zap
+  Zap,
+  Maximize2,
+  Minimize2,
+  WifiOff,
+  Megaphone
 } from 'lucide-react';
 import { Student, AttendanceRecord, AttendanceStatus, AttendanceCheckType, AppLanguage, AuthUser } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import { sendEduVerseNotification } from '../../lib/pushNotifications';
+import { enqueueOfflineAction, isOnlineNow } from '../../lib/offlineSync';
 
 interface ContinuousRapidScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
   students: Student[];
+  schoolId?: string;
   currentUser?: AuthUser | null;
   onRecordAttendance: (
     studentId: string,
@@ -49,12 +55,17 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   isOpen,
   onClose,
   students,
+  schoolId = 'school-1',
   currentUser,
   onRecordAttendance,
   lang = 'th',
   mode: initialMode = 'check_in',
 }) => {
   const [scanMode, setScanMode] = useState<AttendanceCheckType>(initialMode);
+  const [kioskMode, setKioskMode] = useState(false);
+  const [gateNotice, setGateNotice] = useState('ยินดีต้อนรับสู่โรงเรียน • สแกนบัตรหน้าประตู 1 เพื่อเข้าเรียน');
+  const [editingGateNotice, setEditingGateNotice] = useState(false);
+  const [offlineSavedBanner, setOfflineSavedBanner] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -246,20 +257,42 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
     const nowTimeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const status: AttendanceStatus = 'present';
 
+    const remarksText = scanMode === 'check_in'
+      ? 'สแกนบัตรต่อเนื่อง ประตูโรงเรียน (Rapid Scanner)'
+      : 'สแกนบัตรเลิกเรียน (Rapid Checkout)';
+    const extraPayload = {
+      recordType: scanMode,
+      photoUrl: matched.avatarUrl,
+      userName: `${matched.firstNameTh} ${matched.lastNameTh}`,
+      userRole: `นักเรียน (${matched.gradeLevel})`,
+      userDepartmentOrRoom: matched.room,
+      recordedBy: currentUser?.fullNameTh,
+      recordedByRole: currentUser?.role,
+    };
+
+    if (!isOnlineNow()) {
+      enqueueOfflineAction({
+        actionType: 'attendance',
+        schoolId: matched.schoolId || schoolId,
+        description: `${scanMode === 'check_in' ? 'เช็กชื่อเข้าเรียน' : 'ปล่อยกลับบ้าน'} ${matched.firstNameTh} ${matched.lastNameTh} (${matched.studentIdNumber})`,
+        payload: {
+          studentId: matched.id,
+          status,
+          remarks: remarksText,
+          method: 'qr_scanner',
+          extra: extraPayload,
+        },
+      });
+      setOfflineSavedBanner(`ไม่มีอินเทอร์เน็ต · บันทึก ${matched.firstNameTh} ในคิวออฟไลน์แล้ว`);
+      setTimeout(() => setOfflineSavedBanner(null), 3000);
+    }
+
     onRecordAttendance(
       matched.id,
       status,
-      scanMode === 'check_in' ? 'สแกนบัตรต่อเนื่อง ประตูโรงเรียน (Rapid Scanner)' : 'สแกนบัตรเลิกเรียน (Rapid Checkout)',
+      remarksText,
       'qr_scanner',
-      {
-        recordType: scanMode,
-        photoUrl: matched.avatarUrl,
-        userName: `${matched.firstNameTh} ${matched.lastNameTh}`,
-        userRole: `นักเรียน (${matched.gradeLevel})`,
-        userDepartmentOrRoom: matched.room,
-        recordedBy: currentUser?.fullNameTh,
-        recordedByRole: currentUser?.role,
-      }
+      extraPayload
     );
 
     // Send push notification to parents
@@ -300,8 +333,10 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col max-h-[95vh] overflow-hidden text-[var(--color-text-body)]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs ${kioskMode ? 'p-0' : 'p-2 sm:p-4'} animate-in fade-in duration-150`}>
+      <div className={`w-full bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden text-[var(--color-text-body)] ${
+        kioskMode ? 'h-screen max-w-none max-h-none rounded-none' : 'max-w-2xl rounded-3xl max-h-[95vh]'
+      }`}>
         
         {/* Header */}
         <div className="p-3.5 sm:p-4 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-[var(--color-card-subtle)]">
@@ -311,18 +346,31 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-1.5">
-                <span>{lang === 'th' ? 'สแกนเนอร์บาร์โค้ด & QR ต่อเนื่อง' : 'Continuous Rapid Scanner'}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold">
+                <span>{lang === 'th' ? (kioskMode ? 'Gate Kiosk ประตูโรงเรียน (เต็มหน้าจอ)' : 'สแกนเนอร์บาร์โค้ด & QR ต่อเนื่อง') : 'Continuous Rapid Scanner'}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold tabular-nums">
                   {scannedSessionQueue.length} {lang === 'th' ? 'คนแล้ว' : 'scanned'}
                 </span>
               </h3>
               <p className="text-[11px] text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'สแกนรัว 1-2 วินาที/คน พร้อมเสียงปี๊บและแจ้งเตือนผู้ปกครองทันที' : 'Fast 1-second continuous check-in with beep & alerts'}
+                {lang === 'th' ? 'สแกนรัว 1-2 วินาที/คน พร้อมเสียงปี๊บ คิวออฟไลน์ และแจ้งเตือนผู้ปกครองทันที' : 'Fast 1-second continuous check-in with beep & offline queue'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setKioskMode((prev) => !prev)}
+              className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1 cursor-pointer transition ${
+                kioskMode
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
+              }`}
+              title="สลับโหมด Kiosk ประตูโรงเรียนเต็มหน้าจอ"
+            >
+              {kioskMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{kioskMode ? 'ย่อหน้าต่าง' : 'Gate Kiosk'}</span>
+            </button>
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -352,6 +400,39 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
           </div>
         </div>
 
+        {/* Gate Notice Banner (for Kiosk Display) */}
+        <div className="px-3.5 py-2 border-b border-[var(--color-border)] bg-[var(--color-primary-light)]/60 flex items-center justify-between gap-2 text-xs shrink-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Megaphone className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+            {editingGateNotice ? (
+              <input
+                type="text"
+                value={gateNotice}
+                onChange={(e) => setGateNotice(e.target.value)}
+                onBlur={() => setEditingGateNotice(false)}
+                autoFocus
+                className="w-full px-2 py-0.5 rounded border border-[var(--color-primary)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+              />
+            ) : (
+              <span className="font-semibold text-[var(--color-text-title)] truncate">{gateNotice}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditingGateNotice((prev) => !prev)}
+            className="text-[11px] font-bold text-[var(--color-primary-text)] hover:underline shrink-0 cursor-pointer"
+          >
+            {editingGateNotice ? 'เสร็จสิ้น' : 'แก้ประกาศประตู'}
+          </button>
+        </div>
+
+        {offlineSavedBanner && (
+          <div className="px-3.5 py-2 bg-amber-100 dark:bg-amber-950 border-b border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center gap-2 shrink-0">
+            <WifiOff className="w-3.5 h-3.5 shrink-0" />
+            <span>{offlineSavedBanner}</span>
+          </div>
+        )}
+
         {/* Mode Selector */}
         <div className="p-2.5 border-b border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2 shrink-0 text-xs">
           <div className="flex p-0.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
@@ -378,7 +459,11 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
               {lang === 'th' ? 'ปล่อยกลับบ้าน (Dismissal)' : 'Dismissal Out'}
             </button>
           </div>
-
+          {!isOnlineNow() && (
+            <span className="px-2 py-1 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[11px] font-bold flex items-center gap-1">
+              <WifiOff className="w-3 h-3" /> ออฟไลน์
+            </span>
+          )}
         </div>
 
         {/* Viewfinder Section */}

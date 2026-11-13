@@ -45,6 +45,8 @@ interface TimetableScheduleViewProps {
   schoolName: string;
   academicYear: string;
   currentSemester: string;
+  semesterOptions?: string[];
+  onUpdateAcademicPeriod?: (academicYear: string, currentSemester: string) => Promise<void>;
 }
 
 const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
@@ -81,6 +83,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   schoolName,
   academicYear,
   currentSemester,
+  semesterOptions = ['1', '2', 'Summer'],
+  onUpdateAcademicPeriod,
 }) => {
   // Main view mode: 'classroom' | 'teacher' | 'hours_criteria'
   const [viewMode, setViewMode] = useState<'classroom' | 'teacher' | 'hours_criteria'>('classroom');
@@ -113,6 +117,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [slotActionError, setSlotActionError] = useState<string | null>(null);
   const [isSavingSlot, setIsSavingSlot] = useState(false);
   const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<TimetableSlot | null>(null);
+  const [showPeriodEditor, setShowPeriodEditor] = useState(false);
+  const [draftAcademicYear, setDraftAcademicYear] = useState(academicYear);
+  const [draftSemester, setDraftSemester] = useState(currentSemester);
+  const [isSavingAcademicPeriod, setIsSavingAcademicPeriod] = useState(false);
+  const [academicPeriodNotice, setAcademicPeriodNotice] = useState<string | null>(null);
 
   // Add slot form state
   const [newDay, setNewDay] = useState<DayOfWeek>('mon');
@@ -572,29 +581,65 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
         )}
 
-        {/* Workload / Status Summary Badge */}
-        {viewMode === 'teacher' ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-[var(--color-text-muted)]">
-              ภาระงานสอนจริง:
+        {/* Workload / Academic Period Control */}
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          {viewMode === 'teacher' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                ภาระงานสอนจริง:
+              </span>
+              <span className={`text-xs px-2.5 py-0.5 rounded-lg font-bold border tabular-nums ${
+                teacherWeeklyPeriods >= 12 && teacherWeeklyPeriods <= 22
+                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                  : teacherWeeklyPeriods < 12
+                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                    : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+              }`}>
+                {teacherWeeklyPeriods} คาบ/สัปดาห์ ({teacherWeeklyHours.toFixed(1)} ชม.) {teacherWeeklyPeriods >= 12 ? '✓ ผ่านเกณฑ์ ก.ค.ศ.' : '⚠ ต่ำกว่า 12 คาบ'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span>นักเรียน: <strong className="text-[var(--color-text-title)] tabular-nums">{classroomStudents.length}</strong> คน</span>
+              <span>• <strong className="text-[var(--color-primary-text)] tabular-nums">{classroomCoursesList.length}</strong> วิชา</span>
+            </div>
+          )}
+
+          {/* Direct Academic Year & Semester Indicator / Editor */}
+          {onUpdateAcademicPeriod && (currentRole === 'admin' || currentRole === 'super_admin') ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDraftAcademicYear(academicYear);
+                setDraftSemester(currentSemester);
+                setShowPeriodEditor(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold transition cursor-pointer whitespace-nowrap"
+              title="แก้ไขปีการศึกษาและภาคเรียนปัจจุบันของโรงเรียน"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              <span>{formatSemesterLabel(currentSemester)} • ปีการศึกษา {academicYear}</span>
+            </button>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] whitespace-nowrap"
+              title="ผู้ดูแลระบบโรงเรียนกำหนดปีการศึกษาและภาคเรียนที่เมนู ตั้งค่าระบบ"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+              <span>{formatSemesterLabel(currentSemester)} / {academicYear}</span>
             </span>
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
-              teacherWeeklyPeriods >= 12 && teacherWeeklyPeriods <= 22
-                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                : teacherWeeklyPeriods < 12
-                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-            }`}>
-              {teacherWeeklyPeriods} คาบ/สัปดาห์ ({teacherWeeklyHours.toFixed(1)} ชม.) {teacherWeeklyPeriods >= 12 ? '✓ ผ่านเกณฑ์ ก.ค.ศ.' : '⚠ ต่ำกว่าเกณฑ์ขั้นต่ำ 12 คาบ'}
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <span>นักเรียนในห้อง: <strong className="text-[var(--color-text-title)]">{classroomStudents.length}</strong> คน</span>
-            <span>• วิชาที่เปิดสอน: <strong className="text-[var(--color-primary-text)]">{classroomCoursesList.length}</strong> วิชา</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+      {academicPeriodNotice && (
+        <div className="shrink-0 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">
+          <span className="flex items-center gap-1.5 font-medium">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {academicPeriodNotice}
+          </span>
+          <button type="button" onClick={() => setAcademicPeriodNotice(null)} className="text-xs font-bold px-1.5 cursor-pointer">✕</button>
+        </div>
+      )}
 
       {/* Conflict Warning Banner (if any) */}
       {conflicts.length > 0 && (
@@ -1224,6 +1269,100 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-semibold cursor-pointer shadow-sm"
                 >
                   {isSavingSlot ? 'กำลังบันทึก...' : 'บันทึกคาบเรียนลงตาราง'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Academic Year & Semester Quick Edit Modal */}
+      {showPeriodEditor && onUpdateAcademicPeriod && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>แก้ไขภาคเรียนและปีการศึกษา</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPeriodEditor(false)}
+                className="text-base font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!draftAcademicYear.trim() || !draftSemester.trim()) return;
+                setIsSavingAcademicPeriod(true);
+                try {
+                  await onUpdateAcademicPeriod(draftAcademicYear.trim(), draftSemester.trim());
+                  setShowPeriodEditor(false);
+                  setAcademicPeriodNotice(`อัปเดตเป็น ${formatSemesterLabel(draftSemester.trim())} ปีการศึกษา ${draftAcademicYear.trim()} เรียบร้อยแล้ว`);
+                } finally {
+                  setIsSavingAcademicPeriod(false);
+                }
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="block font-semibold text-[var(--color-text-title)] mb-1">ปีการศึกษา (Academic Year)</label>
+                <input
+                  type="text"
+                  required
+                  value={draftAcademicYear}
+                  onChange={(e) => setDraftAcademicYear(e.target.value)}
+                  placeholder="เช่น 2569 (2026)"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-[var(--color-text-title)] mb-1">ภาคเรียนที่ (Semester)</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {(semesterOptions.length > 0 ? semesterOptions : ['1', '2', 'Summer']).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setDraftSemester(opt)}
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer ${
+                        draftSemester === opt
+                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                      }`}
+                    >
+                      {formatSemesterLabel(opt)}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={draftSemester}
+                  onChange={(e) => setDraftSemester(e.target.value)}
+                  placeholder="หรือระบุเอง เช่น 1, 2, Summer"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                />
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                การเปลี่ยนแปลงนี้จะอัปเดตหัวตารางเรียน ปพ.5/ปพ.6 และค่าตั้งต้นของโรงเรียน {schoolName} ทันที
+              </p>
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setShowPeriodEditor(false)}
+                  className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAcademicPeriod}
+                  className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-semibold disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingAcademicPeriod ? 'กำลังบันทึก...' : 'บันทึกภาคเรียน'}
                 </button>
               </div>
             </form>

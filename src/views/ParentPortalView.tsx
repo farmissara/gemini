@@ -8,7 +8,12 @@ import {
   AppLanguage, 
   SystemConfig,
   LeaveRequest,
-  LeaveType
+  LeaveType,
+  PeriodAttendanceRecord,
+  HomeworkSubmission,
+  InfirmaryVisit,
+  ConsentForm,
+  ConsentResponse
 } from '../types';
 import { 
   UserCheck, 
@@ -39,8 +44,10 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
+import { getConsentForms, getConsentResponses, upsertConsentResponse } from '../lib/campusDataStore';
 
 interface ParentPortalViewProps {
+  schoolId?: string;
   students: Student[];
   attendance: AttendanceRecord[];
   invoices: TuitionInvoice[];
@@ -48,13 +55,18 @@ interface ParentPortalViewProps {
   courses: Course[];
   systemConfig: SystemConfig;
   leaveRequests?: LeaveRequest[];
+  periodAttendance?: PeriodAttendanceRecord[];
+  homeworkSubmissions?: HomeworkSubmission[];
+  infirmaryVisits?: InfirmaryVisit[];
   lang: AppLanguage;
   onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
+  onSubmitInvoiceSlip?: (invoiceId: string, slipDataUrl: string, note: string) => void;
   onOpenReportCard: (student: Student) => void;
   onAddLeaveRequest?: (req: LeaveRequest) => void;
 }
 
 export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
+  schoolId = 'default-school',
   students,
   attendance,
   invoices,
@@ -62,14 +74,24 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   courses: _courses,
   systemConfig,
   leaveRequests = [],
+  periodAttendance = [],
+  homeworkSubmissions = [],
+  infirmaryVisits = [],
   lang,
-  onPayInvoice,
+  onPayInvoice: _onPayInvoice,
+  onSubmitInvoiceSlip,
   onOpenReportCard,
   onAddLeaveRequest
 }) => {
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
-  const [activePortalTab, setActivePortalTab] = useState<'overview' | 'selfie_album' | 'leave_submission'>('overview');
+  const [activePortalTab, setActivePortalTab] = useState<'overview' | 'selfie_album' | 'leave_submission' | 'consent_slips'>('overview');
   const [showPayModal, setShowPayModal] = useState(false);
+  const [slipFileDataUrl, setSlipFileDataUrl] = useState<string>('');
+  const [slipNote, setSlipNote] = useState<string>('');
+  const [slipError, setSlipError] = useState<string | null>(null);
+  const [slipToast, setSlipToast] = useState<string | null>(null);
+  const [consentForms] = useState<ConsentForm[]>(() => getConsentForms(schoolId));
+  const [consentResponses, setConsentResponses] = useState<ConsentResponse[]>(() => getConsentResponses(schoolId));
 
   // Date selection for child's selfie album
   const todayStr = getLocalDateString();
@@ -85,15 +107,73 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveAttachmentUrl, setLeaveAttachmentUrl] = useState('');
   const [leaveSuccessNotice, setLeaveSuccessNotice] = useState<string | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
   const student = students.find((s) => s.id === selectedStudentId) || students[0];
   const studentAttendance = attendance.filter((a) => a.studentId === student?.id);
   const studentInvoices = invoices.filter((i) => i.studentId === student?.id);
   const studentGrades = grades.filter((g) => g.studentId === student?.id);
   const studentLeaveRequests = leaveRequests.filter((r) => r.userId === student?.id);
+  const studentPeriodAttendance = periodAttendance.filter((p) => p.studentId === student?.id);
+  const studentHomework = homeworkSubmissions.filter((h) => h.studentId === student?.id);
+  const studentInfirmary = infirmaryVisits.filter((v) => v.studentId === student?.id);
 
   const todayRecord = studentAttendance.find((a) => a.date === todayStr);
   const pendingInvoice = studentInvoices.find((i) => i.status !== 'paid');
+
+  // Build chronological Daily Pulse timeline events for selected child
+  const dailyPulseEvents = React.useMemo(() => {
+    const events: { id: string; timeLabel: string; title: string; detail: string; category: 'gate' | 'class' | 'homework' | 'health' | 'billing'; onClick?: () => void }[] = [];
+    studentAttendance.slice(0, 4).forEach((rec) => {
+      events.push({
+        id: `att-${rec.id}`,
+        timeLabel: `${rec.date} ${rec.time}`,
+        title: rec.recordType === 'check_out' ? 'สแกนออกประตูโรงเรียน' : 'เข้าประตูโรงเรียน',
+        detail: `${rec.status === 'present' ? 'ตรงเวลา' : rec.status === 'late' ? 'มาสาย' : rec.status} • ${rec.location?.geofenceZoneName || 'ประตูโรงเรียน'}`,
+        category: 'gate',
+        onClick: rec.photoUrl ? () => setSelectedZoomPhoto(rec) : undefined,
+      });
+    });
+    studentPeriodAttendance.slice(0, 4).forEach((p) => {
+      events.push({
+        id: `per-${p.id}`,
+        timeLabel: `${p.date} คาบ ${p.periodNumber}`,
+        title: `เข้าเรียนวิชา ${p.courseCode}`,
+        detail: `สถานะ: ${p.status} • บันทึกโดย ${p.verifiedByTeacherName}`,
+        category: 'class',
+      });
+    });
+    studentHomework.slice(0, 3).forEach((hw) => {
+      events.push({
+        id: `hw-${hw.id}`,
+        timeLabel: hw.submittedAt || hw.dueDate,
+        title: `การบ้าน: ${hw.assignmentTitle}`,
+        detail: hw.status === 'graded' ? `ตรวจแล้ว (${hw.score ?? '-'}/${hw.maxScore})` : `สถานะ: ${hw.status}`,
+        category: 'homework',
+      });
+    });
+    studentInfirmary.slice(0, 3).forEach((v) => {
+      events.push({
+        id: `inf-${v.id}`,
+        timeLabel: `${v.visitDate} ${v.visitTime}`,
+        title: `เข้าห้องพยาบาล: ${v.symptoms}`,
+        detail: `${v.treatment} (อุณหภูมิ ${v.temperature}°C)`,
+        category: 'health',
+      });
+    });
+    if (pendingInvoice) {
+      events.push({
+        id: `inv-${pendingInvoice.id}`,
+        timeLabel: pendingInvoice.dueDate,
+        title: `ค่าธรรมเนียมการศึกษา (${pendingInvoice.invoiceNumber})`,
+        detail: pendingInvoice.slipStatus === 'pending_review'
+          ? 'แนบสลิปแล้ว • รอเจ้าหน้าที่การเงินตรวจสอบ'
+          : `ยอดรอชำระ ฿${pendingInvoice.totalAmount.toLocaleString()}`,
+        category: 'billing',
+      });
+    }
+    return events.sort((a, b) => b.timeLabel.localeCompare(a.timeLabel)).slice(0, 8);
+  }, [studentAttendance, studentPeriodAttendance, studentHomework, studentInfirmary, pendingInvoice]);
 
   // Filter attendance for the selected date in child's selfie album
   const dateRecords = studentAttendance.filter((a) => a.date === albumSelectedDate);
@@ -108,9 +188,10 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const handleParentSubmitLeave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!student || !leaveReason.trim()) {
-      alert('กรุณาระบุเหตุผลการลา');
+      setLeaveError('กรุณาระบุเหตุผลการลาให้ครบถ้วน');
       return;
     }
+    setLeaveError(null);
 
     const newLeave: LeaveRequest = {
       id: `leave-parent-${Date.now()}`,
@@ -227,12 +308,25 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>ผู้ปกครองยื่นใบลาให้ลูก</span>
+          <span>ยื่นใบลาให้ลูก</span>
           {studentLeaveRequests.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-[10px]">
               {studentLeaveRequests.length}
             </span>
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActivePortalTab('consent_slips')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activePortalTab === 'consent_slips'
+              ? 'bg-amber-600 text-white shadow-md'
+              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>หนังสือขออนุญาต ({consentForms.length})</span>
         </button>
       </div>
 
@@ -395,6 +489,42 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               </div>
             </div>
           </div>
+
+          {slipToast && (
+            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold">
+              {slipToast}
+            </div>
+          )}
+
+          {/* Daily Pulse Timeline */}
+          <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>ไทม์ไลน์ชีวิตประจำวันของ {student?.firstNameTh} (Daily Pulse)</span>
+              </h3>
+              <span className="text-[11px] text-[var(--color-text-muted)]">อัปเดตล่าสุดจากประตู คาบเรียน การบ้าน และห้องพยาบาล</span>
+            </div>
+            {dailyPulseEvents.length === 0 ? (
+              <p className="text-xs text-[var(--color-text-muted)] py-4 text-center">ยังไม่มีความเคลื่อนไหวล่าสุดสำหรับนักเรียนคนนี้</p>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)] text-xs">
+                {dailyPulseEvents.map((ev) => (
+                  <div
+                    key={ev.id}
+                    onClick={ev.onClick}
+                    className={`py-2.5 flex items-center justify-between gap-3 ${ev.onClick ? 'cursor-pointer hover:bg-[var(--color-card-subtle)] rounded px-2 -mx-2' : ''}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[var(--color-text-title)]">{ev.title}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] truncate">{ev.detail}</div>
+                    </div>
+                    <span className="text-[11px] font-mono text-[var(--color-text-muted)] shrink-0 tabular-nums">{ev.timeLabel}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -529,6 +659,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 ส่งตรงถึงครูประจำชั้น {student?.room} พร้อมแนบใบรับรองแพทย์หรือหลักฐาน
               </p>
             </div>
+
+            {leaveError && (
+              <div role="alert" className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{leaveError}</span>
+              </div>
+            )}
 
             {leaveSuccessNotice && (
               <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-fade-in">
@@ -670,6 +807,87 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* TAB 4: DIGITAL PERMISSION SLIPS (CONSENT) */}
+      {activePortalTab === 'consent_slips' && student && (
+        <div className="p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-4 text-[var(--color-text-title)]">
+          <div>
+            <h3 className="text-base font-bold">หนังสือขออนุญาตผู้ปกครอง (Digital Permission Slips)</h3>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              ยืนยันการอนุญาตเข้าร่วมกิจกรรม/ทัศนศึกษา/ฉีดวัคซีน สำหรับ {student.firstNameTh} {student.lastNameTh} ({student.room})
+            </p>
+          </div>
+          <div className="space-y-3">
+            {consentForms
+              .filter((f) => f.targetRoom === 'all' || f.targetRoom === student.room)
+              .map((form) => {
+                const existingResp = consentResponses.find(
+                  (r) => r.formId === form.id && r.studentId === student.id
+                );
+                return (
+                  <div key={form.id} className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="font-bold text-sm text-[var(--color-text-title)]">{form.titleTh}</h4>
+                      <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                        วันกิจกรรม: {form.eventDate} • ตอบกลับภายใน: {form.dueDate}
+                      </span>
+                    </div>
+                    <p className="text-[var(--color-text-body)] leading-relaxed">{form.descriptionTh}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+                      <span className="text-[11px] text-[var(--color-text-muted)]">
+                        ผู้ประกาศ: {form.createdBy}
+                      </span>
+                      {existingResp ? (
+                        <span className={`px-3 py-1 rounded-lg font-bold ${
+                          existingResp.decision === 'approved'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
+                        }`}>
+                          {existingResp.decision === 'approved' ? '✓ ยินยอมแล้ว' : '✕ ไม่ยินยอม'} โดย {existingResp.parentName} ({new Date(existingResp.respondedAt).toLocaleDateString('th-TH')})
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = upsertConsentResponse(schoolId, {
+                                formId: form.id,
+                                studentId: student.id,
+                                studentName: `${student.firstNameTh} ${student.lastNameTh}`,
+                                decision: 'declined',
+                                parentName: student.guardianName,
+                              });
+                              setConsentResponses(next);
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 dark:text-rose-300 font-semibold hover:bg-rose-50 cursor-pointer"
+                          >
+                            ไม่ยินยอม
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = upsertConsentResponse(schoolId, {
+                                formId: form.id,
+                                studentId: student.id,
+                                studentName: `${student.firstNameTh} ${student.lastNameTh}`,
+                                decision: 'approved',
+                                parentName: student.guardianName,
+                              });
+                              setConsentResponses(next);
+                            }}
+                            className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+                          >
+                            ลงชื่อยินยอม
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Lightbox Modal for Zooming Child's Selfie Photo */}
@@ -718,13 +936,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         </div>
       )}
 
-      {/* PromptPay Modal */}
+      {/* PromptPay + Transfer Slip Upload Modal */}
       {showPayModal && pendingInvoice && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl text-center space-y-3.5">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 block">
-                Thai PromptPay พร้อมเพย์
+                Thai PromptPay พร้อมเพย์ • แนบสลิปตรวจสอบ
               </span>
               <h3 className="text-base font-bold text-white mt-1">
                 {systemConfig.schoolNameTh}
@@ -734,23 +952,53 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               </p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl inline-block shadow-inner">
-              <div className="w-48 h-48 border-2 border-slate-900 rounded-lg flex flex-col items-center justify-center relative p-2 bg-white">
-                <div className="h-6 w-full bg-[#1A3764] rounded text-white text-[9px] font-bold flex items-center justify-center mb-1">
+            <div className="bg-white p-3 rounded-xl inline-block shadow-inner">
+              <div className="w-40 h-40 border-2 border-slate-900 rounded-lg flex flex-col items-center justify-center p-2 bg-white">
+                <div className="h-5 w-full bg-[#1A3764] rounded text-white text-[9px] font-bold flex items-center justify-center mb-1">
                   PromptPay พร้อมเพย์
                 </div>
-                <QrCode className="w-28 h-28 text-slate-950" />
+                <QrCode className="w-24 h-24 text-slate-950" />
                 <span className="text-[10px] font-bold text-slate-900 font-mono mt-1">
                   ฿{pendingInvoice.totalAmount.toLocaleString()}
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-200">
-              สแกนผ่านแอปธนาคารใดก็ได้ เพื่อชำระค่าธรรมเนียม
-            </p>
+            <div className="text-left space-y-2 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-xs">
+              <label className="block font-semibold text-slate-100">
+                อัปโหลดสลิปการโอนเงิน (เพื่อให้การเงินโรงเรียนตรวจสอบ):
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                      setSlipFileDataUrl(reader.result);
+                      setSlipError(null);
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }}
+                className="w-full text-[11px] text-slate-200 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-700 file:text-white file:font-semibold cursor-pointer"
+              />
+              {slipFileDataUrl && (
+                <img src={slipFileDataUrl} alt="Slip preview" className="w-full max-h-28 object-contain rounded-lg bg-white" />
+              )}
+              <input
+                type="text"
+                value={slipNote}
+                onChange={(e) => setSlipNote(e.target.value)}
+                placeholder="หมายเหตุ เช่น โอนจาก KBank เวลา 09:15 น."
+                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs"
+              />
+              {slipError && <p className="text-rose-400 text-[11px] font-semibold">{slipError}</p>}
+            </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowPayModal(false)}
@@ -761,12 +1009,20 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onPayInvoice(pendingInvoice.id, 'promptpay');
+                  if (!slipFileDataUrl) {
+                    setSlipError('กรุณาเลือกรูปสลิปการโอนเงินก่อนส่งตรวจสอบ');
+                    return;
+                  }
+                  onSubmitInvoiceSlip?.(pendingInvoice.id, slipFileDataUrl, slipNote.trim());
                   setShowPayModal(false);
+                  setSlipFileDataUrl('');
+                  setSlipNote('');
+                  setSlipToast(`ส่งสลิปสำหรับ ${pendingInvoice.invoiceNumber} ให้ฝ่ายการเงินตรวจสอบเรียบร้อยแล้ว`);
+                  setTimeout(() => setSlipToast(null), 5000);
                 }}
                 className="flex-1 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer"
               >
-                ยืนยันชำระเงิน
+                ส่งสลิปให้การเงินตรวจสอบ
               </button>
             </div>
           </div>

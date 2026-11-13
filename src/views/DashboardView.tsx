@@ -47,7 +47,11 @@ import {
   AuthUser,
   AppLanguage,
   GradeRecord,
-  PlayerScore
+  HomeworkSubmission,
+  LeaveRequest,
+  PlayerScore,
+  SchoolPeriodTime,
+  TimetableSlot
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
@@ -79,6 +83,10 @@ interface DashboardViewProps {
   ) => void;
   unclaimedCentralPacksCount?: number;
   onOpenCentralExamPopup?: () => void;
+  timetableSlots?: TimetableSlot[];
+  leaveRequests?: LeaveRequest[];
+  homeworkSubmissions?: HomeworkSubmission[];
+  schoolPeriods?: SchoolPeriodTime[];
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -98,6 +106,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onRecordMilestoneActivity,
   unclaimedCentralPacksCount = 0,
   onOpenCentralExamPopup,
+  timetableSlots = [],
+  leaveRequests = [],
+  homeworkSubmissions = [],
+  schoolPeriods = [],
 }) => {
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
@@ -110,6 +122,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [dashboardTab, setDashboardTab] = useState<'overview' | 'live_attendance' | 'innovative_hub' | 'announcements'>('overview');
   const [innovationPage, setInnovationPage] = useState(0);
   const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
+  const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`) === '1';
+  });
   
   // Lightbox Modal for viewing captured selfie photo
   const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<AttendanceRecord | null>(null);
@@ -119,6 +135,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setPhotoModalStep(0);
     setSelectedPhotoRecord(record);
   };
+
+  // Teacher / Admin Today's Desk computations
+  const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
+  const todayScheduledSlots = useMemo(() => {
+    const daySlots = timetableSlots.filter((s) => s.dayOfWeek === todayDayKey);
+    if (currentUser?.role === 'teacher') {
+      const teacherName = currentUser.fullNameTh || '';
+      const mine = daySlots.filter((s) => s.teacherName === teacherName);
+      return (mine.length > 0 ? mine : daySlots).slice().sort((a, b) => a.periodNumber - b.periodNumber);
+    }
+    return daySlots.slice().sort((a, b) => a.periodNumber - b.periodNumber);
+  }, [timetableSlots, todayDayKey, currentUser]);
+  const pendingLeaveCount = leaveRequests.filter((l) => l.status === 'pending').length;
+  const ungradedHomeworkCount = homeworkSubmissions.filter((h) => h.status === 'submitted' || h.status === 'late').length;
+  const isStaffUser = !currentUser?.role || currentUser.role === 'teacher' || currentUser.role === 'admin' || currentUser.role === 'super_admin';
+
+  // 3-Step Onboarding Checklist state
+  const step1Done = students.length > 0 && courses.length > 0;
+  const step2Done = Boolean(school?.latitude && school?.longitude) || schoolPeriods.length >= 6;
+  const step3Done = timetableSlots.length > 0;
+  const completedOnboardingCount = [step1Done, step2Done, step3Done].filter(Boolean).length;
+  const showOnboardingCard = !onboardingDismissed && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && completedOnboardingCount < 3;
 
   // Compute key overall stats
   const totalStudents = students.length;
@@ -475,6 +513,135 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* 3-Step Onboarding Checklist (Visible for Admins when incomplete) */}
+            {showOnboardingCard && (
+              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'เริ่มต้นใช้งานโรงเรียนใน 3 ขั้นตอน' : '3-Step School Setup Checklist'}
+                    </h2>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      ตั้งค่าระบบหลักให้พร้อมเปิดภาคเรียน ({completedOnboardingCount}/3 สำเร็จ)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOnboardingDismissed(true);
+                      if (typeof window !== 'undefined') {
+                        window.localStorage.setItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`, '1');
+                      }
+                    }}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-muted)] font-semibold cursor-pointer whitespace-nowrap"
+                  >
+                    ซ่อนรายการนี้
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('students')}
+                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                  >
+                    <div>
+                      <div className="font-bold text-[var(--color-text-title)]">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                        {students.length} นักเรียน • {courses.length} วิชา
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] whitespace-nowrap ${step1Done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                      {step1Done ? 'พร้อมแล้ว' : 'ดำเนินการ'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('system_settings')}
+                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                  >
+                    <div>
+                      <div className="font-bold text-[var(--color-text-title)]">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                        {school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : 'ยังไม่ได้ปักหมุด'}
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] whitespace-nowrap ${step2Done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                      {step2Done ? 'พร้อมแล้ว' : 'ตั้งค่า'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('timetable')}
+                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                  >
+                    <div>
+                      <div className="font-bold text-[var(--color-text-title)]">3. จัดตารางเรียน &amp; ภาคเรียน</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                        {timetableSlots.length} คาบในระบบ
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] whitespace-nowrap ${step3Done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                      {step3Done ? 'พร้อมแล้ว' : 'จัดตาราง'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Teacher / Staff Today's Desk (Zero-Friction Operations) */}
+            {isStaffUser && (
+              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'งานวันนี้สำหรับครู (Today’s Desk)' : 'Today’s Teaching Desk'}
+                    </h2>
+                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                      ({todayStr})
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)] truncate">
+                    {todayScheduledSlots.length > 0
+                      ? `มีตารางสอนวันนี้ ${todayScheduledSlots.length} คาบ (${todayScheduledSlots.slice(0, 3).map((s) => `${s.courseCode} ${s.classRoom}`).join(' • ')}${todayScheduledSlots.length > 3 ? ' ...' : ''})`
+                      : 'วันนี้ไม่มีคาบสอนที่กำหนดไว้ในตาราง'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('timetable')}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold cursor-pointer whitespace-nowrap tabular-nums"
+                  >
+                    คาบสอนวันนี้: {todayScheduledSlots.length} คาบ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('attendance')}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold cursor-pointer whitespace-nowrap tabular-nums ${
+                      pendingLeaveCount > 0
+                        ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    ใบลารออนุมัติ: {pendingLeaveCount}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('homework')}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold cursor-pointer whitespace-nowrap tabular-nums ${
+                      ungradedHomeworkCount > 0
+                        ? 'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-200'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    การบ้านรอตรวจ: {ungradedHomeworkCount}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Daily Student Attendance Trends Chart + Recent Gate Feed */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">

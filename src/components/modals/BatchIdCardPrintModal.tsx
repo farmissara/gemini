@@ -37,10 +37,11 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(() => new Set(students.map(s => s.id)));
   const [cardSide, setCardSide] = useState<'front' | 'back' | 'both'>('front');
-  const [layoutMode, setLayoutMode] = useState<'grid_a4' | 'single'>('grid_a4');
+  const [layoutMode, setLayoutMode] = useState<'grid_a4' | 'single' | 'sticker_a4'>('grid_a4');
   const [includeBarcode, setIncludeBarcode] = useState<boolean>(true);
   const [includeQrCode, setIncludeQrCode] = useState<boolean>(true);
   const [includeBloodType, setIncludeBloodType] = useState<boolean>(true);
+  const accentColor = school.primaryColor || '#1d4ed8';
 
   // Available grade levels and rooms
   const gradeLevels = useMemo(() => Array.from(new Set(students.map(s => s.gradeLevel).filter(Boolean))), [students]);
@@ -221,6 +222,27 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               </button>
             </div>
 
+            <div className="flex p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+              <button
+                type="button"
+                onClick={() => setLayoutMode('grid_a4')}
+                className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                  layoutMode === 'grid_a4' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
+                }`}
+              >
+                บัตร CR80 (2 คอลัมน์)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('sticker_a4')}
+                className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                  layoutMode === 'sticker_a4' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
+                }`}
+              >
+                สติกเกอร์ QR (8 ดวง/แถว)
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handleSelectAllFiltered}
@@ -247,6 +269,46 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               <p className="text-sm font-bold text-[var(--color-text-title)]">ไม่มีนักเรียนที่ถูกเลือกพิมพ์</p>
               <p className="text-xs">กรุณาเลือกนักเรียนจากตัวกรองด้านบนเพื่อสั่งพิมพ์บัตร</p>
             </div>
+          ) : layoutMode === 'sticker_a4' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto">
+              {printableStudents.map((student) => (
+                <div
+                  key={`sticker-${student.id}`}
+                  className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 flex flex-col items-center text-center gap-1.5 print:border-slate-800 print:shadow-none print:break-inside-avoid"
+                >
+                  <div className="flex items-center gap-1.5 w-full justify-center pb-1 border-b border-slate-200 dark:border-slate-800">
+                    {school.logoUrl ? (
+                      <img src={school.logoUrl} alt={school.nameTh} className="w-4 h-4 rounded object-cover shrink-0" />
+                    ) : (
+                      <div
+                        className="w-4 h-4 rounded text-white flex items-center justify-center text-[8px] font-black shrink-0"
+                        style={{ backgroundColor: accentColor }}
+                      >
+                        {school.code.slice(0, 2)}
+                      </div>
+                    )}
+                    <span className="text-[9px] font-bold text-slate-700 dark:text-slate-200 truncate">
+                      {school.nameTh}
+                    </span>
+                  </div>
+                  <div className="p-1 bg-white rounded-md border border-slate-200">
+                    <QrCodeMatrix
+                      value={`EDUVERSE:STU:${student.studentIdNumber}:${school.code}`}
+                      size={74}
+                      label={`QR: ${student.studentIdNumber}`}
+                    />
+                  </div>
+                  <div className="w-full min-w-0">
+                    <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">
+                      {student.firstNameTh} {student.lastNameTh}
+                    </p>
+                    <p className="text-[9px] font-mono text-slate-600 dark:text-slate-400">
+                      {student.studentIdNumber} · {student.room}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4 max-w-4xl mx-auto">
               {printableStudents.map((student) => {
@@ -256,13 +318,27 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                     className="relative w-full aspect-[85.6/53.98] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-3 shadow-md flex flex-col justify-between overflow-hidden print:border-slate-800 print:shadow-none print:break-inside-avoid"
                   >
                     {/* Card Top Brand Header */}
-                    <div className="flex items-center justify-between border-b border-blue-600/30 pb-1.5 shrink-0">
+                    <div
+                      className="flex items-center justify-between border-b pb-1.5 shrink-0"
+                      style={{ borderColor: accentColor }}
+                    >
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="w-6 h-6 rounded-md bg-blue-700 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                          EV
-                        </div>
+                        {school.logoUrl ? (
+                          <img
+                            src={school.logoUrl}
+                            alt={school.nameTh}
+                            className="w-6 h-6 rounded-md object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                          />
+                        ) : (
+                          <div
+                            className="w-6 h-6 rounded-md text-white flex items-center justify-center text-[10px] font-black shrink-0"
+                            style={{ backgroundColor: accentColor }}
+                          >
+                            {school.code.slice(0, 2) || 'EV'}
+                          </div>
+                        )}
                         <div className="min-w-0">
-                          <h4 className="text-[10px] font-black leading-tight truncate text-blue-900 dark:text-blue-300">
+                          <h4 className="text-[10px] font-black leading-tight truncate text-slate-900 dark:text-blue-200">
                             {school.nameTh}
                           </h4>
                           <span className="text-[8px] text-slate-500 font-medium block truncate">
@@ -270,7 +346,10 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                           </span>
                         </div>
                       </div>
-                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 shrink-0">
+                      <span
+                        className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white shrink-0"
+                        style={{ backgroundColor: accentColor }}
+                      >
                         STUDENT CARD
                       </span>
                     </div>

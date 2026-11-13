@@ -38,7 +38,9 @@ import {
   LeaveStatus,
   CampusGateGeofence,
   CentralExamPack,
-  SchoolExamEntitlement
+  SchoolExamEntitlement,
+  AdaptivePracticeTopic,
+  SchoolFeatureFlags
 } from './types';
 import {
   INITIAL_SYSTEM_CONFIG,
@@ -142,6 +144,9 @@ import {
 import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
 import { getParentUnreadNotificationCount, sendPrivateParentNotification } from './lib/parentNotifications';
 import { getLocalDateString } from './lib/date';
+import type { OfflineQueueItem } from './lib/offlineSync';
+import { appendAuditLog } from './lib/auditLog';
+import { getSchoolFeatureFlags } from './lib/schoolFeatureFlags';
 import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database } from 'lucide-react';
 
 const EMPTY_SCHOOL: School = {
@@ -250,6 +255,8 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
+  const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
+  const [featureFlagsBySchool, setFeatureFlagsBySchool] = useState<Record<string, SchoolFeatureFlags>>({});
 
   useEffect(() => {
     setDismissedDuplicateWarning(false);
@@ -504,6 +511,9 @@ export const App: React.FC = () => {
   const schoolSdqAssessments = sdqAssessments.filter((s) => !s.schoolId || s.schoolId === activeSchool.id);
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
+  const activeFeatureFlags = activeSchool.id
+    ? (featureFlagsBySchool[activeSchool.id] || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise'))
+    : undefined;
   const duplicateWarnings = [
     ...getDuplicateIdWarnings({
       students: schoolStudents,
@@ -630,10 +640,36 @@ export const App: React.FC = () => {
         ...(updates.gradingSystem !== undefined ? { gradingSystem: updates.gradingSystem } : {}),
         ...(updates.staffPositionOptions !== undefined ? { staffPositionOptions: updates.staffPositionOptions } : {}),
       }));
+      if (updates.academicYear !== undefined || updates.currentSemester !== undefined) {
+        appendAuditLog(activeSchool.id, {
+          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+          actorRole: currentUser.role,
+          actionType: 'academic_period_update',
+          targetLabel: activeSchool.nameTh || activeSchool.id,
+          details: `ปีการศึกษา ${updates.academicYear ?? activeSchool.academicYear} ภาคเรียนที่ ${updates.currentSemester ?? activeSchool.currentSemester}`,
+        });
+      }
       setDataSyncError(null);
     } catch (error) {
       setDataSyncError(error instanceof Error ? error.message : String(error));
       throw error;
+    }
+  };
+
+  const handleUpdateAcademicPeriod = async (academicYear: string, currentSemester: string) => {
+    await handleUpdateSchool({ academicYear, currentSemester });
+  };
+
+  const handleUpdateSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFlags) => {
+    setFeatureFlagsBySchool((prev) => ({ ...prev, [schoolId]: flags }));
+    if (currentUser) {
+      appendAuditLog(schoolId, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'feature_flags_update',
+        targetLabel: flags.tier,
+        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier})`,
+      });
     }
   };
 
@@ -762,7 +798,21 @@ export const App: React.FC = () => {
           };
         }));
         setAttendance(data.attendance);
-        setInvoices(data.invoices);
+        let resolvedInvoices = data.invoices;
+        if (typeof window !== 'undefined') {
+          try {
+            const rawSlips = localStorage.getItem(`eduverse_invoice_slips_v1_${activeSchool.id}`);
+            if (rawSlips) {
+              const slipMap = JSON.parse(rawSlips) as Record<string, Partial<TuitionInvoice>>;
+              resolvedInvoices = resolvedInvoices.map((inv) =>
+                slipMap[inv.id] ? { ...inv, ...slipMap[inv.id] } : inv
+              );
+            }
+          } catch {
+            // ignore corrupt local slip cache
+          }
+        }
+        setInvoices(resolvedInvoices);
         setAnnouncements(data.announcements);
         setSchoolPeriods(data.schoolPeriods);
         setTimetableSlots(data.timetableSlots || []);
@@ -1061,6 +1111,15 @@ export const App: React.FC = () => {
       setTimetableSlots((prev) => prev.map((slot) => (
         slot.courseId === courseId ? { ...slot, courseId: undefined } : slot
       )));
+      if (currentUser) {
+        appendAuditLog(activeSchool.id, {
+          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+          actorRole: currentUser.role,
+          actionType: 'course_delete',
+          targetLabel: courseId,
+          details: `ลบรายวิชาออกจากโรงเรียน`,
+        });
+      }
       setDataSyncError(null);
       return true;
     } catch (error) {
@@ -1601,23 +1660,111 @@ export const App: React.FC = () => {
     handleRecordAttendance(studentId, 'present', 'สแกนบัตรผ่านประตูอัตโนมัติ (Gate Turnstile)');
   };
 
+  const saveInvoiceSlipOverlay = (
+    schoolId: string,
+    invoiceId: string,
+    patch: Partial<Pick<TuitionInvoice, 'slipImageUrl' | 'slipSubmittedAt' | 'slipStatus' | 'slipRejectReason' | 'slipReferenceNote' | 'status' | 'paidAt' | 'receiptNumber' | 'paymentMethod'>>
+  ) => {
+    if (typeof window === 'undefined' || !schoolId) return;
+    try {
+      const key = `eduverse_invoice_slips_v1_${schoolId}`;
+      const raw = localStorage.getItem(key);
+      const map = raw ? (JSON.parse(raw) as Record<string, Partial<TuitionInvoice>>) : {};
+      map[invoiceId] = { ...(map[invoiceId] || {}), ...patch };
+      localStorage.setItem(key, JSON.stringify(map));
+    } catch {
+      // ignore storage quota errors
+    }
+  };
+
   const handlePayInvoice = (invoiceId: string, method?: TuitionInvoice['paymentMethod']) => {
     const paidTime = new Date().toISOString();
     const receiptNum = `RCP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const resolvedMethod = method || 'promptpay';
     setInvoices((prev) =>
       prev.map((inv) =>
         inv.id === invoiceId
           ? {
               ...inv,
               status: 'paid',
-              paymentMethod: method || 'promptpay',
+              paymentMethod: resolvedMethod,
               paidAt: paidTime,
               receiptNumber: receiptNum,
             }
           : inv
       )
     );
+    saveInvoiceSlipOverlay(activeSchool.id, invoiceId, {
+      status: 'paid',
+      paymentMethod: resolvedMethod,
+      paidAt: paidTime,
+      receiptNumber: receiptNum,
+    });
     setDataSyncError(null);
+  };
+
+  const handleSubmitInvoiceSlip = (invoiceId: string, slipDataUrl: string, note: string) => {
+    const submittedAt = new Date().toISOString();
+    const patch: Partial<TuitionInvoice> = {
+      slipImageUrl: slipDataUrl,
+      slipSubmittedAt: submittedAt,
+      slipStatus: 'pending_review',
+      slipReferenceNote: note,
+      slipRejectReason: undefined,
+    };
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...patch } : inv))
+    );
+    saveInvoiceSlipOverlay(activeSchool.id, invoiceId, patch);
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'invoice_slip_submitted',
+        targetLabel: invoiceId,
+        details: note || 'ผู้ปกครองแนบสลิป PromptPay รอตรวจสอบ',
+      });
+    }
+  };
+
+  const handleApproveInvoiceSlip = (invoiceId: string) => {
+    handlePayInvoice(invoiceId, 'promptpay');
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === invoiceId ? { ...inv, slipStatus: 'approved', slipRejectReason: undefined } : inv))
+    );
+    saveInvoiceSlipOverlay(activeSchool.id, invoiceId, {
+      slipStatus: 'approved',
+      slipRejectReason: undefined,
+    });
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'invoice_slip_approved',
+        targetLabel: invoiceId,
+        details: 'อนุมัติสลิปโอนเงินและออกเลขที่ใบเสร็จอัตโนมัติ',
+      });
+    }
+  };
+
+  const handleRejectInvoiceSlip = (invoiceId: string, reason: string) => {
+    const patch: Partial<TuitionInvoice> = {
+      slipStatus: 'rejected',
+      slipRejectReason: reason,
+    };
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...patch } : inv))
+    );
+    saveInvoiceSlipOverlay(activeSchool.id, invoiceId, patch);
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'invoice_slip_rejected',
+        targetLabel: invoiceId,
+        details: reason,
+      });
+    }
   };
 
   const handleSendPrivateAppReminder = async (invoice: TuitionInvoice) => {
@@ -1893,6 +2040,101 @@ export const App: React.FC = () => {
     setGrades((prev) =>
       prev.map((g) => (g.id === gradeId ? { ...g, ...updates } : g))
     );
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'grade_update',
+        targetLabel: gradeId,
+        details: `แก้ไขคะแนน (คะแนนรวม ${updates.totalScore ?? '-'})`,
+      });
+    }
+  };
+
+  const handleSyncQuizScoresToGradebook = (
+    courseId: string,
+    packTitle: string,
+    entries: { studentId: string; quizScore: number }[]
+  ) => {
+    if (entries.length === 0) return;
+    setGrades((prev) => {
+      const next = [...prev];
+      for (const entry of entries) {
+        const idx = next.findIndex(
+          (g) => (g.schoolId === activeSchool.id || !g.schoolId) && g.courseId === courseId && g.studentId === entry.studentId
+        );
+        if (idx >= 0) {
+          const existing = next[idx];
+          const totalScore = Math.min(
+            100,
+            (existing.midtermScore || 0) +
+              (existing.finalScore || 0) +
+              (existing.assignmentScore || 0) +
+              entry.quizScore
+          );
+          const graded = calculateGrade(totalScore, systemConfig.gradingSystem);
+          next[idx] = {
+            ...existing,
+            quizScore: entry.quizScore,
+            totalScore,
+            letterGrade: graded.letter,
+            gradePoint: graded.point,
+          };
+        } else {
+          const totalScore = Math.min(100, entry.quizScore);
+          const graded = calculateGrade(totalScore, systemConfig.gradingSystem);
+          next.push({
+            id: `grd-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            schoolId: activeSchool.id,
+            studentId: entry.studentId,
+            courseId,
+            academicYear: systemConfig.academicYear || activeSchool.academicYear || '2568',
+            semester: systemConfig.currentSemester || activeSchool.currentSemester || '1',
+            midtermScore: 0,
+            finalScore: 0,
+            assignmentScore: 0,
+            quizScore: entry.quizScore,
+            totalScore,
+            letterGrade: graded.letter,
+            gradePoint: graded.point,
+          });
+        }
+      }
+      return next;
+    });
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'quiz_grade_sync',
+        targetLabel: courseId,
+        details: `นำเข้าคะแนน Quiz จาก "${packTitle}" เข้าสมุดคะแนน ${entries.length} คน`,
+      });
+    }
+  };
+
+  const handleSyncOfflineItem = async (item: OfflineQueueItem): Promise<boolean> => {
+    try {
+      const payload = item.payload as Record<string, any> | null;
+      if (!payload) return false;
+      if (item.actionType === 'attendance' && payload.studentId) {
+        handleRecordAttendance(
+          String(payload.studentId),
+          (payload.status as AttendanceStatus) || 'present',
+          String(payload.remarks || 'ซิงก์จากโหมดออฟไลน์'),
+          (payload.method as AttendanceRecord['checkinMethod']) || 'qr_scanner',
+          payload.extra as Parameters<typeof handleRecordAttendance>[4]
+        );
+        return true;
+      }
+      if (item.actionType === 'health_visit') {
+        handleAddInfirmaryVisit(payload as unknown as InfirmaryVisit);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   };
 
   // Application data is shown only after a real Supabase account is authenticated.
@@ -2066,7 +2308,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Offline Status Connectivity Banner */}
-        <OfflineIndicator lang={lang} />
+        <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
       </div>
     );
   }
@@ -2227,6 +2469,7 @@ export const App: React.FC = () => {
                 coordinationUnreadCount={coordinationUnreadCount}
                 unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                 lang={lang}
+                featureFlags={activeFeatureFlags}
               />
             </div>
           </div>
@@ -2251,6 +2494,7 @@ export const App: React.FC = () => {
               coordinationUnreadCount={coordinationUnreadCount}
               unclaimedCentralPacksCount={unclaimedCentralPacks.length}
               lang={lang}
+              featureFlags={activeFeatureFlags}
             />
           </div>
         )}
@@ -2293,6 +2537,7 @@ export const App: React.FC = () => {
                     coordinationUnreadCount={coordinationUnreadCount}
                     onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
                     initialSubTab={superAdminSubTab}
+                    onUpdateSchoolFeatureFlags={handleUpdateSchoolFeatureFlags}
                   />
                 )}
 
@@ -2364,6 +2609,8 @@ export const App: React.FC = () => {
                     onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                     onUpdateSchool={handleUpdateSchool}
                     onUpdateConfig={setSystemConfig}
+                    featureFlags={activeFeatureFlags}
+                    onUpdateFeatureFlags={(flags) => handleUpdateSchoolFeatureFlags(activeSchool.id, flags)}
                   />
                 )}
 
@@ -2380,6 +2627,20 @@ export const App: React.FC = () => {
                     sdqAssessments={schoolSdqAssessments}
                     behaviorRecords={schoolBehaviorRecords}
                     onNavigateToTab={(tab: string) => navigateToAppTab(tab as NavTab)}
+                    schoolId={activeSchool.id}
+                    infirmaryVisits={schoolInfirmaryVisits}
+                    homeworkSubmissions={schoolHomeworkSubmissions}
+                    onLogIntervention={(stuName, title) => {
+                      if (currentUser) {
+                        appendAuditLog(activeSchool.id, {
+                          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+                          actorRole: currentUser.role,
+                          actionType: 'intervention_logged',
+                          targetLabel: stuName,
+                          details: title,
+                        });
+                      }
+                    }}
                   />
                 )}
 
@@ -2402,6 +2663,10 @@ export const App: React.FC = () => {
                     onRecordMilestoneActivity={handleRecordMilestoneActivity}
                     unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                     onOpenCentralExamPopup={() => setShowCentralExamPopup(true)}
+                    timetableSlots={schoolTimetableSlots}
+                    leaveRequests={leaveRequests}
+                    homeworkSubmissions={schoolHomeworkSubmissions}
+                    schoolPeriods={schoolPeriods}
                   />
                 )}
 
@@ -2498,6 +2763,10 @@ export const App: React.FC = () => {
                       navigateToAppTab('games');
                     }}
                     onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
+                    courses={schoolCourses}
+                    students={schoolStudents}
+                    grades={schoolGrades}
+                    onSyncQuizScoresToGradebook={handleSyncQuizScoresToGradebook}
                   />
                 )}
 
@@ -2516,6 +2785,12 @@ export const App: React.FC = () => {
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
                     onExit={() => setCurrentTab('dashboard')}
+                    schoolId={activeSchool.id}
+                    currentUser={currentUser}
+                    onAwardPortfolioItem={(item) => {
+                      handleAddPortfolioItem(item);
+                      navigateToAppTab('portfolio');
+                    }}
                   />
                 )}
 
@@ -2524,6 +2799,8 @@ export const App: React.FC = () => {
                     lang={lang}
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                    initialFocusTopic={adaptivePracticeTopic}
+                    onClearFocusTopic={() => setAdaptivePracticeTopic(null)}
                   />
                 )}
 
@@ -2531,6 +2808,12 @@ export const App: React.FC = () => {
                   <RealWorldSnapQuestView
                     lang={lang}
                     currentRole={currentRole}
+                    schoolId={activeSchool.id}
+                    currentUser={currentUser}
+                    onAwardPortfolioItem={(item) => {
+                      handleAddPortfolioItem(item);
+                      navigateToAppTab('portfolio');
+                    }}
                   />
                 )}
 
@@ -2539,6 +2822,11 @@ export const App: React.FC = () => {
                     lang={lang}
                     currentRole={currentRole}
                     currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                    initialFocusTopic={adaptivePracticeTopic}
+                    onPracticeInSocraticTutor={(topic) => {
+                      setAdaptivePracticeTopic(topic);
+                      navigateToAppTab('socratic_tutor');
+                    }}
                   />
                 )}
 
@@ -2575,6 +2863,8 @@ export const App: React.FC = () => {
                     schoolName={activeSchool.nameTh}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
+                    semesterOptions={systemConfig.semesterOptions}
+                    onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
                   />
                 )}
 
@@ -2688,6 +2978,13 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     onUpdateGrade={handleUpdateGrade}
                     onOpenReportCard={setSelectedStudentForReport}
+                    timetableSlots={schoolTimetableSlots}
+                    attendance={schoolAttendance}
+                    periodAttendance={schoolPeriodAttendance}
+                    onPracticeInAi={(topic) => {
+                      setAdaptivePracticeTopic(topic);
+                      navigateToAppTab('socratic_tutor');
+                    }}
                   />
                 )}
 
@@ -2700,6 +2997,8 @@ export const App: React.FC = () => {
                     onSendPrivateAppReminder={handleSendPrivateAppReminder}
                     currentRole={currentRole}
                     onOpenExamPaymentSettings={handleOpenExamPaymentSettings}
+                    onApproveSlip={handleApproveInvoiceSlip}
+                    onRejectSlip={handleRejectInvoiceSlip}
                   />
                 )}
 
@@ -2709,6 +3008,18 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     onAddAnnouncement={handleAddAnnouncement}
                     onBroadcastLine={handleBroadcastLine}
+                    schoolId={activeSchool.id}
+                    onConsentPublished={(title) => {
+                      if (currentUser) {
+                        appendAuditLog(activeSchool.id, {
+                          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+                          actorRole: currentUser.role,
+                          actionType: 'consent_created',
+                          targetLabel: title,
+                          details: 'เผยแพร่หนังสือขออนุญาตผู้ปกครอง',
+                        });
+                      }
+                    }}
                   />
                 )}
               </>
@@ -2741,6 +3052,11 @@ export const App: React.FC = () => {
                 onPayInvoice={handlePayInvoice}
                 onOpenReportCard={setSelectedStudentForReport}
                 onAddLeaveRequest={handleAddLeaveRequest}
+                schoolId={activeSchool.id}
+                periodAttendance={schoolPeriodAttendance}
+                homeworkSubmissions={schoolHomeworkSubmissions}
+                infirmaryVisits={schoolInfirmaryVisits}
+                onSubmitInvoiceSlip={handleSubmitInvoiceSlip}
               />
             )}
           </div>
@@ -3077,7 +3393,7 @@ export const App: React.FC = () => {
       />
 
       {/* Offline Status Connectivity Banner */}
-      <OfflineIndicator lang={lang} />
+      <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
     </div>
   );
 };

@@ -48,6 +48,7 @@ import {
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
+import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -207,25 +208,43 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     setScannerResult(null);
 
     setTimeout(() => {
+      const extraPayload = {
+        recordType: 'check_in' as const,
+        userType: loggedInProfile.userType,
+        userName: loggedInProfile.userName,
+        userRole: loggedInProfile.userRoleLabel,
+        userAvatar: loggedInProfile.avatarUrl,
+        userDepartmentOrRoom: loggedInProfile.departmentOrRoom,
+        teacherId: loggedInProfile.userType === 'teacher' ? loggedInProfile.targetId : undefined,
+        recordedBy: currentUser?.fullNameTh,
+        recordedByRole: currentUser?.role,
+      };
+      const offline = !isOnlineNow();
+      if (offline) {
+        enqueueOfflineAction({
+          actionType: 'attendance',
+          schoolId: activeSchool?.id || currentUser?.schoolId || 'school-1',
+          description: `เช็กชื่อตนเอง (ออฟไลน์) ${loggedInProfile.userName}`,
+          payload: {
+            studentId: loggedInProfile.targetId,
+            status,
+            remarks: remarks || 'เช็กชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
+            method: 'qr_scanner',
+            extra: extraPayload,
+          },
+        });
+      }
       onRecordAttendance(
         loggedInProfile.targetId,
         status,
         remarks || 'เช็กชื่อผ่านระบบหน้าเว็บโดยบัญชีตนเอง',
         'qr_scanner',
-        {
-          recordType: 'check_in',
-          userType: loggedInProfile.userType,
-          userName: loggedInProfile.userName,
-          userRole: loggedInProfile.userRoleLabel,
-          userAvatar: loggedInProfile.avatarUrl,
-          userDepartmentOrRoom: loggedInProfile.departmentOrRoom,
-          teacherId: loggedInProfile.userType === 'teacher' ? loggedInProfile.targetId : undefined,
-          recordedBy: currentUser?.fullNameTh,
-          recordedByRole: currentUser?.role,
-        }
+        extraPayload
       );
       setIsSelfCheckingIn(false);
-      setScannerResult(`เช็กชื่อบัญชีของคุณสำเร็จ: ${loggedInProfile.userName} (${loggedInProfile.userRoleLabel}) - บันทึกเวลาแล้ว`);
+      setScannerResult(
+        `เช็กชื่อบัญชีของคุณสำเร็จ: ${loggedInProfile.userName} (${loggedInProfile.userRoleLabel})${offline ? ' · บันทึกคิวออฟไลน์แล้ว' : ' - บันทึกเวลาแล้ว'}`
+      );
       setTimeout(() => setScannerResult(null), 4000);
     }, 400);
   };
@@ -237,23 +256,41 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     setScannerResult(null);
 
     setTimeout(() => {
+      const extraPayload = {
+        recordType: 'check_in' as const,
+        userName: `${matchedScannerStudent.firstNameTh} ${matchedScannerStudent.lastNameTh}`,
+        userRole: `นักเรียน (${matchedScannerStudent.gradeLevel})`,
+        userDepartmentOrRoom: matchedScannerStudent.room,
+        userAvatar: matchedScannerStudent.avatarUrl,
+        recordedBy: currentUser?.fullNameTh,
+        recordedByRole: currentUser?.role,
+      };
+      const offline = !isOnlineNow();
+      if (offline) {
+        enqueueOfflineAction({
+          actionType: 'attendance',
+          schoolId: matchedScannerStudent.schoolId || activeSchool?.id || 'school-1',
+          description: `สแกนเข้าเรียน (ออฟไลน์) ${matchedScannerStudent.firstNameTh} ${matchedScannerStudent.lastNameTh}`,
+          payload: {
+            studentId: matchedScannerStudent.id,
+            status,
+            remarks,
+            method: 'qr_scanner',
+            extra: extraPayload,
+          },
+        });
+      }
       onRecordAttendance(
         matchedScannerStudent.id, 
         status, 
         remarks, 
         'qr_scanner',
-        {
-          recordType: 'check_in',
-          userName: `${matchedScannerStudent.firstNameTh} ${matchedScannerStudent.lastNameTh}`,
-          userRole: `นักเรียน (${matchedScannerStudent.gradeLevel})`,
-          userDepartmentOrRoom: matchedScannerStudent.room,
-          userAvatar: matchedScannerStudent.avatarUrl,
-          recordedBy: currentUser?.fullNameTh,
-          recordedByRole: currentUser?.role,
-        }
+        extraPayload
       );
       setIsScanning(false);
-      setScannerResult(`สแกนสำเร็จ: ${matchedScannerStudent.firstNameTh} (${matchedScannerStudent.studentIdNumber}) - สถานะ ${status.toUpperCase()} บันทึกลงระบบแล้ว`);
+      setScannerResult(
+        `สแกนสำเร็จ: ${matchedScannerStudent.firstNameTh} (${matchedScannerStudent.studentIdNumber}) - สถานะ ${status.toUpperCase()}${offline ? ' · บันทึกคิวออฟไลน์แล้ว' : ' บันทึกลงระบบแล้ว'}`
+      );
       if (!isRestrictedViewer) {
         setScannerStudentIdInput('');
       }
@@ -1020,6 +1057,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         isOpen={showRapidScannerModal}
         onClose={() => setShowRapidScannerModal(false)}
         students={students}
+        schoolId={activeSchool?.id || currentUser?.schoolId || 'school-1'}
         currentUser={currentUser}
         onRecordAttendance={onRecordAttendance}
         lang={lang}

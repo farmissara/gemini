@@ -64,6 +64,7 @@ export interface School {
   studentDefaultPasswordType?: 'student_id' | 'birthdate' | 'custom' | 'pin';
   studentDefaultPasswordNote?: string;
   customSchoolLoginUrl?: string;
+  schoolTier?: SchoolTier;
 }
 
 export interface RolePermissionConfig {
@@ -458,6 +459,12 @@ export interface TuitionInvoice {
   paymentMethod?: 'promptpay' | 'credit_card' | 'bank_transfer' | 'line_pay';
   paidAt?: string;
   receiptNumber?: string;
+  slipImageUrl?: string;
+  slipSubmittedAt?: string;
+  slipStatus?: 'none' | 'pending_review' | 'approved' | 'rejected';
+  slipRejectReason?: string;
+  slipAmount?: number;
+  slipReferenceNote?: string;
 }
 
 export interface Announcement {
@@ -1161,3 +1168,90 @@ export interface CentralExamPaymentSettings {
   updatedBy: string;
 }
 
+// 13. Multi-Tenant SaaS Feature Flags, Audit Logs & Campus Workflows
+export type SchoolTier = 'small' | 'standard' | 'enterprise';
+
+export interface SchoolFeatureFlags {
+  tier: SchoolTier;
+  lms_classroom: boolean;
+  central_exam_hub: boolean;
+  executive_warning: boolean;
+  ai_diagnostic: boolean;
+  socratic_tutor: boolean;
+  games_3d: boolean;
+  subject_labs: boolean;
+  realworld_quests: boolean;
+  boss_raid: boolean;
+  study_streak: boolean;
+  hall_of_fame: boolean;
+  infirmary: boolean;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  schoolId: string;
+  timestamp: string;
+  actorName: string;
+  actorRole: UserRole;
+  actionType:
+    | 'grade_update'
+    | 'academic_period_update'
+    | 'invoice_slip_submitted'
+    | 'invoice_slip_approved'
+    | 'invoice_slip_rejected'
+    | 'course_delete'
+    | 'feature_flags_update'
+    | 'intervention_logged'
+    | 'consent_created'
+    | 'quiz_grade_sync'
+    | 'system_setting';
+  targetLabel: string;
+  details: string;
+}
+
+export interface RiskInterventionRecord {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  studentName: string;
+  interventionType: 'home_visit' | 'parent_meeting' | 'remedial_plan' | 'follow_up_14d';
+  titleTh: string;
+  notes: string;
+  ownerName: string;
+  followUpDate: string;
+  status: 'planned' | 'in_progress' | 'completed';
+  createdAt: string;
+}
+
+export interface ConsentForm {
+  id: string;
+  schoolId: string;
+  titleTh: string;
+  descriptionTh: string;
+  eventDate: string;
+  dueDate: string;
+  targetRoom: string; // 'all' or specific room
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ConsentResponse {
+  id: string;
+  schoolId: string;
+  formId: string;
+  studentId: string;
+  studentName: string;
+  decision: 'approved' | 'declined';
+  parentName: string;
+  note?: string;
+  respondedAt: string;
+}
+
+export interface AdaptivePracticeTopic {
+  subject: string;
+  subjectName?: string;
+  topicTh: string;
+  studentName?: string;
+  score?: number;
+  targetTab?: 'socratic_tutor' | 'ai_diagnostic';
+}

@@ -36,7 +36,8 @@ import {
   Pin,
   LucideIcon
 } from 'lucide-react';
-import { UserRole, AppLanguage } from '../../types';
+import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
+import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 
 export type NavTab = 
   | 'super_admin_console'
@@ -89,6 +90,7 @@ interface SidebarProps {
   teachersCount?: number;
   coordinationUnreadCount?: number;
   unclaimedCentralPacksCount?: number;
+  featureFlags?: SchoolFeatureFlags;
   lang: AppLanguage;
 }
 
@@ -122,6 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   teachersCount = 0,
   coordinationUnreadCount = 0,
   unclaimedCentralPacksCount = 0,
+  featureFlags,
   lang,
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
@@ -446,6 +449,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     categories.forEach(cat => {
       cat.items.forEach(item => {
         if (!item.roles.includes(currentRole)) return;
+        if (!isTabEnabledByFeatureFlags(item.id, featureFlags)) return;
         if (
           item.labelTh.toLowerCase().includes(query) ||
           item.labelEn.toLowerCase().includes(query) ||
@@ -456,7 +460,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     });
     return results;
-  }, [searchFilter, categories, currentRole]);
+  }, [searchFilter, categories, currentRole, featureFlags]);
 
   const activeCatId = categories.find(c => c.items.some(i => i.id === currentTab))?.id;
   useEffect(() => {
@@ -471,9 +475,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       : ['dashboard', 'attendance', 'students', 'gradebook'];
     const all = categories.flatMap(c => c.items);
     return ids
-      .map(id => all.find(i => i.id === id && i.roles.includes(currentRole)))
+      .map(id => all.find(i => i.id === id && i.roles.includes(currentRole) && isTabEnabledByFeatureFlags(i.id, featureFlags)))
       .filter((i): i is NavItemDef => Boolean(i));
-  }, [categories, currentRole]);
+  }, [categories, currentRole, featureFlags]);
 
   const toneOf = (id: NavTab) => {
     const idx = categories.findIndex(c => c.items.some(i => i.id === id));
@@ -549,7 +553,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
             {categories.map((cat) => {
-              const items = cat.items.filter(i => i.roles.includes(currentRole) && !pinnedIds.has(i.id));
+              const items = cat.items.filter(
+                i => i.roles.includes(currentRole) && !pinnedIds.has(i.id) && isTabEnabledByFeatureFlags(i.id, featureFlags)
+              );
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
               return (
