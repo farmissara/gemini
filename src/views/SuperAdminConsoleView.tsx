@@ -574,7 +574,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 <p className="text-sm text-[var(--color-text-muted)] py-6 text-center">ไม่มีรายการสมัครโรงเรียนที่รออนุมัติ</p>
               ) : pendingRegistrations.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="table-comfortable w-full text-left text-xs">
                     <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)] font-semibold">
                       <tr>
                         <th className="py-2.5 px-3">สถานศึกษา</th>
@@ -768,7 +768,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             </h3>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="table-comfortable w-full text-left text-xs">
                 <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)] font-semibold">
                   <tr>
                     <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
@@ -856,7 +856,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
             {/* Promotions Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="table-comfortable w-full text-left text-xs">
                 <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)] font-semibold">
                   <tr>
                     <th className="py-2.5 px-3">โค้ดโปรโมชั่น</th>
@@ -1050,7 +1050,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="table-comfortable w-full text-left text-xs">
               <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)] font-semibold">
                 <tr>
                   <th className="py-2.5 px-3">รหัสโรงเรียน</th>
@@ -1192,7 +1192,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="table-comfortable w-full text-left text-xs">
                   <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)]">
                     <tr>
                       <th className="py-2 px-3">เวลา</th>

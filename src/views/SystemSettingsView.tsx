@@ -1494,7 +1494,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
           <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="table-comfortable w-full text-left text-xs">
                 <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-body)] font-bold uppercase text-[10px]">
                   <tr>
                     <th className="px-4 py-3">รหัสนักเรียน</th>
@@ -2213,7 +2213,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                    <table className="table-comfortable w-full text-left text-xs">
                       <thead className="bg-[var(--color-card-subtle)] border-y border-[var(--color-border)] text-[var(--color-text-body)]">
                         <tr>
                           <th className="py-2 px-3">เวลา</th>

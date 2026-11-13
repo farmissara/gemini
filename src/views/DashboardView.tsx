@@ -339,7 +339,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setDashboardTab('overview')}
@@ -449,9 +449,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
 
             {/* 4 Balanced High-level Overview KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Students */}
-              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'นักเรียนทั้งหมด' : 'Total Students'}
@@ -469,7 +469,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Selected Date Attendance Rate */}
-              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
@@ -487,7 +487,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Tuition Collection */}
-              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'จัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
@@ -505,7 +505,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* LINE Guardian Sync */}
-              <div className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-[var(--color-text-muted)]">
                     {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
@@ -669,8 +669,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               />
             )}
 
-            {/* Daily Student Attendance Trends Chart + Recent Gate Feed */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+            <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl p-4 hover:bg-[var(--color-card-subtle)]">
+                <span>
+                  <span className="block text-sm font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'แนวโน้มและรายการเช็คชื่อล่าสุด' : 'Attendance trends and recent check-ins'}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'เปิดดูกราฟและรายละเอียดเพิ่มเติมเมื่อต้องการ' : 'Open charts and more detailed activity when needed'}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 text-[11px] font-semibold text-[var(--color-primary-text)]">
+                  {lang === 'th' ? 'ดูรายละเอียด' : 'View details'}
+                  <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                </span>
+              </summary>
+              <div className="border-t border-[var(--color-border)] p-3">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <div className="xl:col-span-2 min-w-0">
                 <MonthlyAttendanceChart
                   attendance={scopedAttendance}
@@ -739,23 +754,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 )}
               </div>
-            </div>
+              </div>
+              </div>
+            </details>
 
             {playerScores.length > 0 && (
-              <MilestoneAchievementsPanel
-                playerScores={playerScores}
-                students={students}
-                attendance={scopedAttendance}
-                grades={grades}
-                currentUser={currentUser}
-                lang={lang}
-                onLogLibraryVisit={(userId) =>
-                  onRecordMilestoneActivity?.(userId, 'library_visit')
-                }
-                onQuickAttendanceForMilestone={(studentId, userId) =>
-                  onRecordMilestoneActivity?.(userId, 'attendance', studentId)
-                }
-              />
+              <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl p-4 hover:bg-[var(--color-card-subtle)]">
+                  <span>
+                    <span className="block text-sm font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'ความสำเร็จและความก้าวหน้าของผู้เรียน' : 'Student achievements and progress'}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-[var(--color-text-muted)]">
+                      {lang === 'th' ? 'เปิดดูข้อมูลเชิงลึกและกิจกรรมสะสม' : 'Open detailed progress and milestones'}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[var(--color-primary-text)] transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="border-t border-[var(--color-border)] p-3">
+                  <MilestoneAchievementsPanel
+                    playerScores={playerScores}
+                    students={students}
+                    attendance={scopedAttendance}
+                    grades={grades}
+                    currentUser={currentUser}
+                    lang={lang}
+                    onLogLibraryVisit={(userId) =>
+                      onRecordMilestoneActivity?.(userId, 'library_visit')
+                    }
+                    onQuickAttendanceForMilestone={(studentId, userId) =>
+                      onRecordMilestoneActivity?.(userId, 'attendance', studentId)
+                    }
+                  />
+                </div>
+              </details>
             )}
           </div>
         )}

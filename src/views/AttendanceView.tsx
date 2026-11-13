@@ -966,7 +966,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </h3>
 
               <div className="border border-[var(--color-border)] rounded-xl overflow-x-auto shadow-2xs">
-                <table className="w-full text-left text-xs whitespace-nowrap">
+                <table className="table-comfortable w-full text-left text-xs whitespace-nowrap">
                   <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)]">
                     <tr>
                       <th className="p-3">รหัสนักเรียน</th>

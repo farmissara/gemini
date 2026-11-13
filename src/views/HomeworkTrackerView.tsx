@@ -266,7 +266,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="table-comfortable w-full text-left text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-title)] uppercase">
                   <th className="p-2.5">{lang === 'th' ? 'หัวข้อการบ้าน / วิชา' : 'Assignment & Course'}</th>

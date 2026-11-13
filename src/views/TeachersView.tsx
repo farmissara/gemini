@@ -1040,7 +1040,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         /* Table View */
         <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto">
-            <table className="w-full text-left text-xs">
+            <table className="table-comfortable w-full text-left text-xs">
               <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)] font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3">ครูผู้สอน</th>

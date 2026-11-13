@@ -422,7 +422,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               </div>
 
               <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="table-comfortable w-full text-left text-xs">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-title)] uppercase">
                       <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
@@ -555,7 +555,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="table-comfortable w-full text-left text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-title)] uppercase">
                     <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
@@ -657,7 +657,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
           {/* CCT Student Table */}
           <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
-            <table className="w-full text-xs text-left">
+            <table className="table-comfortable w-full text-xs text-left">
               <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                 <tr>
                   <th className="py-2.5 px-3">เลขประจำตัว / 13 หลัก DMC</th>

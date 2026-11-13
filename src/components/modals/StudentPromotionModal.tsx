@@ -373,7 +373,7 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
               <p>กรุณาเลือกระดับชั้นหรือห้องเรียนที่มีนักเรียนอยู่ในระบบ</p>
             </div>
           ) : (
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="table-comfortable w-full text-left text-xs border-collapse">
               <thead className="sticky top-0 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold uppercase text-[11px]">
                 <tr>
                   <th className="p-2.5 w-10 text-center">

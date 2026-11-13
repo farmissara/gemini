@@ -464,8 +464,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const activeCatId = categories.find(c => c.items.some(i => i.id === currentTab))?.id;
   useEffect(() => {
-    if (activeCatId) setCollapsed(prev => ({ ...prev, [activeCatId]: false }));
-  }, [activeCatId]);
+    if (activeCatId) {
+      setCollapsed(Object.fromEntries(categories.map((category) => [category.id, category.id !== activeCatId])));
+    }
+  }, [activeCatId, categories]);
 
   const pinned = useMemo(() => {
     const ids: NavTab[] = currentRole === 'student'
@@ -494,7 +496,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         key={item.id}
         type="button"
         onClick={() => { setCurrentTab(item.id); onClick?.(); }}
-        className={`${tone} w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
+        className={`${tone} w-full flex min-h-10 items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-[12px] transition cursor-pointer ${
           isActive
             ? 'tone-active font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
@@ -515,7 +517,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="w-56 xl:w-60 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
-      <div className="shrink-0 p-2.5 border-b border-[var(--color-border)]">
+      <div className="shrink-0 p-3 border-b border-[var(--color-border)]">
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -523,7 +525,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             placeholder={lang === 'th' ? 'ค้นหาเมนู...' : 'Search menu...'}
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+            className="w-full pl-8 pr-7 py-2.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
           />
           {searchFilter && (
             <button type="button" onClick={() => setSearchFilter('')} aria-label="clear"
@@ -532,9 +534,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-3">
+      <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
         {searchFilter.trim() ? (
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             <div className="px-2 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
               {lang === 'th' ? `ผลการค้นหา (${searchResults.length})` : `Results (${searchResults.length})`}
             </div>
@@ -545,8 +547,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           <>
             {pinned.length > 0 && (
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 px-2 pb-0.5 text-[10px] font-semibold text-[var(--color-text-muted)]">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 px-2 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
                   <Pin className="w-3 h-3" />{lang === 'th' ? 'ใช้บ่อย' : 'Favorites'}
                 </div>
                 {pinned.map(item => renderItem(item))}
@@ -558,17 +560,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
               );
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
+              const CategoryIcon = cat.icon;
               return (
-                <div key={cat.id} className="space-y-0.5">
+                <div key={cat.id} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => setCollapsed(prev => ({ ...prev, [cat.id]: !isCollapsed }))}
-                    className="w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                    aria-expanded={!isCollapsed}
+                    aria-controls={`sidebar-category-${cat.id}`}
+                    onClick={() => {
+                      if (isCollapsed) {
+                        setCollapsed(Object.fromEntries(categories.map((category) => [category.id, category.id !== cat.id])));
+                      } else {
+                        setCollapsed((previous) => ({ ...previous, [cat.id]: true }));
+                      }
+                    }}
+                    className="w-full flex min-h-10 items-center justify-between gap-2 rounded-lg border border-transparent px-2.5 py-2 text-[11px] font-semibold text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
                   >
-                    <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
-                    {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <CategoryIcon className="h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />
+                      <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
+                      <span className="shrink-0 rounded-full bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[9px] tabular-nums">
+                        {items.length}
+                      </span>
+                    </span>
+                    {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
                   </button>
-                  {!isCollapsed && items.map(item => renderItem(item))}
+                  {!isCollapsed && (
+                    <div id={`sidebar-category-${cat.id}`} className="space-y-1 pl-1">
+                      {items.map(item => renderItem(item))}
+                    </div>
+                  )}
                 </div>
               );
             })}

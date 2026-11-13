@@ -1076,7 +1076,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="table-comfortable w-full text-left text-xs">
                 <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-muted)] uppercase text-[10px] font-bold">
                   <tr>
                     <th className="p-3">วันที่ / เวลา</th>

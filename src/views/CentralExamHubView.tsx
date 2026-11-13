@@ -1052,7 +1052,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
               </div>
 
               <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
+                <table className="table-comfortable w-full text-left text-xs">
                   <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-body)]">
                     <tr>
                       <th className="py-2 px-3">รหัส</th>

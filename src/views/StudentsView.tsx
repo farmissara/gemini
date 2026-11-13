@@ -1051,7 +1051,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
           {/* Students Table with Sticky Header */}
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]">
-            <table className="w-full text-left text-xs">
+            <table className="table-comfortable w-full text-left text-xs">
               <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] text-[var(--color-text-title)] uppercase tracking-wider font-semibold border-b border-[var(--color-border)]">
                 <tr>
                   <th className="py-3 px-4">Student</th>

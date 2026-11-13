@@ -809,7 +809,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="table-comfortable w-full text-left text-xs">
               <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                 <tr>
                   <th className="py-3 px-3">Student</th>
@@ -1255,7 +1255,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* Table */}
           <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
-            <table className="w-full text-xs text-left">
+            <table className="table-comfortable w-full text-xs text-left">
               <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                 <tr>
                   <th className="py-2.5 px-3 w-12 text-center">ลำดับ</th>
@@ -1435,7 +1435,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* O-NET Data Table */}
           <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
-            <table className="w-full text-xs text-left">
+            <table className="table-comfortable w-full text-xs text-left">
               <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                 <tr>
                   <th className="py-2.5 px-3">เลขที่นั่งสอบ</th>

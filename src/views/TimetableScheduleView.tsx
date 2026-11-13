@@ -1120,7 +1120,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full min-w-[820px] border-collapse text-left text-xs">
+            <table className="table-comfortable w-full min-w-[820px] border-collapse text-left text-xs">
               <thead className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]">
                 <tr>
                   <th className="p-3">ครูผู้สอน</th>
@@ -1225,7 +1225,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <table className="w-full text-xs text-left border-collapse">
+            <table className="table-comfortable w-full text-xs text-left border-collapse">
               <thead>
                 <tr className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)] font-bold text-[11px]">
                   <th className="p-3">รหัสวิชา</th>
@@ -1337,7 +1337,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
 
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
-            <table className={`w-full text-left border-collapse ${
+            <table className={`table-comfortable w-full text-left border-collapse ${
               isAllClassroomsView ? 'min-w-[1120px]' : 'min-w-[880px]'
             }`}>
               <thead>

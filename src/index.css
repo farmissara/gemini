@@ -107,6 +107,19 @@
     border-radius: 1.25rem;
     box-shadow: 0 10px 28px rgb(15 23 42 / 0.05);
   }
+
+  .table-comfortable tbody > tr > td {
+    padding-block: 0.875rem !important;
+  }
+
+  .table-comfortable thead > tr > th {
+    padding-block: 0.75rem !important;
+  }
+
+  .table-comfortable tbody > tr > td button {
+    min-width: 2rem;
+    min-height: 2rem;
+  }
 }
 
 

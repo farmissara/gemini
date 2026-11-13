@@ -915,7 +915,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="w-full text-xs text-left">
+                    <table className="table-comfortable w-full text-xs text-left">
                       <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
                         <tr>
                           <th className="px-3 py-2">รหัสนักเรียน</th>
@@ -987,7 +987,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="w-full text-xs text-left">
+                    <table className="table-comfortable w-full text-xs text-left">
                       <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
                         <tr>
                           <th className="px-3 py-2">รหัสบุคลากร</th>
@@ -1162,7 +1162,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     <button type="button" onClick={() => setPreviewCct([])} className="text-xs text-rose-600 font-bold">ล้างพรีวิว</button>
                   </div>
                   <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="w-full text-xs text-left">
+                    <table className="table-comfortable w-full text-xs text-left">
                       <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
                         <tr>
                           <th className="px-3 py-2">รหัสนักเรียน</th>
