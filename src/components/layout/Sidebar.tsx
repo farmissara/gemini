@@ -196,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'teachers',
-          labelTh: 'บุคลากร & คุณครู',
+          labelTh: 'บุคลากรและครู',
           labelEn: 'Faculty & Staff',
           icon: GraduationCap,
           badge: teachersCount > 0 ? `${teachersCount}` : null,

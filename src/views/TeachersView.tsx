@@ -680,42 +680,57 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         </div>
       </div>
 
-      <div className="shrink-0 flex gap-2 border-b border-[var(--color-border)]">
-        <button
-          type="button"
-          onClick={() => setStaffPage('directory')}
-          className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition ${
-            staffPage === 'directory'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-          }`}
-        >
-          <GraduationCap className="h-3.5 w-3.5" />
-          รายชื่อบุคลากร
-        </button>
-        <button
-          type="button"
-          onClick={() => setStaffPage('organization')}
-          className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition ${
-            staffPage === 'organization'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-          }`}
-        >
-          <Building2 className="h-3.5 w-3.5" />
-          โครงสร้างองค์กร
-        </button>
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
+        <div>
+          <h2 className="text-xs font-bold text-[var(--color-text-title)]">ข้อมูลบุคลากร</h2>
+          <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">
+            เลือกดูรายชื่อหรือสายบังคับบัญชาได้จากหน้านี้
+          </p>
+        </div>
+        <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="inline-flex flex-wrap gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1">
+          <button
+            type="button"
+            aria-pressed={staffPage === 'directory'}
+            onClick={() => setStaffPage('directory')}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+              staffPage === 'directory'
+                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <GraduationCap className="h-3.5 w-3.5" />
+            <span>ทำเนียบบุคลากร</span>
+            <span className="rounded-full bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[10px] tabular-nums">
+              {teachers.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={staffPage === 'organization'}
+            onClick={() => setStaffPage('organization')}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+              staffPage === 'organization'
+                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Building2 className="h-3.5 w-3.5" />
+            <span>ผังองค์กร</span>
+          </button>
+        </div>
       </div>
 
       {staffPage === 'organization' ? (
-        <StaffOrganizationView
-          teachers={teachers}
-          canManage={canManage}
-          onEditTeacher={canManage ? (teacher) => {
-            setStaffPage('directory');
-            handleOpenEdit(teacher);
-          } : undefined}
-        />
+        <div className="flex min-h-0 flex-1" role="region" aria-label="ผังองค์กรบุคลากร">
+          <StaffOrganizationView
+            teachers={teachers}
+            canManage={canManage}
+            onEditTeacher={canManage ? (teacher) => {
+              setStaffPage('directory');
+              handleOpenEdit(teacher);
+            } : undefined}
+          />
+        </div>
       ) : (
       <>
       {canManage && showPositionConfigPanel && (
