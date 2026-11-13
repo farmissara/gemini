@@ -17,7 +17,10 @@ import {
   Sparkles,
   Info,
   ShieldCheck,
-  CalendarCheck
+  CalendarCheck,
+  UserMinus,
+  UserPlus,
+  X
 } from 'lucide-react';
 import { Course, Student, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
@@ -40,6 +43,8 @@ interface CoursesViewProps {
   onDeleteCourses?: (courseIds: string[]) => Promise<boolean | void> | boolean | void;
   onEnrollStudent: (courseId: string, studentId: string) => void;
   onEnrollStudentsBatch?: (courseId: string, studentIds: string[]) => void;
+  onUnenrollStudent?: (courseId: string, studentId: string) => void;
+  onUnenrollStudentsBatch?: (courseId: string, studentIds: string[]) => void;
   onOpenImportExport?: (tab?: 'courses' | 'enrollment' | 'grades') => void;
   semesterOptions?: string[];
   academicYear?: string;
@@ -81,6 +86,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   onDeleteCourses,
   onEnrollStudent,
   onEnrollStudentsBatch,
+  onUnenrollStudent,
+  onUnenrollStudentsBatch,
   onOpenImportExport,
   semesterOptions = ['1', '2', 'Summer'],
   academicYear = '2569',
@@ -97,6 +104,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const [newDeptInput, setNewDeptInput] = useState('');
   const [enrollRoomInput, setEnrollRoomInput] = useState('');
   const [enrollFeedback, setEnrollFeedback] = useState<string | null>(null);
+  const [individualSearchQuery, setIndividualSearchQuery] = useState('');
+  const [selectedIndividualStudentId, setSelectedIndividualStudentId] = useState('');
+  const [enrolledSearchQuery, setEnrolledSearchQuery] = useState('');
+  const [confirmClearAllCourseId, setConfirmClearAllCourseId] = useState<string | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [activeCourseId, setActiveCourseId] = useState<string>(courses[0]?.id || '');
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
@@ -704,136 +715,388 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
               {/* Enrolled Students Roster */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-title)] flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <span>นักเรียนที่ลงทะเบียน ({activeCourse.enrolledStudentIds?.length || 0} คน)</span>
+                    <span>นักเรียนที่ลงทะเบียน (<span className="tabular-nums">{activeCourse.enrolledStudentIds?.length || 0}</span> คน)</span>
                   </h3>
-                </div>
 
-                {/* Quick Enroll Student Selector & Batch Room Enrollment (Staff Only) */}
-                {canManageCourses && (
-                  <div className="space-y-2 pt-1">
-                    {availableRoomsForEnroll.length > 0 && (
-                      <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 whitespace-nowrap">
-                          ลงทะเบียนทั้งห้อง:
-                        </span>
-                        <select
-                          value={selectedEnrollRoom}
-                          onChange={(e) => setEnrollRoomInput(e.target.value)}
-                          className="flex-1 min-w-28 px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold"
-                        >
-                          {availableRoomsForEnroll.map((room) => {
-                            const pendingInRoom = students.filter(
-                              (s) => s.room === room && !(activeCourse.enrolledStudentIds || []).includes(s.id)
-                            ).length;
-                            return (
-                              <option key={room} value={room}>
-                                {room} (ยังไม่ลง {pendingInRoom} คน)
-                              </option>
-                            );
-                          })}
-                        </select>
+                  {canManageCourses && (activeCourse.enrolledStudentIds?.length || 0) > 0 && (
+                    confirmClearAllCourseId === activeCourse.id ? (
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
-                            if (!selectedEnrollRoom) return;
-                            const idsToEnroll = students
-                              .filter((s) => s.room === selectedEnrollRoom && !(activeCourse.enrolledStudentIds || []).includes(s.id))
-                              .map((s) => s.id);
-                            if (idsToEnroll.length === 0) {
-                              setEnrollFeedback(`นักเรียนห้อง ${selectedEnrollRoom} ลงทะเบียนครบทุกคนแล้ว`);
-                              setTimeout(() => setEnrollFeedback(null), 3000);
-                              return;
+                            const count = activeCourse.enrolledStudentIds?.length || 0;
+                            if (onUnenrollStudentsBatch) {
+                              onUnenrollStudentsBatch(activeCourse.id, activeCourse.enrolledStudentIds || []);
+                            } else if (onUnenrollStudent) {
+                              (activeCourse.enrolledStudentIds || []).forEach((id) => onUnenrollStudent(activeCourse.id, id));
                             }
-                            if (onEnrollStudentsBatch) {
-                              onEnrollStudentsBatch(activeCourse.id, idsToEnroll);
-                            } else {
-                              idsToEnroll.forEach((id) => onEnrollStudent(activeCourse.id, id));
-                            }
-                            setEnrollFeedback(`ลงทะเบียนนักเรียนห้อง ${selectedEnrollRoom} เพิ่ม ${idsToEnroll.length} คนเรียบร้อย`);
+                            setConfirmClearAllCourseId(null);
+                            setEnrollFeedback(`ยกเลิกการลงทะเบียนทั้งหมด (${count} คน) ออกจากรายวิชา ${activeCourse.code} แล้ว`);
                             setTimeout(() => setEnrollFeedback(null), 3500);
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shrink-0"
+                          className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold cursor-pointer"
                         >
-                          ลงทะเบียนทั้งห้อง
+                          ยืนยันยกเลิกทั้งหมด ({activeCourse.enrolledStudentIds?.length || 0})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmClearAllCourseId(null)}
+                          className="px-2 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] text-[11px] font-semibold cursor-pointer"
+                        >
+                          ไม่ยกเลิก
                         </button>
                       </div>
-                    )}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmClearAllCourseId(activeCourse.id)}
+                        className="px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        <UserMinus className="w-3.5 h-3.5" />
+                        <span>ยกเลิกทั้งหมด</span>
+                      </button>
+                    )
+                  )}
+                </div>
+
+                {/* Quick Enroll / Unenroll Controls (Staff Only) */}
+                {canManageCourses && (
+                  <div className="space-y-2.5 pt-1">
+                    {availableRoomsForEnroll.length > 0 && (() => {
+                      const enrolledSet = new Set(activeCourse.enrolledStudentIds || []);
+                      const pendingInSelectedRoom = students.filter(
+                        (s) => s.room === selectedEnrollRoom && !enrolledSet.has(s.id)
+                      );
+                      const enrolledInSelectedRoom = students.filter(
+                        (s) => s.room === selectedEnrollRoom && enrolledSet.has(s.id)
+                      );
+                      return (
+                        <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 whitespace-nowrap">
+                              จัดการทั้งห้อง:
+                            </span>
+                            <select
+                              value={selectedEnrollRoom}
+                              onChange={(e) => setEnrollRoomInput(e.target.value)}
+                              className="flex-1 min-w-28 px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold"
+                            >
+                              {availableRoomsForEnroll.map((room) => {
+                                const pendingInRoom = students.filter(
+                                  (s) => s.room === room && !enrolledSet.has(s.id)
+                                ).length;
+                                const enrolledInRoom = students.filter(
+                                  (s) => s.room === room && enrolledSet.has(s.id)
+                                ).length;
+                                return (
+                                  <option key={room} value={room}>
+                                    {room} (ลงแล้ว {enrolledInRoom} • ยังไม่ลง {pendingInRoom} คน)
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              disabled={pendingInSelectedRoom.length === 0}
+                              onClick={() => {
+                                if (!selectedEnrollRoom) return;
+                                const idsToEnroll = pendingInSelectedRoom.map((s) => s.id);
+                                if (idsToEnroll.length === 0) {
+                                  setEnrollFeedback(`นักเรียนห้อง ${selectedEnrollRoom} ลงทะเบียนครบทุกคนแล้ว`);
+                                  setTimeout(() => setEnrollFeedback(null), 3000);
+                                  return;
+                                }
+                                if (onEnrollStudentsBatch) {
+                                  onEnrollStudentsBatch(activeCourse.id, idsToEnroll);
+                                } else {
+                                  idsToEnroll.forEach((id) => onEnrollStudent(activeCourse.id, id));
+                                }
+                                setEnrollFeedback(`ลงทะเบียนนักเรียนห้อง ${selectedEnrollRoom} เพิ่ม ${idsToEnroll.length} คนเรียบร้อย`);
+                                setTimeout(() => setEnrollFeedback(null), 3500);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" />
+                              <span>ลงทะเบียนทั้งห้อง ({pendingInSelectedRoom.length})</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={enrolledInSelectedRoom.length === 0}
+                              onClick={() => {
+                                if (!selectedEnrollRoom) return;
+                                const idsToUnenroll = enrolledInSelectedRoom.map((s) => s.id);
+                                if (idsToUnenroll.length === 0) return;
+                                if (onUnenrollStudentsBatch) {
+                                  onUnenrollStudentsBatch(activeCourse.id, idsToUnenroll);
+                                } else if (onUnenrollStudent) {
+                                  idsToUnenroll.forEach((id) => onUnenrollStudent(activeCourse.id, id));
+                                }
+                                setEnrollFeedback(`ยกเลิกลงทะเบียนนักเรียนห้อง ${selectedEnrollRoom} จำนวน ${idsToUnenroll.length} คนเรียบร้อย`);
+                                setTimeout(() => setEnrollFeedback(null), 3500);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-rose-300 dark:border-rose-800 disabled:opacity-45 disabled:cursor-not-allowed text-rose-700 dark:text-rose-200 text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
+                            >
+                              <UserMinus className="w-3.5 h-3.5" />
+                              <span>ยกเลิกทั้งห้อง ({enrolledInSelectedRoom.length})</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {enrollFeedback && (
                       <div className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
                         {enrollFeedback}
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <select
-                        id={`enroll-select-${activeCourse.id}`}
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>หรือเลือกลงทะเบียนรายบุคคล...</option>
-                        {students
-                          .filter((s) => !(activeCourse.enrolledStudentIds || []).includes(s.id))
-                          .map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.studentIdNumber} - {s.firstNameTh} {s.lastNameTh} ({s.room})
-                            </option>
-                          ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const sel = document.getElementById(`enroll-select-${activeCourse.id}`) as HTMLSelectElement;
-                          if (sel && sel.value) {
-                            onEnrollStudent(activeCourse.id, sel.value);
-                            sel.value = '';
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer shrink-0"
-                      >
-                        เพิ่มรายคน
-                      </button>
-                    </div>
+
+                    {/* Searchable Individual Enrollment Picker */}
+                    {(() => {
+                      const enrolledSet = new Set(activeCourse.enrolledStudentIds || []);
+                      const normalizedQuery = individualSearchQuery.trim().toLowerCase();
+                      const unenrolledStudents = students.filter((s) => !enrolledSet.has(s.id));
+                      const matchingStudents = normalizedQuery
+                        ? students.filter((s) => {
+                            const fullNameTh = `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase();
+                            const fullNameEn = `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase();
+                            return (
+                              s.studentIdNumber.toLowerCase().includes(normalizedQuery) ||
+                              fullNameTh.includes(normalizedQuery) ||
+                              fullNameEn.includes(normalizedQuery) ||
+                              (s.room || '').toLowerCase().includes(normalizedQuery)
+                            );
+                          })
+                        : [];
+
+                      return (
+                        <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-[var(--color-text-title)]">
+                              เพิ่ม / ค้นหาลงทะเบียนรายบุคคล
+                            </span>
+                            <span className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
+                              ยังไม่ลง {unenrolledStudents.length} คน
+                            </span>
+                          </div>
+
+                          {/* Name / Student ID Search Bar */}
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={individualSearchQuery}
+                              onChange={(e) => setIndividualSearchQuery(e.target.value)}
+                              placeholder="ค้นหาชื่อ-สกุล หรือรหัสนักเรียน เพื่อเพิ่มรายคน..."
+                              className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+                            />
+                            {individualSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setIndividualSearchQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                                title="ล้างคำค้นหา"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Live Search Matches with Instant 1-Click Enroll/Unenroll */}
+                          {normalizedQuery ? (
+                            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
+                              {matchingStudents.length === 0 ? (
+                                <p className="text-[11px] text-[var(--color-text-muted)] text-center py-2">
+                                  ไม่พบนักเรียนที่ตรงกับ "{individualSearchQuery}"
+                                </p>
+                              ) : (
+                                matchingStudents.slice(0, 20).map((stu) => {
+                                  const isAlreadyEnrolled = enrolledSet.has(stu.id);
+                                  return (
+                                    <div
+                                      key={stu.id}
+                                      className="flex items-center justify-between gap-2 p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]"
+                                    >
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                                          {stu.firstNameTh} {stu.lastNameTh}
+                                        </p>
+                                        <p className="text-[10px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                                          {stu.studentIdNumber} • {stu.room}
+                                        </p>
+                                      </div>
+                                      {isAlreadyEnrolled ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            onUnenrollStudent?.(activeCourse.id, stu.id);
+                                            setEnrollFeedback(`ยกเลิกลงทะเบียน ${stu.firstNameTh} ${stu.lastNameTh} แล้ว`);
+                                            setTimeout(() => setEnrollFeedback(null), 3000);
+                                          }}
+                                          className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 shrink-0 cursor-pointer"
+                                        >
+                                          <UserMinus className="w-3 h-3" />
+                                          <span>ยกเลิก</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            onEnrollStudent(activeCourse.id, stu.id);
+                                            setEnrollFeedback(`ลงทะเบียน ${stu.firstNameTh} ${stu.lastNameTh} (${stu.studentIdNumber}) เรียบร้อย`);
+                                            setTimeout(() => setEnrollFeedback(null), 3000);
+                                          }}
+                                          className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-semibold flex items-center gap-1 shrink-0 cursor-pointer"
+                                        >
+                                          <UserPlus className="w-3 h-3" />
+                                          <span>เพิ่มรายคน</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={selectedIndividualStudentId}
+                                onChange={(e) => setSelectedIndividualStudentId(e.target.value)}
+                                className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                              >
+                                <option value="">หรือเลือกจากรายชื่อทั้งหมด ({unenrolledStudents.length} คน)...</option>
+                                {unenrolledStudents.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.studentIdNumber} - {s.firstNameTh} {s.lastNameTh} ({s.room})
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                disabled={!selectedIndividualStudentId}
+                                onClick={() => {
+                                  if (!selectedIndividualStudentId) return;
+                                  const stu = students.find((s) => s.id === selectedIndividualStudentId);
+                                  onEnrollStudent(activeCourse.id, selectedIndividualStudentId);
+                                  setSelectedIndividualStudentId('');
+                                  if (stu) {
+                                    setEnrollFeedback(`ลงทะเบียน ${stu.firstNameTh} ${stu.lastNameTh} เรียบร้อย`);
+                                    setTimeout(() => setEnrollFeedback(null), 3000);
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-semibold cursor-pointer shrink-0 flex items-center gap-1"
+                              >
+                                <UserPlus className="w-3.5 h-3.5" />
+                                <span>เพิ่มรายคน</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
-                <div className="space-y-2 pr-1 pt-2">
+                {/* Enrolled Student Search & Paginated List */}
+                <div className="space-y-2 pr-1 pt-1">
                   {(activeCourse.enrolledStudentIds || []).length === 0 ? (
                     <p className="text-xs text-[var(--color-text-muted)] py-4 text-center border border-dashed border-[var(--color-border)] rounded-xl">
                       ยังไม่มีนักเรียนลงทะเบียนในรายวิชานี้
                     </p>
-                  ) : (
-                    <PagedList items={activeCourse.enrolledStudentIds} pageSize={5} renderItem={(studentId: string) => {
-                      const student = students.find((s) => s.id === studentId);
-                      if (!student) return null;
+                  ) : (() => {
+                    const q = enrolledSearchQuery.trim().toLowerCase();
+                    const filteredEnrolledIds = (activeCourse.enrolledStudentIds || []).filter((studentId) => {
+                      if (!q) return true;
+                      const stu = students.find((s) => s.id === studentId);
+                      if (!stu) return false;
                       return (
-                        <div
-                          key={student.id}
-                          className="p-2.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <img
-                              src={student.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-                              alt={student.firstNameEn}
-                              className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)]"
-                            />
-                            <div>
-                              <p className="text-xs font-semibold text-[var(--color-text-title)]">
-                                {student.firstNameTh} {student.lastNameTh}
-                              </p>
-                              <p className="text-[10px] text-[var(--color-text-muted)]">
-                                {student.studentIdNumber} • {student.room}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-[11px] font-mono text-[var(--color-primary-text)] font-bold">
-                            GPA {student.gpa}
-                          </span>
-                        </div>
+                        stu.studentIdNumber.toLowerCase().includes(q) ||
+                        `${stu.firstNameTh} ${stu.lastNameTh}`.toLowerCase().includes(q) ||
+                        `${stu.firstNameEn} ${stu.lastNameEn}`.toLowerCase().includes(q) ||
+                        (stu.room || '').toLowerCase().includes(q)
                       );
-                    }} />
-                  )}
+                    });
+                    return (
+                      <>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={enrolledSearchQuery}
+                            onChange={(e) => setEnrolledSearchQuery(e.target.value)}
+                            placeholder="กรองรายชื่อนักเรียนที่ลงทะเบียนแล้ว (ชื่อ / รหัส / ห้อง)..."
+                            className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+                          />
+                          {enrolledSearchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setEnrolledSearchQuery('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                              title="ล้างคำค้นหา"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        {filteredEnrolledIds.length === 0 ? (
+                          <p className="text-xs text-[var(--color-text-muted)] py-4 text-center border border-dashed border-[var(--color-border)] rounded-xl">
+                            ไม่พบนักเรียนที่ตรงกับ "{enrolledSearchQuery}"
+                          </p>
+                        ) : (
+                          <PagedList items={filteredEnrolledIds} pageSize={5} renderItem={(studentId: string) => {
+                            const student = students.find((s) => s.id === studentId);
+                            if (!student) return null;
+                            return (
+                              <div
+                                key={student.id}
+                                className="p-2.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between gap-2"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <img
+                                    src={student.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                                    alt={student.firstNameEn}
+                                    className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                                      {student.firstNameTh} {student.lastNameTh}
+                                    </p>
+                                    <p className="text-[10px] text-[var(--color-text-muted)] font-mono tabular-nums truncate">
+                                      {student.studentIdNumber} • {student.room}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[11px] font-mono tabular-nums text-[var(--color-primary-text)] font-bold">
+                                    GPA {student.gpa}
+                                  </span>
+                                  {canManageCourses && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onUnenrollStudent?.(activeCourse.id, student.id);
+                                        setEnrollFeedback(`ยกเลิกลงทะเบียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) แล้ว`);
+                                        setTimeout(() => setEnrollFeedback(null), 3000);
+                                      }}
+                                      title="ยกเลิกลงทะเบียนรายวิชานี้"
+                                      className="px-2 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
+                                    >
+                                      <UserMinus className="w-3 h-3" />
+                                      <span>ยกเลิก</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }} />
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </>

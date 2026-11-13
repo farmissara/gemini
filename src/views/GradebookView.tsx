@@ -31,6 +31,7 @@ import {
   FileSpreadsheet,
   AlertTriangle
 } from 'lucide-react';
+import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 
 interface GradebookViewProps {
   students: Student[];
@@ -69,9 +70,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [onetLevelFilter, setOnetLevelFilter] = useState<'p6' | 'm3' | 'm6'>('m3');
   const [gradePage, setGradePage] = useState(0);
   const [pp5Page, setPp5Page] = useState(0);
-  const [pp5Section, setPp5Section] = useState<'criteria' | 'grades' | 'signatures'>('grades');
   const [pp6CoursePage, setPp6CoursePage] = useState(0);
-  const [pp6Section, setPp6Section] = useState<'identity' | 'courses' | 'summary'>('identity');
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const courseGrades = grades.filter((g) => g.courseId === selectedCourseId);
@@ -979,301 +978,54 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           TAB 2: เอกสาร ปพ.5 (สมุดบันทึกผลการพัฒนาคุณภาพผู้เรียนประจำวิชา)
           ======================================================== */}
       {activeTab === 'pp5' && selectedCourse && (
-        <div className="bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4 print:m-0 print:p-0 print:border-none print:shadow-none print:overflow-visible">
-          <div className="flex flex-wrap gap-2 print:hidden">
-            <button type="button" onClick={() => setPp5Section('criteria')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'criteria' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลและเกณฑ์</button>
-            <button type="button" onClick={() => setPp5Section('grades')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'grades' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ตารางคะแนน</button>
-            <button type="button" onClick={() => setPp5Section('signatures')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp5Section === 'signatures' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ลงนาม</button>
-          </div>
-          <div className={pp5Section === 'criteria' ? 'space-y-4' : 'hidden print:block print:space-y-4'}>
-          {/* Official Document Header */}
-          <div className="text-center space-y-1 border-b border-slate-300 pb-5">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 font-serif">
-              แบบบันทึกผลการพัฒนาคุณภาพผู้เรียน (ปพ.๕)
-            </h2>
-            <p className="text-sm font-semibold text-slate-700">
-              ตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พุทธศักราช ๒๕๕๑ (ฉบับปรับปรุง ๒๕๖๐)
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 text-xs text-slate-800 font-medium">
-              <div><span className="font-bold">รายวิชา:</span> {selectedCourse.titleTh} ({selectedCourse.code})</div>
-              <div><span className="font-bold">กลุ่มสาระ:</span> {selectedCourse.department.replace('กลุ่มสาระการเรียนรู้', '')}</div>
-              <div><span className="font-bold">หน่วยกิต:</span> {selectedCourse.credits.toFixed(1)} ({selectedCourse.credits * 40} ชม.)</div>
-              <div><span className="font-bold">ครูผู้สอน:</span> {selectedCourse.teacherName}</div>
-            </div>
-            <div className="text-xs text-slate-600 pt-1">
-              โรงเรียน {systemConfig.schoolNameTh} • {formatSemesterLabel(selectedCourse.semester)} ปีการศึกษา {selectedCourse.academicYear}
-            </div>
-          </div>
-
-          {/* MOE Criteria Notes */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <div>
-              <span className="font-bold text-slate-800 block">๑. เกณฑ์เวลาเรียน:</span>
-              <span className="text-slate-600">ต้องมีเวลาเรียนไม่น้อยกว่าร้อยละ ๘๐ (ไม่น้อยกว่า ๓๒ จาก ๔๐ คาบ)</span>
-            </div>
-            <div>
-              <span className="font-bold text-slate-800 block">๒. อัตราส่วนคะแนน:</span>
-              <span className="text-slate-600">คะแนนระหว่างภาค ๗๐ : คะแนนปลายภาค ๓๐ (เต็ม ๑๐๐)</span>
-            </div>
-            <div>
-              <span className="font-bold text-slate-800 block">๓. การตัดสินผล:</span>
-              <span className="text-slate-600">เกรด ๔ (๘๐-๑๐๐), ๓.๕ (๗๕-๗๙), ๓ (๗๐-๗๔), ๒.๕ (๖๕-๖๙)</span>
-            </div>
-          </div>
-          </div>
-
-          <div className={pp5Section === 'grades' ? 'space-y-3' : 'hidden print:block print:space-y-3'}>
-          <h3 className="text-sm font-bold text-slate-800 print:hidden">
-            ตารางคะแนน: {selectedCourse.titleTh} ({selectedCourse.code})
-          </h3>
-          {/* Official P.P. 5 Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse border border-slate-400 text-center">
-              <thead>
-                <tr className="bg-slate-100 font-bold text-slate-800 border-b border-slate-400">
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-10">ที่</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-2 text-left">เลขประจำตัว / ชื่อ-สกุล</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-2 w-16">ห้อง</th>
-                  <th colSpan={2} className="border border-slate-400 py-1 px-1">เวลาเรียน</th>
-                  <th colSpan={4} className="border border-slate-400 py-1 px-1">คะแนนระหว่างเรียน (๗๐)</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-12">ปลายภาค (๓๐)</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-14 bg-amber-50">รวม (๑๐๐)</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-12 bg-[var(--color-primary-light)]">เกรด</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-20">คุณลักษณะ (๑-๘)</th>
-                  <th rowSpan={2} className="border border-slate-400 py-2 px-1 w-20">อ่านคิดวิเคราะห์</th>
-                </tr>
-                <tr className="bg-slate-50 text-[11px] font-semibold text-slate-700 border-b border-slate-400">
-                  <th className="border border-slate-400 py-1 px-1 w-12">มา (คาบ)</th>
-                  <th className="border border-slate-400 py-1 px-1 w-12">%</th>
-                  <th className="border border-slate-400 py-1 px-1 w-12">K (๒๐)</th>
-                  <th className="border border-slate-400 py-1 px-1 w-12">P (๒๐)</th>
-                  <th className="border border-slate-400 py-1 px-1 w-12">A (๑๐)</th>
-                  <th className="border border-slate-400 py-1 px-1 w-12">กลางภาค (๒๐)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courseGrades.map((g, idx) => {
-                  const student = students.find((s) => s.id === g.studentId);
-                  if (!student) return null;
-                  const eligibility = calculateStudentCourseEligibility({
-                    student,
-                    course: selectedCourse,
-                    timetableSlots,
-                    attendance,
-                    periodAttendance,
-                  });
-                  const attendedPeriods = eligibility.attendedHours;
-                  const attendanceRate = String(eligibility.attendancePercent);
-                  const isAttendancePass = !eligibility.isAtRiskMs;
-                  const isVisible = idx >= currentPp5Page * pp5PageSize && idx < (currentPp5Page + 1) * pp5PageSize;
-
-                  return (
-                    <tr key={g.id} className={`${isVisible ? '' : 'hidden print:table-row'} border-b border-slate-300 hover:bg-slate-50`}>
-                      <td className="border border-slate-300 py-2 font-mono">{idx + 1}</td>
-                      <td className="border border-slate-300 py-2 px-2 text-left">
-                        <span className="font-bold">{student.firstNameTh} {student.lastNameTh}</span>
-                        <span className="block text-[10px] text-slate-600 font-mono">{student.studentIdNumber}</span>
-                      </td>
-                      <td className="border border-slate-300 py-2">{student.room}</td>
-                      <td className="border border-slate-300 py-2 font-mono">{attendedPeriods}/{eligibility.totalScheduledHours}</td>
-                      <td className={`border border-slate-300 py-2 font-mono font-bold ${isAttendancePass ? 'text-emerald-700' : 'text-rose-600'}`}>
-                        {attendanceRate}% {!isAttendancePass && '(มส.)'}
-                      </td>
-                      <td className="border border-slate-300 py-2 font-mono">{(g.assignmentScore * 0.5).toFixed(0)}</td>
-                      <td className="border border-slate-300 py-2 font-mono">{(g.assignmentScore * 0.5).toFixed(0)}</td>
-                      <td className="border border-slate-300 py-2 font-mono">{g.quizScore}</td>
-                      <td className="border border-slate-300 py-2 font-mono">{g.midtermScore}</td>
-                      <td className="border border-slate-300 py-2 font-mono">{g.finalScore}</td>
-                      <td className="border border-slate-300 py-2 font-mono font-bold bg-amber-50 text-slate-900">{g.totalScore}</td>
-                      <td className="border border-slate-300 py-2 font-mono font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-sm">{getGradeDisplay(g).letter}</td>
-                      <td className="border border-slate-300 py-2 text-emerald-700 font-medium text-[11px]">ดีเยี่ยม (๓)</td>
-                      <td className="border border-slate-300 py-2 text-emerald-700 font-medium text-[11px]">ดีเยี่ยม (๓)</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {renderPageControls(currentPp5Page, courseGrades.length, pp5PageSize, setPp5Page, 'PP5 pages', true)}
-          </div>
-
-          {/* Official Signatures Row */}
-          <div className={pp5Section === 'signatures' ? 'grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 text-center text-xs text-slate-700' : 'hidden print:grid print:grid-cols-4 print:gap-4 print:pt-3 print:text-center print:text-xs print:text-slate-700'}>
-            <div className="space-y-10">
-              <div className="border-b border-dashed border-slate-400 w-40 mx-auto"></div>
-              <div>
-                <p className="font-bold">({selectedCourse.teacherName})</p>
-                <p className="text-[11px]">ครูผู้สอน</p>
-              </div>
-            </div>
-            <div className="space-y-10">
-              <div className="border-b border-dashed border-slate-400 w-40 mx-auto"></div>
-              <div>
-                <p className="font-bold">(...................................................)</p>
-                <p className="text-[11px]">หัวหน้ากลุ่มสาระการเรียนรู้</p>
-              </div>
-            </div>
-            <div className="space-y-10">
-              <div className="border-b border-dashed border-slate-400 w-40 mx-auto"></div>
-              <div>
-                <p className="font-bold">(...................................................)</p>
-                <p className="text-[11px]">หัวหน้าฝ่ายงานวัดและประเมินผล</p>
-              </div>
-            </div>
-            <div className="space-y-10">
-              <div className="border-b border-dashed border-slate-400 w-40 mx-auto"></div>
-              <div>
-                <p className="font-bold">(...................................................)</p>
-                <p className="text-[11px]">ผู้อำนวยการสถานศึกษา</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Pp5OfficialForm
+          selectedCourse={selectedCourse}
+          students={students}
+          courseGrades={courseGrades}
+          systemConfig={systemConfig}
+          timetableSlots={timetableSlots}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          currentPp5Page={currentPp5Page}
+          pp5PageSize={pp5PageSize}
+          setPp5Page={setPp5Page}
+          renderPageControls={renderPageControls}
+        />
       )}
 
       {/* ========================================================
           TAB 3: เอกสาร ปพ.6 (สมุดรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล)
           ======================================================== */}
       {activeTab === 'pp6' && (
-        <div className="space-y-5">
-          {/* Student Selector for P.P. 6 */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-[var(--color-border)] print:hidden">
-            <span className="text-xs text-[var(--color-text-body)] shrink-0 font-semibold">เลือกนักเรียน:</span>
-            {students.map((student) => (
-              <button
-                key={student.id}
-                onClick={() => {
-                  setSelectedStudentIdForPp6(student.id);
-                  setPp6CoursePage(0);
-                  setPp6Section('identity');
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                  selectedStudentIdForPp6 === student.id
-                    ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-                }`}
-              >
-                {student.firstNameTh} {student.lastNameTh} ({student.room})
-              </button>
-            ))}
-          </div>
-
-          {selectedStudentForPp6 && (
-            <div className="bg-white text-slate-900 rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4 print:m-0 print:p-0 print:border-none print:shadow-none">
-              <div className="flex flex-wrap gap-2 print:hidden">
-                <button type="button" onClick={() => setPp6Section('identity')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'identity' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ข้อมูลนักเรียน</button>
-                <button type="button" onClick={() => setPp6Section('courses')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'courses' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>ผลการเรียน</button>
-                <button type="button" onClick={() => setPp6Section('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${pp6Section === 'summary' ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-700'}`}>สรุปพฤติกรรม</button>
-              </div>
-              {/* P.P. 6 Header */}
-              <div className={pp6Section === 'identity' ? 'text-center space-y-1 border-b border-slate-300 pb-4' : 'hidden print:block print:text-center print:space-y-1 print:border-b print:border-slate-300 print:pb-4'}>
-                <div className="w-12 h-12 mx-auto rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center font-bold text-lg mb-2">
-                  <Award className="w-6 h-6" />
-                </div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 font-serif">
-                  แบบรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล (ปพ.๖)
-                </h2>
-                <p className="text-xs text-slate-700 font-medium">
-                  โรงเรียน{systemConfig.schoolNameTh} • สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-4 text-xs font-medium text-slate-800 text-left bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div><span className="font-bold">ชื่อ-สกุล:</span> {selectedStudentForPp6.firstNameTh} {selectedStudentForPp6.lastNameTh}</div>
-                  <div><span className="font-bold">เลขประจำตัว:</span> {selectedStudentForPp6.studentIdNumber}</div>
-                  <div><span className="font-bold">เลขประจำตัวประชาชน:</span> {selectedStudentForPp6.nationalId || '-'}</div>
-                  <div><span className="font-bold">ระดับชั้น:</span> {selectedStudentForPp6.gradeLevel} {selectedStudentForPp6.room}</div>
-                  <div><span className="font-bold">ผู้ปกครอง:</span> {selectedStudentForPp6.guardianName} ({selectedStudentForPp6.guardianRelation})</div>
-                  <div><span className="font-bold">ปีการศึกษา:</span> {systemConfig.academicYear} {formatSemesterLabel(systemConfig.currentSemester)}</div>
-                </div>
-              </div>
-
-              {/* Student All Courses Table */}
-              <div className={`space-y-2 ${pp6Section === 'courses' ? '' : 'hidden print:block'}`}>
-                <h3 className="text-sm font-bold text-slate-800 print:hidden">
-                  ผลการเรียนของ {selectedStudentForPp6.firstNameTh} {selectedStudentForPp6.lastNameTh}
-                </h3>
-                <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse border border-slate-400 text-center">
-                  <thead>
-                    <tr className="bg-slate-100 font-bold text-slate-800 border-b border-slate-400">
-                      <th className="border border-slate-400 py-2.5 px-2 text-left">รหัสวิชา / รายวิชา</th>
-                      <th className="border border-slate-400 py-2.5 px-2 w-16">หน่วยกิต</th>
-                      <th className="border border-slate-400 py-2.5 px-2 w-20">คะแนนเต็ม</th>
-                      <th className="border border-slate-400 py-2.5 px-2 w-20 bg-amber-50">คะแนนที่ได้</th>
-                      <th className="border border-slate-400 py-2.5 px-2 w-20 bg-[var(--color-primary-light)]">ระดับผลการเรียน</th>
-                      <th className="border border-slate-400 py-2.5 px-2 w-24">ผลการประเมิน</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courses.map((course, index) => {
-                      const grade = grades.find((g) => g.courseId === course.id && g.studentId === selectedStudentForPp6.id);
-                      const totalScore = grade?.totalScore || 78;
-                      const letterGrade = grade
-                        ? getGradeDisplay(grade).letter
-                        : calculateGrade(totalScore, systemConfig.gradingSystem).letter;
-                      const isVisible = index >= currentPp6CoursePage * pp6CoursePageSize && index < (currentPp6CoursePage + 1) * pp6CoursePageSize;
-                      return (
-                        <tr key={course.id} className={`${isVisible ? '' : 'hidden print:table-row'} border-b border-slate-300`}>
-                          <td className="border border-slate-300 py-2 px-3 text-left">
-                            <span className="font-mono font-bold text-slate-900">{course.code}</span>
-                            <span className="ml-2 font-medium">{course.titleTh}</span>
-                          </td>
-                          <td className="border border-slate-300 py-2 font-mono">{course.credits.toFixed(1)}</td>
-                          <td className="border border-slate-300 py-2 font-mono">100</td>
-                          <td className="border border-slate-300 py-2 font-mono font-bold bg-amber-50">{totalScore}</td>
-                          <td className="border border-slate-300 py-2 font-mono font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">{letterGrade}</td>
-                          <td className="border border-slate-300 py-2 text-emerald-700 font-medium">ผ่านเกณฑ์</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400">
-                      <td className="py-2.5 px-3 text-left">ผลการเรียนเฉลี่ยประจำภาคเรียน (GPA)</td>
-                      <td colSpan={2}></td>
-                      <td colSpan={3} className="py-2.5 px-3 text-right font-mono text-sm text-[var(--color-primary-text)]">
-                        GPA: {selectedStudentForPp6.gpa.toFixed(2)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-                </div>
-                {renderPageControls(currentPp6CoursePage, courses.length, pp6CoursePageSize, setPp6CoursePage, 'PP6 course pages', true)}
-              </div>
-
-              {/* Behavior & Attribute Summary */}
-              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs ${pp6Section === 'summary' ? '' : 'hidden print:grid'}`}>
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <h4 className="font-bold text-slate-900">การประเมินคุณลักษณะอันพึงประสงค์ ๘ ประการ:</h4>
-                  <ul className="list-disc list-inside text-slate-700 space-y-1">
-                    <li>รักชาติ ศาสน์ กษัตริย์ • ซื่อสัตย์สุจริต: <strong className="text-emerald-700">ดีเยี่ยม</strong></li>
-                    <li>มีวินัย • ใฝ่เรียนรู้ • อยู่อย่างพอเพียง: <strong className="text-emerald-700">ดีเยี่ยม</strong></li>
-                    <li>มุ่งมั่นในการทำงาน • รักความเป็นไทย • มีจิตสาธารณะ: <strong className="text-emerald-700">ดีเยี่ยม</strong></li>
-                  </ul>
-                  <p className="text-right text-emerald-800 font-bold pt-1">ผลการตัดสิน: ผ่านระดับดีเยี่ยม (๓)</p>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <h4 className="font-bold text-slate-900">ความคิดเห็นของครูประจำชั้น / ที่ปรึกษา:</h4>
-                  <p className="text-slate-700 italic leading-relaxed">
-                    "นักเรียนมีความตั้งใจในการเรียนอย่างสม่ำเสมอ มีความรับผิดชอบต่องานที่ได้รับมอบหมาย มีมนุษยสัมพันธ์ที่ดีกับเพื่อนร่วมห้อง และมีทักษะความเป็นผู้นำทางวิชาการที่โดดเด่น"
-                  </p>
-                  <div className="pt-3 text-right">
-                    <p className="font-bold">ลงชื่อ ........................................................... ครูประจำชั้น</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <Pp6OfficialForm
+          students={students}
+          courses={courses}
+          grades={grades}
+          attendance={attendance}
+          systemConfig={systemConfig}
+          selectedStudentIdForPp6={selectedStudentIdForPp6}
+          setSelectedStudentIdForPp6={setSelectedStudentIdForPp6}
+          currentPp6CoursePage={currentPp6CoursePage}
+          pp6CoursePageSize={pp6CoursePageSize}
+          setPp6CoursePage={setPp6CoursePage}
+          renderPageControls={renderPageControls}
+        />
       )}
 
       {/* ========================================================
           ปพ.3 ออนไลน์: แบบรายงานผู้สำเร็จการศึกษา (ป.6, ม.3, ม.6)
          ======================================================== */}
       {activeTab === 'pp3_online' && (
-        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4">
+        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4 print:bg-white print:text-slate-900 print:border-none print:shadow-none print:overflow-visible">
+          {/* Official Print Header (also serves as formal MOE document header) */}
+          <div className="hidden print:block text-center border-b-2 border-slate-900 pb-3 mb-2">
+            <p className="text-xs font-bold">แบบรายงานผู้สำเร็จการศึกษา (ปพ.๓) • สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน</p>
+            <h2 className="text-lg font-extrabold">โรงเรียน{systemConfig.schoolNameTh}</h2>
+            <p className="text-xs">ปีการศึกษา {systemConfig.academicYear} • ระดับชั้น: {pp3LevelFilter === 'all' ? 'ทั้งหมด' : pp3LevelFilter.toUpperCase()}</p>
+          </div>
+
           {/* Header & Filter Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4 print:hidden">
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
@@ -1433,6 +1185,31 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   })}
               </tbody>
             </table>
+          </div>
+
+          {/* Official Pp.3 Certification Signature Footer */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 border border-[var(--color-border)] rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)] text-xs text-center bg-[var(--color-card-subtle)] print:bg-white print:border-slate-700 print:divide-slate-700">
+            <div className="p-4 space-y-8">
+              <p className="font-bold text-[var(--color-text-title)] print:text-slate-900">นายทะเบียนโรงเรียน</p>
+              <div>
+                <div className="border-b border-dotted border-slate-400 w-40 mx-auto mb-1"></div>
+                <p className="text-[11px] text-[var(--color-text-muted)] print:text-slate-700">วันที่ ....... / ............ / ...........</p>
+              </div>
+            </div>
+            <div className="p-4 space-y-8">
+              <p className="font-bold text-[var(--color-text-title)] print:text-slate-900">หัวหน้าฝ่ายวิชาการ / วัดผล</p>
+              <div>
+                <div className="border-b border-dotted border-slate-400 w-40 mx-auto mb-1"></div>
+                <p className="text-[11px] text-[var(--color-text-muted)] print:text-slate-700">วันที่ ....... / ............ / ...........</p>
+              </div>
+            </div>
+            <div className="p-4 space-y-8">
+              <p className="font-bold text-[var(--color-text-title)] print:text-slate-900">ผู้อำนวยการสถานศึกษา (ผู้อนุมัติจบ)</p>
+              <div>
+                <div className="border-b border-dotted border-slate-400 w-40 mx-auto mb-1"></div>
+                <p className="text-[11px] text-[var(--color-text-muted)] print:text-slate-700">วันที่อนุมัติ ....... / ............ / ...........</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

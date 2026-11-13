@@ -1206,6 +1206,32 @@ export const App: React.FC = () => {
     );
   };
 
+  const handleUnenrollStudent = (courseId: string, studentId: string) => {
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        return {
+          ...c,
+          enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => id !== studentId),
+        };
+      })
+    );
+  };
+
+  const handleUnenrollStudentsBatch = (courseId: string, studentIds: string[]) => {
+    if (studentIds.length === 0) return;
+    const removeSet = new Set(studentIds);
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        return {
+          ...c,
+          enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => !removeSet.has(id)),
+        };
+      })
+    );
+  };
+
   const handleImportCourses = (newCourses: Course[]) => {
     setCourses((prev) => [...newCourses.map((course) => ({ ...course, schoolId: activeSchool.id })), ...prev]);
   };
@@ -2827,6 +2853,8 @@ export const App: React.FC = () => {
                     onDeleteCourses={handleDeleteCourses}
                     onEnrollStudent={handleEnrollStudent}
                     onEnrollStudentsBatch={handleEnrollStudentsBatch}
+                    onUnenrollStudent={handleUnenrollStudent}
+                    onUnenrollStudentsBatch={handleUnenrollStudentsBatch}
                     semesterOptions={systemConfig.semesterOptions}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
