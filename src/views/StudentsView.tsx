@@ -110,6 +110,7 @@ interface StudentsViewProps {
   onPurgeSampleStudents?: () => Promise<void> | void;
   onOpenImportExport?: () => void;
   onBatchUpdateStudents?: (updatedStudents: Student[]) => void;
+  onUpdateRoomOptions?: (roomOptions: string[]) => Promise<void>;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -126,6 +127,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onPurgeSampleStudents,
   onOpenImportExport,
   onBatchUpdateStudents,
+  onUpdateRoomOptions,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
@@ -151,9 +153,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const canManageApprovals = ['admin', 'super_admin'].includes(currentRole);
   const schoolId = activeSchool?.id || students[0]?.schoolId || 'sch-bkk-01';
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const roomOptions = activeSchool?.roomOptions?.length ? activeSchool.roomOptions : presets.roomOptions;
   const [showRoomPresetModal, setShowRoomPresetModal] = useState(false);
   const [newPresetGradeInput, setNewPresetGradeInput] = useState('');
   const [newPresetRoomInput, setNewPresetRoomInput] = useState('');
+  const [editingRoomOption, setEditingRoomOption] = useState<string | null>(null);
+  const [roomOptionDraft, setRoomOptionDraft] = useState('');
+  const [roomPresetError, setRoomPresetError] = useState<string | null>(null);
+  const [isSavingRoomOptions, setIsSavingRoomOptions] = useState(false);
   const [accountLinks, setAccountLinks] = useState<StudentAccountLink[]>([]);
   const [parentAccounts, setParentAccounts] = useState<StaffParentAccountLink[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -210,6 +217,27 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     () => accountLinks.filter((a) => a.status === 'pending').length,
     [accountLinks]
   );
+
+  const saveRoomOptions = async (nextOptions: string[]) => {
+    const cleanedOptions = [...new Set(nextOptions.map((option) => option.trim()).filter(Boolean))];
+    if (cleanedOptions.length === 0) {
+      setRoomPresetError('ต้องมีห้องเรียนอย่างน้อย 1 ห้อง');
+      return false;
+    }
+
+    setIsSavingRoomOptions(true);
+    setRoomPresetError(null);
+    try {
+      await onUpdateRoomOptions?.(cleanedOptions);
+      updatePresets({ roomOptions: cleanedOptions });
+      return true;
+    } catch (error) {
+      setRoomPresetError(error instanceof Error ? error.message : 'บันทึกรายการห้องเรียนไม่สำเร็จ');
+      return false;
+    } finally {
+      setIsSavingRoomOptions(false);
+    }
+  };
 
   const handleApproveStudentAccount = async (account: StudentAccountLink) => {
     setProcessingAccountId(account.id);
@@ -1539,7 +1567,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     placeholder="เช่น ม.4/1"
                   />
                   <datalist id="bulk-room-options">
-                    {Array.from(new Set([...students.map((s) => s.room).filter(Boolean), ...presets.roomOptions])).map((rm) => (
+                    {roomOptions.map((rm) => (
                       <option key={rm} value={rm} />
                     ))}
                   </datalist>
@@ -1750,7 +1778,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               </div>
             </div>
             <div className="space-y-2 border-t border-[var(--color-border)] pt-3">
-              <div className="font-bold text-[var(--color-text-title)]">ห้องเรียน ({presets.roomOptions.length})</div>
+              <div className="font-bold text-[var(--color-text-title)]">ห้องเรียน ({roomOptions.length})</div>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1764,24 +1792,112 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   onClick={() => {
                     const val = newPresetRoomInput.trim();
                     if (!val) return;
-                    updatePresets({ roomOptions: [...presets.roomOptions, val] });
-                    setNewPresetRoomInput('');
+                    if (roomOptions.some((room) => room.toLocaleLowerCase() === val.toLocaleLowerCase())) {
+                      setRoomPresetError('มีชื่อห้องนี้อยู่แล้ว');
+                      return;
+                    }
+                    void saveRoomOptions([...roomOptions, val]).then((saved) => {
+                      if (saved) setNewPresetRoomInput('');
+                    });
                   }}
+                  disabled={isSavingRoomOptions}
                   className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold cursor-pointer"
                 >
                   + เพิ่มห้อง
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {presets.roomOptions.map((rm) => (
-                  <span key={rm} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                    <span>{rm}</span>
-                    {presets.roomOptions.length > 1 && (
-                      <button type="button" onClick={() => updatePresets({ roomOptions: presets.roomOptions.filter((x) => x !== rm) })} className="text-rose-600 font-bold cursor-pointer">×</button>
+                {roomOptions.map((room) => (
+                  <span key={room} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                    {editingRoomOption === room ? (
+                      <>
+                        <input
+                          autoFocus
+                          value={roomOptionDraft}
+                          onChange={(event) => setRoomOptionDraft(event.target.value)}
+                          className="w-28 px-1 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
+                        />
+                        <button
+                          type="button"
+                          disabled={isSavingRoomOptions}
+                          onClick={() => {
+                            const nextName = roomOptionDraft.trim();
+                            if (!nextName) {
+                              setRoomPresetError('ชื่อห้องต้องไม่ว่าง');
+                              return;
+                            }
+                            if (roomOptions.some((item) =>
+                              item !== room && item.toLocaleLowerCase() === nextName.toLocaleLowerCase()
+                            )) {
+                              setRoomPresetError('มีชื่อห้องนี้อยู่แล้ว');
+                              return;
+                            }
+                            const assignedStudents = students.filter((student) => student.room === room);
+                            if (
+                              assignedStudents.length > 0 &&
+                              !confirm(`เปลี่ยนชื่อห้องและแก้ข้อมูลนักเรียน ${assignedStudents.length} คนจาก "${room}" เป็น "${nextName}" หรือไม่?`)
+                            ) return;
+                            void saveRoomOptions(roomOptions.map((item) => item === room ? nextName : item)).then((saved) => {
+                              if (!saved) return;
+                              if (assignedStudents.length > 0) {
+                                onBatchUpdateStudents?.(assignedStudents.map((student) => ({ ...student, room: nextName })));
+                              }
+                              setEditingRoomOption(null);
+                              setRoomOptionDraft('');
+                            });
+                          }}
+                          className="text-emerald-700 font-bold cursor-pointer disabled:opacity-50"
+                        >
+                          บันทึก
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingRoomOption(null)}
+                          className="text-[var(--color-text-muted)] font-bold cursor-pointer"
+                        >
+                          ยกเลิก
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span>{room}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingRoomOption(room);
+                            setRoomOptionDraft(room);
+                            setRoomPresetError(null);
+                          }}
+                          className="text-blue-700 font-bold cursor-pointer"
+                          aria-label={`แก้ไขห้อง ${room}`}
+                        >
+                          แก้ไข
+                        </button>
+                        {roomOptions.length > 1 && (
+                          <button
+                            type="button"
+                            disabled={isSavingRoomOptions}
+                            onClick={() => {
+                              const assigned = students.filter((student) => student.room === room).length;
+                              const note = assigned > 0
+                                ? ` มีนักเรียน ${assigned} คนที่ยังใช้ชื่อนี้ในทะเบียน (จะไม่ลบข้อมูลนักเรียน)`
+                                : '';
+                              if (!confirm(`ลบ "${room}" ออกจากรายการห้องที่เลือกได้หรือไม่?${note}`)) return;
+                              void saveRoomOptions(roomOptions.filter((item) => item !== room));
+                            }}
+                            className="text-rose-600 font-bold cursor-pointer disabled:opacity-50"
+                            aria-label={`ลบห้อง ${room}`}
+                          >
+                            ลบ
+                          </button>
+                        )}
+                      </>
                     )}
                   </span>
                 ))}
               </div>
+              {roomPresetError && <p role="alert" className="text-xs font-semibold text-rose-700">{roomPresetError}</p>}
+              {isSavingRoomOptions && <p role="status" className="text-xs text-[var(--color-text-muted)]">กำลังบันทึกรายการห้องเรียน...</p>}
             </div>
           </div>
         </div>

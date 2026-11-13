@@ -616,13 +616,13 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           studentIdNumber: r[0],
           nationalId: r[1],
           fullNameTh: r[2],
-          gradGradeLevel: r[3] || 'มัธยมศึกษาปีที่ 3',
-          academicYear: r[4] || '2568',
-          approvalDate: r[5] || '31 มีนาคม 2569',
-          bookNo: r[6] || '01/2569',
-          registerNo: r[7] || '001',
-          gpax: r[8] || '3.75',
-          graduationStatus: r[9] || 'อนุมัติสำเร็จการศึกษาตามหลักสูตร',
+          gradGradeLevel: r[3] || '',
+          academicYear: r[4] || '',
+          approvalDate: r[5] || '',
+          bookNo: r[6] || '',
+          registerNo: r[7] || '',
+          gpax: r[8] || '',
+          graduationStatus: r[9] || '',
         })).filter(x => x.fullNameTh || x.studentIdNumber);
 
         setPage(0);
@@ -1320,24 +1320,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 () => {
                   downloadFile('template_pp3_online.csv', 'studentIdNumber,nationalId,fullNameTh,gradGradeLevel,academicYear,approvalDate,bookNo,registerNo,gpax,graduationStatus');
                 },
+                undefined,
                 () => {
-                  setPreviewPp3([
-                    {
-                      studentIdNumber: 'STU-2569-001',
-                      nationalId: '1-1002-00888-99-1',
-                      fullNameTh: 'กิตติศักดิ์ เจริญวัฒนา',
-                      gradGradeLevel: 'มัธยมศึกษาปีที่ 3',
-                      academicYear: '2568',
-                      approvalDate: '31 มีนาคม 2569',
-                      bookNo: '01/2569',
-                      registerNo: '001',
-                      gpax: '3.85',
-                      graduationStatus: 'อนุมัติสำเร็จการศึกษาตามหลักสูตร',
-                    }
-                  ]);
-                },
-                () => {
-                  downloadFile('pp3_online_export.csv', 'studentId,fullNameTh,bookNo,registerNo\nSTU-001,กิตติศักดิ์,01/2569,001');
+                  downloadFile('pp3_online_export.csv', 'studentIdNumber,fullNameTh,bookNo,registerNo');
                 },
                 'orange'
               )}
@@ -1345,20 +1330,17 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
               {previewPp3.length > 0 && (
                 <div className="p-4 rounded-2xl border border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/30 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-orange-900 dark:text-orange-100">ตรวจสอบแบบรายงานผู้สำเร็จการศึกษา ปพ.3 ออนไลน์ ({previewPp3.length} คน)</span>
+                    <span className="font-bold text-sm text-orange-900 dark:text-orange-100">พรีวิว CSV ปพ.3 ({previewPp3.length} คน) • ยังไม่บันทึกลงฐานข้อมูล</span>
                     <button type="button" onClick={() => setPreviewPp3([])} className="text-xs text-rose-600 font-bold">ล้างพรีวิว</button>
                   </div>
                   <div className="flex justify-end pt-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        showToast(`นำเข้าข้อมูล ปพ.3 ออนไลน์ ${previewPp3.length} คนสำเร็จ! พร้อมจัดพิมพ์`);
-                        setPreviewPp3([]);
-                      }}
+                      onClick={() => setPreviewPp3([])}
                       className="px-5 py-2.5 rounded-xl bg-orange-700 hover:bg-orange-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
                     >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกทะเบียน ปพ.3 ออนไลน์</span>
+                      <X className="w-4 h-4" />
+                      <span>ปิดพรีวิว</span>
                     </button>
                   </div>
                 </div>

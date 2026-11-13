@@ -66,6 +66,7 @@ import {
   deleteStudentFromDb,
   deleteTeacherFromDb,
   deleteCoursesFromDb,
+  deleteStaleGradesFromDb,
   updateCourseEnrollmentInDb,
   deleteGradesForEnrollmentFromDb,
   saveTeachersToDb,
@@ -194,6 +195,8 @@ export const App: React.FC = () => {
   const [dataSyncError, setDataSyncError] = useState<string | null>(null);
   const [dataSyncWarnings, setDataSyncWarnings] = useState<string[]>([]);
   const [dataSyncSummary, setDataSyncSummary] = useState<string | null>(null);
+  const [orphanedGrades, setOrphanedGrades] = useState<GradeRecord[]>([]);
+  const [isCleaningOrphanedGrades, setIsCleaningOrphanedGrades] = useState(false);
   const [showSchemaMigrationModal, setShowSchemaMigrationModal] = useState(false);
   const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -795,6 +798,7 @@ export const App: React.FC = () => {
     setIsDataReady(false);
     setLoadedSchoolId(null);
     setDataLoadError(null);
+    setOrphanedGrades([]);
     loadSchoolData(activeSchool.id)
       .then((data) => {
         if (!active) return;
@@ -805,6 +809,7 @@ export const App: React.FC = () => {
         let resolvedTeachers = data.teachers;
         let resolvedCourses = data.courses;
         let resolvedGrades = data.grades;
+        let deletedStudentGrades: GradeRecord[] = [];
         let resolvedAttendance = data.attendance;
         let resolvedInvoices = data.invoices;
         let resolvedTimetableSlots = data.timetableSlots || [];
@@ -817,6 +822,7 @@ export const App: React.FC = () => {
             const deletedCourseSet = new Set(deletedCourseIds);
             if (deletedStudentSet.size > 0) {
               resolvedStudents = resolvedStudents.filter((s) => !deletedStudentSet.has(s.id));
+              deletedStudentGrades = resolvedGrades.filter((g) => deletedStudentSet.has(g.studentId));
               resolvedGrades = resolvedGrades.filter((g) => !deletedStudentSet.has(g.studentId));
               resolvedAttendance = resolvedAttendance.filter((a) => !deletedStudentSet.has(a.studentId));
               resolvedInvoices = resolvedInvoices.filter((inv) => !deletedStudentSet.has(inv.studentId));
@@ -839,6 +845,25 @@ export const App: React.FC = () => {
             console.warn('Could not parse deleted IDs from localStorage:', e);
           }
         }
+        const studentRefs = new Set(resolvedStudents.map((student) => student.id.trim().toLowerCase()));
+        const studentNumberCounts = new Map<string, number>();
+        resolvedStudents.forEach((student) => {
+          const number = student.studentIdNumber.trim().toLowerCase();
+          if (number) studentNumberCounts.set(number, (studentNumberCounts.get(number) || 0) + 1);
+        });
+        resolvedStudents.forEach((student) => {
+          const number = student.studentIdNumber.trim().toLowerCase();
+          if (number && studentNumberCounts.get(number) === 1) studentRefs.add(number);
+        });
+        const invalidGradeRows = [...new Map(
+          [...deletedStudentGrades, ...resolvedGrades.filter(
+            (grade) => !studentRefs.has(grade.studentId.trim().toLowerCase())
+          )].map((grade) => [grade.id, grade])
+        ).values()];
+        resolvedGrades = resolvedGrades.filter(
+          (grade) => studentRefs.has(grade.studentId.trim().toLowerCase())
+        );
+        setOrphanedGrades(invalidGradeRows);
         setStudents(resolvedStudents);
         setTeachers(resolvedTeachers);
         setCourses(resolvedCourses);
@@ -972,6 +997,28 @@ export const App: React.FC = () => {
     setStudents((prev) =>
       prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
     );
+  };
+
+  const handleCleanupOrphanGrades = async () => {
+    if (!['admin', 'super_admin'].includes(currentRole)) {
+      setDataSyncError('ต้องใช้สิทธิ์ผู้ดูแลโรงเรียนเพื่อลบผลการเรียนที่ไม่มีนักเรียนอ้างอิง');
+      return;
+    }
+    const gradeIds = orphanedGrades.map((grade) => grade.id);
+    if (gradeIds.length === 0 || !window.confirm(
+      `ยืนยันลบผลการเรียน ${gradeIds.length} รายการที่ไม่พบนักเรียนในทะเบียนของโรงเรียนนี้?`
+    )) return;
+
+    setIsCleaningOrphanedGrades(true);
+    try {
+      await deleteStaleGradesFromDb(activeSchool.id, gradeIds);
+      setOrphanedGrades([]);
+      setDataSyncError(null);
+    } catch (error) {
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsCleaningOrphanedGrades(false);
+    }
   };
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -2696,6 +2743,24 @@ export const App: React.FC = () => {
           <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
         </div>
       )}
+      {!useImmersiveGameLayout && orphanedGrades.length > 0 && (
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-2 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-900 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            พักการซิงก์ผลการเรียน {orphanedGrades.length} รายการ เพราะไม่พบนักเรียนในทะเบียน
+            {' '}({[...new Set(orphanedGrades.map((grade) => grade.studentId))].slice(0, 5).join(', ')})
+          </span>
+          {['admin', 'super_admin'].includes(currentRole) && (
+            <button
+              type="button"
+              onClick={() => void handleCleanupOrphanGrades()}
+              disabled={isCleaningOrphanedGrades}
+              className="px-2.5 py-1 rounded bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-bold cursor-pointer"
+            >
+              {isCleaningOrphanedGrades ? 'กำลังลบ...' : 'ลบผลการเรียนที่ค้าง'}
+            </button>
+          )}
+        </div>
+      )}
       {!useImmersiveGameLayout && dataSyncWarnings.length > 0 && (
         <div role="status" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/50 text-[11px] text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -3004,6 +3069,7 @@ export const App: React.FC = () => {
                     onAddStudent={handleAddStudent}
                     onAddStudents={handleAddStudents}
                     onUpdateStudent={handleUpdateStudent}
+                    onUpdateRoomOptions={(roomOptions) => handleUpdateSchool({ roomOptions })}
                     onDeleteStudent={handleDeleteStudent}
                     onPurgeSampleStudents={handlePurgeSampleStudents}
                     onBatchUpdateStudents={(updatedList) => {
@@ -3194,6 +3260,8 @@ export const App: React.FC = () => {
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
                     semesterOptions={systemConfig.semesterOptions}
+                    roomOptions={activeSchool.roomOptions}
+                    onUpdateRoomOptions={(roomOptions) => handleUpdateSchool({ roomOptions })}
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
                   />
                 )}
@@ -3314,6 +3382,7 @@ export const App: React.FC = () => {
                     courses={schoolCourses}
                     grades={schoolGrades}
                     systemConfig={systemConfig}
+                    school={activeSchool}
                     currentRole={currentRole}
                     onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
                     onUpdateGrade={handleUpdateGrade}

@@ -71,6 +71,7 @@ export function getSchoolSettingsUpdate(updates: Partial<School>) {
     ...(updates.semesterOptions !== undefined ? { semester_options: updates.semesterOptions } : {}),
     ...(updates.gradingSystem !== undefined ? { grading_system: updates.gradingSystem } : {}),
     ...(updates.staffPositionOptions !== undefined ? { staff_position_options: updates.staffPositionOptions } : {}),
+    ...(updates.roomOptions !== undefined ? { room_options: updates.roomOptions } : {}),
     ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl || null } : {}),
     ...(updates.studentLoginIdentifierType !== undefined
       ? { student_login_identifier_type: updates.studentLoginIdentifierType }

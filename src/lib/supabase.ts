@@ -793,6 +793,19 @@ export async function deleteCoursesFromDb(schoolId: string, courseIds: string[])
   if (error) throw new Error(`Could not delete course records: ${error.message}`);
 }
 
+export async function deleteStaleGradesFromDb(schoolId: string, gradeIds: string[]): Promise<void> {
+  if (gradeIds.length === 0) return;
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client
+    .from('grades')
+    .delete()
+    .eq('school_id', schoolId)
+    .in('id', gradeIds);
+  if (error) throw new Error(`Could not delete stale grade records: ${error.message}`);
+}
+
 export async function updateCourseEnrollmentInDb(
   schoolId: string,
   courseId: string,
@@ -1212,7 +1225,7 @@ export async function deleteStudentFromDb(schoolId: string, studentId: string): 
       .eq('school_id', schoolId)
       .eq('student_id', studentId);
     if (depErr && !isMissingTableError(depErr)) {
-      console.warn(`Could not clean ${table} for deleted student:`, depErr.message);
+      throw new Error(`Could not clean ${table} for deleted student: ${depErr.message}`);
     }
   }
 

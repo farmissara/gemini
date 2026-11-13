@@ -6,6 +6,7 @@ import {
   GradeRecord,
   GradingSystem,
   PeriodAttendanceRecord,
+  School,
   Student,
   SystemConfig,
   TimetableSlot,
@@ -38,6 +39,7 @@ interface GradebookViewProps {
   courses: Course[];
   grades: GradeRecord[];
   systemConfig: SystemConfig;
+  school?: School;
   currentRole?: UserRole;
   onChangeGradingSystem?: (mode: GradingSystem) => Promise<void> | void;
   onUpdateGrade: (gradeId: string, updates: Partial<GradeRecord>) => void;
@@ -48,11 +50,28 @@ interface GradebookViewProps {
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
 }
 
+function matchesPp3Level(student: Student, level: 'all' | 'p6' | 'm3' | 'm6'): boolean {
+  if (level === 'all') return true;
+  const gradeLevel = student.gradeLevel.toLowerCase().replace(/\s+/g, '');
+  if (level === 'p6') {
+    return gradeLevel.includes('ป.6') ||
+      gradeLevel.includes('ประถมศึกษาปีที่6') ||
+      gradeLevel.includes('p.6') ||
+      gradeLevel.includes('primary6');
+  }
+  const target = level === 'm3' ? '3' : '6';
+  return gradeLevel.includes(`ม.${target}`) ||
+    gradeLevel.includes(`มัธยมศึกษาปีที่${target}`) ||
+    gradeLevel.includes(`m.${target}`) ||
+    gradeLevel.includes(`m${target}`);
+}
+
 export const GradebookView: React.FC<GradebookViewProps> = ({
   students,
   courses,
   grades,
   systemConfig,
+  school,
   currentRole = 'teacher',
   onChangeGradingSystem,
   onUpdateGrade,
@@ -222,30 +241,23 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       'สถานะการสำเร็จการศึกษา'
     ];
 
-    const eligibleStudents = students.filter((s) => {
-      if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
-      if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
-      if (pp3LevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
-      return true;
-    });
+    const eligibleStudents = students.filter((student) => matchesPp3Level(student, pp3LevelFilter));
 
     const rows = eligibleStudents.map((s, idx) => {
-      const nationalId = s.nationalId || `1100${idx.toString().padStart(9, '0')}`;
-      const serialNumber = `ปพ.3-67-${(idx + 1).toString().padStart(4, '0')}`;
       return [
         idx + 1,
         `"${s.studentIdNumber}"`,
-        `"${nationalId}"`,
+        `"${s.nationalId || ''}"`,
         `"${s.gender === 'female' ? 'เด็กหญิง' : 'เด็กชาย'}"`,
         `"${s.firstNameTh}"`,
         `"${s.lastNameTh}"`,
         `"${s.gradeLevel}"`,
         `"${s.room}"`,
         s.gpa.toFixed(2),
-        `"ชุดที่ 01"`,
-        `"${serialNumber}"`,
-        `"31 มีนาคม 2568"`,
-        `"อนุมัติจบการศึกษาตามหลักสูตรแกนกลาง"`
+        '""',
+        '""',
+        '""',
+        '"รอตรวจสอบและยืนยันข้อมูลการจบการศึกษา"'
       ];
     });
 
@@ -1019,9 +1031,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4 print:bg-white print:text-slate-900 print:border-none print:shadow-none print:overflow-visible">
           {/* Official Print Header (also serves as formal MOE document header) */}
           <div className="hidden print:block text-center border-b-2 border-slate-900 pb-3 mb-2">
-            <p className="text-xs font-bold">แบบรายงานผู้สำเร็จการศึกษา (ปพ.๓) • สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน</p>
-            <h2 className="text-lg font-extrabold">โรงเรียน{systemConfig.schoolNameTh}</h2>
+            <div className="flex items-center justify-center gap-3">
+              {school?.logoUrl && <img src={school.logoUrl} alt="ตราโรงเรียน" className="w-14 h-14 object-contain" />}
+              <div>
+                <p className="text-xs font-bold">ทะเบียนเตรียมข้อมูลสำหรับจัดทำแบบรายงานผู้สำเร็จการศึกษา (ปพ.๓)</p>
+                <h2 className="text-lg font-extrabold">โรงเรียน{school?.nameTh || systemConfig.schoolNameTh}</h2>
+              </div>
+            </div>
             <p className="text-xs">ปีการศึกษา {systemConfig.academicYear} • ระดับชั้น: {pp3LevelFilter === 'all' ? 'ทั้งหมด' : pp3LevelFilter.toUpperCase()}</p>
+            <p className="text-[10px]">เอกสารเตรียมตรวจ ไม่ใช่แบบ ปพ.๓ ทางราชการที่รับรองแล้ว</p>
           </div>
 
           {/* Header & Filter Controls */}
@@ -1029,14 +1047,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                  สพฐ. กระทรวงศึกษาธิการ
+                  ทะเบียนเตรียมข้อมูล • ตรวจทานก่อนยื่น
                 </span>
                 <h2 className="text-base font-bold text-[var(--color-text-title)]">
-                  แบบรายงานผู้สำเร็จการศึกษาตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน (ปพ.3 ออนไลน์)
+                  เตรียมข้อมูลแบบรายงานผู้สำเร็จการศึกษา (ปพ.3)
                 </h2>
               </div>
               <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                ระบบจัดการและส่งออกข้อมูลทะเบียนผู้จบการศึกษาภาคบังคับและการศึกษาขั้นพื้นฐาน (ป.6, ม.3, ม.6) สู่ระบบ ปพ.3 ออนไลน์ของ สพฐ.
+                แสดงข้อมูลจากทะเบียนของโรงเรียนที่เลือก; ตรวจสอบข้อมูลและใช้แบบฟอร์มทางการของหน่วยงานก่อนลงนามหรือยื่น
               </p>
             </div>
 
@@ -1093,27 +1111,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20">
-              <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">ผู้สำเร็จการศึกษา</div>
+              <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">นักเรียนในระดับชั้นที่เลือก</div>
               <div className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mt-0.5">
-                {students.filter(s => {
-                  if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
-                  if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
-                  if (pp3LevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
-                  return true;
-                }).length} คน
+                {students.filter((student) => matchesPp3Level(student, pp3LevelFilter)).length} คน
               </div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการอนุมัติ</div>
-              <div className="text-xl font-bold text-emerald-600 mt-0.5">อนุมัติครบ 100%</div>
+              <div className="text-sm font-bold text-amber-700 mt-1">ต้องตรวจสอบก่อนอนุมัติ</div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">วันที่อนุมัติจบการศึกษา</div>
-              <div className="text-sm font-bold text-[var(--color-text-title)] mt-1">31 มีนาคม 2568</div>
+              <div className="text-sm font-bold text-[var(--color-text-title)] mt-1">แสดงเมื่อมีการบันทึกข้อมูลจริง</div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">รหัสชุด ปพ.3 สพฐ.</div>
-              <div className="text-sm font-mono font-bold text-[var(--color-primary-text)] mt-1">ศธ 04001/ปพ.3-67</div>
+              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">ปีการศึกษาจากค่าตั้งโรงเรียน</div>
+              <div className="text-sm font-mono font-bold text-[var(--color-primary-text)] mt-1">ปีการศึกษา {systemConfig.academicYear}</div>
             </div>
           </div>
 
@@ -1135,20 +1148,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
                 {students
-                  .filter((s) => {
-                    if (pp3LevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
-                    if (pp3LevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
-                    if (pp3LevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
-                    return true;
-                  })
+                  .filter((student) => matchesPp3Level(student, pp3LevelFilter))
                   .map((stu, idx) => {
-                    const nationalId = stu.nationalId || `1100${idx.toString().padStart(9, '0')}`;
-                    const docNo = `ปพ.3-67-${(idx + 1).toString().padStart(4, '0')}`;
                     return (
                       <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
                         <td className="py-2.5 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
                         <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{nationalId}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{stu.nationalId || '—'}</td>
                         <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
                           {stu.gender === 'female' ? 'ด.ญ. ' : 'ด.ช. '}{stu.firstNameTh} {stu.lastNameTh}
                           <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
@@ -1162,13 +1168,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           {stu.gpa.toFixed(2)}
                         </td>
                         <td className="py-2.5 px-3 font-mono text-xs">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{docNo}</span>
-                          <span className="text-[10px] text-[var(--color-text-muted)] block">ชุดที่ 01 / เล่มที่ 1</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">ยังไม่กำหนด</span>
+                          <span className="text-[10px] text-[var(--color-text-muted)] block">กรอกหลังออกเลขทะเบียนจริง</span>
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            อนุมัติจบการศึกษา
+                            รอตรวจสอบข้อมูล
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-right">

@@ -111,7 +111,15 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [schoolLogoUploading, setSchoolLogoUploading] = useState(false);
   const [schoolLogoError, setSchoolLogoError] = useState<string | null>(null);
   const [schoolLogoSuccess, setSchoolLogoSuccess] = useState<string | null>(null);
+  const [roomOptionsSaving, setRoomOptionsSaving] = useState(false);
+  const [roomOptionsSaveError, setRoomOptionsSaveError] = useState<string | null>(null);
   const schoolLogoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (activeSchool.roomOptions?.length) {
+      updateCustomPresets({ roomOptions: activeSchool.roomOptions });
+    }
+  }, [activeSchool.id, activeSchool.roomOptions, updateCustomPresets]);
 
   useEffect(() => {
     if (
@@ -303,6 +311,32 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     } finally {
       setSchoolLogoUploading(false);
       event.target.value = '';
+    }
+  };
+
+  const handleSaveRoomOptions = async () => {
+    if (!['admin', 'super_admin'].includes(currentRole)) {
+      setRoomOptionsSaveError('เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่แก้ไขรายการห้องเรียนได้');
+      return;
+    }
+    const roomOptions = [...new Set(customPresets.roomOptions.map((room) => room.trim()).filter(Boolean))];
+    if (roomOptions.length === 0) {
+      setRoomOptionsSaveError('ต้องมีห้องเรียนอย่างน้อย 1 ห้อง');
+      return;
+    }
+    if (!onUpdateSchool) {
+      setRoomOptionsSaveError('ไม่พบช่องทางบันทึกการตั้งค่าโรงเรียน');
+      return;
+    }
+    setRoomOptionsSaving(true);
+    setRoomOptionsSaveError(null);
+    try {
+      await onUpdateSchool({ roomOptions });
+      updateCustomPresets({ roomOptions });
+    } catch (error) {
+      setRoomOptionsSaveError(error instanceof Error ? error.message : 'บันทึกรายการห้องเรียนไม่สำเร็จ');
+    } finally {
+      setRoomOptionsSaving(false);
     }
   };
 
@@ -1822,8 +1856,20 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     rows={4}
                     value={customPresets.roomOptions.join('\n')}
                     onChange={(e) => updateCustomPresets({ roomOptions: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+                    disabled={!['admin', 'super_admin'].includes(currentRole)}
                     className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveRoomOptions()}
+                    disabled={roomOptionsSaving || !['admin', 'super_admin'].includes(currentRole)}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-[11px] font-bold disabled:opacity-50 cursor-pointer"
+                  >
+                    {roomOptionsSaving ? 'กำลังบันทึก...' : 'บันทึกรายการห้องเรียนลงฐานข้อมูล'}
+                  </button>
+                  {roomOptionsSaveError && (
+                    <p role="alert" className="text-[11px] text-rose-700 dark:text-rose-300">{roomOptionsSaveError}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="font-semibold text-[var(--color-text-body)]">กลุ่มสาระ / ฝ่ายงาน (1 ฝ่าย/บรรทัด)</label>

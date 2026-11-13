@@ -49,6 +49,8 @@ interface TimetableScheduleViewProps {
   academicYear: string;
   currentSemester: string;
   semesterOptions?: string[];
+  roomOptions?: string[];
+  onUpdateRoomOptions?: (roomOptions: string[]) => Promise<void>;
   onUpdateAcademicPeriod?: (
     academicYear: string,
     currentSemester: string,
@@ -92,9 +94,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   academicYear,
   currentSemester,
   semesterOptions = ['1', '2', 'Summer'],
+  roomOptions: savedRoomOptions,
+  onUpdateRoomOptions,
   onUpdateAcademicPeriod,
 }) => {
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
+  const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
 
   // Main view mode: 'classroom' | 'teacher' | 'hours_criteria'
@@ -105,12 +110,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     new Set([
       ...slots.map((s) => s.classRoom).filter(Boolean),
       ...students.map((st) => st.room).filter(Boolean),
-      ...presets.roomOptions,
+      ...roomOptions,
     ])
   );
   const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
   const [newCustomRoomName, setNewCustomRoomName] = useState('');
   const [showAddRoomInput, setShowAddRoomInput] = useState(false);
+  const [roomOptionsError, setRoomOptionsError] = useState<string | null>(null);
+  const [isSavingRoomOption, setIsSavingRoomOption] = useState(false);
 
   // Teacher selection for Teacher Workload Timetable
   const teacherNames = Array.from(
@@ -633,11 +640,28 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     onClick={() => {
                       const room = newCustomRoomName.trim();
                       if (!room) return;
-                      updatePresets({ roomOptions: [...presets.roomOptions, room] });
-                      setSelectedClassRoom(room);
-                      setNewCustomRoomName('');
-                      setShowAddRoomInput(false);
+                      if (roomOptions.some((existing) => existing.toLocaleLowerCase() === room.toLocaleLowerCase())) {
+                        setRoomOptionsError('มีชื่อห้องนี้อยู่แล้ว');
+                        return;
+                      }
+                      void (async () => {
+                        setIsSavingRoomOption(true);
+                        setRoomOptionsError(null);
+                        try {
+                          const nextOptions = [...roomOptions, room];
+                          await onUpdateRoomOptions?.(nextOptions);
+                          updatePresets({ roomOptions: nextOptions });
+                          setSelectedClassRoom(room);
+                          setNewCustomRoomName('');
+                          setShowAddRoomInput(false);
+                        } catch (error) {
+                          setRoomOptionsError(error instanceof Error ? error.message : 'บันทึกรายการห้องเรียนไม่สำเร็จ');
+                        } finally {
+                          setIsSavingRoomOption(false);
+                        }
+                      })();
                     }}
+                    disabled={isSavingRoomOption}
                     className="px-2 py-1 rounded-lg bg-[var(--color-primary)] text-white text-[11px] font-bold cursor-pointer"
                   >
                     เพิ่ม
@@ -663,6 +687,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             <span className="text-xs text-[var(--color-text-muted)]">
               • จัดตารางแล้ว <strong>{classroomSlots.length}</strong> คาบ/สัปดาห์
             </span>
+            {roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
           </div>
         ) : (
           <div className="flex items-center gap-2 flex-wrap">
