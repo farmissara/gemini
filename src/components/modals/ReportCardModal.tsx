@@ -438,7 +438,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                         <td className="py-2 px-2.5 text-center font-mono text-slate-800">
                           {summary.isPrimary
                             ? (resolved.isActivity ? 'กิจกรรม (รายปี)' : cycleLabelTh)
-                            : (resolved.isActivity ? 'กิจกรรม' : course.credits.toFixed(1))}
+                            : (resolved.isActivity ? 'กิจกรรม' : course.credits <= 0 ? '-' : course.credits.toFixed(1))}
                         </td>
                         <td className={`py-2 px-2.5 text-center font-mono ${summary.isPrimary ? 'bg-sky-50/50' : ''}`}>
                           {summary.isPrimary ? (

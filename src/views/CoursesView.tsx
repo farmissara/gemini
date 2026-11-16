@@ -85,6 +85,8 @@ const DEPARTMENTS = [
   'กิจกรรมพัฒนาผู้เรียนและแนะแนว'
 ];
 
+const CREDIT_PRESET_VALUES = [0, 0.5, 1, 1.5, 2, 3];
+
 export const CoursesView: React.FC<CoursesViewProps> = ({
   courses,
   students,
@@ -139,6 +141,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   // Category selection mode in form: 'preset' or 'custom'
   const [categoryMode, setCategoryMode] = useState<'preset' | 'custom'>('preset');
   const [customCategoryText, setCustomCategoryText] = useState('');
+
+  // Credits selection mode in form: 'preset' or 'custom'
+  const [creditMode, setCreditMode] = useState<'preset' | 'custom'>('preset');
+  const [customCreditsInput, setCustomCreditsInput] = useState<string>('1.5');
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -213,6 +219,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     setEditingCourse(null);
     setCategoryMode('preset');
     setCustomCategoryText('');
+    setCreditMode('preset');
+    setCustomCreditsInput('1.5');
     
     // Suggest code based on existing count
     const nextCode = `ว${30200 + courses.length + 1}`;
@@ -255,10 +263,15 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       setCustomCategoryText(course.category);
     }
 
-    const calculatedCredits = course.credits || 1.5;
-    const calculatedWeekly = course.weeklyHours || Math.round(calculatedCredits * 2);
-    const calculatedTotal = course.totalHours || calculatedWeekly * 20;
-    const calculatedMin = course.minAttendanceHours || Math.round(calculatedTotal * 0.8);
+    const calculatedCredits = Number.isFinite(Number(course.credits)) ? Number(course.credits) : 1.5;
+    const isPresetCredit = CREDIT_PRESET_VALUES.includes(calculatedCredits);
+    setCreditMode(isPresetCredit ? 'preset' : 'custom');
+    setCustomCreditsInput(String(calculatedCredits));
+
+    const calculatedWeekly =
+      course.weeklyHours ?? (calculatedCredits > 0 ? Math.max(1, Math.round(calculatedCredits * 2)) : 1);
+    const calculatedTotal = course.totalHours ?? calculatedWeekly * 20;
+    const calculatedMin = course.minAttendanceHours ?? Math.round(calculatedTotal * 0.8);
 
     setFormData({
       code: course.code,
@@ -283,12 +296,13 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
   // Recalculate hours when credits change
   const handleCreditsChange = (newCredits: number) => {
-    const weekly = Math.max(1, Math.round(newCredits * 2));
+    const safeCredits = Number.isFinite(newCredits) && newCredits >= 0 ? newCredits : 0;
+    const weekly = safeCredits === 0 ? 1 : Math.max(1, Math.round(safeCredits * 2));
     const total = weekly * 20; // 20 weeks per semester
     const minAtt = Math.round(total * 0.8); // 80% attendance rule
     setFormData((prev) => ({
       ...prev,
-      credits: newCredits,
+      credits: safeCredits,
       weeklyHours: weekly,
       totalHours: total,
       minAttendanceHours: minAtt,
@@ -302,6 +316,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       ? customCategoryText.trim()
       : formData.category || 'core';
 
+    const resolvedCredits =
+      creditMode === 'custom'
+        ? Math.max(0, Number.isFinite(Number(customCreditsInput)) ? Number(customCreditsInput) : 0)
+        : Number(formData.credits);
+
     if (editingCourse) {
       const updated: Course = {
         ...editingCourse,
@@ -309,7 +328,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         titleEn: formData.titleEn.trim(),
         titleTh: formData.titleTh.trim(),
         category: finalCategory,
-        credits: Number(formData.credits),
+        credits: resolvedCredits,
         weeklyHours: Number(formData.weeklyHours),
         totalHours: Number(formData.totalHours),
         minAttendanceHours: Number(formData.minAttendanceHours),
@@ -340,7 +359,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       titleEn: formData.titleEn.trim(),
       titleTh: formData.titleTh.trim(),
       category: finalCategory,
-      credits: Number(formData.credits),
+      credits: resolvedCredits,
       weeklyHours: Number(formData.weeklyHours),
       totalHours: Number(formData.totalHours),
       minAttendanceHours: Number(formData.minAttendanceHours),
@@ -653,10 +672,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         <div className="lg:col-span-7 h-full min-h-0 overflow-hidden pr-1">
           <PagedList items={filteredCourses} pageSize={3} renderItem={(course) => {
             const isSelected = activeCourse?.id === course.id;
-            const credits = course.credits || 1.5;
-            const weeklyHours = course.weeklyHours ?? Math.round(credits * 2);
-            const totalHours = course.totalHours || (course.weeklyHours ? course.weeklyHours * 20 : credits * 40);
-            const minAtt = course.minAttendanceHours || Math.round(totalHours * 0.8);
+            const credits = Number.isFinite(Number(course.credits)) ? Number(course.credits) : 1.5;
+            const weeklyHours = course.weeklyHours ?? (credits > 0 ? Math.round(credits * 2) : 1);
+            const totalHours = course.totalHours ?? (course.weeklyHours ? course.weeklyHours * 20 : (credits > 0 ? credits * 40 : 20));
+            const minAtt = course.minAttendanceHours ?? Math.round(totalHours * 0.8);
 
             return (
               <div
@@ -695,7 +714,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       )}
                       {shouldShowCourseCredits(course.code, showPrimaryCourseCredits) && (
                         <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
-                          {credits} หน่วยกิต
+                          {credits === 0 ? 'ไม่มีหน่วยกิต' : `${credits} หน่วยกิต`}
                         </span>
                       )}
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
@@ -796,22 +815,30 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       <span>หลักเกณฑ์ชั่วโมงเรียนและการมีสิทธิ์สอบ (ปพ.5)</span>
                     </span>
                     {shouldShowCourseCredits(activeCourse.code, showPrimaryCourseCredits) && (
-                      <span className="font-mono text-blue-800 dark:text-blue-200">{activeCourse.credits} หน่วยกิต</span>
+                      <span className="font-mono text-blue-800 dark:text-blue-200">
+                        {activeCourse.credits === 0 ? 'ไม่มีหน่วยกิต' : `${activeCourse.credits} หน่วยกิต`}
+                      </span>
                     )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
                       <div className="text-[10px] text-[var(--color-text-muted)]">ชั่วโมง/สัปดาห์</div>
-                      <div className="font-bold text-[var(--color-text-title)]">{activeCourse.weeklyHours ?? Math.round(activeCourse.credits * 2)} ชั่วโมง</div>
+                      <div className="font-bold text-[var(--color-text-title)]">
+                        {activeCourse.weeklyHours ?? (activeCourse.credits > 0 ? Math.round(activeCourse.credits * 2) : 1)} ชั่วโมง
+                      </div>
                     </div>
                     <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
                       <div className="text-[10px] text-[var(--color-text-muted)]">ชั่วโมงรวม/เทอม</div>
-                      <div className="font-bold text-[var(--color-text-title)]">{activeCourse.totalHours || (activeCourse.credits * 40)} ชม.</div>
+                      <div className="font-bold text-[var(--color-text-title)]">
+                        {activeCourse.totalHours ?? (activeCourse.credits > 0 ? activeCourse.credits * 40 : 20)} ชม.
+                      </div>
                     </div>
                     <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700">
                       <div className="text-[10px] text-emerald-800 dark:text-emerald-200">เกณฑ์ 80% มีสิทธิ์สอบ</div>
-                      <div className="font-bold text-emerald-900 dark:text-emerald-100">{activeCourse.minAttendanceHours || Math.round((activeCourse.credits * 40) * 0.8)} ชม.</div>
+                      <div className="font-bold text-emerald-900 dark:text-emerald-100">
+                        {activeCourse.minAttendanceHours ?? Math.round((activeCourse.totalHours ?? (activeCourse.credits > 0 ? activeCourse.credits * 40 : 20)) * 0.8)} ชม.
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1356,16 +1383,57 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   <div>
                     <label className="block text-[var(--color-text-body)] font-medium mb-1">หน่วยกิต (Credits)</label>
                     <select
-                      value={formData.credits}
-                      onChange={(e) => handleCreditsChange(Number(e.target.value))}
+                      aria-label="หน่วยกิต (Credits)"
+                      value={creditMode === 'custom' ? 'custom' : String(formData.credits)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          setCreditMode('custom');
+                          setCustomCreditsInput(String(formData.credits));
+                          return;
+                        }
+                        const numeric = Number(val);
+                        setCreditMode('preset');
+                        setCustomCreditsInput(String(numeric));
+                        handleCreditsChange(numeric);
+                      }}
                       className="w-full px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] font-bold text-[var(--color-primary-text)]"
                     >
-                      <option value={0.5}>0.5 หน่วยกิต (20 ชม.)</option>
-                      <option value={1.0}>1.0 หน่วยกิต (40 ชม.)</option>
-                      <option value={1.5}>1.5 หน่วยกิต (60 ชม.)</option>
-                      <option value={2.0}>2.0 หน่วยกิต (80 ชม.)</option>
-                      <option value={3.0}>3.0 หน่วยกิต (120 ชม.)</option>
+                      <option value="0">ไม่มีหน่วยกิต</option>
+                      <option value="0.5">0.5 หน่วยกิต (20 ชม.)</option>
+                      <option value="1">1.0 หน่วยกิต (40 ชม.)</option>
+                      <option value="1.5">1.5 หน่วยกิต (60 ชม.)</option>
+                      <option value="2">2.0 หน่วยกิต (80 ชม.)</option>
+                      <option value="3">3.0 หน่วยกิต (120 ชม.)</option>
+                      <option value="custom">ใส่หน่วยกิตเอง...</option>
                     </select>
+                    {creditMode === 'custom' && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          required
+                          min={0}
+                          max={20}
+                          step="0.1"
+                          placeholder="ระบุหน่วยกิต เช่น 2.5"
+                          aria-label="ระบุหน่วยกิตเอง"
+                          value={customCreditsInput}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            setCustomCreditsInput(raw);
+                            if (raw.trim() === '') return;
+                            const parsed = Number(raw);
+                            if (Number.isFinite(parsed) && parsed >= 0) {
+                              handleCreditsChange(parsed);
+                            }
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-primary)] font-bold text-[var(--color-primary-text)]"
+                        />
+                        <span className="text-[11px] font-semibold text-[var(--color-text-muted)] whitespace-nowrap">
+                          หน่วยกิต
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[var(--color-text-body)] font-medium mb-1">ชั่วโมง/สัปดาห์</label>

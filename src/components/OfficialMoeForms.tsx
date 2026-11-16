@@ -396,6 +396,8 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                 <td className="border border-slate-500 px-3 py-1.5 tabular-nums">
                   {courseIsActivity
                     ? `กิจกรรมพัฒนาผู้เรียน (ประเมิน ผ/มผ • ${totalHours} ชม.)`
+                    : selectedCourse.credits === 0
+                    ? `ไม่มีหน่วยกิต (${totalHours} ชม. • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`
                     : isPrimaryCourse
                     ? `${selectedCourse.credits.toFixed(1)} น้ำหนักวิชา (${totalHours} ชม./ปี • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`
                     : `${selectedCourse.credits.toFixed(1)} หน่วยกิต (${totalHours} ชม./ภาค • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`}
@@ -1189,7 +1191,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                           {getCategoryTypeLabel(course.category)}
                         </td>
                         <td className="border border-slate-400 py-1.5 font-mono">
-                          {resolved.isActivity ? '-' : course.credits.toFixed(1)}
+                          {resolved.isActivity || course.credits <= 0 ? '-' : course.credits.toFixed(1)}
                         </td>
                         <td className="border border-slate-400 py-1.5 font-mono">100</td>
                         <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">

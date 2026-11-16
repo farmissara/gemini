@@ -635,7 +635,8 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                             </div>
                             <div className="text-[10px] text-[var(--color-text-muted)] truncate">
                               {course.teacherName} · {course.room}
-                              {shouldShowCourseCredits(course.code, activeSchool.showPrimaryCourseCredits ?? false) && ` · ${course.credits} นก.`}
+                              {shouldShowCourseCredits(course.code, activeSchool.showPrimaryCourseCredits ?? false) &&
+                                (course.credits === 0 ? ' · ไม่มีหน่วยกิต' : ` · ${course.credits} นก.`)}
                             </div>
                           </div>
                         </div>
@@ -811,7 +812,9 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                       {inspectedCourse.code}
                     </span>
                     {shouldShowCourseCredits(inspectedCourse.code, activeSchool.showPrimaryCourseCredits ?? false) && (
-                      <span className="text-[11px] opacity-90">{inspectedCourse.credits} หน่วยกิต</span>
+                      <span className="text-[11px] opacity-90">
+                        {inspectedCourse.credits === 0 ? 'ไม่มีหน่วยกิต' : `${inspectedCourse.credits} หน่วยกิต`}
+                      </span>
                     )}
                   </div>
                   <h3 className="text-sm font-bold mt-1 truncate">{inspectedCourse.titleTh}</h3>
@@ -836,13 +839,13 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                   <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                     <div className="text-[10px] text-[var(--color-text-muted)]">ชม./สัปดาห์</div>
                     <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
-                      {inspectedCourse.weeklyHours ?? Math.round(inspectedCourse.credits * 2)} ชม.
+                      {inspectedCourse.weeklyHours ?? (inspectedCourse.credits > 0 ? Math.round(inspectedCourse.credits * 2) : 1)} ชม.
                     </div>
                   </div>
                   <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
                     <div className="text-[10px] text-emerald-800 dark:text-emerald-200">เกณฑ์ 80%</div>
                     <div className="font-bold text-sm text-emerald-900 dark:text-emerald-100 tabular-nums">
-                      {inspectedCourse.minAttendanceHours || Math.round(inspectedCourse.credits * 40 * 0.8)} ชม.
+                      {inspectedCourse.minAttendanceHours ?? Math.round((inspectedCourse.totalHours ?? (inspectedCourse.credits > 0 ? inspectedCourse.credits * 40 : 20)) * 0.8)} ชม.
                     </div>
                   </div>
                 </div>

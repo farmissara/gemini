@@ -955,7 +955,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       setNewTeacher(parsedCourseTeachers.teacherName || teacherNames[0] || '');
       setNewCoTeacher(parsedCourseTeachers.coTeacherName || '');
       setNewRoom(c.room || '');
-      setNewCredits(c.credits || 1.5);
+      setNewCredits(c.credits ?? 1.5);
 
       // Recommend color tag by category
       if (c.category === 'stem') setNewColor('emerald');
@@ -1011,8 +1011,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     const periodTime = getPeriodTime(newPeriod);
 
     const targetCourse = selectedCourseId !== 'custom' ? courses.find((c) => c.id === selectedCourseId) : null;
-    const credits = targetCourse?.credits || newCredits || 1.5;
-    const totalSemesterHours = targetCourse?.totalHours || Math.round(credits * 40);
+    const credits = targetCourse ? (targetCourse.credits ?? newCredits ?? 1.5) : (newCredits ?? 1.5);
+    const totalSemesterHours = targetCourse?.totalHours ?? (credits > 0 ? Math.round(credits * 40) : 20);
     const parsedTeachers = parseSlotTeachersFromRaw(newTeacher, newCoTeacher);
 
     const newSlot: TimetableSlot = {
@@ -2169,8 +2169,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   </tr>
                 ) : (
                   classroomCoursesList.map((item) => {
-                    const credits = item.course?.credits || 1.5;
-                    const requiredWeeklyPeriods = Math.round(credits * 2);
+                    const credits = item.course?.credits ?? 1.5;
+                    const requiredWeeklyPeriods = item.course?.weeklyHours ?? (credits > 0 ? Math.round(credits * 2) : 1);
                     const totalHours = item.scheduledPeriods * 20; // 20 weeks
                     const minAttendanceHours = Math.round(totalHours * 0.8);
                     const maxAllowedAbsentHours = totalHours - minAttendanceHours;
@@ -2191,7 +2191,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         </td>
                         {showCreditsColumn && (
                           <td className="p-3 text-center font-bold text-[var(--color-text-title)]">
-                            {shouldShowCourseCredits(item.code, showPrimaryCourseCredits) && credits}
+                            {shouldShowCourseCredits(item.code, showPrimaryCourseCredits) && (credits === 0 ? 'ไม่มีหน่วยกิต' : credits)}
                           </td>
                         )}
                         <td className="p-3 text-center font-bold">
@@ -3007,13 +3007,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   {shouldShowCourseCredits(selectedSlotForDetail.courseCode, showPrimaryCourseCredits) && (
                     <div className="flex justify-between">
                       <span className="text-[var(--color-text-muted)]">หน่วยกิต (Credits):</span>
-                      <span className="font-bold text-[var(--color-primary-text)]">{selectedSlotForDetail.credits || 1.5} หน่วยกิต</span>
+                      <span className="font-bold text-[var(--color-primary-text)]">
+                        {(selectedSlotForDetail.credits ?? 1.5) === 0 ? 'ไม่มีหน่วยกิต' : `${selectedSlotForDetail.credits ?? 1.5} หน่วยกิต`}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-[var(--color-text-muted)]">เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ):</span>
                     <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                      {Math.round(((selectedSlotForDetail.credits || 1.5) * 40) * 0.8)} / {((selectedSlotForDetail.credits || 1.5) * 40)} ชั่วโมง
+                      {Math.round((selectedSlotForDetail.totalSemesterHours || ((selectedSlotForDetail.credits ?? 1.5) > 0 ? (selectedSlotForDetail.credits ?? 1.5) * 40 : 20)) * 0.8)} / {selectedSlotForDetail.totalSemesterHours || ((selectedSlotForDetail.credits ?? 1.5) > 0 ? (selectedSlotForDetail.credits ?? 1.5) * 40 : 20)} ชั่วโมง
                     </span>
                   </div>
                 </div>
@@ -3194,7 +3196,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                         <span className="font-mono text-[11px] font-bold">{course.code}</span>
                         {shouldShowCourseCredits(course.code, showPrimaryCourseCredits) && (
-                          <span className="text-[10px] text-[var(--color-text-muted)]">{course.credits} หน่วยกิต</span>
+                          <span className="text-[10px] text-[var(--color-text-muted)]">
+                            {course.credits === 0 ? 'ไม่มีหน่วยกิต' : `${course.credits} หน่วยกิต`}
+                          </span>
                         )}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] font-semibold">

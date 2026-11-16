@@ -1619,7 +1619,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <span className="text-[var(--color-text-title)] font-bold truncate">{selectedCourse.titleTh || selectedCourse.titleEn}</span>
               <span className="text-[11px] text-[var(--color-text-muted)] truncate">
                 · {selectedCourse.teacherName || '—'} · {isPrimaryCourse ? `รายปี ${systemConfig.academicYear}` : `${formatSemesterLabel(systemConfig.currentSemester)}/${systemConfig.academicYear}`}
-                {shouldShowCourseCredits(selectedCourse.code, school?.showPrimaryCourseCredits ?? false) && ` · ${selectedCourse.credits} นก.`}
+                {shouldShowCourseCredits(selectedCourse.code, school?.showPrimaryCourseCredits ?? false) &&
+                  (selectedCourse.credits === 0 ? ' · ไม่มีหน่วยกิต' : ` · ${selectedCourse.credits} นก.`)}
               </span>
               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
                 courseIsActivity

@@ -406,7 +406,7 @@ function renderMoePageCanvas({
             course?.code || '-',
             course?.titleTh || course?.titleEn || '-',
             getCourseCategoryTh(course?.category || 'core'),
-            resolved.isActivity ? '-' : (course?.credits ?? 1).toFixed(1),
+            resolved.isActivity || (course && course.credits <= 0) ? '-' : (course?.credits ?? 1).toFixed(1),
             `${grade.totalScore}`,
             resolved.letter,
             resolved.isSpecial ? '-' : resolved.point.toFixed(2),

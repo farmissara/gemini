@@ -482,7 +482,7 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
       room: row.room || '',
       classRoom: row.classroom || '',
       colorTag: row.color_tag || 'sky',
-      credits: Number(row.credits || 1.5),
+      credits: row.credits == null ? 1.5 : Number(row.credits),
       totalSemesterHours: Number(row.total_semester_hours || 60),
     };
   });
@@ -1356,7 +1356,7 @@ export async function saveTimetableSlotsToDb(schoolId: string, slots: TimetableS
     room: s.room,
     classroom: s.classRoom,
     color_tag: s.colorTag || 'sky',
-    credits: s.credits || 1.5,
+    credits: s.credits ?? 1.5,
     total_semester_hours: s.totalSemesterHours || 60,
   }));
 

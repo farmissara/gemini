@@ -546,7 +546,7 @@ export function calculateStudentAcademicSummary({
 
     yearlyEntries.forEach(({ grade, course, resolved }) => {
       if (resolved.isActivity) return;
-      const weight = course?.credits && course.credits > 0 ? course.credits : 1;
+      const weight = course ? (course.credits > 0 ? course.credits : 0) : 1;
       totalRegisteredCredits += course?.credits ?? 0;
 
       if (!resolved.isSpecial) {
@@ -602,7 +602,7 @@ export function calculateStudentAcademicSummary({
     const resolved = resolveEffectiveGrade(grade, course, gradingSystem, false);
     if (resolved.isActivity) return;
 
-    const weight = course?.credits && course.credits > 0 ? course.credits : 1;
+    const weight = course ? (course.credits > 0 ? course.credits : 0) : 1;
     totalRegisteredCredits += course?.credits ?? 0;
 
     if (!resolved.isSpecial) {
