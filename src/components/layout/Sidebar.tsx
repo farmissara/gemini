@@ -495,6 +495,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         type="button"
+        data-nav-tab={item.id}
         onClick={() => { setCurrentTab(item.id); onClick?.(); }}
         className={`${tone} w-full flex min-h-10 items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-[12px] transition cursor-pointer ${
           isActive
@@ -517,7 +518,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="w-56 xl:w-60 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
-      <div className="shrink-0 p-3 border-b border-[var(--color-border)]">
+      <div className="shrink-0 p-3 border-b border-[var(--color-border)]" data-guide-id="sidebar-search">
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input

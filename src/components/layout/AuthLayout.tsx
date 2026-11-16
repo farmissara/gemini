@@ -13,7 +13,6 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
-  HelpCircle,
   Info,
   KeyRound,
   Lock,
@@ -37,7 +36,6 @@ import {
   type SchoolLoginPortalInfo,
 } from '../../lib/authDb';
 import { PWAInstallButton } from '../PWAInstallButton';
-import { LoginGuideModal, type LoginGuideRoleTab } from '../modals/LoginGuideModal';
 import heroImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
 interface AuthLayoutProps {
@@ -86,11 +84,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Secondary Modals: Forgot Password & Student/Teacher Login Guide
+  // Secondary Modal: Forgot Password
   const emailInputRef = useRef<HTMLInputElement>(null);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
-  const [showLoginGuideModal, setShowLoginGuideModal] = useState(false);
-  const [loginGuideRoleTab, setLoginGuideRoleTab] = useState<LoginGuideRoleTab>('student');
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -766,47 +762,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </form>
-
-                    {/* Illustrated Login Guide Triggers for Students & Teachers */}
-                    <div className="border-t border-[var(--color-border)] pt-3.5 space-y-2">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
-                          <HelpCircle className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" aria-hidden="true" />
-                          <span>
-                            {lang === 'th' ? 'ไม่แน่ใจวิธีเข้าสู่ระบบ?' : 'Need help signing in?'}
-                          </span>
-                        </span>
-                        <span className="text-[11px] text-[var(--color-text-muted)]">
-                          {lang === 'th' ? 'คู่มือพร้อมภาพประกอบ' : 'Illustrated guide'}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLoginGuideRoleTab('student');
-                            setShowLoginGuideModal(true);
-                          }}
-                          className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] cursor-pointer"
-                        >
-                          <GraduationCap className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" aria-hidden="true" />
-                          <span>{lang === 'th' ? 'คู่มือนักเรียน' : 'Student Guide'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLoginGuideRoleTab('teacher');
-                            setShowLoginGuideModal(true);
-                          }}
-                          className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] cursor-pointer"
-                        >
-                          <UserCheck className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" aria-hidden="true" />
-                          <span>{lang === 'th' ? 'คู่มือคุณครู' : 'Teacher Guide'}</span>
-                        </button>
-                      </div>
-                    </div>
                   </div>
 
                 </div>
@@ -1050,20 +1005,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
         </div>
       )}
-
-      {/* Modal: Illustrated Login Guide for Students & Teachers */}
-      <LoginGuideModal
-        isOpen={showLoginGuideModal}
-        onClose={() => setShowLoginGuideModal(false)}
-        lang={lang}
-        initialRoleTab={loginGuideRoleTab}
-        onActionFocusLogin={() => {
-          setMode('login');
-          window.setTimeout(() => {
-            emailInputRef.current?.focus();
-          }, 50);
-        }}
-      />
 
     </div>
   );

@@ -24,9 +24,14 @@ import {
   ExternalLink,
   ChevronRight,
   Lightbulb,
-  Key
+  Key,
+  MousePointerClick,
+  Power,
+  UserCheck
 } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
+import { ROLE_WORKFLOW_STEPS } from '../../data/interactiveGuideTopics';
+import { MascotAvatar } from '../guide/MascotAvatar';
 
 export type GuideModuleId = 
   | 'dashboard'
@@ -43,10 +48,15 @@ export type GuideModuleId =
   | 'parent_portal'
   | 'games';
 
+export type ModuleGuideRoleView = 'all' | 'student' | 'teacher';
+
 interface ModuleGuideModalProps {
   initialModule?: GuideModuleId;
+  initialRoleView?: ModuleGuideRoleView;
   lang: AppLanguage;
   currentRole: UserRole;
+  isMascotGuideEnabled?: boolean;
+  onToggleMascotGuide?: (next: boolean) => void;
   onClose: () => void;
   onNavigateToModule?: (moduleId: string) => void;
 }
@@ -759,11 +769,20 @@ export const MODULE_GUIDES: GuideItem[] = [
 
 export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
   initialModule = 'dashboard',
+  initialRoleView,
   lang,
   currentRole,
+  isMascotGuideEnabled = true,
+  onToggleMascotGuide,
   onClose,
   onNavigateToModule
 }) => {
+  const [roleView, setRoleView] = useState<ModuleGuideRoleView>(() => {
+    if (initialRoleView) return initialRoleView;
+    if (currentRole === 'student') return 'student';
+    if (currentRole === 'teacher') return 'teacher';
+    return 'all';
+  });
   const [selectedModuleId, setSelectedModuleId] = useState<GuideModuleId>(initialModule);
   const [searchQuery, setSearchQuery] = useState('');
   const [guideSection, setGuideSection] = useState<'features' | 'steps' | 'tips'>('features');
@@ -781,37 +800,60 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
   const activeGuide = MODULE_GUIDES.find(g => g.id === selectedModuleId) || MODULE_GUIDES[0];
   const ActiveIcon = activeGuide.icon;
+  const activeRoleSteps = ROLE_WORKFLOW_STEPS.filter(
+    (s) => s.role === (roleView === 'student' ? 'student' : 'teacher')
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden text-[var(--color-text-body)]">
         
         {/* Top Header */}
-        <div className="px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-4 shrink-0">
+        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)] text-white shadow-sm flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
+              <MascotAvatar mood={isMascotGuideEnabled ? 'celebrate' : 'happy'} sleeping={!isMascotGuideEnabled} size={40} />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'คู่มือแนะนำวิธีใช้งานทุกโมดูล' : 'EduVerse Master User Guide'}
+                  {lang === 'th' ? 'คู่มือใช้งานในระบบ · คุณครูและนักเรียน' : 'In-Module Interactive Teacher & Student Guide'}
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-                  {MODULE_GUIDES.length} {lang === 'th' ? 'ฟังก์ชัน' : 'Modules'}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] tabular-nums">
+                  {MODULE_GUIDES.length} {lang === 'th' ? 'โมดูล' : 'Modules'}
                 </span>
               </div>
               <p className="text-xs text-[var(--color-text-muted)]">
                 {lang === 'th' 
-                  ? 'คำแนะนำการใช้งานอย่างละเอียด ขั้นตอนทีละสเต็ป และคีย์ลัดสำหรับทุกฟังก์ชันในระบบ'
-                  : 'Step-by-step walkthroughs, key capabilities, role permissions, and tips for every system module.'}
+                  ? 'คู่มือภาพประกอบแยกสำหรับคุณครูและนักเรียน พร้อมโหมดชี้เมาส์นำทางทุกฟังก์ชัน'
+                  : 'Illustrated Teacher & Student guides plus live hover-to-explain cartoon navigation.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {onToggleMascotGuide && (
+              <button
+                type="button"
+                onClick={() => onToggleMascotGuide(!isMascotGuideEnabled)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                  isMascotGuideEnabled
+                    ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+                }`}
+              >
+                <MousePointerClick className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {isMascotGuideEnabled
+                    ? lang === 'th' ? 'การ์ตูนชี้เมาส์: เปิด' : 'Hover Mascot: ON'
+                    : lang === 'th' ? 'การ์ตูนชี้เมาส์: ปิด' : 'Hover Mascot: OFF'}
+                </span>
+              </button>
+            )}
             <button
+              type="button"
               onClick={onClose}
+              aria-label={lang === 'th' ? 'ปิดคู่มือ' : 'Close guide'}
               className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] rounded-lg hover:bg-[var(--color-card)] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -819,7 +861,157 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
           </div>
         </div>
 
-        {/* Content Body with Left Module Navigator and Right Details */}
+        {/* Dedicated In-Module View Switcher: Student Guide / Teacher Guide / All Modules */}
+        <div className="px-5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setRoleView('student')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer whitespace-nowrap ${
+                roleView === 'student'
+                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'คู่มือนักเรียน (ภาพประกอบ)' : 'Student Guide'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRoleView('teacher')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer whitespace-nowrap ${
+                roleView === 'teacher'
+                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'คู่มือคุณครู (ภาพประกอบ)' : 'Teacher Guide'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRoleView('all')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer whitespace-nowrap ${
+                roleView === 'all'
+                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'เจาะลึกทุกโมดูล' : 'All Modules Reference'}</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-[var(--color-text-muted)] hidden sm:inline">
+            {lang === 'th'
+              ? 'เคล็ดลับ: เปิดโหมดการ์ตูนแล้วใช้เมาส์จี้ตามปุ่มในหน้าเว็บเพื่อดูคำแนะนำแบบเรียลไทม์'
+              : 'Tip: Keep Hover Mascot ON and point at buttons across the app for live hints.'}
+          </span>
+        </div>
+
+        {/* Content Body: Illustrated Role Guide OR Module Directory */}
+        {roleView !== 'all' ? (
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <MascotAvatar mood="pointing" size={48} />
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-[var(--color-text-title)]">
+                    {roleView === 'student'
+                      ? lang === 'th'
+                        ? 'คู่มือการใช้งานสำหรับนักเรียน (พร้อมภาพประกอบในโมดูล)'
+                        : 'Student In-Module Illustrated Guide'
+                      : lang === 'th'
+                      ? 'คู่มือการใช้งานสำหรับคุณครู (พร้อมภาพประกอบในโมดูล)'
+                      : 'Teacher In-Module Illustrated Guide'}
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-body)] mt-0.5">
+                    {roleView === 'student'
+                      ? lang === 'th'
+                        ? 'ครบทุกขั้นตอนตั้งแต่เปิดบัญชี เช็คชื่อ QR รายคาบ ดูตารางเรียน ส่งการบ้าน และเล่นเกมความรู้'
+                        : 'Everything from account activation, QR check-in, and LMS lessons to EduBattle games.'
+                      : lang === 'th'
+                      ? 'ครบทุกขั้นตอนสำหรับครูผู้สอน: โต๊ะงานครู นำเข้ารายชื่อ Excel พิมพ์บัตร QR สแกนเช็คชื่อ และรายงานเกรด PDF'
+                      : 'Complete teacher guide: Today’s Desk, CSV import, printable QR passes, scanner, and grade PDFs.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRoleView('all')}
+                className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-xs font-bold text-[var(--color-primary-text)] shrink-0 cursor-pointer whitespace-nowrap"
+              >
+                {lang === 'th' ? 'ดูคู่มือทุกโมดูล' : 'Browse All Modules'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeRoleSteps.map((step) => (
+                <article
+                  key={step.id}
+                  className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col justify-between shadow-xs"
+                >
+                  <div>
+                    <div className="relative h-44 bg-slate-900 overflow-hidden border-b border-[var(--color-border)]">
+                      <img
+                        src={step.imageSrc}
+                        alt={lang === 'th' ? step.captionTh : step.captionEn}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent p-3">
+                        <span className="text-[10px] font-mono font-bold text-blue-300 uppercase">
+                          STEP {step.stepNumber}
+                        </span>
+                        <h4 className="text-sm font-bold text-white leading-snug">
+                          {lang === 'th' ? step.titleTh : step.titleEn}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div className="p-4 space-y-2.5">
+                      <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                        {lang === 'th' ? step.summaryTh : step.summaryEn}
+                      </p>
+                      <ul className="space-y-1.5">
+                        {(lang === 'th' ? step.detailsTh : step.detailsEn).map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs text-[var(--color-text-body)]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                        <span>{lang === 'th' ? step.tipTh : step.tipEn}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {step.targetTab && onNavigateToModule && (
+                    <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-[var(--color-text-muted)] truncate">
+                        {lang === 'th' ? step.captionTh : step.captionEn}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNavigateToModule(step.targetTab!);
+                          onClose();
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
+                      >
+                        <span>{lang === 'th' ? 'เปิดเมนูนี้' : 'Open Module'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left Column: Module Selector List */}
@@ -1010,15 +1202,16 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
           </div>
         </div>
+        )}
 
         {/* Modal Footer */}
         <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between text-xs text-[var(--color-text-muted)] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" />
-            <span>EduVerse Enterprise School &amp; Learning Operating System</span>
+            <span>EduVerse Academic Operating System</span>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold transition-colors cursor-pointer"
           >

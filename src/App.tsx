@@ -128,8 +128,8 @@ import { SystemSettingsView } from './views/SystemSettingsView';
 import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
 import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
-import { ModuleGuideModal } from './components/modals/ModuleGuideModal';
-import { LoginGuideModal } from './components/modals/LoginGuideModal';
+import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
+import { InteractiveMascotGuide } from './components/guide/InteractiveMascotGuide';
 import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
 import { AiDiagnosticLearningView } from './views/AiDiagnosticLearningView';
@@ -385,7 +385,21 @@ export const App: React.FC = () => {
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
-  const [showLoginGuideModal, setShowLoginGuideModal] = useState<boolean>(false);
+  const [guideModalInitialModule, setGuideModalInitialModule] = useState<GuideModuleId>('dashboard');
+  const [guideModalInitialRoleView, setGuideModalInitialRoleView] = useState<ModuleGuideRoleView | undefined>(undefined);
+  const [isMascotGuideEnabled, setIsMascotGuideEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('eduverse_mascot_guide_enabled') !== '0';
+  });
+  const handleToggleMascotGuide = (next?: boolean) => {
+    setIsMascotGuideEnabled((prev) => {
+      const resolved = typeof next === 'boolean' ? next : !prev;
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('eduverse_mascot_guide_enabled', resolved ? '1' : '0');
+      }
+      return resolved;
+    });
+  };
   const [showOnboardingTutorModal, setShowOnboardingTutorModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
@@ -3025,8 +3039,12 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
-        onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowGuideModal(true) : undefined}
-        onOpenLoginGuide={() => setShowLoginGuideModal(true)}
+        onOpenGuide={currentRole !== 'super_admin' || isSuperAdminSchoolView ? (roleTab) => {
+          setGuideModalInitialRoleView(roleTab);
+          setShowGuideModal(true);
+        } : undefined}
+        isMascotGuideEnabled={isMascotGuideEnabled}
+        onToggleMascotGuide={() => handleToggleMascotGuide()}
         onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
         onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
@@ -4055,8 +4073,12 @@ export const App: React.FC = () => {
       {/* Interactive System & Module Guide Modal */}
       {showGuideModal && (
         <ModuleGuideModal
+          initialModule={guideModalInitialModule}
+          initialRoleView={guideModalInitialRoleView}
           lang={lang}
           currentRole={currentRole}
+          isMascotGuideEnabled={isMascotGuideEnabled}
+          onToggleMascotGuide={(next) => handleToggleMascotGuide(next)}
           onClose={() => setShowGuideModal(false)}
           onNavigateToModule={(mod) => {
             setShowGuideModal(false);
@@ -4069,16 +4091,6 @@ export const App: React.FC = () => {
               setCurrentTab(mod as NavTab);
             }
           }}
-        />
-      )}
-
-      {/* Illustrated Student & Teacher Sign-In Guide Modal */}
-      {showLoginGuideModal && (
-        <LoginGuideModal
-          isOpen={showLoginGuideModal}
-          onClose={() => setShowLoginGuideModal(false)}
-          lang={lang}
-          initialRoleTab={currentRole === 'teacher' ? 'teacher' : 'student'}
         />
       )}
 
@@ -4228,6 +4240,24 @@ export const App: React.FC = () => {
           setShowCentralExamPopup(false);
         }}
       />
+
+      {/* Interactive Cartoon Mascot Hover Navigator & In-Module Guide */}
+      {!useImmersiveGameLayout && (
+        <InteractiveMascotGuide
+          enabled={isMascotGuideEnabled}
+          onToggleEnabled={(next) => handleToggleMascotGuide(next)}
+          currentRole={currentRole}
+          currentTab={currentTab}
+          programMode={programMode}
+          lang={lang}
+          onNavigateTab={(tab) => navigateToAppTab(tab)}
+          onOpenFullGuide={(opts) => {
+            if (opts?.moduleId) setGuideModalInitialModule(opts.moduleId);
+            setGuideModalInitialRoleView(opts?.roleTab);
+            setShowGuideModal(true);
+          }}
+        />
+      )}
 
       {/* Offline Status Connectivity Banner */}
       <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />

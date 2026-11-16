@@ -813,7 +813,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <span>วัดผลและประเมินผล (Gradebook &amp; ปพ.)</span>
           </h1>
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
-            <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-[11px] font-bold">
+            <div data-guide-id="gradebook-grading-mode" className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-[11px] font-bold">
               <span className="px-2 text-[var(--color-text-muted)]">เกรด:</span>
               <button
                 type="button"
@@ -859,6 +859,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {activeTab === 'gradebook' && (
             <button
               type="button"
+              data-guide-id="gradebook-autonotify"
               onClick={() => setAutoNotifyEnabled((prev) => !prev)}
               aria-pressed={autoNotifyEnabled}
               title="เปิด/ปิดการส่งแจ้งเตือนผลการเรียนอัตโนมัติถึงนักเรียนและผู้ปกครองเมื่อบันทึกหรือแก้ไขคะแนน"
@@ -892,6 +893,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {activeTab === 'gradebook' && onOpenImportExport && (
             <button
               type="button"
+              data-guide-id="gradebook-import-csv"
               onClick={onOpenImportExport}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 text-xs font-semibold transition cursor-pointer whitespace-nowrap"
               title="นำเข้า/แมปคอลัมน์คะแนนผลการเรียนจาก CSV หรือ Excel"
@@ -904,6 +906,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {activeTab === 'gradebook' && (
             <button
               type="button"
+              data-guide-id="gradebook-pdf-export"
               onClick={handleDownloadGradeDistributionPdf}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap"
               title="ส่งออกรายงานสถิติการกระจายผลการเรียนและฮิสโตแกรมเป็น PDF สำหรับงานทะเบียน/ฝ่ายวิชาการ"
@@ -1112,22 +1115,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 print:overflow-visible">
         {/* Visual Grade Distribution Histogram across selected course & all subjects */}
         {activeTab === 'gradebook' && (
-          <GradeDistributionHistogram
-            courses={courses}
-            grades={grades}
-            filteredCourseGrades={filteredGradebookRows.map((row) => row.grade)}
-            students={students}
-            selectedCourse={selectedCourse}
-            gradingSystem={systemConfig.gradingSystem}
-            lang={lang}
-            scope={histogramScope}
-            onScopeChange={setHistogramScope}
-            chartMode={histogramChartMode}
-            onChartModeChange={setHistogramChartMode}
-            departmentFilter={histogramDeptFilter}
-            onDepartmentFilterChange={setHistogramDeptFilter}
-            onDownloadPdf={handleDownloadGradeDistributionPdf}
-          />
+          <div data-guide-id="gradebook-histogram">
+            <GradeDistributionHistogram
+              courses={courses}
+              grades={grades}
+              filteredCourseGrades={filteredGradebookRows.map((row) => row.grade)}
+              students={students}
+              selectedCourse={selectedCourse}
+              gradingSystem={systemConfig.gradingSystem}
+              lang={lang}
+              scope={histogramScope}
+              onScopeChange={setHistogramScope}
+              chartMode={histogramChartMode}
+              onChartModeChange={setHistogramChartMode}
+              departmentFilter={histogramDeptFilter}
+              onDepartmentFilterChange={setHistogramDeptFilter}
+              onDownloadPdf={handleDownloadGradeDistributionPdf}
+            />
+          </div>
         )}
 
         {/* ========================================================

@@ -19,7 +19,8 @@ import {
   Bell,
   Mail,
   CreditCard,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Compass
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 
@@ -45,8 +46,10 @@ interface NavbarProps {
   onLogout: () => void;
   onToggleMobileMenu?: () => void;
   onOpenProfile?: () => void;
-  onOpenGuide?: () => void;
+  onOpenGuide?: (roleTab?: 'all' | 'student' | 'teacher') => void;
   onOpenLoginGuide?: () => void;
+  isMascotGuideEnabled?: boolean;
+  onToggleMascotGuide?: () => void;
   onOpenImportExport?: () => void;
   onOpenOnboardingTutor?: () => void;
   onSwitchToMobileMode?: () => void;
@@ -76,6 +79,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfile,
   onOpenGuide,
   onOpenLoginGuide,
+  isMascotGuideEnabled,
+  onToggleMascotGuide,
   onOpenImportExport,
   onOpenOnboardingTutor,
   onSwitchToMobileMode,
@@ -130,6 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {canAccessSchoolOperations && (
               <button
                 type="button"
+                data-guide-id="nav-school-switcher"
                 onClick={onOpenSchoolSwitcher}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-[11px] font-medium transition min-w-0 max-w-[120px] sm:max-w-[170px] cursor-pointer"
                 title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
@@ -150,6 +156,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
               <button
                 type="button"
+                data-guide-id="nav-program-school_erp"
                 onClick={() => setProgramMode('school_erp')}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
                   programMode === 'school_erp'
@@ -163,6 +170,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 type="button"
+                data-guide-id="nav-program-lms_classroom"
                 onClick={() => setProgramMode('lms_classroom')}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
                   programMode === 'lms_classroom'
@@ -176,6 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 type="button"
+                data-guide-id="nav-program-parent_portal"
                 onClick={() => setProgramMode('parent_portal')}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
                   programMode === 'parent_portal'
@@ -188,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            <div className="relative hidden xl:flex items-center">
+            <div className="relative hidden xl:flex items-center" data-guide-id="nav-quick-search">
               <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 pointer-events-none" />
               <input
                 type="text"
@@ -201,10 +210,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right Controls: Theme, Lang, Tools, Notifications, Profile, Logout */}
+        {/* Right Controls: Mascot Guide Toggle, Theme, Lang, Tools, Notifications, Profile, Logout */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {onToggleMascotGuide && (
+            <button
+              type="button"
+              data-guide-id="nav-guide-toggle"
+              aria-pressed={Boolean(isMascotGuideEnabled)}
+              onClick={onToggleMascotGuide}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                isMascotGuideEnabled
+                  ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100'
+                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+              title={
+                isMascotGuideEnabled
+                  ? lang === 'th' ? 'ตัวการ์ตูนนำทาง: เปิด (คลิกเพื่อปิด)' : 'Hover Mascot Guide: ON (click to disable)'
+                  : lang === 'th' ? 'ตัวการ์ตูนนำทาง: ปิด (คลิกเพื่อเปิด)' : 'Hover Mascot Guide: OFF (click to enable)'
+              }
+            >
+              <Compass className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">
+                {isMascotGuideEnabled
+                  ? lang === 'th' ? 'นำทาง: เปิด' : 'Guide: ON'
+                  : lang === 'th' ? 'นำทาง: ปิด' : 'Guide: OFF'}
+              </span>
+            </button>
+          )}
+
           {/* Eye-Care Theme Switcher */}
-          <div className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+          <div data-guide-id="nav-theme-toggle" className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
             <button
               type="button"
               onClick={() => setThemePalette('light_warm')}
@@ -230,6 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Language Switcher */}
           <button
             type="button"
+            data-guide-id="nav-lang-toggle"
             onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
             className="flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
             title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
@@ -239,6 +275,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <details
+            data-guide-id="nav-tools-menu"
             className="relative"
             onClick={(event) => {
               if (event.target instanceof Element && event.target.closest('button')) {
@@ -254,7 +291,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">{lang === 'th' ? 'เครื่องมือ' : 'Tools'}</span>
               <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
             </summary>
-            <div className="absolute right-0 top-full z-50 mt-1.5 max-h-[75vh] w-56 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-1.5 max-h-[75vh] w-60 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
               {onSwitchToMobileMode && (
                 <button
                   type="button"
@@ -267,24 +304,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
               <PWAInstallButton lang={lang} variant="sidebar" className="my-0.5" />
               {canAccessSchoolOperations && onOpenGuide && (
-                <button
-                  type="button"
-                  onClick={onOpenGuide}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                  <span>{lang === 'th' ? 'คู่มือระบบ' : 'System guide'}</span>
-                </button>
-              )}
-              {onOpenLoginGuide && (
-                <button
-                  type="button"
-                  onClick={onOpenLoginGuide}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <GraduationCap className="h-4 w-4 text-blue-700 dark:text-blue-300" />
-                  <span>{lang === 'th' ? 'วิธีเข้าระบบ (นักเรียน/ครู)' : 'Sign-In Guide'}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onOpenGuide('student')}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <GraduationCap className="h-4 w-4 text-blue-700 dark:text-blue-300" />
+                    <span>{lang === 'th' ? 'คู่มือนักเรียน (ในโมดูล)' : 'Student Guide'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenGuide('teacher')}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                    <span>{lang === 'th' ? 'คู่มือคุณครู (ในโมดูล)' : 'Teacher Guide'}</span>
+                  </button>
+                </>
               )}
               {currentTab !== 'students' && currentTab !== 'teachers' && currentTab !== 'courses'
                 && canAccessSchoolOperations
@@ -316,6 +353,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {onOpenNotifications && (
             <button
               type="button"
+              data-guide-id="nav-notifications"
               onClick={onOpenNotifications}
               className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer"
               title={lang === 'th' ? 'ศูนย์การแจ้งเตือน' : 'Notifications'}
@@ -333,6 +371,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1 pl-1 border-l border-[var(--color-border)]">
             <button
               type="button"
+              data-guide-id="nav-profile"
               onClick={onOpenProfile}
               aria-label={lang === 'th' ? 'เปิดโปรไฟล์' : 'Open profile'}
               className="flex items-center gap-1.5 p-0.5 pr-1 rounded-lg hover:bg-[var(--color-card-subtle)] transition text-left group cursor-pointer"

@@ -120,6 +120,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       {/* Navigation Sub-tabs */}
       <div className="shrink-0 flex items-center gap-2 text-xs">
         <button
+          data-guide-id="lms-lessons-tab"
           onClick={() => setActiveTab('lessons')}
           className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border ${
             activeTab === 'lessons'
@@ -130,6 +131,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           {lang === 'th' ? '📚 บทเรียนวิดีโอ & สื่อการสอน' : '📚 Video Lessons & Notes'}
         </button>
         <button
+          data-guide-id="lms-homework-tab"
           onClick={() => setActiveTab('assignments')}
           className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border ${
             activeTab === 'assignments'

@@ -460,7 +460,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
 
             {/* 4 Balanced High-level Overview KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div data-guide-id="dashboard-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Students */}
               <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
                 <div>
@@ -611,7 +611,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Teacher / Staff Today's Desk (Zero-Friction Operations) */}
             {isStaffUser && (
-              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div data-guide-id="dashboard-today-desk" className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />

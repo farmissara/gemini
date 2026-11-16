@@ -854,7 +854,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <details className="relative">
+          <details className="relative" data-guide-id="students-import-export">
             <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
               <span>จัดการข้อมูล</span>
               <ChevronDown className="h-3.5 w-3.5" />
@@ -919,6 +919,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
             <button
               type="button"
+              data-guide-id="students-add-bulk"
               onClick={handleOpenBulkModal}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
             >
@@ -929,6 +930,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
           <button
             type="button"
+            data-guide-id="students-add-single"
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
           >
@@ -955,6 +957,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         {canManageApprovals && (
           <button
             type="button"
+            data-guide-id="students-approvals-tab"
             onClick={() => setActiveTab('approvals')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'approvals'

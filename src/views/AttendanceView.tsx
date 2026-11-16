@@ -701,7 +701,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Scanner Card: Students see ONLY their own locked pass; Teachers enter Student ID first */}
-          <div className="p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
+          <div data-guide-id="attendance-scanner-box" className="p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
             <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
               <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
               <span>
