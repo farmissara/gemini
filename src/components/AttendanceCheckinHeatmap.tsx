@@ -145,6 +145,8 @@ function resolveEntryGateLabel(
       return lang === 'th' ? 'จุดสแกน QR หน้าประตู' : 'Front QR Gate Scanner';
     case 'rfid':
       return lang === 'th' ? 'เครื่องสแกนบัตร RFID' : 'RFID Gate Terminal';
+    case 'nfc':
+      return lang === 'th' ? 'จุดแตะบัตร NFC มือถือ' : 'Mobile NFC Tap';
     case 'teacher_proxy':
       return lang === 'th' ? 'จุดคัดกรองครูเวร' : 'Staff Checkpoint';
     default:

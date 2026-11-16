@@ -23,6 +23,7 @@ import {
   Sun,
   UserCheck,
   X,
+  Fingerprint,
 } from 'lucide-react';
 import {
   authenticateWithSupabase,
@@ -32,9 +33,17 @@ import {
   registerSchoolWithSupabase,
   requestPasswordReset,
   resendSignupConfirmation,
+  restoreSupabaseSession,
   type AuthContext,
   type SchoolLoginPortalInfo,
 } from '../../lib/authDb';
+import {
+  getPrimaryDevicePasskey,
+  getWebAuthnSupportInfo,
+  verifyBiometricPasskey,
+  type EnrolledBiometricPasskey,
+  type WebAuthnSupportInfo,
+} from '../../lib/webAuthn';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { BaanPakKruPlayyard } from '../guide/BaanPakKruPlayyard';
@@ -88,14 +97,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   // Secondary Modal: Forgot Password
   const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // WebAuthn / FaceID / TouchID Quick Auth state
+  const [primaryPasskey, setPrimaryPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
+    getPrimaryDevicePasskey()
+  );
+  const [webAuthnSupport, setWebAuthnSupport] = useState<WebAuthnSupportInfo | null>(null);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+
   // Dedicated School Login Portal (from ?schoolId=...&schoolCode=...&school=...&loginMode=student)
   const [portalSchool, setPortalSchool] = useState<SchoolLoginPortalInfo | null>(null);
   const [isStudentPortalMode, setIsStudentPortalMode] = useState(false);
+
+  useEffect(() => {
+    setPrimaryPasskey(getPrimaryDevicePasskey());
+    getWebAuthnSupportInfo().then(setWebAuthnSupport).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -270,6 +292,33 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     }
   };
 
+
+  const handleBiometricSignIn = async () => {
+    if (!primaryPasskey) return;
+    setError(null);
+    setNotice(null);
+    setIsBiometricLoading(true);
+    try {
+      const { passkey } = await verifyBiometricPasskey({ credentialId: primaryPasskey.credentialId });
+      setPrimaryPasskey(passkey);
+      const restored = await restoreSupabaseSession().catch(() => null);
+      if (restored) {
+        onLogin(restored);
+        return;
+      }
+      setEmail(passkey.email);
+      setNotice(
+        lang === 'th'
+          ? `ยืนยัน ${passkey.deviceLabel} สำหรับ ${passkey.fullNameTh} สำเร็จ — กรอกรหัสผ่านเพื่อออกเซสชันใหม่จากเซิร์ฟเวอร์`
+          : `Verified ${passkey.deviceLabel} for ${passkey.fullNameEn || passkey.email}. Enter your password to issue a fresh session.`
+      );
+      window.setTimeout(() => passwordInputRef.current?.focus(), 100);
+    } catch (bioErr) {
+      setError(bioErr instanceof Error ? bioErr.message : String(bioErr));
+    } finally {
+      setIsBiometricLoading(false);
+    }
+  };
 
   const handleResendConfirmation = async () => {
     if (!email.trim() || !email.includes('@')) {
@@ -590,6 +639,40 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       </div>
                     )}
 
+                    {mode === 'login' && primaryPasskey && (
+                      <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                              <Fingerprint className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                                {primaryPasskey.fullNameTh || primaryPasskey.email}
+                              </p>
+                              <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                                {primaryPasskey.deviceLabel} · {primaryPasskey.role}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isBiometricLoading || webAuthnSupport?.supported === false}
+                          onClick={handleBiometricSignIn}
+                          className="w-full min-h-[44px] rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
+                        >
+                          <Fingerprint className="w-4 h-4" />
+                          <span>
+                            {isBiometricLoading
+                              ? (lang === 'th' ? 'กำลังสแกน FaceID / TouchID...' : 'Verifying Biometrics...')
+                              : (lang === 'th' ? 'ยืนยันตัวตนด้วย FaceID / TouchID' : 'Continue with FaceID / TouchID')}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-3.5">
                       {mode === 'register' && (
                         <>
@@ -703,6 +786,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           {lang === 'th' ? 'รหัสผ่าน' : 'Password'}
                         </span>
                         <input
+                          ref={passwordInputRef}
                           type="password"
                           autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                           minLength={8}

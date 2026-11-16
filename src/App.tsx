@@ -170,7 +170,13 @@ import { getLocalDateString } from './lib/date';
 import type { OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
 import { getSchoolFeatureFlags } from './lib/schoolFeatureFlags';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database } from 'lucide-react';
+import {
+  getBiometricSoftLock,
+  getPasskeyForUser,
+  setBiometricSoftLock,
+  verifyBiometricPasskey,
+} from './lib/webAuthn';
+import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database, Fingerprint, Lock, LogOut } from 'lucide-react';
 
 const EMPTY_SCHOOL: School = {
   id: '',
@@ -212,6 +218,9 @@ export const App: React.FC = () => {
   const [isCleaningOrphanedGrades, setIsCleaningOrphanedGrades] = useState(false);
   const [showSchemaMigrationModal, setShowSchemaMigrationModal] = useState(false);
   const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
+  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
+  const [isUnlockingBiometrics, setIsUnlockingBiometrics] = useState(false);
+  const [biometricLockError, setBiometricLockError] = useState<string | null>(null);
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const handleCopyMigrationSql = async () => {
@@ -258,9 +267,9 @@ export const App: React.FC = () => {
       const isPeriodDeepLink = tab === 'mobile_checkin' || subTab === 'period_checkin' || Boolean(courseId);
       if (!isPeriodDeepLink) return null;
       return {
-        subTab: (subTab === 'leave_request' || subTab === 'period_checkin' || subTab === 'teacher_proxy'
+        subTab: (subTab === 'leave_request' || subTab === 'period_checkin' || subTab === 'teacher_proxy' || subTab === 'nfc_tap'
           ? subTab
-          : 'period_checkin') as 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin',
+          : 'period_checkin') as 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin',
         courseId,
         periodNumber,
         date,
@@ -668,6 +677,9 @@ export const App: React.FC = () => {
   // Keep the live Supabase account flow separate from the local demo session.
   const handleLogin = (context: AuthContext) => {
     const school = context.school;
+    setBiometricSoftLock(null);
+    setIsBiometricLocked(false);
+    setBiometricLockError(null);
     setIsSuperAdminSchoolView(false);
     setSchools(context.schools);
     setCurrentUser(context.user);
@@ -811,6 +823,9 @@ export const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOutFromSupabase();
+      setBiometricSoftLock(null);
+      setIsBiometricLocked(false);
+      setBiometricLockError(null);
       setCurrentUser(null);
       setIsSuperAdminSchoolView(false);
       setIsDataReady(false);
@@ -819,6 +834,36 @@ export const App: React.FC = () => {
       setDataSyncError(null);
     } catch (error) {
       setDataLoadError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleLockWithBiometrics = () => {
+    if (!currentUser) return;
+    setBiometricSoftLock({
+      userId: currentUser.id,
+      email: currentUser.email,
+      fullNameTh: currentUser.fullNameTh,
+      fullNameEn: currentUser.fullNameEn,
+      role: currentUser.role,
+      schoolId: activeSchool.id,
+      lockedAt: new Date().toISOString(),
+    });
+    setBiometricLockError(null);
+    setIsBiometricLocked(true);
+  };
+
+  const handleUnlockBiometricScreen = async () => {
+    if (!currentUser) return;
+    setIsUnlockingBiometrics(true);
+    setBiometricLockError(null);
+    try {
+      await verifyBiometricPasskey({ userId: currentUser.id });
+      setBiometricSoftLock(null);
+      setIsBiometricLocked(false);
+    } catch (err) {
+      setBiometricLockError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsUnlockingBiometrics(false);
     }
   };
 
@@ -876,7 +921,16 @@ export const App: React.FC = () => {
     let active = true;
     restoreSupabaseSession()
       .then((context) => {
-        if (active && context) handleLogin(context);
+        if (active && context) {
+          const softLock = getBiometricSoftLock();
+          const shouldStayLocked =
+            Boolean(softLock && softLock.userId === context.user.id && getPasskeyForUser(context.user.id));
+          handleLogin(context);
+          if (shouldStayLocked) {
+            setIsBiometricLocked(true);
+            setBiometricSoftLock(softLock);
+          }
+        }
       })
       .catch((error: unknown) => {
         if (active) setDataLoadError(error instanceof Error ? error.message : String(error));
@@ -2992,6 +3046,58 @@ export const App: React.FC = () => {
     );
   }
 
+  if (isBiometricLocked) {
+    const enrolledPk = getPasskeyForUser(currentUser.id);
+    return (
+      <main className="h-dvh overflow-hidden flex items-center justify-center bg-[var(--color-canvas)] p-5 text-[var(--color-text-body)]">
+        <div className="max-w-sm w-full rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center space-y-4 shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 mx-auto flex items-center justify-center">
+            <Lock className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-lg font-bold text-[var(--color-text-title)]">
+              {lang === 'th' ? 'ล็อกหน้าจอด้วย FaceID / TouchID' : 'Biometric Lock Screen'}
+            </h1>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {currentUser.fullNameTh || currentUser.fullNameEn} · {activeSchool.nameTh}
+            </p>
+          </div>
+
+          {biometricLockError && (
+            <div role="alert" className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs text-left">
+              {biometricLockError}
+            </div>
+          )}
+
+          <div className="space-y-2.5 pt-1">
+            <button
+              type="button"
+              disabled={isUnlockingBiometrics || !enrolledPk}
+              onClick={handleUnlockBiometricScreen}
+              className="w-full min-h-[48px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              <Fingerprint className="w-4.5 h-4.5" />
+              <span>
+                {isUnlockingBiometrics
+                  ? (lang === 'th' ? 'กำลังสแกนไบโอเมตริกซ์...' : 'Verifying Biometrics...')
+                  : (lang === 'th' ? `ปลดล็อกด้วย ${enrolledPk?.deviceLabel || 'FaceID / TouchID'}` : 'Unlock with FaceID / TouchID')}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full min-h-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-rose-50 dark:hover:bg-rose-950/50 text-[var(--color-text-body)] font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ออกจากระบบ / สลับบัญชี' : 'Sign Out / Switch Account'}</span>
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (!isDataReady || loadedSchoolId !== activeSchool.id) {
     return (
       <main className="h-dvh overflow-hidden flex items-center justify-center bg-[var(--color-canvas)] p-6 text-[var(--color-text-body)]">
@@ -3082,6 +3188,7 @@ export const App: React.FC = () => {
           initialPeriodNumber={deepLinkParams?.periodNumber}
           initialPeriodDate={deepLinkParams?.date}
           initialPeriodCode={deepLinkParams?.code}
+          onBiometricLock={handleLockWithBiometrics}
         />
 
         {/* Modals for Mobile View */}

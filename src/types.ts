@@ -243,6 +243,7 @@ export interface Teacher {
   paPortfolio?: TeacherPortfolioWork[]; // แฟ้มผลงานเพิ่มวิทยฐานะ ว.PA
   paScore?: number; // คะแนนประเมิน PA
   selfDevelopmentPlan?: string; // แผนพัฒนาตนเอง (ID Plan)
+  nfcCardUid?: string; // รหัสบัตรประจำตัว NFC / RFID
 }
 
 export interface Student {
@@ -286,6 +287,7 @@ export interface Student {
   targetFaculty?: string;
   interests?: string[];
   languages?: string[];
+  nfcCardUid?: string; // รหัสบัตรนักเรียน NFC / RFID
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'sick' | 'leave';
@@ -307,7 +309,7 @@ export interface AttendanceRecord {
   time: string; // HH:mm:ss
   checkOutTime?: string;
   status: AttendanceStatus;
-  checkinMethod: 'qr_scanner' | 'rfid' | 'manual' | 'mobile_geofence' | 'teacher_proxy' | 'selfie_geofence';
+  checkinMethod: 'qr_scanner' | 'rfid' | 'nfc' | 'manual' | 'mobile_geofence' | 'teacher_proxy' | 'selfie_geofence';
   photoUrl?: string; // Captured selfie image from phone
   photoStoragePath?: string;
   location?: {

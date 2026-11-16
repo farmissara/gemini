@@ -313,6 +313,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   const formatCheckinMethod = (method?: AttendanceRecord['checkinMethod']) => {
     if (method === 'selfie_geofence' || method === 'mobile_geofence') return 'Selfie GPS';
     if (method === 'qr_scanner') return 'QR/Barcode';
+    if (method === 'nfc') return lang === 'th' ? 'แตะบัตร NFC' : 'NFC Tap';
     if (method === 'rfid') return 'RFID Card';
     if (method === 'teacher_proxy') return lang === 'th' ? 'ครู/แอดมิน' : 'Staff';
     if (method === 'manual') return lang === 'th' ? 'กรอกเอง' : 'Manual';

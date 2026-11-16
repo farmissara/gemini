@@ -35,7 +35,14 @@ import {
   ScanLine,
   Maximize2,
   Search,
-  Plus
+  Plus,
+  Nfc,
+  Fingerprint,
+  Lock,
+  Unlock,
+  CreditCard,
+  Trash2,
+  KeyRound
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import {
@@ -78,6 +85,30 @@ import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import {
+  formatNfcUidDisplay,
+  getNdefReaderConstructor,
+  isSecureNfcContext,
+  isWebNfcSupported,
+  loadNfcBindings,
+  parseNfcReadingEvent,
+  removeNfcBinding,
+  resolveNfcTap,
+  saveNfcBinding,
+  type NfcCardBinding,
+  type WebNdefReadingEvent,
+} from '../lib/nfcAttendance';
+import {
+  clearBiometricSessionUnlock,
+  enrollBiometricPasskey,
+  getBiometricUnlockRemainingMinutes,
+  getPasskeyForUser,
+  getWebAuthnSupportInfo,
+  isBiometricSessionUnlocked,
+  type EnrolledBiometricPasskey,
+  type WebAuthnSupportInfo,
+  verifyBiometricPasskey,
+} from '../lib/webAuthn';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -115,7 +146,7 @@ interface MobileAttendanceViewProps {
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
   onAddLeaveRequest?: (req: LeaveRequest) => void;
   onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
-  initialSubTab?: 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
+  initialSubTab?: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
   embeddedMobile?: boolean;
   initialPeriodCourseId?: string;
   initialPeriodNumber?: number;
@@ -170,7 +201,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const safeInitialSubTab =
     !isStaffUser && initialSubTab === 'teacher_proxy' ? 'selfie_mobile' : initialSubTab;
 
-  const [subTab, setSubTab] = useState<'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>(
+  const [subTab, setSubTab] = useState<'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>(
     safeInitialSubTab
   );
   const [compactPane, setCompactPane] = useState<'camera' | 'identity' | 'geofence'>('camera');
@@ -180,6 +211,185 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [rosterSheetGradeFilter, setRosterSheetGradeFilter] = useState('all');
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const [rosterToast, setRosterToast] = useState<string | null>(null);
+
+  const activeSchoolId = _school?.id || currentUser?.schoolId || 'sch-1';
+
+  // -------------------------------------------------------------
+  // BIOMETRIC (WebAuthn / FaceID / TouchID) QUICK-ACTION GUARD
+  // -------------------------------------------------------------
+  const [userPasskey, setUserPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
+    getPasskeyForUser(currentUser?.id)
+  );
+  const [webAuthnSupport, setWebAuthnSupport] = useState<WebAuthnSupportInfo | null>(null);
+  const [biometricUnlocked, setBiometricUnlocked] = useState<boolean>(() => {
+    const pk = getPasskeyForUser(currentUser?.id);
+    if (!pk || !pk.protectQuickAttendance) return true;
+    return isBiometricSessionUnlocked(currentUser?.id);
+  });
+  const [biometricUnlockMinutes, setBiometricUnlockMinutes] = useState<number>(() =>
+    getBiometricUnlockRemainingMinutes(currentUser?.id)
+  );
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const [biometricError, setBiometricError] = useState<string | null>(null);
+  const [biometricNotice, setBiometricNotice] = useState<string | null>(null);
+  const [showBiometricUnlockModal, setShowBiometricUnlockModal] = useState(false);
+  const pendingBiometricActionRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    getWebAuthnSupportInfo().then(setWebAuthnSupport).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const pk = getPasskeyForUser(currentUser?.id);
+    setUserPasskey(pk);
+    const unlocked = !isStaffUser || !pk || !pk.protectQuickAttendance || isBiometricSessionUnlocked(currentUser?.id);
+    setBiometricUnlocked(unlocked);
+    setBiometricUnlockMinutes(getBiometricUnlockRemainingMinutes(currentUser?.id));
+  }, [currentUser?.id, isStaffUser]);
+
+  useEffect(() => {
+    if (!userPasskey?.protectQuickAttendance || !isStaffUser) return;
+    const timer = window.setInterval(() => {
+      const mins = getBiometricUnlockRemainingMinutes(currentUser?.id);
+      setBiometricUnlockMinutes(mins);
+      if (mins <= 0) {
+        setBiometricUnlocked(false);
+      }
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [currentUser?.id, userPasskey?.protectQuickAttendance, isStaffUser]);
+
+  const isQuickAttendanceLocked =
+    isStaffUser && Boolean(userPasskey?.protectQuickAttendance) && !biometricUnlocked;
+
+  const runWithBiometricGuard = (action: () => void) => {
+    if (!isQuickAttendanceLocked) {
+      action();
+      return;
+    }
+    setBiometricError(null);
+    pendingBiometricActionRef.current = action;
+    setShowBiometricUnlockModal(true);
+  };
+
+  const handleBiometricVerify = async () => {
+    if (!currentUser) return;
+    setBiometricBusy(true);
+    setBiometricError(null);
+    try {
+      const res = await verifyBiometricPasskey({ userId: currentUser.id });
+      setUserPasskey(res.passkey);
+      setBiometricUnlocked(true);
+      setBiometricUnlockMinutes(getBiometricUnlockRemainingMinutes(currentUser.id) || 15);
+      setShowBiometricUnlockModal(false);
+      setBiometricNotice(
+        lang === 'th'
+          ? 'ยืนยันตัวตน FaceID / TouchID สำเร็จ (ปลดล็อก 15 นาที)'
+          : 'Biometric verification succeeded (unlocked for 15 min)'
+      );
+      window.setTimeout(() => setBiometricNotice(null), 4000);
+      const pending = pendingBiometricActionRef.current;
+      pendingBiometricActionRef.current = null;
+      if (pending) pending();
+    } catch (err) {
+      setBiometricError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBiometricBusy(false);
+    }
+  };
+
+  const handleEnrollQuickBiometric = async () => {
+    if (!currentUser) return;
+    setBiometricBusy(true);
+    setBiometricError(null);
+    try {
+      const enrolled = await enrollBiometricPasskey({
+        userId: currentUser.id,
+        email: currentUser.email,
+        fullNameTh: currentUser.fullNameTh,
+        fullNameEn: currentUser.fullNameEn,
+        role: currentUser.role,
+        schoolId: activeSchoolId,
+        protectQuickAttendance: isStaffUser,
+      });
+      setUserPasskey(enrolled);
+      setBiometricUnlocked(true);
+      setBiometricUnlockMinutes(15);
+      setBiometricNotice(
+        lang === 'th'
+          ? `เปิดใช้งาน ${enrolled.deviceLabel} สำหรับเช็คชื่อด่วนแล้ว`
+          : `Enrolled ${enrolled.deviceLabel} for quick attendance`
+      );
+      window.setTimeout(() => setBiometricNotice(null), 4500);
+    } catch (err) {
+      setBiometricError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBiometricBusy(false);
+    }
+  };
+
+  const handleLockQuickAttendanceNow = () => {
+    if (!currentUser) return;
+    clearBiometricSessionUnlock(currentUser.id);
+    setBiometricUnlocked(false);
+    setBiometricUnlockMinutes(0);
+    setBiometricNotice(
+      lang === 'th' ? 'ล็อกโมดูลเช็คชื่อด่วนด้วยไบโอเมตริกซ์แล้ว' : 'Quick attendance locked'
+    );
+    window.setTimeout(() => setBiometricNotice(null), 3000);
+  };
+
+  // -------------------------------------------------------------
+  // NFC ATTENDANCE TAP STATE (Web NFC NDEFReader + UID Fallback)
+  // -------------------------------------------------------------
+  const webNfcAvailable = isWebNfcSupported();
+  const secureNfc = isSecureNfcContext();
+  const [nfcCheckType, setNfcCheckType] = useState<AttendanceCheckType>('check_in');
+  const [nfcStatusMode, setNfcStatusMode] = useState<AttendanceStatus>('present');
+  const [isNfcScanning, setIsNfcScanning] = useState(false);
+  const [nfcStatusMessage, setNfcStatusMessage] = useState<string | null>(null);
+  const [nfcErrorMessage, setNfcErrorMessage] = useState<string | null>(null);
+  const [nfcManualUidInput, setNfcManualUidInput] = useState('');
+  const [nfcBindings, setNfcBindings] = useState<NfcCardBinding[]>(() =>
+    loadNfcBindings(activeSchoolId)
+  );
+  const [unregisteredNfcTag, setUnregisteredNfcTag] = useState<{
+    uid: string;
+    payloadText: string;
+  } | null>(null);
+  const [bindTargetType, setBindTargetType] = useState<'student' | 'teacher'>('student');
+  const [bindTargetId, setBindTargetId] = useState<string>(students[0]?.id || teachers[0]?.id || '');
+  const [nfcRecentLogs, setNfcRecentLogs] = useState<
+    Array<{
+      id: string;
+      uid: string;
+      name: string;
+      roleLabel: string;
+      userType: AttendanceUserType;
+      checkType: AttendanceCheckType;
+      status: AttendanceStatus;
+      time: string;
+      gateName: string;
+    }>
+  >([]);
+  const nfcAbortRef = useRef<AbortController | null>(null);
+  const nfcLastTapRef = useRef<{ key: string; at: number }>({ key: '', at: 0 });
+
+  useEffect(() => {
+    setNfcBindings(loadNfcBindings(activeSchoolId));
+  }, [activeSchoolId]);
+
+  useEffect(() => {
+    if (bindTargetType === 'student') {
+      if (!students.some((s) => s.id === bindTargetId)) {
+        setBindTargetId(students[0]?.id || '');
+      }
+    } else {
+      if (!teachers.some((t) => t.id === bindTargetId)) {
+        setBindTargetId(teachers[0]?.id || '');
+      }
+    }
+  }, [bindTargetType, bindTargetId, students, teachers]);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -1106,37 +1316,331 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     };
   }, [scopedStudents, todayAttendanceByStudent]);
 
-  const handleQuickRosterCheckin = (st: Student, status: AttendanceStatus = 'present') => {
-    const statusLabel = status === 'present' ? 'มาเรียน' : status === 'late' ? 'มาสาย' : 'ลา';
+  // NFC Tap Processing & Live Reader Lifecycle
+  const stopNfcScanning = () => {
+    if (nfcAbortRef.current) {
+      try {
+        nfcAbortRef.current.abort();
+      } catch {
+        // ignore abort errors
+      }
+      nfcAbortRef.current = null;
+    }
+    setIsNfcScanning(false);
+  };
+
+  useEffect(() => {
+    if (subTab !== 'nfc_tap') {
+      stopNfcScanning();
+    }
+    return () => {
+      stopNfcScanning();
+    };
+  }, [subTab]);
+
+  const logResolvedNfcAttendance = (params: {
+    userType: 'student' | 'teacher';
+    student?: Student;
+    teacher?: Teacher;
+    uid: string;
+  }) => {
+    const { userType, student, teacher, uid } = params;
+    const nowTime = new Date().toLocaleTimeString('th-TH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const [h, m] = nowTime.split(':').map(Number);
+    const minutes = (h || 0) * 60 + (m || 0);
+    const resolvedStatus: AttendanceStatus =
+      isStaffUser
+        ? nfcStatusMode
+        : nfcCheckType === 'check_in' && minutes > 8 * 60
+          ? 'late'
+          : 'present';
+
+    const actionWord = nfcCheckType === 'check_in' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก';
+    const personName =
+      userType === 'student'
+        ? `${student?.firstNameTh || ''} ${student?.lastNameTh || ''}`.trim()
+        : teacher?.fullNameTh || 'บุคลากร';
+    const targetId = userType === 'student' ? (student?.id || '') : (teacher?.id || '');
+    const roleLabel =
+      userType === 'student'
+        ? `นักเรียน (${student?.gradeLevel || ''} ${student?.room || ''})`.trim()
+        : teacher?.academicStanding || 'ครู / บุคลากร';
+
     onRecordAttendance(
-      st.id,
-      status,
-      `เช็คชื่อด่วนด้วยมือเดียว (${statusLabel}) โดย ${currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครู/ผู้ดูแล'}`,
-      'teacher_proxy',
+      targetId,
+      resolvedStatus,
+      `แตะบัตร NFC (${uid}) ${actionWord} ที่${selectedGate.nameTh}`,
+      'nfc',
       {
-        recordType: 'check_in',
-        userType: 'student',
-        userName: `${st.firstNameTh} ${st.lastNameTh}`,
-        userRole: `นักเรียน (${st.gradeLevel})`,
-        userAvatar: st.avatarUrl,
-        userDepartmentOrRoom: st.room,
+        recordType: nfcCheckType,
+        userType,
+        teacherId: userType === 'teacher' ? targetId : undefined,
+        userName: personName,
+        userRole: roleLabel,
+        userAvatar: userType === 'student' ? student?.avatarUrl : teacher?.avatarUrl,
+        userDepartmentOrRoom: userType === 'student' ? student?.room : teacher?.department,
         date: todayDateStr,
-        recordedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'เจ้าหน้าที่',
-        recordedByRole: currentUser?.role || 'staff',
+        recordedBy: isStaffUser ? (currentUser?.fullNameTh || 'เจ้าหน้าที่จุดสแกน NFC') : personName,
+        recordedByRole: currentUser?.role || userType,
+        location: {
+          lat: realGpsCoords?.lat || selectedGate.lat,
+          lng: realGpsCoords?.lng || selectedGate.lng,
+          distanceMeters: currentGpsDistance,
+          inGeofence: isInGeofence,
+          geofenceZoneName: selectedGate.nameTh,
+        },
       }
     );
+
     playChime();
-    setRosterToast(
+    setNfcRecentLogs((prev) => [
+      {
+        id: `nfc-log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        uid,
+        name: personName,
+        roleLabel,
+        userType,
+        checkType: nfcCheckType,
+        status: resolvedStatus,
+        time: nowTime,
+        gateName: selectedGate.nameTh,
+      },
+      ...prev.slice(0, 14),
+    ]);
+    setNfcErrorMessage(null);
+    setUnregisteredNfcTag(null);
+    setNfcStatusMessage(
       lang === 'th'
-        ? `เช็คชื่อ ${st.firstNameTh} (${statusLabel}) เรียบร้อย`
-        : `Checked in ${st.firstNameEn} (${status})`
+        ? `แตะบัตร NFC สำเร็จ: ${personName} (${actionWord} • ${nowTime} น.)`
+        : `NFC Tap logged: ${personName} (${nfcCheckType} • ${nowTime})`
     );
-    window.setTimeout(() => setRosterToast(null), 2600);
+    window.setTimeout(() => setNfcStatusMessage(null), 5000);
+  };
+
+  const handleProcessNfcCardInput = (rawUid: string, payloadText = '') => {
+    const clean = rawUid.trim() || payloadText.trim();
+    if (!clean) {
+      setNfcErrorMessage(lang === 'th' ? 'ไม่พบรหัสบัตร NFC กรุณาลองแตะใหม่อีกครั้ง' : 'Empty NFC tag UID');
+      return;
+    }
+
+    const dedupeKey = `${clean.toUpperCase()}:${nfcCheckType}`;
+    const now = Date.now();
+    if (nfcLastTapRef.current.key === dedupeKey && now - nfcLastTapRef.current.at < 2500) {
+      return;
+    }
+    nfcLastTapRef.current = { key: dedupeKey, at: now };
+
+    if (isStaffUser && isQuickAttendanceLocked) {
+      runWithBiometricGuard(() => handleProcessNfcCardInput(rawUid, payloadText));
+      return;
+    }
+
+    const match = resolveNfcTap({
+      schoolId: activeSchoolId,
+      rawInput: clean,
+      payloadText,
+      students: isRestrictedViewer ? scopedStudents : students,
+      teachers: isRestrictedViewer ? (ownTeacher ? [ownTeacher] : []) : teachers,
+    });
+
+    if (!match.matched) {
+      // Restricted student user tapping their own physical card: allow binding to own student record
+      if (isRestrictedViewer && ownStudent) {
+        setUnregisteredNfcTag({ uid: match.uid, payloadText: match.payloadText });
+        setNfcErrorMessage(
+          lang === 'th'
+            ? `บัตร UID ${match.uid} ยังไม่ผูกกับบัญชีของคุณ กดปุ่มด้านล่างเพื่อผูกกับบัตรนักเรียนของ ${ownStudent.firstNameTh} และเช็คชื่อทันที`
+            : `Card UID ${match.uid} is not bound yet. Bind it to your student profile below.`
+        );
+        return;
+      }
+      setUnregisteredNfcTag({ uid: match.uid, payloadText: match.payloadText });
+      setNfcErrorMessage(
+        lang === 'th'
+          ? `บัตร NFC UID "${match.uid}" ยังไม่ได้ลงทะเบียนในระบบ กรุณาเลือกเจ้าของบัตรเพื่อจับคู่และเช็คชื่อ`
+          : `Unregistered NFC card UID "${match.uid}". Pair it to a student or teacher below.`
+      );
+      return;
+    }
+
+    if (isRestrictedViewer && ownStudent && match.userType === 'student' && match.student.id !== ownStudent.id) {
+      setNfcErrorMessage(
+        lang === 'th'
+          ? 'บัตรนี้ไม่ใช่บัตรประจำตัวของคุณ ระบบไม่อนุญาตให้แตะบัตรแทนผู้อื่น'
+          : 'This NFC card does not belong to your account.'
+      );
+      return;
+    }
+
+    logResolvedNfcAttendance({
+      userType: match.userType,
+      student: match.userType === 'student' ? match.student : undefined,
+      teacher: match.userType === 'teacher' ? match.teacher : undefined,
+      uid: match.uid,
+    });
+  };
+
+  const handleBindUnregisteredNfcCard = () => {
+    if (!unregisteredNfcTag) return;
+    if (isRestrictedViewer && ownStudent) {
+      const updated = saveNfcBinding(activeSchoolId, {
+        uid: unregisteredNfcTag.uid,
+        targetType: 'student',
+        targetId: ownStudent.id,
+        displayId: ownStudent.studentIdNumber,
+        label: `${ownStudent.firstNameTh} ${ownStudent.lastNameTh}`,
+      });
+      setNfcBindings(updated);
+      logResolvedNfcAttendance({
+        userType: 'student',
+        student: ownStudent,
+        uid: formatNfcUidDisplay(unregisteredNfcTag.uid),
+      });
+      return;
+    }
+
+    if (bindTargetType === 'student') {
+      const stu = students.find((s) => s.id === bindTargetId);
+      if (!stu) return;
+      const updated = saveNfcBinding(activeSchoolId, {
+        uid: unregisteredNfcTag.uid,
+        targetType: 'student',
+        targetId: stu.id,
+        displayId: stu.studentIdNumber,
+        label: `${stu.firstNameTh} ${stu.lastNameTh}`,
+      });
+      setNfcBindings(updated);
+      logResolvedNfcAttendance({
+        userType: 'student',
+        student: stu,
+        uid: formatNfcUidDisplay(unregisteredNfcTag.uid),
+      });
+    } else {
+      const tch = teachers.find((t) => t.id === bindTargetId);
+      if (!tch) return;
+      const updated = saveNfcBinding(activeSchoolId, {
+        uid: unregisteredNfcTag.uid,
+        targetType: 'teacher',
+        targetId: tch.id,
+        displayId: tch.teacherIdNumber,
+        label: tch.fullNameTh,
+      });
+      setNfcBindings(updated);
+      logResolvedNfcAttendance({
+        userType: 'teacher',
+        teacher: tch,
+        uid: formatNfcUidDisplay(unregisteredNfcTag.uid),
+      });
+    }
+  };
+
+  const handleStartWebNfcScan = async () => {
+    if (isStaffUser && isQuickAttendanceLocked) {
+      runWithBiometricGuard(() => {
+        void handleStartWebNfcScan();
+      });
+      return;
+    }
+
+    const NdefCtor = getNdefReaderConstructor();
+    if (!NdefCtor) {
+      setNfcErrorMessage(
+        lang === 'th'
+          ? 'เบราว์เซอร์นี้ไม่รองรับ Web NFC (NDEFReader) ใช้ได้บน Android Chrome ผ่าน HTTPS — คุณสามารถใช้เครื่องอ่าน NFC แบบ USB หรือกรอก UID ด้านล่างแทนได้'
+          : 'Web NFC (NDEFReader) is only supported on Android Chrome over HTTPS. Use USB reader or manual UID input below.'
+      );
+      return;
+    }
+
+    stopNfcScanning();
+    setNfcErrorMessage(null);
+    const controller = new AbortController();
+    nfcAbortRef.current = controller;
+
+    try {
+      const reader = new NdefCtor();
+      await reader.scan({ signal: controller.signal });
+      setIsNfcScanning(true);
+      setNfcStatusMessage(
+        lang === 'th'
+          ? 'เปิดเครื่องอ่าน NFC แล้ว: แตะบัตรนักเรียน/ครูที่ด้านหลังมือถือ'
+          : 'NFC Reader active: hold an ID card against the back of your device'
+      );
+
+      reader.addEventListener('reading', (event: Event) => {
+        const parsed = parseNfcReadingEvent(event as WebNdefReadingEvent);
+        handleProcessNfcCardInput(parsed.serialNumber, parsed.payloadText);
+      });
+
+      reader.addEventListener('readingerror', () => {
+        setNfcErrorMessage(
+          lang === 'th'
+            ? 'อ่านข้อมูลจากบัตร NFC ไม่สำเร็จ กรุณาขยับบัตรให้ตรงตำแหน่งเสาสัญญาณด้านหลังเครื่อง'
+            : 'Could not read NFC tag. Hold the card steady near the back antenna.'
+        );
+      });
+    } catch (err) {
+      stopNfcScanning();
+      const msg = err instanceof Error ? err.message : String(err);
+      if ((err as { name?: string })?.name === 'NotAllowedError') {
+        setNfcErrorMessage(
+          lang === 'th'
+            ? 'ไม่ได้รับอนุญาตให้ใช้งาน NFC บนเบราว์เซอร์ กรุณาตรวจสอบสิทธิ์ NFC ในการตั้งค่าเว็บไซต์'
+            : 'NFC permission was denied by browser settings.'
+        );
+      } else {
+        setNfcErrorMessage(
+          lang === 'th'
+            ? `ไม่สามารถเปิดเครื่องอ่าน NFC ได้ (${msg})`
+            : `Could not start NFC reader (${msg})`
+        );
+      }
+    }
+  };
+
+  const handleQuickRosterCheckin = (st: Student, status: AttendanceStatus = 'present') => {
+    runWithBiometricGuard(() => {
+      const statusLabel = status === 'present' ? 'มาเรียน' : status === 'late' ? 'มาสาย' : 'ลา';
+      onRecordAttendance(
+        st.id,
+        status,
+        `เช็คชื่อด่วนด้วยมือเดียว (${statusLabel}) โดย ${currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครู/ผู้ดูแล'}`,
+        'teacher_proxy',
+        {
+          recordType: 'check_in',
+          userType: 'student',
+          userName: `${st.firstNameTh} ${st.lastNameTh}`,
+          userRole: `นักเรียน (${st.gradeLevel})`,
+          userAvatar: st.avatarUrl,
+          userDepartmentOrRoom: st.room,
+          date: todayDateStr,
+          recordedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'เจ้าหน้าที่',
+          recordedByRole: currentUser?.role || 'staff',
+        }
+      );
+      playChime();
+      setRosterToast(
+        lang === 'th'
+          ? `เช็คชื่อ ${st.firstNameTh} (${statusLabel}) เรียบร้อย`
+          : `Checked in ${st.firstNameEn} (${status})`
+      );
+      window.setTimeout(() => setRosterToast(null), 2600);
+    });
   };
 
   const handleSelectRosterStudentForCurrentTab = (st: Student) => {
     if (subTab === 'teacher_proxy') {
       setProxyStudentIdInput(st.studentIdNumber);
+      setShowQuickRosterSheet(false);
+      return;
+    }
+    if (subTab === 'nfc_tap') {
+      setNfcManualUidInput(st.nfcCardUid || st.studentIdNumber);
       setShowQuickRosterSheet(false);
       return;
     }
@@ -1182,17 +1686,32 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
       return;
     }
+    if (subTab === 'nfc_tap') {
+      if (isNfcScanning) {
+        stopNfcScanning();
+      } else if (webNfcAvailable && secureNfc) {
+        void handleStartWebNfcScan();
+      } else if (nfcManualUidInput.trim()) {
+        handleProcessNfcCardInput(nfcManualUidInput);
+        setNfcManualUidInput('');
+      } else if (isRestrictedViewer && ownStudent) {
+        handleProcessNfcCardInput(ownStudent.nfcCardUid || ownStudent.studentIdNumber);
+      } else {
+        setShowQuickRosterSheet(true);
+      }
+      return;
+    }
     if (subTab === 'teacher_proxy') {
       if (matchedProxyStudent) {
-        handleConfirmProxySingleCheckin();
+        runWithBiometricGuard(() => handleConfirmProxySingleCheckin());
       } else {
-        setShowRapidScanner(true);
+        runWithBiometricGuard(() => setShowRapidScanner(true));
       }
       return;
     }
     if (subTab === 'period_checkin') {
       if (isStaffUser) {
-        handleSavePeriodAttendance();
+        runWithBiometricGuard(() => handleSavePeriodAttendance());
       } else {
         handleStudentSelfPeriodCheckin();
       }
@@ -1211,6 +1730,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         return lang === 'th' ? 'ยืนยันเช็คชื่อ' : 'Confirm';
       }
       return lang === 'th' ? 'ถ่ายเช็คชื่อ' : 'Snap Check-in';
+    }
+    if (subTab === 'nfc_tap') {
+      if (isNfcScanning) return lang === 'th' ? 'หยุดสแกน NFC' : 'Stop NFC';
+      if (webNfcAvailable && secureNfc) return lang === 'th' ? 'เริ่มแตะบัตร NFC' : 'Start NFC';
+      if (nfcManualUidInput.trim()) return lang === 'th' ? 'เช็คชื่อด้วยบัตร' : 'Tap Card';
+      return lang === 'th' ? 'แตะบัตรเช็คชื่อ' : 'Tap NFC';
     }
     if (subTab === 'teacher_proxy') {
       if (matchedProxyStudent) {
@@ -1231,6 +1756,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     showPeriodQrModal ||
     showGpsAdminModal ||
     showQuickRosterSheet ||
+    showBiometricUnlockModal ||
     Boolean(checkinSuccessFeedback);
 
   return (
@@ -1315,6 +1841,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         <nav aria-label="Attendance sub-navigation" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
           {[
             { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็คชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
+            { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะบัตร NFC', labelEn: 'NFC Tap', staffOnly: false },
             { id: 'leave_request', icon: FileText, labelTh: 'ใบลา', labelEn: 'Leave', badge: scopedLeaveRequests.filter(r => r.status === 'pending').length, staffOnly: false },
             { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ครูลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
             { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ (QR)', labelEn: 'Periods (QR)', staffOnly: false }
@@ -1344,17 +1871,124 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           ))}
         </nav>
 
-        {/* Rapid Scanner Button */}
-        <button
-          type="button"
-          onClick={() => setShowRapidScanner(true)}
-          className="btn-action-primary shrink-0"
-          title="เปิดโหมดสแกนเนอร์บาร์โค้ด & QR รัวต่อเนื่อง"
-        >
-          <Camera className="w-3.5 h-3.5" />
-          <span>สแกนรัว 1วิ/คน</span>
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isStaffUser && userPasskey?.protectQuickAttendance && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isQuickAttendanceLocked) {
+                  void handleBiometricVerify();
+                } else {
+                  handleLockQuickAttendanceNow();
+                }
+              }}
+              disabled={biometricBusy}
+              className={`min-h-[38px] px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition shrink-0 ${
+                isQuickAttendanceLocked
+                  ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                  : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+              }`}
+              title={
+                isQuickAttendanceLocked
+                  ? (lang === 'th' ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID' : 'Unlock with FaceID / TouchID')
+                  : (lang === 'th' ? 'แตะเพื่อล็อกโมดูลเช็คชื่อด่วน' : 'Lock quick attendance')
+              }
+            >
+              {isQuickAttendanceLocked ? <Lock className="w-3.5 h-3.5 shrink-0" /> : <Fingerprint className="w-3.5 h-3.5 shrink-0" />}
+              <span className="tabular-nums">
+                {isQuickAttendanceLocked
+                  ? (lang === 'th' ? 'ล็อก (FaceID)' : 'Locked')
+                  : (lang === 'th' ? `ปลดล็อก ${biometricUnlockMinutes}น.` : `${biometricUnlockMinutes}m`)}
+              </span>
+            </button>
+          )}
+
+          {/* Rapid Scanner Button */}
+          <button
+            type="button"
+            onClick={() => runWithBiometricGuard(() => setShowRapidScanner(true))}
+            className="btn-action-primary shrink-0"
+            title="เปิดโหมดสแกนเนอร์บาร์โค้ด & QR รัวต่อเนื่อง"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>สแกนรัว 1วิ/คน</span>
+          </button>
+        </div>
       </div>
+
+      {/* Biometric Quick-Action Security Strip (Staff/Admin only) */}
+      {isStaffUser && (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin') && (
+        <div className="shrink-0">
+          {biometricNotice && (
+            <div role="status" className="mb-2 px-3 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{biometricNotice}</span>
+            </div>
+          )}
+          {biometricError && (
+            <div role="alert" className="mb-2 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{biometricError}</span>
+            </div>
+          )}
+
+          {!userPasskey ? (
+            <div className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                  <Fingerprint className="w-4.5 h-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-[var(--color-text-title)] truncate">
+                    {lang === 'th' ? 'ล็อกเช็คชื่อด่วนด้วย FaceID / TouchID' : 'Secure Quick Attendance with Biometrics'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                    {webAuthnSupport?.supported
+                      ? (lang === 'th' ? 'ผูก Passkey อุปกรณ์นี้เพื่อป้องกันการเช็คชื่อแทนโดยไม่ได้รับอนุญาต' : 'Enroll device Passkey to guard quick check-in actions')
+                      : (lang === 'th' ? webAuthnSupport?.reasonTh || 'ต้องใช้งานผ่าน HTTPS บนมือถือที่รองรับ' : webAuthnSupport?.reasonEn || 'Requires HTTPS mobile browser')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={biometricBusy || webAuthnSupport?.supported === false}
+                onClick={handleEnrollQuickBiometric}
+                className="min-h-[44px] px-3.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>{biometricBusy ? (lang === 'th' ? 'กำลังลงทะเบียน...' : 'Enrolling...') : (lang === 'th' ? 'ผูก FaceID / TouchID' : 'Enable Passkey')}</span>
+              </button>
+            </div>
+          ) : isQuickAttendanceLocked ? (
+            <div className="p-3.5 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-amber-950 dark:text-amber-100">
+                    {lang === 'th' ? 'โมดูลเช็คชื่อด่วนถูกล็อกด้วยไบโอเมตริกซ์' : 'Quick Attendance Biometric Lock Active'}
+                  </p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                    {lang === 'th'
+                      ? `ยืนยัน ${userPasskey.deviceLabel} ก่อนสแกนรัว เช็คชื่อแทน หรือเปิดจุดแตะ NFC`
+                      : `Verify ${userPasskey.deviceLabel} to unlock rapid scanner, NFC terminal & proxy check-in`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={biometricBusy}
+                onClick={handleBiometricVerify}
+                className="min-h-[44px] px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+              >
+                <Fingerprint className="w-4 h-4" />
+                <span>{biometricBusy ? (lang === 'th' ? 'กำลังตรวจสอบ...' : 'Verifying...') : (lang === 'th' ? 'สแกน FaceID / TouchID ปลดล็อก' : 'Unlock with Biometrics')}</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Pane Switcher for Mobile Selfie - Compact Underlined Text Links */}
       {embeddedMobile && subTab === 'selfie_mobile' && (
@@ -2333,6 +2967,438 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       )}
 
       {/* ========================================================================= */}
+      {/* TAB 2B: NFC SCHOOL ID CARD TAP CHECK-IN (TEACHERS & STUDENTS)             */}
+      {/* ========================================================================= */}
+      {subTab === 'nfc_tap' && (
+        <div className={`space-y-3.5 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
+          {/* Top Terminal Card */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isNfcScanning
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-[var(--tone-soft)] text-[var(--tone)]'
+                }`}>
+                  <Nfc className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'เช็คชื่อด้วยบัตรประจำตัว NFC' : 'NFC School ID Card Check-in'}
+                  </h2>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    {isStaffUser
+                      ? (lang === 'th'
+                        ? 'แตะบัตรนักเรียนหรือบัตรครูที่ด้านหลังมือถือ / เครื่องอ่าน NFC เพื่อบันทึกเวลาทันที'
+                        : 'Tap a student or teacher NFC ID card against the device to log attendance instantly.')
+                      : (lang === 'th'
+                        ? 'แตะบัตรนักเรียน NFC ของคุณเพื่อลงเวลาเข้า-ออกโรงเรียนทันที'
+                        : 'Tap your NFC student ID card to log attendance instantly.')}
+                  </p>
+                </div>
+              </div>
+
+              <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold shrink-0 self-start ${
+                webNfcAvailable && secureNfc
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-muted)]'
+              }`}>
+                {webNfcAvailable && secureNfc
+                  ? (lang === 'th' ? 'รองรับ Web NFC' : 'Web NFC Ready')
+                  : (lang === 'th' ? 'โหมด USB / รหัสบัตร UID' : 'UID / Reader Fallback')}
+              </span>
+            </div>
+
+            {/* Mode Controls: IN/OUT + Gate + (Staff Status) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setNfcCheckType('check_in')}
+                  className={`flex-1 min-h-[40px] px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    nfcCheckType === 'check_in'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'เข้า (IN)' : 'Check In'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNfcCheckType('check_out')}
+                  className={`flex-1 min-h-[40px] px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    nfcCheckType === 'check_out'
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'ออก (OUT)' : 'Check Out'}</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <select
+                  aria-label={lang === 'th' ? 'จุดสแกน NFC' : 'NFC Gate'}
+                  value={selectedGate.id}
+                  onChange={(e) => setSelectedGateId(e.target.value)}
+                  className="flex-1 min-w-0 bg-transparent text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden"
+                >
+                  {normalizedGates.map((gate) => (
+                    <option key={gate.id} value={gate.id}>
+                      {gate.nameTh}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {isStaffUser && (
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  {(['present', 'late'] as const).map((stt) => (
+                    <button
+                      key={stt}
+                      type="button"
+                      onClick={() => setNfcStatusMode(stt)}
+                      className={`flex-1 min-h-[40px] px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                        nfcStatusMode === stt
+                          ? stt === 'present'
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-amber-500 text-slate-950'
+                          : 'text-[var(--color-text-body)]'
+                      }`}
+                    >
+                      {stt === 'present' ? (lang === 'th' ? 'สถานะ: มา' : 'Present') : (lang === 'th' ? 'สถานะ: สาย' : 'Late')}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Live Web NFC Tap Pad */}
+            <div className={`p-4 rounded-2xl border-2 border-dashed transition flex flex-col items-center text-center gap-3 ${
+              isNfcScanning
+                ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30'
+                : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
+            }`}>
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm ${
+                isNfcScanning
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-[var(--color-card)] text-[var(--color-primary-text)] border border-[var(--color-border)]'
+              }`}>
+                <Nfc className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-1 max-w-md">
+                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                  {isNfcScanning
+                    ? (lang === 'th' ? 'กำลังรอสัญญาณแตะบัตร NFC...' : 'Listening for NFC Card Tap...')
+                    : webNfcAvailable && secureNfc
+                      ? (lang === 'th' ? 'แตะปุ่มด้านล่างเพื่อเปิดรับสัญญาณบัตร NFC' : 'Tap below to activate NFC reader')
+                      : (lang === 'th' ? 'อุปกรณ์/เบราว์เซอร์นี้ไม่รองรับ Web NFC โดยตรง' : 'Direct Web NFC is unavailable on this browser')}
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  {webNfcAvailable && secureNfc
+                    ? (lang === 'th'
+                      ? 'รองรับบัตรนักเรียน/บุคลากร MIFARE, NTAG213/215 และแท็ก NFC ที่มี NDEF หรือ Serial UID'
+                      : 'Supports MIFARE, NTAG ID cards, and NDEF student/staff tags.')
+                    : (lang === 'th'
+                      ? 'Web NFC รองรับบน Chrome สำหรับ Android (HTTPS) — สำหรับ iOS หรือคอมพิวเตอร์ สามารถเสียบเครื่องอ่าน USB/RFID หรือกรอก UID บัตรด้านล่างได้ทันที'
+                      : 'Web NFC requires Android Chrome over HTTPS. On iOS/Desktop, connect a USB NFC reader or type card UID below.')}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
+                {webNfcAvailable && secureNfc && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isNfcScanning) stopNfcScanning();
+                      else void handleStartWebNfcScan();
+                    }}
+                    className={`min-h-[44px] px-5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition ${
+                      isNfcScanning
+                        ? 'bg-rose-700 hover:bg-rose-800 text-white'
+                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
+                    }`}
+                  >
+                    <Nfc className="w-4 h-4" />
+                    <span>
+                      {isNfcScanning
+                        ? (lang === 'th' ? 'หยุดรอรับสัญญาณ NFC' : 'Stop NFC Reader')
+                        : (lang === 'th' ? 'เปิดเครื่องอ่าน NFC (แตะบัตร)' : 'Start Web NFC Scan')}
+                    </span>
+                  </button>
+                )}
+
+                {isRestrictedViewer && ownStudent && (
+                  <button
+                    type="button"
+                    onClick={() => handleProcessNfcCardInput(ownStudent.nfcCardUid || ownStudent.studentIdNumber)}
+                    className="min-h-[44px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <span>
+                      {lang === 'th'
+                        ? `เช็คชื่อด้วยบัตรของฉัน (${ownStudent.studentIdNumber})`
+                        : `Tap My ID (${ownStudent.studentIdNumber})`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {nfcStatusMessage && (
+              <div role="status" className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                <span>{nfcStatusMessage}</span>
+              </div>
+            )}
+
+            {nfcErrorMessage && (
+              <div role="alert" className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 text-xs font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                <span>{nfcErrorMessage}</span>
+              </div>
+            )}
+
+            {/* USB / Keyboard-Wedge NFC Reader & Manual Card UID Entry */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!nfcManualUidInput.trim()) return;
+                handleProcessNfcCardInput(nfcManualUidInput);
+                setNfcManualUidInput('');
+              }}
+              className="space-y-1.5"
+            >
+              <label className="text-xs font-bold text-[var(--color-text-title)] block">
+                {lang === 'th'
+                  ? 'แตะผ่านเครื่องอ่าน USB NFC / กรอกเลข UID บัตร หรือรหัสประจำตัว'
+                  : 'USB NFC Reader / Card UID or ID Number'}
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <CreditCard className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={nfcManualUidInput}
+                    onChange={(e) => setNfcManualUidInput(e.target.value)}
+                    placeholder={
+                      lang === 'th'
+                        ? `สแกน UID บัตร (เช่น 04:A2:19:FA) หรือ ${students[0]?.studentIdNumber || 'ED-6901'}`
+                        : 'Card UID (e.g. 04:A2:19:FA) or ID number'
+                    }
+                    className="w-full min-h-[44px] pl-9 pr-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-mono text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!nfcManualUidInput.trim()}
+                  className="min-h-[44px] px-4 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{lang === 'th' ? 'บันทึกแตะบัตร' : 'Log Card Tap'}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Unregistered Card Binding Prompt */}
+            {unregisteredNfcTag && (
+              <div className="p-3.5 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-primary)] space-y-2.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-[var(--color-text-title)]">
+                    {lang === 'th'
+                      ? `ผูกบัตร NFC UID: ${unregisteredNfcTag.uid}`
+                      : `Bind NFC Card UID: ${unregisteredNfcTag.uid}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUnregisteredNfcTag(null)}
+                    className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                    aria-label="ปิด"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {isStaffUser ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="flex rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setBindTargetType('student')}
+                        className={`flex-1 py-1.5 rounded-md font-bold text-xs cursor-pointer ${
+                          bindTargetType === 'student' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'
+                        }`}
+                      >
+                        {lang === 'th' ? 'นักเรียน' : 'Student'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBindTargetType('teacher')}
+                        className={`flex-1 py-1.5 rounded-md font-bold text-xs cursor-pointer ${
+                          bindTargetType === 'teacher' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'
+                        }`}
+                      >
+                        {lang === 'th' ? 'ครู/บุคลากร' : 'Teacher'}
+                      </button>
+                    </div>
+
+                    <select
+                      value={bindTargetId}
+                      onChange={(e) => setBindTargetId(e.target.value)}
+                      className="sm:col-span-2 min-h-[40px] px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                    >
+                      {bindTargetType === 'student'
+                        ? students.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.firstNameTh} {st.lastNameTh} ({st.studentIdNumber})
+                            </option>
+                          ))
+                        : teachers.map((tc) => (
+                            <option key={tc.id} value={tc.id}>
+                              {tc.fullNameTh} ({tc.teacherIdNumber})
+                            </option>
+                          ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={handleBindUnregisteredNfcCard}
+                  className="w-full min-h-[44px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Link2 className="w-4 h-4" />
+                  <span>
+                    {lang === 'th'
+                      ? 'ผูกบัตรกับบุคคลนี้และเช็คชื่อทันที'
+                      : 'Bind Card & Check In Now'}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Staff Quick Card Tap Strip (Teachers & Students) */}
+          {isStaffUser && (teachers.length > 0 || students.length > 0) && (
+            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'แตะบัตรด่วน (ครูและนักเรียน)' : 'Quick ID Tap (Teachers & Students)'}
+                </h3>
+                <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                  {lang === 'th' ? `ผูกบัตรแล้ว ${nfcBindings.length} ใบ` : `${nfcBindings.length} bound`}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {teachers.slice(0, 3).map((tc) => (
+                  <button
+                    key={tc.id}
+                    type="button"
+                    onClick={() => handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber)}
+                    className="min-h-[40px] px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Nfc className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
+                    <span className="font-mono text-[10px] text-[var(--color-text-muted)]">{tc.teacherIdNumber}</span>
+                  </button>
+                ))}
+                {students.slice(0, 4).map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber)}
+                    className="min-h-[40px] px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="truncate max-w-[140px]">{st.firstNameTh} {st.lastNameTh}</span>
+                    <span className="font-mono text-[10px] text-[var(--color-text-muted)]">{st.studentIdNumber}</span>
+                  </button>
+                ))}
+              </div>
+
+              {nfcBindings.length > 0 && (
+                <div className="pt-2 border-t border-[var(--color-border)] space-y-1.5">
+                  <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'บัตร NFC ที่จับคู่ไว้บนอุปกรณ์นี้' : 'Paired NFC Cards'}
+                  </p>
+                  <div className="divide-y divide-[var(--color-border)]">
+                    {nfcBindings.slice(0, 5).map((b) => (
+                      <div key={b.normalizedUid} className="py-1.5 flex items-center justify-between gap-2 text-xs">
+                        <div className="min-w-0">
+                          <span className="font-bold text-[var(--color-text-title)]">{b.label}</span>
+                          <span className="ml-2 font-mono text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                            {b.uid} · {b.displayId}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
+                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 cursor-pointer"
+                          title={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recent NFC Tap Log */}
+          <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'บันทึกการแตะบัตร NFC ล่าสุด' : 'Recent NFC Tap Check-ins'}
+              </h3>
+              <span className="text-[11px] font-mono tabular-nums text-[var(--color-text-muted)]">
+                {nfcRecentLogs.length} {lang === 'th' ? 'รายการ' : 'taps'}
+              </span>
+            </div>
+
+            {nfcRecentLogs.length === 0 ? (
+              <p className="text-center text-[var(--color-text-muted)] py-4">
+                {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {nfcRecentLogs.map((log) => (
+                  <div key={log.id} className="py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-[var(--color-text-title)] truncate">{log.name}</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
+                        {log.roleLabel} · UID {log.uid} · {log.gateName}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        log.checkType === 'check_in'
+                          ? log.status === 'late'
+                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200'
+                            : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200'
+                          : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                      }`}>
+                        {log.checkType === 'check_in' ? (log.status === 'late' ? 'เข้า (สาย)' : 'เข้า (IN)') : 'ออก (OUT)'}
+                      </span>
+                      <p className="text-[10px] font-mono tabular-nums text-[var(--color-text-muted)] mt-0.5">
+                        {log.time}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* TAB 3: TEACHER PROXY CHECK-IN (REQUIRES STUDENT ID BEFORE CHECK-IN) */}
       {/* ========================================================================= */}
       {subTab === 'teacher_proxy' && isStaffUser && (
@@ -2488,7 +3554,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                   <button
                     type="button"
-                    onClick={handleConfirmProxySingleCheckin}
+                    onClick={() => runWithBiometricGuard(() => handleConfirmProxySingleCheckin())}
                     className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
@@ -2559,7 +3625,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {isStaffUser && (
                 <button
                   type="button"
-                  onClick={handleSavePeriodAttendance}
+                  onClick={() => runWithBiometricGuard(() => handleSavePeriodAttendance())}
                   className="px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
                 >
                   บันทึกรายชื่อทั้งคาบ
@@ -3136,12 +4202,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         >
           {fabMenuOpen && (
             <div className="pointer-events-auto flex flex-col items-end gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <button
+                type="button"
+                onClick={() => {
+                  setFabMenuOpen(false);
+                  setSubTab('nfc_tap');
+                }}
+                className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              >
+                <Nfc className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span>{lang === 'th' ? 'แตะบัตร NFC' : 'NFC Card Tap'}</span>
+              </button>
+
               {isStaffUser && (
                 <button
                   type="button"
                   onClick={() => {
                     setFabMenuOpen(false);
-                    setShowRapidScanner(true);
+                    runWithBiometricGuard(() => setShowRapidScanner(true));
                   }}
                   className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
                 >
@@ -3204,6 +4282,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             >
               {subTab === 'selfie_mobile' && !capturedPhotoUrl ? (
                 <Camera className="w-4 h-4 shrink-0" />
+              ) : subTab === 'nfc_tap' ? (
+                <Nfc className="w-4 h-4 shrink-0" />
               ) : subTab === 'teacher_proxy' && !matchedProxyStudent ? (
                 <QrCode className="w-4 h-4 shrink-0" />
               ) : (
@@ -3400,6 +4480,59 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           )}
         </div>
       </MobileBottomSheet>
+
+      {/* Biometric Verification Modal for Quick-Action Attendance */}
+      {showBiometricUnlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 mx-auto flex items-center justify-center">
+              <Fingerprint className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ยืนยันตัวตนก่อนเช็คชื่อด่วน' : 'Biometric Verification Required'}
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {lang === 'th'
+                  ? `แตะเพื่อยืนยัน ${userPasskey?.deviceLabel || 'FaceID / TouchID'} สำหรับปลดล็อกสิทธิ์เจ้าหน้าที่ 15 นาที`
+                  : `Verify ${userPasskey?.deviceLabel || 'FaceID / TouchID'} to unlock staff quick attendance for 15 minutes.`}
+              </p>
+            </div>
+
+            {biometricError && (
+              <div role="alert" className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs text-left">
+                {biometricError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={biometricBusy}
+                onClick={handleBiometricVerify}
+                className="w-full min-h-[46px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <Fingerprint className="w-4 h-4" />
+                <span>
+                  {biometricBusy
+                    ? (lang === 'th' ? 'กำลังตรวจสแกนไบโอเมตริกซ์...' : 'Verifying...')
+                    : (lang === 'th' ? 'ยืนยันด้วย FaceID / TouchID' : 'Verify with FaceID / TouchID')}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  pendingBiometricActionRef.current = null;
+                  setShowBiometricUnlockModal(false);
+                }}
+                className="w-full min-h-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] font-semibold text-xs cursor-pointer"
+              >
+                {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

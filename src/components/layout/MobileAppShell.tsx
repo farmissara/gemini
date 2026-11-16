@@ -37,7 +37,11 @@ import {
   Edit3,
   Megaphone,
   SlidersHorizontal,
-  Users
+  Users,
+  Fingerprint,
+  Lock,
+  KeyRound,
+  Trash2
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -89,6 +93,16 @@ import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
 import { MobileAdminQuickHub, MobileSuperAdminHub } from './MobileRoleWorkspace';
 import { AdminDailyDashboardView } from '../../views/AdminDailyDashboardView';
+import {
+  enrollBiometricPasskey,
+  getPasskeyForUser,
+  getWebAuthnSupportInfo,
+  removeEnrolledPasskey,
+  updatePasskeyPreferences,
+  verifyBiometricPasskey,
+  type EnrolledBiometricPasskey,
+  type WebAuthnSupportInfo,
+} from '../../lib/webAuthn';
 import type { NavTab } from './Sidebar';
 
 export type MobileTab =
@@ -194,11 +208,12 @@ interface MobileAppShellProps {
   onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
   onJumpToDesktopTab?: (tab: NavTab) => void;
   initialMobileTab?: MobileTab;
-  initialAttendanceSubTab?: 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
+  initialAttendanceSubTab?: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
   initialPeriodCourseId?: string;
   initialPeriodNumber?: number;
   initialPeriodDate?: string;
   initialPeriodCode?: string;
+  onBiometricLock?: () => void;
 }
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
@@ -260,7 +275,72 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   initialPeriodNumber,
   initialPeriodDate,
   initialPeriodCode,
+  onBiometricLock,
 }) => {
+  const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
+    getPasskeyForUser(currentUser?.id)
+  );
+  const [webAuthnInfo, setWebAuthnInfo] = useState<WebAuthnSupportInfo | null>(null);
+  const [bioBusy, setBioBusy] = useState(false);
+  const [bioMsg, setBioMsg] = useState<string | null>(null);
+  const [bioErr, setBioErr] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setPasskey(getPasskeyForUser(currentUser?.id));
+  }, [currentUser?.id]);
+
+  React.useEffect(() => {
+    getWebAuthnSupportInfo().then(setWebAuthnInfo).catch(() => {});
+  }, []);
+
+  const handleEnrollPasskey = async () => {
+    if (!currentUser) return;
+    setBioBusy(true);
+    setBioErr(null);
+    setBioMsg(null);
+    try {
+      const enrolled = await enrollBiometricPasskey({
+        userId: currentUser.id,
+        email: currentUser.email,
+        fullNameTh: currentUser.fullNameTh,
+        fullNameEn: currentUser.fullNameEn,
+        role: currentUser.role,
+        schoolId: activeSchool.id,
+        protectQuickAttendance:
+          currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'teacher',
+      });
+      setPasskey(enrolled);
+      setBioMsg(
+        lang === 'th'
+          ? `ลงทะเบียน ${enrolled.deviceLabel} สำเร็จ`
+          : `Enrolled ${enrolled.deviceLabel}`
+      );
+    } catch (err) {
+      setBioErr(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBioBusy(false);
+    }
+  };
+
+  const handleTestPasskey = async () => {
+    if (!currentUser) return;
+    setBioBusy(true);
+    setBioErr(null);
+    setBioMsg(null);
+    try {
+      const res = await verifyBiometricPasskey({ userId: currentUser.id });
+      setPasskey(res.passkey);
+      setBioMsg(
+        lang === 'th'
+          ? 'ยืนยัน FaceID / TouchID สำเร็จ ✓'
+          : 'Biometric verification passed'
+      );
+    } catch (err) {
+      setBioErr(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBioBusy(false);
+    }
+  };
   const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
   const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
   const [homePage, setHomePage] = useState(0);
@@ -1368,6 +1448,134 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
                 {/* Mobile App Install Button */}
                 <PWAInstallButton lang={lang} variant="sidebar" />
+
+                {/* Biometric Security & Passkey Card (WebAuthn FaceID / TouchID) */}
+                <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Fingerprint className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <span className="font-bold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'ความปลอดภัย FaceID / TouchID (WebAuthn)' : 'Biometric Security (WebAuthn)'}
+                      </span>
+                    </div>
+                    {passkey && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold shrink-0">
+                        {lang === 'th' ? 'ผูกแล้ว' : 'Active'}
+                      </span>
+                    )}
+                  </div>
+
+                  {bioMsg && (
+                    <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{bioMsg}</p>
+                  )}
+                  {bioErr && (
+                    <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">{bioErr}</p>
+                  )}
+
+                  {!passkey ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
+                        {webAuthnInfo
+                          ? (lang === 'th' ? webAuthnInfo.reasonTh : webAuthnInfo.reasonEn)
+                          : (lang === 'th' ? 'ใช้สแกนใบหน้า/ลายนิ้วมือเพื่อเข้าสู่ระบบและล็อกเช็คชื่อด่วน' : 'Use FaceID/TouchID for fast login and quick attendance lock')}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={bioBusy || webAuthnInfo?.supported === false}
+                        onClick={handleEnrollPasskey}
+                        className="w-full min-h-[44px] px-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                        <span>
+                          {bioBusy
+                            ? (lang === 'th' ? 'กำลังลงทะเบียน Passkey...' : 'Enrolling Passkey...')
+                            : (lang === 'th' ? 'ลงทะเบียน FaceID / TouchID บนเครื่องนี้' : 'Enroll FaceID / TouchID')}
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
+                        {passkey.deviceLabel}
+                      </p>
+
+                      {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+                        <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+                          <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
+                            {lang === 'th' ? 'ล็อกโมดูลเช็คชื่อด่วน (NFC / สแกนรัว / ครูลงชื่อแทน)' : 'Lock Quick Attendance Module'}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={passkey.protectQuickAttendance}
+                            onChange={(e) => {
+                              if (!currentUser) return;
+                              const updated = updatePasskeyPreferences(currentUser.id, {
+                                protectQuickAttendance: e.target.checked,
+                              });
+                              setPasskey(updated);
+                            }}
+                            className="w-4 h-4 accent-[var(--color-primary)]"
+                          />
+                        </label>
+                      )}
+
+                      <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+                        <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
+                          {lang === 'th' ? 'แสดงการยืนยันด้วย FaceID บนหน้าเข้าสู่ระบบ' : 'Enable Biometric Sign-In Prompt'}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={passkey.biometricLoginEnabled}
+                          onChange={(e) => {
+                            if (!currentUser) return;
+                            const updated = updatePasskeyPreferences(currentUser.id, {
+                              biometricLoginEnabled: e.target.checked,
+                            });
+                            setPasskey(updated);
+                          }}
+                          className="w-4 h-4 accent-[var(--color-primary)]"
+                        />
+                      </label>
+
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={bioBusy}
+                          onClick={handleTestPasskey}
+                          className="flex-1 min-h-[40px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Fingerprint className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          <span>{bioBusy ? '...' : (lang === 'th' ? 'ทดสอบสแกน' : 'Test')}</span>
+                        </button>
+
+                        {onBiometricLock && (
+                          <button
+                            type="button"
+                            onClick={onBiometricLock}
+                            className="flex-1 min-h-[40px] px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>{lang === 'th' ? 'ล็อกหน้าจอด่วน' : 'Lock Screen'}</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!currentUser) return;
+                            removeEnrolledPasskey(currentUser.id);
+                            setPasskey(null);
+                            setBioMsg(lang === 'th' ? 'ลบ Passkey แล้ว' : 'Passkey removed');
+                          }}
+                          className="min-h-[40px] px-3 rounded-xl border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 font-bold text-xs flex items-center justify-center cursor-pointer"
+                          title={lang === 'th' ? 'ลบ Passkey ออกจากเครื่องนี้' : 'Remove Passkey'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Switch to Full Desktop View */}
                 <button

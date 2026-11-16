@@ -667,7 +667,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         `"${courseLabel}"`,
         `"${log.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน'}"`,
         `"${statusLabel}"`,
-        `"${log.checkinMethod === 'selfie_geofence' ? 'ถ่ายรูปเซลฟี่+GPS' : log.checkinMethod === 'qr_scanner' ? 'เครื่องสแกน QR' : 'ระบบบันทึก'}"`,
+        `"${log.checkinMethod === 'selfie_geofence' ? 'ถ่ายรูปเซลฟี่+GPS' : log.checkinMethod === 'qr_scanner' ? 'เครื่องสแกน QR' : log.checkinMethod === 'nfc' ? 'แตะบัตร NFC' : log.checkinMethod === 'rfid' ? 'บัตร RFID' : log.checkinMethod === 'teacher_proxy' ? 'ครู/แอดมินลงชื่อ' : 'ระบบบันทึก'}"`,
         `"${log.location?.geofenceZoneName || 'ประตูโรงเรียน'}"`,
         log.location?.distanceMeters !== undefined ? `${log.location.distanceMeters}` : '-',
         `"${log.photoUrl ? 'ใช่' : 'ไม่ใช่'}"`,
