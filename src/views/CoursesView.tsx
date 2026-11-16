@@ -23,7 +23,7 @@ import {
   ChevronDown,
   X
 } from 'lucide-react';
-import { Course, GradeRecord, GradingSystem, Student, UserRole } from '../types';
+import { Course, GradeRecord, GradingSystem, Student, Teacher, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
@@ -35,10 +35,12 @@ import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { calculateStudentAcademicSummary, isPrimaryGradeLevel } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface CoursesViewProps {
   courses: Course[];
   students: Student[];
+  teachers?: Teacher[];
   grades?: GradeRecord[];
   gradingSystem?: GradingSystem;
   currentRole?: UserRole;
@@ -84,6 +86,7 @@ const DEPARTMENTS = [
 export const CoursesView: React.FC<CoursesViewProps> = ({
   courses,
   students,
+  teachers = [],
   grades = [],
   gradingSystem = 'thai',
   currentRole = 'admin',
@@ -107,6 +110,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const availableDepartments = Array.from(new Set([...DEPARTMENTS, ...presets.departments]));
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedTeacherFilter, setSelectedTeacherFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeptPresetModal, setShowDeptPresetModal] = useState(false);
   const [newDeptInput, setNewDeptInput] = useState('');
@@ -170,7 +174,15 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     description: '',
   });
 
-  // Filter courses by search and category
+  const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
+  const teacherSelectableNames = Array.from(
+    new Set([
+      ...teachers.map((t) => (t.fullNameTh || t.fullNameEn || '').trim()).filter(Boolean),
+      ...teacherFilterOptions.map((opt) => opt.label),
+    ])
+  ).sort((a, b) => a.localeCompare(b, 'th'));
+
+  // Filter courses by search, teacher, and category
   const filteredCourses = courses.filter((c) => {
     const matchesSearch =
       c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -178,7 +190,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       c.titleTh.includes(searchTerm) ||
       c.teacherName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = selectedCategory === 'all' || c.category === selectedCategory;
-    return matchesSearch && matchesCat;
+    const matchesTeacher = courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions);
+    return matchesSearch && matchesCat && matchesTeacher;
   });
 
   // Helper to get category Thai label
@@ -339,7 +352,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     setShowAddModal(false);
   };
 
-  const activeCourse = courses.find((c) => c.id === activeCourseId) || courses[0];
+  const activeCourse =
+    filteredCourses.find((c) => c.id === activeCourseId) ||
+    filteredCourses[0] ||
+    courses.find((c) => c.id === activeCourseId) ||
+    courses[0];
   const availableRoomsForEnroll = Array.from(
     new Set(students.map((s) => s.room).filter(Boolean))
   );
@@ -540,16 +557,44 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           {courseDeleteError}
         </p>
       )}
-      <div className="shrink-0 p-2.5 toolbar-filter-zone flex flex-col md:flex-row items-center justify-between gap-2.5 shadow-xs">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="ค้นหาตามรหัสวิชา, ชื่อวิชา หรืออาจารย์ผู้สอน..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
-          />
+      <div className="shrink-0 p-2.5 toolbar-filter-zone flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="ค้นหาตามรหัสวิชา, ชื่อวิชา หรืออาจารย์ผู้สอน..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <select
+              aria-label="กรองวิชาตามรายชื่อครู"
+              value={selectedTeacherFilter}
+              onChange={(e) => setSelectedTeacherFilter(e.target.value)}
+              className="w-full sm:w-56 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+            >
+              <option value="all">ครูผู้สอนทุกคน ({teacherFilterOptions.length} ท่าน)</option>
+              {teacherFilterOptions.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label} ({opt.count} วิชา)
+                </option>
+              ))}
+            </select>
+            {selectedTeacherFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedTeacherFilter('all')}
+                aria-label="ล้างตัวกรองครูผู้สอน"
+                className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
+              >
+                ล้าง
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="seg-tab-group overflow-x-auto max-w-full no-scrollbar">
@@ -559,10 +604,12 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
             onClick={() => setSelectedCategory('all')}
             className="seg-tab-btn"
           >
-            ทุกหมวดวิชา ({courses.length})
+            ทุกหมวดวิชา ({courses.filter((c) => courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)).length})
           </button>
           {STANDARD_CATEGORIES.map((cat) => {
-            const count = courses.filter((c) => c.category === cat.key).length;
+            const count = courses.filter(
+              (c) => c.category === cat.key && courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)
+            ).length;
             return (
               <button
                 key={cat.key}
@@ -1353,11 +1400,29 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   <input
                     type="text"
                     required
+                    list="courses-teacher-datalist"
                     placeholder="เช่น อ.ดร.ประเสริฐ ถาวร"
                     value={formData.teacherName}
-                    onChange={(e) => setFormData({ ...formData, teacherName: e.target.value })}
+                    onChange={(e) => {
+                      const nextName = e.target.value;
+                      const matchedTeacher = teachers.find(
+                        (t) =>
+                          t.fullNameTh.trim().toLowerCase() === nextName.trim().toLowerCase() ||
+                          t.fullNameEn.trim().toLowerCase() === nextName.trim().toLowerCase()
+                      );
+                      setFormData({
+                        ...formData,
+                        teacherName: nextName,
+                        teacherEmail: matchedTeacher?.email || formData.teacherEmail,
+                      });
+                    }}
                     className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   />
+                  <datalist id="courses-teacher-datalist">
+                    {teacherSelectableNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 

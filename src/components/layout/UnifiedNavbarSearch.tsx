@@ -27,6 +27,11 @@ import {
   UserRole,
 } from '../../types';
 import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
+import {
+  buildCourseTeacherOptions,
+  courseMatchesTeacherFilter,
+  teacherMatchesCourse,
+} from '../../lib/courseTeacherFilter';
 
 export type UnifiedSearchScope = 'all' | 'students' | 'teachers' | 'courses';
 
@@ -67,6 +72,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   const [scope, setScope] = useState<UnifiedSearchScope>('all');
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [courseTeacherFilter, setCourseTeacherFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
   const [inspectedTeacher, setInspectedTeacher] = useState<Teacher | null>(null);
@@ -136,9 +142,15 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
     });
   }, [teachers, deptFilter, normalizedQuery]);
 
+  const courseTeacherOptions = useMemo(
+    () => buildCourseTeacherOptions(courses, teachers),
+    [courses, teachers]
+  );
+
   const matchedCourses = useMemo(() => {
     return courses.filter((c) => {
       if (deptFilter !== 'all' && c.department !== deptFilter) return false;
+      if (!courseMatchesTeacherFilter(c, courseTeacherFilter, courseTeacherOptions)) return false;
       if (!normalizedQuery) return true;
       return [
         c.code,
@@ -150,7 +162,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
         c.schedule,
       ].some((v) => (v || '').toLowerCase().includes(normalizedQuery));
     });
-  }, [courses, deptFilter, normalizedQuery]);
+  }, [courses, deptFilter, courseTeacherFilter, courseTeacherOptions, normalizedQuery]);
 
   const totalMatches =
     (scope === 'all' || scope === 'students' ? matchedStudents.length : 0) +
@@ -158,7 +170,11 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
     (scope === 'all' || scope === 'courses' ? matchedCourses.length : 0);
 
   const hasActiveFilter =
-    Boolean(normalizedQuery) || scope !== 'all' || roomFilter !== 'all' || deptFilter !== 'all';
+    Boolean(normalizedQuery) ||
+    scope !== 'all' ||
+    roomFilter !== 'all' ||
+    deptFilter !== 'all' ||
+    courseTeacherFilter !== 'all';
 
   // Close popover on click outside & support Ctrl/Cmd+K shortcut
   useEffect(() => {
@@ -368,7 +384,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
           </div>
 
           {/* Secondary Inline Filters */}
-          {(showFilters || roomFilter !== 'all' || deptFilter !== 'all') && (
+          {(showFilters || roomFilter !== 'all' || deptFilter !== 'all' || courseTeacherFilter !== 'all') && (
             <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center gap-2 text-xs">
               {(scope === 'all' || scope === 'students') && roomOptions.length > 0 && (
                 <select
@@ -403,6 +419,23 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                   </select>
                 )}
 
+              {(scope === 'all' || scope === 'courses') &&
+                courseTeacherOptions.length > 0 && (
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={courseTeacherFilter}
+                    onChange={(e) => setCourseTeacherFilter(e.target.value)}
+                    className="px-2 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] text-[var(--color-text-title)] max-w-[220px]"
+                  >
+                    <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                    {courseTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
+                      </option>
+                    ))}
+                  </select>
+                )}
+
               {hasActiveFilter && (
                 <button
                   type="button"
@@ -411,6 +444,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                     setScope('all');
                     setRoomFilter('all');
                     setDeptFilter('all');
+                    setCourseTeacherFilter('all');
                   }}
                   className="ml-auto text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:underline cursor-pointer"
                 >
@@ -694,21 +728,13 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                     รายวิชาที่รับผิดชอบในโรงเรียน
                   </div>
                   <div className="max-h-36 overflow-y-auto space-y-1">
-                    {courses.filter(
-                      (c) =>
-                        c.teacherEmail === inspectedTeacher.email ||
-                        c.teacherName === inspectedTeacher.fullNameTh
-                    ).length === 0 ? (
+                    {courses.filter((c) => teacherMatchesCourse(inspectedTeacher, c)).length === 0 ? (
                       <p className="text-[11px] text-[var(--color-text-muted)]">
                         {inspectedTeacher.teachingSubjects?.join(', ') || 'ยังไม่มีรายวิชาผูกในภาคเรียนนี้'}
                       </p>
                     ) : (
                       courses
-                        .filter(
-                          (c) =>
-                            c.teacherEmail === inspectedTeacher.email ||
-                            c.teacherName === inspectedTeacher.fullNameTh
-                        )
+                        .filter((c) => teacherMatchesCourse(inspectedTeacher, c))
                         .map((c) => (
                           <div
                             key={c.id}

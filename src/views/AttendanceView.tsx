@@ -62,6 +62,7 @@ import { WeeklyAttendanceGrid } from '../components/WeeklyAttendanceGrid';
 import { PeriodQrGeneratorPanel } from '../components/PeriodQrGeneratorPanel';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -194,9 +195,20 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [startDateFilter, setStartDateFilter] = useState(getLocalDateString());
   const [endDateFilter, setEndDateFilter] = useState(getLocalDateString());
   const [classFilter, setClassFilter] = useState<string>('all');
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<AttendanceRecord | null>(null);
+
+  const courseTeacherOptions = useMemo(
+    () => buildCourseTeacherOptions(courses, teachers),
+    [courses, teachers]
+  );
+
+  const teacherFilteredCourses = useMemo(
+    () => courses.filter((c) => courseMatchesTeacherFilter(c, teacherFilter, courseTeacherOptions)),
+    [courses, teacherFilter, courseTeacherOptions]
+  );
 
   const availableClasses = useMemo(() => {
     const rooms = new Set<string>();
@@ -210,15 +222,26 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   }, [scopedStudents, attendance]);
 
   const selectedCourseObj = useMemo(
-    () => courses.find((c) => c.id === courseFilter) || null,
-    [courses, courseFilter]
+    () => teacherFilteredCourses.find((c) => c.id === courseFilter) || null,
+    [teacherFilteredCourses, courseFilter]
   );
 
-  // Unified log entries: gate logs + matching period attendance logs when a course is selected
+  // Unified log entries: gate logs + matching period attendance logs when a course or teacher is selected
   const filteredLogs = useMemo(() => {
-    const enrolledSet = selectedCourseObj
-      ? new Set(selectedCourseObj.enrolledStudentIds || [])
+    const targetCourses = selectedCourseObj
+      ? [selectedCourseObj]
+      : teacherFilter !== 'all'
+      ? teacherFilteredCourses
+      : [];
+
+    const hasCourseScope = selectedCourseObj !== null || teacherFilter !== 'all';
+    const enrolledSet = hasCourseScope
+      ? new Set(targetCourses.flatMap((c) => c.enrolledStudentIds || []))
       : null;
+    const roomSet = hasCourseScope
+      ? new Set(targetCourses.map((c) => c.room).filter(Boolean))
+      : null;
+    const targetCourseById = new Map(targetCourses.map((c) => [c.id, c]));
 
     const studentById = new Map(students.map((s) => [s.id, s]));
 
@@ -235,33 +258,37 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     };
 
     const matchesCourseGate = (log: AttendanceRecord) => {
-      if (!selectedCourseObj) return true;
-      if (enrolledSet && enrolledSet.size > 0) {
-        return enrolledSet.has(log.studentId);
+      if (!hasCourseScope) return true;
+      if (targetCourses.length === 0) return false;
+      if (enrolledSet && enrolledSet.size > 0 && enrolledSet.has(log.studentId)) {
+        return true;
       }
-      if (selectedCourseObj.room) {
+      if (roomSet && roomSet.size > 0) {
         const stu = studentById.get(log.studentId);
-        return log.userDepartmentOrRoom === selectedCourseObj.room || stu?.room === selectedCourseObj.room;
+        return Boolean(
+          (log.userDepartmentOrRoom && roomSet.has(log.userDepartmentOrRoom)) ||
+          (stu?.room && roomSet.has(stu.room))
+        );
       }
-      return true;
+      return enrolledSet ? enrolledSet.size === 0 : false;
     };
 
     const gateMatches = scopedAttendance.filter(
       (a) => matchesDateRange(a.date) && matchesClass(a.userDepartmentOrRoom, a.studentId) && matchesCourseGate(a)
     );
 
-    if (!selectedCourseObj || periodAttendance.length === 0) {
+    if (!hasCourseScope || periodAttendance.length === 0) {
       return gateMatches;
     }
 
-    // Also include per-period attendance records for the selected course
+    // Also include per-period attendance records for the selected course or teacher's courses
     const allowedStudentIds = isRestrictedViewer
       ? new Set(scopedStudents.map((s) => s.id))
       : null;
 
     const periodMapped: AttendanceRecord[] = periodAttendance
       .filter((pa) => {
-        if (pa.courseId !== selectedCourseObj.id) return false;
+        if (!targetCourseById.has(pa.courseId)) return false;
         if (!matchesDateRange(pa.date)) return false;
         if (allowedStudentIds && !allowedStudentIds.has(pa.studentId)) return false;
         const stu = studentById.get(pa.studentId);
@@ -269,6 +296,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       })
       .map((pa) => {
         const stu = studentById.get(pa.studentId);
+        const matchedCourse = targetCourseById.get(pa.courseId);
         const mappedStatus: AttendanceStatus = pa.status === 'excused' ? 'leave' : pa.status;
         const mappedMethod: AttendanceRecord['checkinMethod'] =
           pa.checkMethod === 'qr_code'
@@ -284,12 +312,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           userName: stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : pa.studentId,
           userRole: stu ? `นักเรียน (${stu.gradeLevel})` : 'นักเรียน',
           userAvatar: stu?.avatarUrl,
-          userDepartmentOrRoom: stu?.room || selectedCourseObj.room || '-',
+          userDepartmentOrRoom: stu?.room || matchedCourse?.room || '-',
           recordType: pa.recordType || ('check_in' as const),
           date: pa.date,
           time: pa.timeSlot || `คาบ ${pa.periodNumber}`,
           status: mappedStatus,
-          remarks: `รายวิชา ${selectedCourseObj.code} ${selectedCourseObj.titleTh} (คาบ ${pa.periodNumber})${pa.remarks ? ` - ${pa.remarks}` : ''}`,
+          remarks: `รายวิชา ${matchedCourse?.code || ''} ${matchedCourse?.titleTh || ''} (คาบ ${pa.periodNumber})${pa.remarks ? ` - ${pa.remarks}` : ''}`.trim(),
           checkinMethod: mappedMethod,
           lineNotificationSent: false,
           recordedBy: pa.verifiedByTeacherName,
@@ -307,6 +335,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     endDateFilter,
     classFilter,
     selectedCourseObj,
+    teacherFilter,
+    teacherFilteredCourses,
   ]);
 
   const displayedFilteredLogs = useMemo(() => {
@@ -350,6 +380,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     setStartDateFilter(today);
     setEndDateFilter(today);
     setClassFilter('all');
+    setTeacherFilter('all');
     setCourseFilter('all');
     setLogScopeFilter('all');
   };
@@ -1055,7 +1086,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   >
                     ทั้งหมด
                   </button>
-                  {(classFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
+                  {(classFilter !== 'all' || teacherFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
                     <button
                       type="button"
                       onClick={handleResetLogFilters}
@@ -1067,7 +1098,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                 <label className="block">
                   <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ตั้งแต่วันที่</span>
                   <input
@@ -1108,6 +1139,32 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </label>
 
                 <label className="block">
+                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">กรองวิชาตามรายชื่อครู</span>
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={teacherFilter}
+                    onChange={(e) => {
+                      const nextTeacher = e.target.value;
+                      setTeacherFilter(nextTeacher);
+                      if (courseFilter !== 'all') {
+                        const cur = courses.find((c) => c.id === courseFilter);
+                        if (cur && !courseMatchesTeacherFilter(cur, nextTeacher, courseTeacherOptions)) {
+                          setCourseFilter('all');
+                        }
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                  >
+                    <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                    {courseTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
                   <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">รายวิชา / คอร์สเรียน</span>
                   <select
                     aria-label="กรองตามรายวิชา"
@@ -1115,8 +1172,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     onChange={(e) => setCourseFilter(e.target.value)}
                     className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
                   >
-                    <option value="all">ทุกรายวิชา (เช็คชื่อประตูรวม)</option>
-                    {courses.map((course) => (
+                    <option value="all">
+                      {teacherFilter === 'all'
+                        ? 'ทุกรายวิชา (เช็คชื่อประตูรวม)'
+                        : `ทุกวิชาของครูที่เลือก (${teacherFilteredCourses.length})`}
+                    </option>
+                    {teacherFilteredCourses.map((course) => (
                       <option key={course.id} value={course.id}>
                         {course.code} — {course.titleTh}
                       </option>
@@ -1475,6 +1536,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <PeriodQrGeneratorPanel
             schoolId={activeSchool?.id || currentUser?.schoolId || 'sch-1'}
             courses={courses}
+            teachers={teachers}
             students={students}
             schoolPeriods={schoolPeriods}
             timetableSlots={timetableSlots}

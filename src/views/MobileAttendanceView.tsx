@@ -75,6 +75,7 @@ import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -288,10 +289,27 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     enrolledStudentIds: students.map(s => s.id)
   };
 
+  const courseTeacherOptions = useMemo(
+    () => buildCourseTeacherOptions(courses, teachers),
+    [courses, teachers]
+  );
+  const [periodTeacherFilter, setPeriodTeacherFilter] = useState<string>('all');
+  const periodFilteredCourses = useMemo(() => {
+    const base = courses.length > 0 ? courses : [fallbackCourse];
+    const filtered = base.filter((c) =>
+      courseMatchesTeacherFilter(c, periodTeacherFilter, courseTeacherOptions)
+    );
+    return filtered.length > 0 ? filtered : base;
+  }, [courses, fallbackCourse, periodTeacherFilter, courseTeacherOptions]);
+
   const [selectedCourseId, setSelectedCourseId] = useState<string>(
     initialPeriodCourseId || courses[0]?.id || fallbackCourse.id
   );
-  const selectedCourse: Course = courses.find(c => c.id === selectedCourseId) || courses[0] || fallbackCourse;
+  const selectedCourse: Course =
+    periodFilteredCourses.find((c) => c.id === selectedCourseId) ||
+    courses.find((c) => c.id === selectedCourseId) ||
+    periodFilteredCourses[0] ||
+    fallbackCourse;
   const [selectedPeriod, setSelectedPeriod] = useState<number>(initialPeriodNumber || 1);
   const [periodDate, setPeriodDate] = useState<string>(initialPeriodDate || getLocalDateString());
   const [periodStatuses, setPeriodStatuses] = useState<Record<string, 'present' | 'late' | 'absent' | 'excused'>>({});
@@ -306,6 +324,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // Teacher hourly/period leave state
   const [leaveScope, setLeaveScope] = useState<'full_day' | 'period_hourly'>('full_day');
   const [leavePeriodNum, setLeavePeriodNum] = useState<number>(1);
+  const [leaveTeacherFilter, setLeaveTeacherFilter] = useState<string>('all');
+  const leaveFilteredCourses = useMemo(() => {
+    const base = courses.length > 0 ? courses : [fallbackCourse];
+    const filtered = base.filter((c) =>
+      courseMatchesTeacherFilter(c, leaveTeacherFilter, courseTeacherOptions)
+    );
+    return filtered.length > 0 ? filtered : base;
+  }, [courses, fallbackCourse, leaveTeacherFilter, courseTeacherOptions]);
   const [leaveCourseId, setLeaveCourseId] = useState<string>(courses[0]?.id || '');
   const [leaveSubstituteTeacherId, setLeaveSubstituteTeacherId] = useState<string>('');
   const [leaveCcRoles, setLeaveCcRoles] = useState<string>('หัวหน้ากลุ่มสาระฯ, รอง ผอ. ฝ่ายวิชาการ');
@@ -1721,14 +1747,38 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       </select>
                     </div>
 
-                    <div>
+                    <div className="space-y-1.5">
                       <label className="text-[11px] font-bold text-[var(--color-text-muted)]">วิชาที่ติดสอน:</label>
+                      {courseTeacherOptions.length > 0 && (
+                        <select
+                          aria-label="กรองวิชาตามรายชื่อครู"
+                          value={leaveTeacherFilter}
+                          onChange={(e) => {
+                            const nextTeacher = e.target.value;
+                            setLeaveTeacherFilter(nextTeacher);
+                            const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
+                              courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
+                            );
+                            if (matching.length > 0 && !matching.some((c) => c.id === leaveCourseId)) {
+                              setLeaveCourseId(matching[0].id);
+                            }
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                        >
+                          <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                          {courseTeacherOptions.map((opt) => (
+                            <option key={opt.key} value={opt.key}>
+                              {opt.label} ({opt.count} วิชา)
+                            </option>
+                          ))}
+                        </select>
+                      )}
                       <select
                         value={leaveCourseId}
                         onChange={(e) => setLeaveCourseId(e.target.value)}
-                        className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
                       >
-                        {(courses.length > 0 ? courses : [fallbackCourse]).map((c) => (
+                        {leaveFilteredCourses.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.code} {c.titleTh} {c.room ? `(ห้อง ${c.room})` : ''}
                           </option>
@@ -2273,15 +2323,43 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+              {courseTeacherOptions.length > 0 && (
+                <div>
+                  <label className="text-[11px] font-bold text-[var(--color-text-muted)]">กรองวิชาตามรายชื่อครู:</label>
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={periodTeacherFilter}
+                    onChange={(e) => {
+                      const nextTeacher = e.target.value;
+                      setPeriodTeacherFilter(nextTeacher);
+                      const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
+                        courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
+                      );
+                      if (matching.length > 0 && !matching.some((c) => c.id === selectedCourseId)) {
+                        setSelectedCourseId(matching[0].id);
+                      }
+                    }}
+                    className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                  >
+                    <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                    {courseTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className={courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
                 <label className="text-[11px] font-bold text-[var(--color-text-muted)]">เลือกรายวิชา:</label>
                 <select
                   value={selectedCourse.id}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
                   className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
                 >
-                  {(courses.length > 0 ? courses : [fallbackCourse]).map(c => (
+                  {periodFilteredCourses.map(c => (
                     <option key={c.id} value={c.id}>{c.code} {c.titleTh}</option>
                   ))}
                 </select>

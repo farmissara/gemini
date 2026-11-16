@@ -52,6 +52,7 @@ import {
 } from '../lib/timetableTeachers';
 import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
 import { TimetableImportExportModal } from '../components/modals/TimetableImportExportModal';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -342,6 +343,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newPeriod, setNewPeriod] = useState<number>(1);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('custom');
   const [courseSearchInput, setCourseSearchInput] = useState('');
+  const [catalogTeacherFilter, setCatalogTeacherFilter] = useState<string>('all');
+  const [hoursTeacherFilter, setHoursTeacherFilter] = useState<string>('all');
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newTitleTh, setNewTitleTh] = useState('');
   const [newTitleEn, setNewTitleEn] = useState('');
@@ -469,7 +472,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
   const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
+  const courseCatalogTeacherOptions = buildCourseTeacherOptions(courses, teachers);
   const filteredCourseCatalog = courses.filter((course) => {
+    if (!courseMatchesTeacherFilter(course, catalogTeacherFilter, courseCatalogTeacherOptions)) {
+      return false;
+    }
     const search = normalizeTeacherName(courseSearchInput);
     return !search || [
       course.code,
@@ -963,7 +970,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     classroomCourseMap[s.courseCode].scheduledPeriods += 1;
   });
 
-  const classroomCoursesList = Object.values(classroomCourseMap);
+  const rawClassroomCoursesList = Object.values(classroomCourseMap);
+  const hoursCourseStubs = rawClassroomCoursesList.map((item) => ({
+    teacherName: item.course?.teacherName || item.teacher,
+    teacherEmail: item.course?.teacherEmail || '',
+  })) as Course[];
+  const hoursTeacherOptions = buildCourseTeacherOptions(hoursCourseStubs, teachers);
+  const classroomCoursesList = rawClassroomCoursesList.filter((item) =>
+    courseMatchesTeacherFilter(
+      {
+        teacherName: item.course?.teacherName || item.teacher,
+        teacherEmail: item.course?.teacherEmail || '',
+      },
+      hoursTeacherFilter,
+      hoursTeacherOptions
+    )
+  );
 
   const renderRoomAndTermControls = (showRoomFilter = true) => (
     <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -1532,7 +1554,24 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>เกณฑ์การคำนวณชั่วโมงเรียน และสิทธิ์เข้าสอบปลายภาค (เกณฑ์ 80% ปพ.5)</span>
               </h2>
-              <div className="mt-2">{renderRoomAndTermControls()}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {renderRoomAndTermControls()}
+                {hoursTeacherOptions.length > 0 && (
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={hoursTeacherFilter}
+                    onChange={(e) => setHoursTeacherFilter(e.target.value)}
+                    className="min-h-9 max-w-56 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)] print:hidden"
+                  >
+                    <option value="all">ครูผู้สอนทุกคน ({hoursTeacherOptions.length})</option>
+                    {hoursTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 คำนวณจากภาคเรียน 20 สัปดาห์ตามหลักสูตร สพฐ.
               </p>
@@ -1804,6 +1843,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   type="button"
                   onClick={() => {
                     setCourseSearchInput('');
+                    setCatalogTeacherFilter('all');
                     setNewClassRoom(activeScheduleFilters
                       ? activeScheduleFilters.classRoom
                       : selectedClassRoom === ALL_CLASSROOMS
@@ -2488,17 +2528,34 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
                   ค้นหาและเลือกรายวิชาที่เปิดสอน
                 </label>
-                <label className="relative block min-w-0">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                  <input
-                    type="search"
-                    value={courseSearchInput}
-                    onChange={(event) => setCourseSearchInput(event.target.value)}
-                    placeholder="ค้นหารหัสวิชา ชื่อวิชา หรือชื่อครู"
-                    aria-label="ค้นหารายวิชา"
-                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2.5 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                  />
-                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="relative block min-w-0">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input
+                      type="search"
+                      value={courseSearchInput}
+                      onChange={(event) => setCourseSearchInput(event.target.value)}
+                      placeholder="ค้นหารหัสวิชา ชื่อวิชา หรือชื่อครู"
+                      aria-label="ค้นหารายวิชา"
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                  </label>
+                  {courseCatalogTeacherOptions.length > 0 && (
+                    <select
+                      aria-label="กรองวิชาตามรายชื่อครู"
+                      value={catalogTeacherFilter}
+                      onChange={(event) => setCatalogTeacherFilter(event.target.value)}
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                    >
+                      <option value="all">ครูผู้สอนทุกคน ({courseCatalogTeacherOptions.length})</option>
+                      {courseCatalogTeacherOptions.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          {opt.label} ({opt.count} วิชา)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
 
                 <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1.5">
                   <button

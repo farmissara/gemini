@@ -33,10 +33,12 @@ import {
   QuizQuestion,
   SchoolExamEntitlement,
   Student,
+  Teacher,
   UserRole,
 } from '../types';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { getModuleTone } from '../lib/moduleTheme';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
@@ -586,6 +588,7 @@ interface CentralExamHubViewProps {
   entitlements: SchoolExamEntitlement[];
   schoolQuestions: QuizQuestion[];
   courses?: Course[];
+  teachers?: Teacher[];
   students?: Student[];
   grades?: GradeRecord[];
   onClaimFreePack: (pack: CentralExamPack) => Promise<void>;
@@ -606,6 +609,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   entitlements,
   schoolQuestions,
   courses = [],
+  teachers = [],
   students = [],
   grades = [],
   onClaimFreePack,
@@ -623,8 +627,22 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [quizSyncPack, setQuizSyncPack] = useState<CentralExamPack | null>(null);
+  const [quizSyncTeacherFilter, setQuizSyncTeacherFilter] = useState<string>('all');
   const [quizSyncCourseId, setQuizSyncCourseId] = useState<string>('');
   const [quizScoreDrafts, setQuizScoreDrafts] = useState<Record<string, number>>({});
+
+  const quizSyncTeacherOptions = useMemo(
+    () => buildCourseTeacherOptions(courses, teachers),
+    [courses, teachers]
+  );
+
+  const quizSyncFilteredCourses = useMemo(
+    () =>
+      courses.filter((c) =>
+        courseMatchesTeacherFilter(c, quizSyncTeacherFilter, quizSyncTeacherOptions)
+      ),
+    [courses, quizSyncTeacherFilter, quizSyncTeacherOptions]
+  );
 
   const openQuizSyncModal = (pack: CentralExamPack) => {
     const firstCourse =
@@ -640,6 +658,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       );
       initialScores[stu.id] = existing?.quizScore ?? 8;
     });
+    setQuizSyncTeacherFilter('all');
     setQuizSyncCourseId(targetCourseId);
     setQuizScoreDrafts(initialScores);
     setQuizSyncPack(pack);
@@ -1040,21 +1059,53 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
             </div>
 
             <div className="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
-              <div>
-                <label className="block font-bold text-[var(--color-text-title)] mb-1">
-                  เลือกรายวิชาปลายทางในสมุดคะแนน
-                </label>
-                <select
-                  value={quizSyncCourseId}
-                  onChange={(e) => handleSelectQuizCourse(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} · {c.titleTh} ({c.room || c.semester})
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {quizSyncTeacherOptions.length > 0 && (
+                  <div>
+                    <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                      กรองวิชาตามรายชื่อครู
+                    </label>
+                    <select
+                      aria-label="กรองวิชาตามรายชื่อครู"
+                      value={quizSyncTeacherFilter}
+                      onChange={(e) => {
+                        const nextTeacher = e.target.value;
+                        setQuizSyncTeacherFilter(nextTeacher);
+                        const matching = courses.filter((c) =>
+                          courseMatchesTeacherFilter(c, nextTeacher, quizSyncTeacherOptions)
+                        );
+                        if (matching.length > 0 && !matching.some((c) => c.id === quizSyncCourseId)) {
+                          handleSelectQuizCourse(matching[0].id);
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ครูผู้สอนทุกคน ({quizSyncTeacherOptions.length})</option>
+                      {quizSyncTeacherOptions.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          {opt.label} ({opt.count} วิชา)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className={quizSyncTeacherOptions.length > 0 ? '' : 'sm:col-span-2'}>
+                  <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                    เลือกรายวิชาปลายทางในสมุดคะแนน
+                  </label>
+                  <select
+                    value={quizSyncCourseId}
+                    onChange={(e) => handleSelectQuizCourse(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  >
+                    {quizSyncFilteredCourses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} · {c.titleTh} ({c.room || c.semester})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Course, Student, Lesson, Assignment, AppLanguage } from '../types';
+import { Course, Student, Lesson, Assignment, AppLanguage, Teacher } from '../types';
 import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
@@ -17,10 +17,12 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface LmsClassroomViewProps {
   courses: Course[];
   students: Student[];
+  teachers?: Teacher[];
   lessons: Lesson[];
   assignments: Assignment[];
   lang: AppLanguage;
@@ -31,6 +33,7 @@ interface LmsClassroomViewProps {
 export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   courses,
   students,
+  teachers = [],
   lessons,
   assignments,
   lang,
@@ -38,13 +41,23 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   onSubmitAssignment,
 }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [selectedLessonId, setSelectedLessonId] = useState<string>(lessons[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'lessons' | 'assignments' | 'discussion'>('lessons');
   const [submittedAlert, setSubmittedAlert] = useState<string | null>(null);
 
-  const activeCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
-  const courseLessons = lessons.filter((l) => l.courseId === selectedCourseId);
-  const courseAssignments = assignments.filter((a) => a.courseId === selectedCourseId);
+  const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
+  const filteredCourses = courses.filter((c) =>
+    courseMatchesTeacherFilter(c, teacherFilter, teacherFilterOptions)
+  );
+  const activeCourse =
+    filteredCourses.find((c) => c.id === selectedCourseId) ||
+    filteredCourses[0] ||
+    courses.find((c) => c.id === selectedCourseId) ||
+    courses[0];
+  const activeCourseIdResolved = activeCourse?.id || selectedCourseId;
+  const courseLessons = lessons.filter((l) => l.courseId === activeCourseIdResolved);
+  const courseAssignments = assignments.filter((a) => a.courseId === activeCourseIdResolved);
   const activeLesson = courseLessons.find((l) => l.id === selectedLessonId) || courseLessons[0];
 
   const handleLessonComplete = (id: string) => {
@@ -101,9 +114,39 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         </div>
       </div>
 
-      {/* Course Switcher Tabs */}
+      {/* Course Switcher Tabs with Teacher Filter */}
       <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--color-border)]">
-        {courses.map((c) => (
+        {teacherFilterOptions.length > 0 && (
+          <select
+            aria-label="กรองวิชาตามรายชื่อครู"
+            value={teacherFilter}
+            onChange={(e) => {
+              const nextTeacher = e.target.value;
+              setTeacherFilter(nextTeacher);
+              const nextCourses = courses.filter((c) =>
+                courseMatchesTeacherFilter(c, nextTeacher, teacherFilterOptions)
+              );
+              if (nextCourses.length > 0 && !nextCourses.some((c) => c.id === activeCourseIdResolved)) {
+                setSelectedCourseId(nextCourses[0].id);
+                const firstL = lessons.find((l) => l.courseId === nextCourses[0].id);
+                if (firstL) setSelectedLessonId(firstL.id);
+              }
+            }}
+            className="shrink-0 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+          >
+            <option value="all">
+              {lang === 'th'
+                ? `ครูผู้สอนทุกคน (${teacherFilterOptions.length})`
+                : `All Teachers (${teacherFilterOptions.length})`}
+            </option>
+            {teacherFilterOptions.map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label} ({opt.count})
+              </option>
+            ))}
+          </select>
+        )}
+        {filteredCourses.map((c) => (
           <button
             key={c.id}
             onClick={() => {
@@ -112,7 +155,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
               if (firstL) setSelectedLessonId(firstL.id);
             }}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-              selectedCourseId === c.id
+              activeCourseIdResolved === c.id
                 ? 'bg-[var(--tone-solid)] text-white border-[var(--tone-solid)] shadow-xs'
                 : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--tone-soft)] border-[var(--color-border)]'
             }`}

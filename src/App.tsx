@@ -3570,6 +3570,7 @@ export const App: React.FC = () => {
                   <CoursesView
                     courses={schoolCourses}
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     grades={schoolGrades}
                     gradingSystem={systemConfig.gradingSystem}
                     currentRole={currentRole}
@@ -3630,6 +3631,7 @@ export const App: React.FC = () => {
                     }}
                     onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
                     courses={schoolCourses}
+                    teachers={schoolTeachers}
                     students={schoolStudents}
                     grades={schoolGrades}
                     onSyncQuizScoresToGradebook={handleSyncQuizScoresToGradebook}
@@ -3750,6 +3752,7 @@ export const App: React.FC = () => {
                   <HomeworkTrackerView
                     submissions={schoolHomeworkSubmissions}
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     courses={schoolCourses}
                     assignments={schoolAssignments}
                     schoolId={activeSchool.id}
@@ -3862,6 +3865,7 @@ export const App: React.FC = () => {
                 {currentTab === 'gradebook' && (
                   <GradebookView
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     courses={schoolCourses}
                     grades={schoolGrades}
                     systemConfig={systemConfig}
@@ -3931,6 +3935,7 @@ export const App: React.FC = () => {
               <LmsClassroomView
                 courses={schoolCourses}
                 students={schoolStudents}
+                teachers={schoolTeachers}
                 lessons={schoolLessons}
                 assignments={schoolAssignments}
                 lang={lang}

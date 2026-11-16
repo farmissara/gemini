@@ -24,7 +24,8 @@ import {
   Course, 
   AppLanguage, 
   UserRole,
-  Assignment
+  Assignment,
+  Teacher
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
@@ -33,6 +34,7 @@ import { addCalendarDays, getBangkokDateInputValue, getCalendarWeekStart } from 
 import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -69,6 +71,7 @@ const PaginatedTableRows = <T,>({
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
   students: Student[];
+  teachers?: Teacher[];
   courses: Course[];
   assignments?: Assignment[];
   schoolId?: string;
@@ -82,6 +85,7 @@ interface HomeworkTrackerViewProps {
 export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   submissions,
   students,
+  teachers = [],
   courses,
   assignments = [],
   schoolId = 'sch-bkk-01',
@@ -93,6 +97,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'late' | 'pending' | 'graded'>('all');
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [hwTab, setHwTab] = useState<'submissions' | 'assignments' | 'pending'>('submissions');
   
@@ -115,15 +120,63 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   const [gradingScore, setGradingScore] = useState<number>(18);
   const [gradingFeedback, setGradingFeedback] = useState('ทำได้ดีมากครับ ครบถ้วนตามตัวชี้วัด');
 
+  const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
+  const teacherFilteredCourses = courses.filter((c) =>
+    courseMatchesTeacherFilter(c, teacherFilter, teacherFilterOptions)
+  );
+
+  const matchesTeacherAndCourse = (courseCode?: string, courseId?: string) => {
+    const normalizedCode = (courseCode || '').trim().toLowerCase();
+    const matchedCourse = courses.find(
+      (c) => (courseId && c.id === courseId) || (normalizedCode && c.code.trim().toLowerCase() === normalizedCode)
+    );
+    if (teacherFilter !== 'all') {
+      if (!matchedCourse || !courseMatchesTeacherFilter(matchedCourse, teacherFilter, teacherFilterOptions)) {
+        return false;
+      }
+    }
+    if (courseFilter !== 'all') {
+      const targetCourse = courses.find((c) => c.id === courseFilter || c.code === courseFilter);
+      if (targetCourse) {
+        return (
+          (courseId && courseId === targetCourse.id) ||
+          (normalizedCode && normalizedCode === targetCourse.code.trim().toLowerCase())
+        );
+      }
+      return normalizedCode === courseFilter.trim().toLowerCase();
+    }
+    return true;
+  };
+
   const filteredSubmissions = submissions.filter((s) => {
     const q = searchTerm.toLowerCase();
     const matchSearch = s.assignmentTitle.toLowerCase().includes(q) ||
       s.studentName.toLowerCase().includes(q) ||
-      s.courseCode.toLowerCase().includes(q);
+      s.courseCode.toLowerCase().includes(q) ||
+      (s.courseTitleTh || '').toLowerCase().includes(q);
     const matchStatus = statusFilter === 'all' || s.status === statusFilter;
-    const matchCourse = courseFilter === 'all' || s.courseCode === courseFilter;
-    return matchSearch && matchStatus && matchCourse;
+    const matchCourseAndTeacher = matchesTeacherAndCourse(s.courseCode);
+    return matchSearch && matchStatus && matchCourseAndTeacher;
   });
+
+  const filteredAssignments = assignments.filter((asg) => {
+    const q = searchTerm.toLowerCase();
+    const matchSearch =
+      !q ||
+      (asg.titleTh || '').toLowerCase().includes(q) ||
+      (asg.description || '').toLowerCase().includes(q) ||
+      (asg.courseCode || '').toLowerCase().includes(q);
+    return matchSearch && matchesTeacherAndCourse(asg.courseCode, asg.courseId);
+  });
+
+  const filteredPendingSubmissions = submissions.filter(
+    (s) => s.status === 'pending' && matchesTeacherAndCourse(s.courseCode) && (
+      !searchTerm.trim() ||
+      s.assignmentTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.courseCode.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
 
   const submitDupReasons = showSubmitModal
     ? getHomeworkDuplicateReasons(
@@ -254,41 +307,106 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
         </div>
       </div>
 
+      {/* Shared Course & Teacher Filter Bar across all Homework tabs */}
+      <div className="shrink-0 toolbar-filter-zone flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-44 sm:max-w-60">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={lang === 'th' ? 'ค้นหาวิชา / หัวข้องาน / ชื่อนักเรียน...' : 'Search tasks or students...'}
+            className="w-full bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs pl-7 pr-2.5 py-1.5 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--tone)]"
+          />
+        </div>
+
+        {teacherFilterOptions.length > 0 && (
+          <select
+            aria-label="กรองวิชาตามรายชื่อครู"
+            value={teacherFilter}
+            onChange={(e) => {
+              const nextTeacher = e.target.value;
+              setTeacherFilter(nextTeacher);
+              if (courseFilter !== 'all') {
+                const selectedCourse = courses.find((c) => c.id === courseFilter || c.code === courseFilter);
+                if (selectedCourse && !courseMatchesTeacherFilter(selectedCourse, nextTeacher, teacherFilterOptions)) {
+                  setCourseFilter('all');
+                }
+              }
+            }}
+            className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--tone)] max-w-56"
+          >
+            <option value="all">{lang === 'th' ? `ครูผู้สอนทุกคน (${teacherFilterOptions.length})` : `All Teachers (${teacherFilterOptions.length})`}</option>
+            {teacherFilterOptions.map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label} ({opt.count} วิชา)
+              </option>
+            ))}
+          </select>
+        )}
+
+        <select
+          aria-label="กรองตามรายวิชา"
+          value={courseFilter}
+          onChange={(e) => setCourseFilter(e.target.value)}
+          className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--tone)] max-w-60"
+        >
+          <option value="all">
+            {lang === 'th'
+              ? `ทุกรายวิชา (${teacherFilteredCourses.length})`
+              : `All Courses (${teacherFilteredCourses.length})`}
+          </option>
+          {teacherFilteredCourses.map((c) => (
+            <option key={c.id} value={c.code}>
+              {c.code} — {lang === 'th' ? c.titleTh : c.titleEn}
+            </option>
+          ))}
+        </select>
+
+        {hwTab === 'submissions' && (
+          <select
+            aria-label="กรองสถานะส่งงาน"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs px-2.5 py-1.5 rounded-lg border border-[var(--color-border)]"
+          >
+            <option value="all">{lang === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
+            <option value="graded">{lang === 'th' ? 'ตรวจแล้ว' : 'Graded'}</option>
+            <option value="submitted">{lang === 'th' ? 'ส่งแล้ว (รอตรวจ)' : 'Submitted'}</option>
+            <option value="late">{lang === 'th' ? 'ส่งล่าช้า' : 'Late'}</option>
+            <option value="pending">{lang === 'th' ? 'ยังไม่ส่ง' : 'Pending'}</option>
+          </select>
+        )}
+
+        {(searchTerm.trim() || teacherFilter !== 'all' || courseFilter !== 'all' || statusFilter !== 'all') && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('');
+              setTeacherFilter('all');
+              setCourseFilter('all');
+              setStatusFilter('all');
+            }}
+            className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer whitespace-nowrap"
+          >
+            ล้างตัวกรอง
+          </button>
+        )}
+      </div>
+
       {/* TAB 1: SUBMISSIONS LIST */}
       {hwTab === 'submissions' && (
         <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] shadow-xs flex flex-col overflow-hidden">
-          <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="shrink-0 p-2.5 px-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-700 dark:text-amber-300" />
               <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
                 {lang === 'th' ? 'รายการส่งการบ้านรายบุคคล' : 'Homework Submissions List'}
               </h3>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-[var(--color-text-muted)]" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={lang === 'th' ? 'ค้นหาวิชา / ชื่อนักเรียน...' : 'Search tasks...'}
-                  className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs pl-7 pr-2.5 py-1 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] w-44"
-                />
-              </div>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border)]"
-              >
-                <option value="all">{lang === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
-                <option value="graded">{lang === 'th' ? 'ตรวจแล้ว' : 'Graded'}</option>
-                <option value="submitted">{lang === 'th' ? 'ส่งแล้ว (รอตรวจ)' : 'Submitted'}</option>
-                <option value="late">{lang === 'th' ? 'ส่งล่าช้า' : 'Late'}</option>
-                <option value="pending">{lang === 'th' ? 'ยังไม่ส่ง' : 'Pending'}</option>
-              </select>
-            </div>
+            <span className="text-[11px] font-mono font-bold text-[var(--color-text-muted)]">
+              {filteredSubmissions.length} / {submissions.length}
+            </span>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
@@ -414,7 +532,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       {hwTab === 'assignments' && (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <PagedList items={assignments} pageSize={3} renderItem={(asg) => (
+          <PagedList items={filteredAssignments} pageSize={3} renderItem={(asg) => (
               <div
                 key={asg.id}
                 className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 flex flex-col justify-between"
@@ -484,7 +602,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             </h3>
 
             <div className="space-y-2">
-              <PagedList items={submissions.filter(s => s.status === 'pending')} pageSize={3} renderItem={(sub) => (
+              <PagedList items={filteredPendingSubmissions} pageSize={3} renderItem={(sub) => (
                 <div
                   key={sub.id}
                   className="p-2.5 rounded-lg bg-[var(--color-card-subtle)] border border-rose-300 dark:border-rose-700 text-xs flex items-center justify-between"

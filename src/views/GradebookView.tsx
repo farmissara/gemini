@@ -10,6 +10,7 @@ import {
   School,
   Student,
   SystemConfig,
+  Teacher,
   TimetableSlot,
   UserRole,
 } from '../types';
@@ -64,9 +65,11 @@ import {
 } from '../lib/moeGrading';
 import { dispatchGradeAlert, GradeAlertRecord } from '../lib/gradeNotifications';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface GradebookViewProps {
   students: Student[];
+  teachers?: Teacher[];
   courses: Course[];
   grades: GradeRecord[];
   systemConfig: SystemConfig;
@@ -87,6 +90,7 @@ interface GradebookViewProps {
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
   students,
+  teachers = [],
   courses,
   grades,
   systemConfig,
@@ -108,6 +112,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [courseTeacherFilter, setCourseTeacherFilter] = useState<string>('all');
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
   const [gradeStatusFilter, setGradeStatusFilter] = useState<'all' | 'excellent' | 'pass' | 'at_risk'>('all');
   const [selectedStudentIdForPp6, setSelectedStudentIdForPp6] = useState<string>(students[0]?.id || '');
@@ -171,14 +176,19 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       s.gradeLevel,
     ].some((v) => (v || '').toLowerCase().includes(q));
   });
+  const courseTeacherOptions = buildCourseTeacherOptions(courses, teachers);
   const filteredCourses = courses.filter((course) => {
+    if (!courseMatchesTeacherFilter(course, courseTeacherFilter, courseTeacherOptions)) return false;
     const search = courseSearchTerm.trim().toLocaleLowerCase();
     return !search || [course.code, course.titleTh, course.titleEn, course.teacherName, course.department, course.room]
       .some((value) => value?.toLocaleLowerCase().includes(search));
   });
-  const courseSelectOptions = selectedCourse && !filteredCourses.some((course) => course.id === selectedCourse.id)
-    ? [selectedCourse, ...filteredCourses]
-    : filteredCourses;
+  const courseSelectOptions =
+    courseTeacherFilter === 'all' &&
+    selectedCourse &&
+    !filteredCourses.some((course) => course.id === selectedCourse.id)
+      ? [selectedCourse, ...filteredCourses]
+      : filteredCourses;
   const studentsById = new Map(students.map((student) => [student.id, student]));
   const gradebookRows = courseGrades.flatMap((grade) => {
     const student = studentsById.get(grade.studentId);
@@ -887,6 +897,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     gradeLevelFilter !== 'all' ||
     gradeEligibilityFilter !== 'all' ||
     gradeStatusFilter !== 'all' ||
+    courseTeacherFilter !== 'all' ||
     studentSearchTerm.trim().length > 0 ||
     courseSearchTerm.trim().length > 0;
 
@@ -1117,7 +1128,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden space-y-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Course Search */}
-            <div className="relative w-full sm:w-44 shrink-0">
+            <div className="relative w-full sm:w-40 shrink-0">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 type="text"
@@ -1138,6 +1149,41 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               )}
             </div>
 
+            {/* Course Filter by Teacher */}
+            {courseTeacherOptions.length > 0 && (
+              <select
+                aria-label="กรองวิชาตามรายชื่อครู"
+                value={courseTeacherFilter}
+                onChange={(event) => {
+                  const nextTeacher = event.target.value;
+                  setCourseTeacherFilter(nextTeacher);
+                  const matchingCourses = courses.filter((course) => {
+                    if (!courseMatchesTeacherFilter(course, nextTeacher, courseTeacherOptions)) return false;
+                    const search = courseSearchTerm.trim().toLocaleLowerCase();
+                    return !search || [course.code, course.titleTh, course.titleEn, course.teacherName, course.department, course.room]
+                      .some((value) => value?.toLocaleLowerCase().includes(search));
+                  });
+                  if (matchingCourses.length > 0 && !matchingCourses.some((c) => c.id === selectedCourseId)) {
+                    setSelectedCourseId(matchingCourses[0].id);
+                  }
+                  setGradePage(0);
+                  setPp5Page(0);
+                  setGradeRoomFilter('all');
+                  setGradeLevelFilter('all');
+                  setGradeEligibilityFilter('all');
+                  setGradeStatusFilter('all');
+                }}
+                className="w-full sm:w-44 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              >
+                <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                {courseTeacherOptions.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label} ({opt.count})
+                  </option>
+                ))}
+              </select>
+            )}
+
             {/* Course Select */}
             <select
               value={selectedCourseId}
@@ -1151,10 +1197,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 setGradeStatusFilter('all');
               }}
               disabled={courseSelectOptions.length === 0}
-              className="flex-1 min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] disabled:opacity-60"
+              className="flex-1 min-w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] disabled:opacity-60"
             >
               {courseSelectOptions.length === 0 ? (
-                <option value="">ไม่พบรายวิชาที่ตรงกับคำค้นหา</option>
+                <option value="">ไม่พบรายวิชาที่ตรงกับตัวกรอง</option>
               ) : (
                 courseSelectOptions.map((course) => (
                   <option key={course.id} value={course.id}>
@@ -1270,6 +1316,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 type="button"
                 onClick={() => {
                   setCourseSearchTerm('');
+                  setCourseTeacherFilter('all');
                   setStudentSearchTerm('');
                   setGradeRoomFilter('all');
                   setGradeLevelFilter('all');
@@ -1294,6 +1341,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <div data-guide-id="gradebook-histogram">
             <GradeDistributionHistogram
               courses={courses}
+              teachers={teachers}
               grades={grades}
               filteredCourseGrades={filteredGradebookRows.map((row) => row.grade)}
               students={students}

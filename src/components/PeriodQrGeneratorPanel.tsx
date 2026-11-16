@@ -19,6 +19,7 @@ import {
   PeriodAttendanceRecord,
   SchoolPeriodTime,
   Student,
+  Teacher,
   TimetableSlot,
 } from '../types';
 import { DEFAULT_SCHOOL_PERIODS } from '../lib/schoolPeriods';
@@ -32,10 +33,12 @@ import {
   revokePeriodQrToken,
   savePeriodQrSessions,
 } from '../lib/periodQrTokens';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface PeriodQrGeneratorPanelProps {
   schoolId: string;
   courses: Course[];
+  teachers?: Teacher[];
   students: Student[];
   schoolPeriods?: SchoolPeriodTime[];
   timetableSlots?: TimetableSlot[];
@@ -48,6 +51,7 @@ const TTL_OPTIONS = [2, 5, 10, 15, 30] as const;
 export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
   schoolId,
   courses,
+  teachers = [],
   students,
   schoolPeriods = [],
   timetableSlots = [],
@@ -86,6 +90,19 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
     return filtered.length > 0 ? filtered : DEFAULT_SCHOOL_PERIODS.filter((p) => !p.isBreak);
   }, [schoolPeriods]);
 
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
+  const teacherFilterOptions = useMemo(
+    () => buildCourseTeacherOptions(availableCourses, teachers),
+    [availableCourses, teachers]
+  );
+  const filteredCourses = useMemo(
+    () =>
+      availableCourses.filter((c) =>
+        courseMatchesTeacherFilter(c, teacherFilter, teacherFilterOptions)
+      ),
+    [availableCourses, teacherFilter, teacherFilterOptions]
+  );
+
   const [selectedCourseId, setSelectedCourseId] = useState<string>(availableCourses[0]?.id || '');
   const [selectedPeriodNum, setSelectedPeriodNum] = useState<number>(
     teachablePeriods[0]?.periodNumber || 1
@@ -106,12 +123,13 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
   const [copiedField, setCopiedField] = useState<'url' | 'code' | null>(null);
   const [showFullscreenModal, setShowFullscreenModal] = useState(false);
 
-  // Keep selectedCourseId valid if school changes
+  // Keep selectedCourseId valid if school or teacher filter changes
   useEffect(() => {
-    if (!availableCourses.some((c) => c.id === selectedCourseId)) {
-      setSelectedCourseId(availableCourses[0]?.id || '');
+    const pool = filteredCourses.length > 0 ? filteredCourses : availableCourses;
+    if (!pool.some((c) => c.id === selectedCourseId)) {
+      setSelectedCourseId(pool[0]?.id || '');
     }
-  }, [availableCourses, selectedCourseId]);
+  }, [filteredCourses, availableCourses, selectedCourseId]);
 
   useEffect(() => {
     const loaded = loadSavedPeriodQrSessions(schoolId);
@@ -301,22 +319,49 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
           )}
 
           <div className="space-y-3 text-xs">
-            <div>
-              <label className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">
-                {lang === 'th' ? 'รายวิชา / ห้องเรียน' : 'Course / Subject'}
-              </label>
-              <select
-                value={selectedCourse?.id || ''}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
-              >
-                {availableCourses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.code} — {lang === 'th' ? course.titleTh : course.titleEn}{' '}
-                    {course.room ? `(${course.room})` : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {teacherFilterOptions.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">
+                    {lang === 'th' ? 'กรองวิชาตามรายชื่อครู' : 'Filter by Teacher'}
+                  </label>
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={teacherFilter}
+                    onChange={(e) => setTeacherFilter(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+                  >
+                    <option value="all">
+                      {lang === 'th'
+                        ? `ครูผู้สอนทุกคน (${teacherFilterOptions.length})`
+                        : `All Teachers (${teacherFilterOptions.length})`}
+                    </option>
+                    {teacherFilterOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className={teacherFilterOptions.length > 0 ? '' : 'sm:col-span-2'}>
+                <label className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">
+                  {lang === 'th' ? 'รายวิชา / ห้องเรียน' : 'Course / Subject'}
+                </label>
+                <select
+                  value={selectedCourse?.id || ''}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+                >
+                  {filteredCourses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.code} — {lang === 'th' ? course.titleTh : course.titleEn}{' '}
+                      {course.room ? `(${course.room})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

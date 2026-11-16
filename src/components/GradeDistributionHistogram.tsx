@@ -21,14 +21,16 @@ import {
   BookOpen,
   FileDown,
 } from 'lucide-react';
-import { AppLanguage, Course, GradeRecord, GradingSystem, Student } from '../types';
+import { AppLanguage, Course, GradeRecord, GradingSystem, Student, Teacher } from '../types';
 import { resolveEffectiveGrade } from '../lib/moeGrading';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 export type HistogramScope = 'course' | 'all_courses' | 'by_subject';
 export type ChartViewMode = 'score_bins' | 'grade_tiers';
 
 interface GradeDistributionHistogramProps {
   courses: Course[];
+  teachers?: Teacher[];
   grades: GradeRecord[];
   filteredCourseGrades: GradeRecord[];
   students?: Student[];
@@ -155,6 +157,7 @@ function computeMedian(values: number[]): number {
 
 export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProps> = ({
   courses,
+  teachers = [],
   grades,
   filteredCourseGrades,
   students = [],
@@ -173,6 +176,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
   const [internalScope, setInternalScope] = useState<HistogramScope>('course');
   const [internalChartMode, setInternalChartMode] = useState<ChartViewMode>('score_bins');
   const [internalDepartmentFilter, setInternalDepartmentFilter] = useState<string>('all');
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
 
   const scope = controlledScope ?? internalScope;
   const setScope = (next: HistogramScope) => {
@@ -204,6 +208,11 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
     return score !== undefined ? `${displayName} (${score}%)` : displayName;
   };
 
+  const teacherFilterOptions = useMemo(
+    () => buildCourseTeacherOptions(courses, teachers),
+    [courses, teachers]
+  );
+
   const departmentOptions = useMemo(() => {
     const depts = new Set<string>();
     courses.forEach((c) => {
@@ -216,11 +225,19 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
     if (scope === 'course') {
       return filteredCourseGrades;
     }
-    if (departmentFilter === 'all') {
-      return grades;
-    }
-    return grades.filter((g) => courseById.get(g.courseId)?.department?.trim() === departmentFilter);
-  }, [scope, filteredCourseGrades, grades, departmentFilter, courseById]);
+    return grades.filter((g) => {
+      const course = courseById.get(g.courseId);
+      if (departmentFilter !== 'all' && course?.department?.trim() !== departmentFilter) {
+        return false;
+      }
+      if (teacherFilter !== 'all') {
+        if (!course || !courseMatchesTeacherFilter(course, teacherFilter, teacherFilterOptions)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [scope, filteredCourseGrades, grades, departmentFilter, teacherFilter, teacherFilterOptions, courseById]);
 
   const summaryStats = useMemo(() => {
     if (scopedGrades.length === 0) {
@@ -383,6 +400,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
       const course = courseById.get(grade.courseId);
       if (!course) continue;
       if (departmentFilter !== 'all' && course.department?.trim() !== departmentFilter) continue;
+      if (!courseMatchesTeacherFilter(course, teacherFilter, teacherFilterOptions)) continue;
       const list = grouped.get(course.id) || [];
       list.push(grade);
       grouped.set(course.id, list);
@@ -475,7 +493,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
     }
 
     return items.sort((a, b) => a.code.localeCompare(b.code, 'th'));
-  }, [grades, courseById, departmentFilter, gradingSystem, lang]);
+  }, [grades, courseById, departmentFilter, teacherFilter, teacherFilterOptions, gradingSystem, lang]);
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs overflow-hidden print:hidden">
@@ -576,7 +594,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
                 </div>
               )}
 
-              {/* Department Filter when viewing All Subjects / By Subject */}
+              {/* Department & Teacher Filters when viewing All Subjects / By Subject */}
               {scope !== 'course' && departmentOptions.length > 1 && (
                 <select
                   value={departmentFilter}
@@ -587,6 +605,22 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
                   {departmentOptions.map((dept) => (
                     <option key={dept} value={dept}>
                       {dept}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {scope !== 'course' && teacherFilterOptions.length > 0 && (
+                <select
+                  aria-label="กรองวิชาตามรายชื่อครู"
+                  value={teacherFilter}
+                  onChange={(e) => setTeacherFilter(e.target.value)}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-title)] max-w-48"
+                >
+                  <option value="all">{lang === 'th' ? 'ครูผู้สอนทุกคน' : 'All Teachers'}</option>
+                  {teacherFilterOptions.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.label} ({opt.count})
                     </option>
                   ))}
                 </select>
