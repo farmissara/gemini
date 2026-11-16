@@ -1,4 +1,4 @@
-import { Course, GradeRecord, School, Student, SystemConfig } from '../types';
+import { AppLanguage, Course, GradeRecord, GradingSystem, School, Student, SystemConfig } from '../types';
 import {
   aggregateGradesByAssessmentCycle,
   calculateStudentAcademicSummary,
@@ -6,6 +6,7 @@ import {
   getEducationStageLabelTh,
   getRawScoreFeedback,
   getStudentPrefixTh,
+  resolveEffectiveGrade,
   StudentAcademicSummary,
 } from './moeGrading';
 import { formatSemesterLabel } from './schoolSettings';
@@ -716,4 +717,641 @@ export function printHtmlElementInIsolatedFrame(htmlContent: string, title: stri
   };
 
   setTimeout(triggerPrint, 250);
+}
+
+export interface GradeDistributionPdfPayload {
+  courses: Course[];
+  grades: GradeRecord[];
+  students: Student[];
+  systemConfig: SystemConfig;
+  school?: School;
+  selectedCourse?: Course;
+  gradingSystem: GradingSystem;
+  scope: 'course' | 'all_courses' | 'by_subject';
+  chartMode: 'score_bins' | 'grade_tiers';
+  departmentFilter?: string;
+  roomFilter?: string;
+  levelFilter?: string;
+  eligibilityFilter?: string;
+  lang?: AppLanguage;
+}
+
+const PDF_SCORE_BINS = [
+  { key: 'lt50', label: '0–49', gradeThai: '0', gradeIntl: 'F', min: -1, max: 49.999, color: '#f43f5e' },
+  { key: '50_54', label: '50–54', gradeThai: '1', gradeIntl: 'D', min: 50, max: 54.999, color: '#fb923c' },
+  { key: '55_59', label: '55–59', gradeThai: '1.5', gradeIntl: 'D+', min: 55, max: 59.999, color: '#f59e0b' },
+  { key: '60_64', label: '60–64', gradeThai: '2', gradeIntl: 'C', min: 60, max: 64.999, color: '#eab308' },
+  { key: '65_69', label: '65–69', gradeThai: '2.5', gradeIntl: 'C+', min: 65, max: 69.999, color: '#84cc16' },
+  { key: '70_74', label: '70–74', gradeThai: '3', gradeIntl: 'B', min: 70, max: 74.999, color: '#14b8a6' },
+  { key: '75_79', label: '75–79', gradeThai: '3.5', gradeIntl: 'B+', min: 75, max: 79.999, color: '#06b6d4' },
+  { key: '80_84', label: '80–84', gradeThai: '4', gradeIntl: 'A', min: 80, max: 84.999, color: '#0ea5e9' },
+  { key: '85_89', label: '85–89', gradeThai: '4', gradeIntl: 'A', min: 85, max: 89.999, color: '#6366f1' },
+  { key: '90_100', label: '90–100', gradeThai: '4', gradeIntl: 'A', min: 90, max: 100.001, color: '#10b981' },
+];
+
+const PDF_THAI_TIERS = [
+  { tier: '4', range: '80–100', color: '#10b981' },
+  { tier: '3.5', range: '75–79', color: '#0ea5e9' },
+  { tier: '3', range: '70–74', color: '#06b6d4' },
+  { tier: '2.5', range: '65–69', color: '#14b8a6' },
+  { tier: '2', range: '60–64', color: '#84cc16' },
+  { tier: '1.5', range: '55–59', color: '#eab308' },
+  { tier: '1', range: '50–54', color: '#f59e0b' },
+  { tier: '0', range: '0–49', color: '#f43f5e' },
+  { tier: 'ผ', range: 'ผ่านกิจกรรม', color: '#059669' },
+  { tier: 'มผ', range: 'ไม่ผ่านกิจกรรม', color: '#e11d48' },
+  { tier: 'ร', range: 'รอตัดสิน', color: '#fb7185' },
+  { tier: 'มส.', range: 'ไม่มีสิทธิ์สอบ', color: '#be123c' },
+];
+
+const PDF_INTL_TIERS = [
+  { tier: 'A', range: '80–100', color: '#10b981' },
+  { tier: 'B+', range: '75–79', color: '#0ea5e9' },
+  { tier: 'B', range: '70–74', color: '#06b6d4' },
+  { tier: 'C+', range: '65–69', color: '#14b8a6' },
+  { tier: 'C', range: '60–64', color: '#84cc16' },
+  { tier: 'D+', range: '55–59', color: '#eab308' },
+  { tier: 'D', range: '50–54', color: '#f59e0b' },
+  { tier: 'F', range: '0–49', color: '#f43f5e' },
+  { tier: 'ผ', range: 'Pass Activity', color: '#059669' },
+  { tier: 'มผ', range: 'Fail Activity', color: '#e11d48' },
+  { tier: 'ร', range: 'Incomplete', color: '#fb7185' },
+  { tier: 'มส.', range: 'Ineligible', color: '#be123c' },
+];
+
+function computeMedianValue(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+/**
+ * Builds and downloads an A4 Administrative PDF Report containing the grade distribution KPIs,
+ * histogram chart, grade tier breakdown, and official signature block.
+ */
+export function downloadGradeDistributionReportPdf(payload: GradeDistributionPdfPayload): {
+  fileName: string;
+} {
+  const {
+    courses,
+    grades,
+    systemConfig,
+    school,
+    selectedCourse,
+    gradingSystem,
+    scope,
+    chartMode,
+    departmentFilter = 'all',
+    roomFilter = 'all',
+    levelFilter = 'all',
+    eligibilityFilter = 'all',
+  } = payload;
+
+  const width = 1240;
+  const height = 1754;
+  const margin = 68;
+  const contentWidth = width - margin * 2;
+  const fontFamily = `'Sarabun', 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif`;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('ไม่สามารถสร้าง Canvas สำหรับรายงาน PDF ได้');
+  }
+
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+  const totalCount = grades.length;
+  const scores = grades.map((g) => Number(g.totalScore) || 0);
+  const meanScore =
+    totalCount > 0 ? Math.round((scores.reduce((s, v) => s + v, 0) / totalCount) * 10) / 10 : 0;
+  const medianScore =
+    totalCount > 0 ? Math.round(computeMedianValue(scores) * 10) / 10 : 0;
+
+  let passCount = 0;
+  let distinctionCount = 0;
+  let atRiskCount = 0;
+  const tierBuckets = new Map<string, GradeRecord[]>();
+
+  for (const grade of grades) {
+    const course = courseById.get(grade.courseId) || selectedCourse;
+    const resolved = resolveEffectiveGrade(grade, course, gradingSystem);
+    const list = tierBuckets.get(resolved.letter) || [];
+    list.push(grade);
+    tierBuckets.set(resolved.letter, list);
+
+    const failSpecial = resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ';
+    const score = Number(grade.totalScore) || 0;
+    if (!failSpecial && score >= 50 && resolved.letter !== '0' && resolved.letter !== 'F') {
+      passCount += 1;
+    } else {
+      atRiskCount += 1;
+    }
+    if (!failSpecial && score >= 80) {
+      distinctionCount += 1;
+    }
+  }
+
+  const passRate = totalCount > 0 ? Math.round((passCount / totalCount) * 1000) / 10 : 0;
+  const distinctionRate = totalCount > 0 ? Math.round((distinctionCount / totalCount) * 1000) / 10 : 0;
+
+  // Score bins data
+  const scoreBins = PDF_SCORE_BINS.map((bin) => {
+    const matches = grades.filter((g) => {
+      const s = Math.max(0, Math.min(100, Number(g.totalScore) || 0));
+      return s >= bin.min && s <= bin.max;
+    });
+    const count = matches.length;
+    const avg =
+      count > 0
+        ? Math.round((matches.reduce((s, g) => s + (Number(g.totalScore) || 0), 0) / count) * 10) / 10
+        : null;
+    return {
+      ...bin,
+      gradeLabel: gradingSystem === 'international' ? bin.gradeIntl : bin.gradeThai,
+      count,
+      percent: totalCount > 0 ? Math.round((count / totalCount) * 1000) / 10 : 0,
+      avg,
+    };
+  });
+
+  // Grade tiers data
+  const tierDefs = gradingSystem === 'international' ? PDF_INTL_TIERS : PDF_THAI_TIERS;
+  const coreTiers = new Set(
+    gradingSystem === 'international'
+      ? ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F']
+      : ['4', '3.5', '3', '2.5', '2', '1.5', '1', '0']
+  );
+  const tierRows = tierDefs
+    .map((def) => {
+      const items = tierBuckets.get(def.tier) || [];
+      if (!coreTiers.has(def.tier) && items.length === 0) return null;
+      const count = items.length;
+      const avg =
+        count > 0
+          ? Math.round((items.reduce((s, g) => s + (Number(g.totalScore) || 0), 0) / count) * 10) / 10
+          : null;
+      return {
+        ...def,
+        count,
+        percent: totalCount > 0 ? Math.round((count / totalCount) * 1000) / 10 : 0,
+        avg,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  // Subject breakdown data
+  const subjectMap = new Map<string, GradeRecord[]>();
+  for (const g of grades) {
+    const list = subjectMap.get(g.courseId) || [];
+    list.push(g);
+    subjectMap.set(g.courseId, list);
+  }
+  const subjectRows = Array.from(subjectMap.entries())
+    .map(([courseId, list]) => {
+      const c = courseById.get(courseId);
+      const count = list.length;
+      const avg =
+        count > 0 ? Math.round((list.reduce((s, g) => s + (Number(g.totalScore) || 0), 0) / count) * 10) / 10 : 0;
+      return {
+        code: c?.code || courseId,
+        title: c?.titleTh || c?.titleEn || '-',
+        count,
+        avg,
+        color: avg >= 80 ? '#10b981' : avg >= 70 ? '#0ea5e9' : avg >= 60 ? '#6366f1' : avg >= 50 ? '#f59e0b' : '#f43f5e',
+      };
+    })
+    .sort((a, b) => a.code.localeCompare(b.code, 'th'));
+
+  // Draw white A4 paper background & border
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(36, 36, width - 72, height - 72);
+
+  const schoolNameTh = school?.nameTh || systemConfig.schoolNameTh || 'สถานศึกษา';
+  const schoolNameEn = school?.nameEn || systemConfig.schoolNameEn || 'School';
+  const issuedDateTh = new Date().toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  // Top Banner
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(margin, 56, contentWidth, 96);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(margin, 148, contentWidth, 4);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.font = `700 24px ${fontFamily}`;
+  drawTruncatedText(
+    ctx,
+    'รายงานสถิติการกระจายผลการเรียนและคะแนนผลสัมฤทธิ์ (Grade Distribution Report)',
+    margin + 24,
+    98,
+    contentWidth - 260
+  );
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = `500 15px ${fontFamily}`;
+  drawTruncatedText(
+    ctx,
+    `โรงเรียน${schoolNameTh} (${schoolNameEn}) • ${formatSemesterLabel(systemConfig.currentSemester)} ปีการศึกษา ${systemConfig.academicYear || '2569'}`,
+    margin + 24,
+    128,
+    contentWidth - 260
+  );
+
+  // Document Ref pill on right of banner
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(width - margin - 220, 72, 200, 62);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(width - margin - 220, 72, 200, 62);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#93c5fd';
+  ctx.font = `700 13px ${fontFamily}`;
+  ctx.fillText('เอกสารงานวัดผลและทะเบียน', width - margin - 120, 96);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `600 13px ${fontFamily}`;
+  ctx.fillText(gradingSystem === 'international' ? 'เกณฑ์สากล (A–F)' : 'เกณฑ์ไทย (0–4)', width - margin - 120, 120);
+
+  // Scope & Filter Context Box
+  let cursorY = 172;
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(margin, cursorY, contentWidth, 64);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(margin, cursorY, contentWidth, 64);
+
+  const scopeTitle =
+    scope === 'course' && selectedCourse
+      ? `รายวิชา: ${selectedCourse.code} — ${selectedCourse.titleTh || selectedCourse.titleEn} (${selectedCourse.titleEn}) • ครูผู้สอน: ${selectedCourse.teacherName || '-'}`
+      : scope === 'by_subject'
+      ? `ขอบเขตรายงาน: เปรียบเทียบผลสัมฤทธิ์รายวิชา (${subjectRows.length} วิชา)${departmentFilter !== 'all' ? ` • กลุ่มสาระฯ ${departmentFilter}` : ''}`
+      : `ขอบเขตรายงาน: สรุปรวมทุกรายวิชา (${courses.length} รายวิชา)${departmentFilter !== 'all' ? ` • กลุ่มสาระฯ ${departmentFilter}` : ''}`;
+
+  const filterSummaryParts: string[] = [];
+  if (scope === 'course') {
+    if (roomFilter !== 'all') filterSummaryParts.push(`ห้อง: ${roomFilter}`);
+    if (levelFilter !== 'all') filterSummaryParts.push(`ชั้น: ${levelFilter}`);
+    if (eligibilityFilter !== 'all') {
+      filterSummaryParts.push(eligibilityFilter === 'at_risk' ? 'เฉพาะกลุ่มเสี่ยง มส.' : 'เฉพาะผู้มีสิทธิ์สอบ');
+    }
+  }
+  const filterSummary =
+    filterSummaryParts.length > 0
+      ? `ตัวกรองที่ใช้: ${filterSummaryParts.join(' • ')}`
+      : 'ตัวกรองที่ใช้: แสดงข้อมูลนักเรียนทั้งหมดในช่วงที่เลือก';
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `700 16px ${fontFamily}`;
+  drawTruncatedText(ctx, scopeTitle, margin + 16, cursorY + 27, contentWidth - 32);
+  ctx.fillStyle = '#475569';
+  ctx.font = `500 14px ${fontFamily}`;
+  drawTruncatedText(ctx, `${filterSummary} • วันที่ออกรายงาน: ${issuedDateTh}`, margin + 16, cursorY + 50, contentWidth - 32);
+
+  // KPI Summary Cards (5 boxes)
+  cursorY += 82;
+  const kpiGap = 12;
+  const kpiW = (contentWidth - kpiGap * 4) / 5;
+  const kpiH = 78;
+  const kpis = [
+    { label: 'จำนวนนักเรียนที่ประเมิน', value: `${totalCount} คน`, bg: '#f8fafc', border: '#cbd5e1', text: '#0f172a' },
+    { label: 'คะแนนเฉลี่ย (Mean)', value: `${meanScore}%`, bg: '#f0f9ff', border: '#7dd3fc', text: '#0369a1' },
+    { label: 'ค่ามัธยฐาน (Median)', value: `${medianScore}%`, bg: '#eef2ff', border: '#a5b4fc', text: '#4338ca' },
+    { label: 'ผ่านเกณฑ์ / ดีเยี่ยม (80+)', value: `${passRate}% (${distinctionRate}%)`, bg: '#ecfdf5', border: '#6ee7b7', text: '#047857' },
+    { label: 'กลุ่มเสี่ยง (<50 / ร / มส.)', value: `${atRiskCount} คน`, bg: '#fff1f2', border: '#fda4af', text: '#be123c' },
+  ];
+
+  kpis.forEach((kpi, idx) => {
+    const x = margin + idx * (kpiW + kpiGap);
+    ctx.fillStyle = kpi.bg;
+    ctx.fillRect(x, cursorY, kpiW, kpiH);
+    ctx.strokeStyle = kpi.border;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, cursorY, kpiW, kpiH);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#475569';
+    ctx.font = `700 13px ${fontFamily}`;
+    drawTruncatedText(ctx, kpi.label, x + kpiW / 2, cursorY + 26, kpiW - 12, 'center');
+    ctx.fillStyle = kpi.text;
+    ctx.font = `700 22px ${fontFamily}`;
+    drawTruncatedText(ctx, kpi.value, x + kpiW / 2, cursorY + 58, kpiW - 12, 'center');
+  });
+
+  // Histogram Chart Section
+  cursorY += kpiH + 26;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `700 18px ${fontFamily}`;
+  const chartHeading =
+    scope === 'by_subject'
+      ? '๑. กราฟเปรียบเทียบคะแนนเฉลี่ยรายวิชา (%)'
+      : chartMode === 'grade_tiers'
+      ? '๑. ฮิสโตแกรมการกระจายระดับเกรด (Grade Tier Histogram)'
+      : '๑. ฮิสโตแกรมการกระจายช่วงคะแนน (Score Distribution Histogram)';
+  ctx.fillText(chartHeading, margin, cursorY);
+  cursorY += 12;
+
+  const chartBoxH = 310;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(margin, cursorY, contentWidth, chartBoxH);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(margin, cursorY, contentWidth, chartBoxH);
+
+  const plotLeft = margin + 62;
+  const plotRight = width - margin - 24;
+  const plotTop = cursorY + 30;
+  const plotBottom = cursorY + chartBoxH - 48;
+  const plotWidth = plotRight - plotLeft;
+  const plotHeight = plotBottom - plotTop;
+
+  const barItems =
+    scope === 'by_subject'
+      ? subjectRows.slice(0, 14).map((s) => ({
+          label: s.code,
+          value: s.avg,
+          displayTop: `${s.avg}% (${s.count})`,
+          color: s.color,
+        }))
+      : chartMode === 'grade_tiers'
+      ? tierRows.map((t) => ({
+          label: t.tier,
+          value: t.count,
+          displayTop: `${t.count} คน`,
+          color: t.color,
+        }))
+      : scoreBins.map((b) => ({
+          label: b.label,
+          value: b.count,
+          displayTop: `${b.count} คน`,
+          color: b.color,
+        }));
+
+  const maxVal =
+    scope === 'by_subject'
+      ? 100
+      : Math.max(4, ...barItems.map((item) => item.value));
+
+  // Horizontal grid lines
+  const gridSteps = 4;
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#64748b';
+  ctx.font = `500 12px ${fontFamily}`;
+  ctx.textAlign = 'right';
+  for (let s = 0; s <= gridSteps; s += 1) {
+    const ratio = s / gridSteps;
+    const y = plotBottom - ratio * plotHeight;
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, y);
+    ctx.lineTo(plotRight, y);
+    ctx.stroke();
+    const tickVal = Math.round(maxVal * ratio);
+    ctx.fillText(scope === 'by_subject' ? `${tickVal}%` : `${tickVal}`, plotLeft - 8, y + 4);
+  }
+
+  // Axis baseline
+  ctx.strokeStyle = '#64748b';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(plotLeft, plotTop);
+  ctx.lineTo(plotLeft, plotBottom);
+  ctx.lineTo(plotRight, plotBottom);
+  ctx.stroke();
+
+  if (barItems.length > 0) {
+    const slotW = plotWidth / barItems.length;
+    const barW = Math.min(58, Math.max(18, slotW * 0.62));
+    barItems.forEach((item, idx) => {
+      const x = plotLeft + idx * slotW + (slotW - barW) / 2;
+      const barH = maxVal > 0 ? Math.max(item.value > 0 ? 4 : 0, (item.value / maxVal) * plotHeight) : 0;
+      const y = plotBottom - barH;
+
+      ctx.fillStyle = item.color;
+      ctx.fillRect(x, y, barW, barH);
+
+      // Value label above bar
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#0f172a';
+      ctx.font = `700 12px ${fontFamily}`;
+      ctx.fillText(item.displayTop, x + barW / 2, Math.max(plotTop - 4, y - 6));
+
+      // X-axis label
+      ctx.fillStyle = '#334155';
+      ctx.font = `700 12px ${fontFamily}`;
+      drawTruncatedText(ctx, item.label, x + barW / 2, plotBottom + 20, slotW - 4, 'center');
+    });
+  } else {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#64748b';
+    ctx.font = `500 15px ${fontFamily}`;
+    ctx.fillText('ไม่มีข้อมูลคะแนนในช่วงที่เลือก', width / 2, plotTop + plotHeight / 2);
+  }
+
+  // Section 2: Distribution Summary Tables (side-by-side: Grade Tiers on left, Score Bands on right)
+  cursorY += chartBoxH + 28;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `700 18px ${fontFamily}`;
+  ctx.fillText('๒. ตารางสรุปจำนวนนักเรียนตามระดับเกรดและช่วงคะแนน (สำหรับบันทึกฝ่ายวิชาการ)', margin, cursorY);
+  cursorY += 12;
+
+  const gapTables = 20;
+  const leftTableW = Math.floor((contentWidth - gapTables) * 0.48);
+  const rightTableW = contentWidth - gapTables - leftTableW;
+  const leftX = margin;
+  const rightX = margin + leftTableW + gapTables;
+
+  // Draw Left Table (Grade Tiers)
+  const tHeaderH = 34;
+  const tRowH = 31;
+  const leftCols = [
+    Math.round(leftTableW * 0.22),
+    Math.round(leftTableW * 0.24),
+    Math.round(leftTableW * 0.20),
+    Math.round(leftTableW * 0.17),
+    leftTableW - Math.round(leftTableW * 0.22) - Math.round(leftTableW * 0.24) - Math.round(leftTableW * 0.20) - Math.round(leftTableW * 0.17),
+  ];
+  const leftHeaders = ['ระดับเกรด', 'ช่วงคะแนน', 'จำนวน (คน)', 'ร้อยละ', 'เฉลี่ย'];
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillRect(leftX, cursorY, leftTableW, tHeaderH);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(leftX, cursorY, leftTableW, tHeaderH);
+  let lx = leftX;
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `700 13px ${fontFamily}`;
+  leftHeaders.forEach((h, i) => {
+    if (i > 0) {
+      ctx.beginPath();
+      ctx.moveTo(lx, cursorY);
+      ctx.lineTo(lx, cursorY + tHeaderH);
+      ctx.stroke();
+    }
+    drawTruncatedText(ctx, h, lx + leftCols[i] / 2, cursorY + 22, leftCols[i] - 6, 'center');
+    lx += leftCols[i];
+  });
+
+  let leftY = cursorY + tHeaderH;
+  tierRows.slice(0, 11).forEach((row, idx) => {
+    if (idx % 2 === 1) {
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(leftX, leftY, leftTableW, tRowH);
+    }
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(leftX, leftY, leftTableW, tRowH);
+    const cells = [
+      row.tier,
+      row.range,
+      `${row.count}`,
+      `${row.percent}%`,
+      row.avg !== null ? `${row.avg}%` : '-',
+    ];
+    let cx = leftX;
+    cells.forEach((val, ci) => {
+      if (ci > 0) {
+        ctx.beginPath();
+        ctx.moveTo(cx, leftY);
+        ctx.lineTo(cx, leftY + tRowH);
+        ctx.stroke();
+      }
+      ctx.fillStyle = ci === 0 ? row.color : '#0f172a';
+      ctx.font = ci === 0 || ci === 2 ? `700 13px ${fontFamily}` : `500 13px ${fontFamily}`;
+      drawTruncatedText(ctx, val, cx + leftCols[ci] / 2, leftY + 20, leftCols[ci] - 6, 'center');
+      cx += leftCols[ci];
+    });
+    leftY += tRowH;
+  });
+
+  // Draw Right Table (Score Bins)
+  const rightCols = [
+    Math.round(rightTableW * 0.24),
+    Math.round(rightTableW * 0.20),
+    Math.round(rightTableW * 0.22),
+    Math.round(rightTableW * 0.17),
+    rightTableW - Math.round(rightTableW * 0.24) - Math.round(rightTableW * 0.20) - Math.round(rightTableW * 0.22) - Math.round(rightTableW * 0.17),
+  ];
+  const rightHeaders = ['ช่วงคะแนน (%)', 'เทียบเกรด', 'จำนวน (คน)', 'ร้อยละ', 'เฉลี่ย'];
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillRect(rightX, cursorY, rightTableW, tHeaderH);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(rightX, cursorY, rightTableW, tHeaderH);
+  let rx = rightX;
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `700 13px ${fontFamily}`;
+  rightHeaders.forEach((h, i) => {
+    if (i > 0) {
+      ctx.beginPath();
+      ctx.moveTo(rx, cursorY);
+      ctx.lineTo(rx, cursorY + tHeaderH);
+      ctx.stroke();
+    }
+    drawTruncatedText(ctx, h, rx + rightCols[i] / 2, cursorY + 22, rightCols[i] - 6, 'center');
+    rx += rightCols[i];
+  });
+
+  let rightY = cursorY + tHeaderH;
+  scoreBins.forEach((bin, idx) => {
+    if (idx % 2 === 1) {
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(rightX, rightY, rightTableW, tRowH);
+    }
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rightX, rightY, rightTableW, tRowH);
+    const cells = [
+      bin.label,
+      bin.gradeLabel,
+      `${bin.count}`,
+      `${bin.percent}%`,
+      bin.avg !== null ? `${bin.avg}%` : '-',
+    ];
+    let cx = rightX;
+    cells.forEach((val, ci) => {
+      if (ci > 0) {
+        ctx.beginPath();
+        ctx.moveTo(cx, rightY);
+        ctx.lineTo(cx, rightY + tRowH);
+        ctx.stroke();
+      }
+      ctx.fillStyle = ci === 1 ? bin.color : '#0f172a';
+      ctx.font = ci === 1 || ci === 2 ? `700 13px ${fontFamily}` : `500 13px ${fontFamily}`;
+      drawTruncatedText(ctx, val, cx + rightCols[ci] / 2, rightY + 20, rightCols[ci] - 6, 'center');
+      cx += rightCols[ci];
+    });
+    rightY += tRowH;
+  });
+
+  // Signatures block at bottom
+  const sigY = height - 210;
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(margin, sigY - 18);
+  ctx.lineTo(width - margin, sigY - 18);
+  ctx.stroke();
+
+  const thirdW = contentWidth / 3;
+  const sigCols = [
+    { role: 'ลงชื่อ ............................................... ผู้รายงาน', name: selectedCourse?.teacherName || 'ครูผู้สอน / ครูประจำวิชา', title: 'ผู้จัดทำรายงานผลสัมฤทธิ์' },
+    { role: 'ลงชื่อ ............................................... หัวหน้างานวัดผล', name: 'งานวัดผลและประเมินผล', title: 'ผู้ตรวจสอบความถูกต้อง' },
+    { role: 'ลงชื่อ ............................................... ผู้บริหารสถานศึกษา', name: `โรงเรียน${schoolNameTh}`, title: `รับทราบผล ณ วันที่ ${issuedDateTh}` },
+  ];
+
+  sigCols.forEach((sig, i) => {
+    const cx = margin + thirdW * (i + 0.5);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#0f172a';
+    ctx.font = `500 14px ${fontFamily}`;
+    drawTruncatedText(ctx, sig.role, cx, sigY + 28, thirdW - 18, 'center');
+    ctx.font = `700 14px ${fontFamily}`;
+    drawTruncatedText(ctx, `(${sig.name})`, cx, sigY + 56, thirdW - 18, 'center');
+    ctx.fillStyle = '#475569';
+    ctx.font = `500 13px ${fontFamily}`;
+    drawTruncatedText(ctx, sig.title, cx, sigY + 80, thirdW - 18, 'center');
+  });
+
+  // Footer
+  ctx.fillStyle = '#64748b';
+  ctx.font = `500 12px ${fontFamily}`;
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    `เอกสารรายงานการกระจายผลการเรียนอิเล็กทรอนิกส์ (EduVerse Academic Records) • ออกเมื่อ ${issuedDateTh}`,
+    width / 2,
+    height - 52
+  );
+
+  const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
+  const blob = buildPdfFromJpegPages([{ bytes: dataUrlToBytes(jpegUrl), width, height }]);
+  const safeTag =
+    scope === 'course' && selectedCourse?.code
+      ? selectedCourse.code.replace(/[^a-zA-Z0-9_-]/g, '')
+      : scope === 'by_subject'
+      ? 'Subject_Comparison'
+      : 'All_Subjects';
+  const fileName = `Grade_Distribution_${safeTag}_AY${systemConfig.academicYear || '2569'}.pdf`;
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+  return { fileName };
 }

@@ -50,7 +50,24 @@ export interface FailedImportRow {
   rowNumber: number;
   identifier: string;
   errors: string[];
+  errorFields: string[];
   rawRow: Record<string, string>;
+  mappedValues: Record<string, string>;
+}
+
+export interface DuplicateColumnMappingInfo {
+  headerIndex: number;
+  headerName: string;
+  fieldKeys: string[];
+}
+
+export interface MappingDiagnostics {
+  requiredFieldsTotal: number;
+  requiredFieldsMapped: number;
+  missingRequiredFields: EntityFieldDefinition[];
+  mappedFieldsCount: number;
+  duplicateMappings: DuplicateColumnMappingInfo[];
+  unmappedHeaders: Array<{ index: number; header: string }>;
 }
 
 export interface MappedImportParseResult<T> {
@@ -304,23 +321,151 @@ export function suggestColumnMapping(
   return mapping;
 }
 
+export function getMappingDiagnostics(
+  entity: ManagedImportEntity,
+  headers: string[],
+  columnMapping: Record<string, number>
+): MappingDiagnostics {
+  const schema = ENTITY_IMPORT_SCHEMAS[entity];
+  const requiredFields = schema.fields.filter((f) => f.required);
+  const missingRequiredFields = requiredFields.filter((f) => {
+    const idx = columnMapping[f.key];
+    return idx === undefined || idx < 0 || idx >= headers.length;
+  });
+
+  const colToFields = new Map<number, string[]>();
+  let mappedFieldsCount = 0;
+  schema.fields.forEach((f) => {
+    const idx = columnMapping[f.key];
+    if (idx !== undefined && idx >= 0 && idx < headers.length) {
+      mappedFieldsCount += 1;
+      const list = colToFields.get(idx) || [];
+      list.push(f.key);
+      colToFields.set(idx, list);
+    }
+  });
+
+  const duplicateMappings: DuplicateColumnMappingInfo[] = [];
+  colToFields.forEach((fieldKeys, headerIndex) => {
+    if (fieldKeys.length > 1) {
+      duplicateMappings.push({
+        headerIndex,
+        headerName: headers[headerIndex] || `Column ${headerIndex + 1}`,
+        fieldKeys,
+      });
+    }
+  });
+
+  const unmappedHeaders = headers
+    .map((header, index) => ({ index, header }))
+    .filter(({ index }) => !colToFields.has(index));
+
+  return {
+    requiredFieldsTotal: requiredFields.length,
+    requiredFieldsMapped: requiredFields.length - missingRequiredFields.length,
+    missingRequiredFields,
+    mappedFieldsCount,
+    duplicateMappings,
+    unmappedHeaders,
+  };
+}
+
+const MAPPING_PRESET_PREFIX = 'eduverse_import_mapping_preset_';
+
+export function saveColumnMappingPreset(
+  entity: ManagedImportEntity,
+  headers: string[],
+  columnMapping: Record<string, number>
+): void {
+  if (typeof window === 'undefined') return;
+  const headerByField: Record<string, string> = {};
+  Object.entries(columnMapping).forEach(([fieldKey, colIdx]) => {
+    if (colIdx >= 0 && colIdx < headers.length) {
+      headerByField[fieldKey] = headers[colIdx];
+    }
+  });
+  try {
+    localStorage.setItem(`${MAPPING_PRESET_PREFIX}${entity}`, JSON.stringify(headerByField));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function hasSavedColumnMappingPreset(entity: ManagedImportEntity): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return Boolean(localStorage.getItem(`${MAPPING_PRESET_PREFIX}${entity}`));
+  } catch {
+    return false;
+  }
+}
+
+export function applySavedColumnMappingPreset(
+  entity: ManagedImportEntity,
+  headers: string[]
+): Record<string, number> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`${MAPPING_PRESET_PREFIX}${entity}`);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as Record<string, string>;
+    const schema = ENTITY_IMPORT_SCHEMAS[entity];
+    const normalizedHeaders = headers.map((h) => normalizeHeaderToken(h));
+    const nextMapping: Record<string, number> = {};
+    schema.fields.forEach((field) => {
+      const savedHeader = saved[field.key];
+      if (!savedHeader) {
+        nextMapping[field.key] = -1;
+        return;
+      }
+      const exactIdx = headers.findIndex((h) => h === savedHeader);
+      if (exactIdx >= 0) {
+        nextMapping[field.key] = exactIdx;
+        return;
+      }
+      const normTarget = normalizeHeaderToken(savedHeader);
+      const normIdx = normalizedHeaders.findIndex((h) => h === normTarget);
+      nextMapping[field.key] = normIdx;
+    });
+    return nextMapping;
+  } catch {
+    return null;
+  }
+}
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
+
 function normalizeSpreadsheetDate(raw: unknown): string | null {
   if (typeof raw === 'number' && Number.isFinite(raw) && raw > 25000 && raw < 90000) {
     const parsed = XLSX.SSF.parse_date_code(raw);
     if (parsed && parsed.y && parsed.m && parsed.d) {
-      return `${String(parsed.y).padStart(4, '0')}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      let y = parsed.y;
+      if (y > 2400) y -= 543;
+      if (isValidCalendarDate(y, parsed.m, parsed.d)) {
+        return `${String(y).padStart(4, '0')}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      }
     }
   }
   const str = String(raw ?? '').trim();
   if (!str) return null;
 
-  const isoMatch = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(str);
+  const isoMatch = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s].*)?$/.exec(str);
   if (isoMatch) {
     let year = Number(isoMatch[1]);
     if (year > 2400) year -= 543;
     const month = Number(isoMatch[2]);
     const day = Number(isoMatch[3]);
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+    if (isValidCalendarDate(year, month, day)) {
       return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
   }
@@ -331,7 +476,7 @@ function normalizeSpreadsheetDate(raw: unknown): string | null {
     const month = Number(dmyMatch[2]);
     let year = Number(dmyMatch[3]);
     if (year > 2400) year -= 543;
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+    if (isValidCalendarDate(year, month, day)) {
       return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
   }
@@ -414,6 +559,15 @@ export function validateAndParseMappedRows(
     return obj;
   };
 
+  const toMappedValues = (row: unknown[]): Record<string, string> => {
+    const obj: Record<string, string> = {};
+    const schema = ENTITY_IMPORT_SCHEMAS[entity];
+    schema.fields.forEach((field) => {
+      obj[field.key] = getVal(row, field.key);
+    });
+    return obj;
+  };
+
   const validRecords: any[] = [];
   const failedRows: FailedImportRow[] = [];
   const warningMessages: string[] = [];
@@ -427,6 +581,7 @@ export function validateAndParseMappedRows(
     rawRows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const errors: string[] = [];
+      const errorFields = new Set<string>();
       const studentIdNumber = getVal(row, 'studentIdNumber');
       const firstNameTh = getVal(row, 'firstNameTh');
       const lastNameTh = getVal(row, 'lastNameTh');
@@ -435,24 +590,49 @@ export function validateAndParseMappedRows(
       const nationalId = getVal(row, 'nationalId');
       const rawGpa = getVal(row, 'gpa');
       const rawDob = getRawCell(row, 'dateOfBirth');
+      const rawDobStr = String(rawDob ?? '').trim();
 
-      if (!studentIdNumber) errors.push('ไม่ได้ระบุรหัสนักเรียน (studentIdNumber)');
-      if (!firstNameTh) errors.push('ไม่ได้ระบุชื่อนักเรียน (firstNameTh)');
-      if (!lastNameTh) errors.push('ไม่ได้ระบุนามสกุลนักเรียน (lastNameTh)');
-      if (!gradeLevel) errors.push('ไม่ได้ระบุระดับชั้น (gradeLevel)');
-      if (!room) errors.push('ไม่ได้ระบุห้องเรียน (room)');
+      if (!studentIdNumber) {
+        errors.push('ไม่ได้ระบุรหัสนักเรียน (studentIdNumber)');
+        errorFields.add('studentIdNumber');
+      }
+      if (!firstNameTh) {
+        errors.push('ไม่ได้ระบุชื่อนักเรียน (firstNameTh)');
+        errorFields.add('firstNameTh');
+      }
+      if (!lastNameTh) {
+        errors.push('ไม่ได้ระบุนามสกุลนักเรียน (lastNameTh)');
+        errorFields.add('lastNameTh');
+      }
+      if (!gradeLevel) {
+        errors.push('ไม่ได้ระบุระดับชั้น (gradeLevel)');
+        errorFields.add('gradeLevel');
+      }
+      if (!room) {
+        errors.push('ไม่ได้ระบุห้องเรียน (room)');
+        errorFields.add('room');
+      }
       if (nationalId && !/^\d{13}$/.test(nationalId.replace(/[\s-]/g, ''))) {
         errors.push(`เลขบัตรประชาชน "${nationalId}" ไม่ครบ 13 หลัก`);
+        errorFields.add('nationalId');
+      }
+      if (rawDobStr !== '' && !normalizeSpreadsheetDate(rawDob)) {
+        errors.push(`รูปแบบวันเกิด "${rawDobStr}" ไม่ถูกต้อง (ใช้ YYYY-MM-DD หรือ DD/MM/YYYY)`);
+        errorFields.add('dateOfBirth');
       }
       if (rawGpa !== '') {
         const numGpa = Number(rawGpa);
         if (!Number.isFinite(numGpa) || numGpa < 0 || numGpa > 4) {
           errors.push(`ค่า GPA "${rawGpa}" อยู่นอกช่วง 0.00–4.00`);
+          errorFields.add('gpa');
         }
       }
       if (studentIdNumber) {
         const key = studentIdNumber.toLowerCase();
-        if (seenIds.has(key)) errors.push(`รหัสนักเรียนซ้ำกันภายในไฟล์ ("${studentIdNumber}")`);
+        if (seenIds.has(key)) {
+          errors.push(`รหัสนักเรียนซ้ำกันภายในไฟล์ ("${studentIdNumber}")`);
+          errorFields.add('studentIdNumber');
+        }
         seenIds.add(key);
         if (existingByCode.has(key)) {
           warningMessages.push(`แถว ${rowNumber}: รหัส ${studentIdNumber} มีอยู่แล้วในระบบ`);
@@ -464,7 +644,9 @@ export function validateAndParseMappedRows(
           rowNumber,
           identifier: studentIdNumber || `${firstNameTh} ${lastNameTh}`.trim() || `แถว ${rowNumber}`,
           errors,
+          errorFields: Array.from(errorFields),
           rawRow: toRawRecord(row),
+          mappedValues: toMappedValues(row),
         });
         return;
       }
@@ -507,18 +689,26 @@ export function validateAndParseMappedRows(
     rawRows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const errors: string[] = [];
+      const errorFields = new Set<string>();
       const fullNameTh = getVal(row, 'fullNameTh');
       const department = getVal(row, 'department') || 'วิชาการ';
       const teacherIdNumber = getVal(row, 'teacherIdNumber') || `TCH-${Date.now().toString().slice(-4)}${idx + 1}`;
       const email = getVal(row, 'email');
 
-      if (!fullNameTh) errors.push('ไม่ได้ระบุชื่อ-นามสกุลครู');
+      if (!fullNameTh) {
+        errors.push('ไม่ได้ระบุชื่อ-นามสกุลครู');
+        errorFields.add('fullNameTh');
+      }
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errors.push(`รูปแบบอีเมล "${email}" ไม่ถูกต้อง`);
+        errorFields.add('email');
       }
       if (fullNameTh) {
         const key = fullNameTh.toLowerCase();
-        if (seenNames.has(key)) errors.push(`ชื่อครูซ้ำกันภายในไฟล์ ("${fullNameTh}")`);
+        if (seenNames.has(key)) {
+          errors.push(`ชื่อครูซ้ำกันภายในไฟล์ ("${fullNameTh}")`);
+          errorFields.add('fullNameTh');
+        }
         seenNames.add(key);
       }
 
@@ -527,7 +717,9 @@ export function validateAndParseMappedRows(
           rowNumber,
           identifier: fullNameTh || teacherIdNumber || `แถว ${rowNumber}`,
           errors,
+          errorFields: Array.from(errorFields),
           rawRow: toRawRecord(row),
+          mappedValues: toMappedValues(row),
         });
         return;
       }
@@ -561,21 +753,35 @@ export function validateAndParseMappedRows(
     rawRows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const errors: string[] = [];
+      const errorFields = new Set<string>();
       const code = getVal(row, 'code');
       const titleTh = getVal(row, 'titleTh');
       const teacherName = getVal(row, 'teacherName');
       const rawCredits = getVal(row, 'credits');
       const credits = rawCredits ? Number(rawCredits) : 1.5;
 
-      if (!code) errors.push('ไม่ได้ระบุรหัสวิชา (code)');
-      if (!titleTh) errors.push('ไม่ได้ระบุชื่อรายวิชา (titleTh)');
-      if (!teacherName) errors.push('ไม่ได้ระบุครูผู้สอน (teacherName)');
+      if (!code) {
+        errors.push('ไม่ได้ระบุรหัสวิชา (code)');
+        errorFields.add('code');
+      }
+      if (!titleTh) {
+        errors.push('ไม่ได้ระบุชื่อรายวิชา (titleTh)');
+        errorFields.add('titleTh');
+      }
+      if (!teacherName) {
+        errors.push('ไม่ได้ระบุครูผู้สอน (teacherName)');
+        errorFields.add('teacherName');
+      }
       if (rawCredits && (!Number.isFinite(credits) || credits <= 0 || credits > 10)) {
         errors.push(`หน่วยกิต "${rawCredits}" ไม่ถูกต้อง`);
+        errorFields.add('credits');
       }
       if (code) {
         const key = code.toLowerCase();
-        if (seenCodes.has(key)) errors.push(`รหัสวิชาซ้ำกันภายในไฟล์ ("${code}")`);
+        if (seenCodes.has(key)) {
+          errors.push(`รหัสวิชาซ้ำกันภายในไฟล์ ("${code}")`);
+          errorFields.add('code');
+        }
         seenCodes.add(key);
       }
 
@@ -584,7 +790,9 @@ export function validateAndParseMappedRows(
           rowNumber,
           identifier: code || titleTh || `แถว ${rowNumber}`,
           errors,
+          errorFields: Array.from(errorFields),
           rawRow: toRawRecord(row),
+          mappedValues: toMappedValues(row),
         });
         return;
       }
@@ -621,10 +829,15 @@ export function validateAndParseMappedRows(
     const existingStudents = context.existingStudents || [];
     const existingCourses = context.existingCourses || [];
     const seenGradeKeys = new Set<string>();
+    const validGradeTokens = new Set([
+      '4', '4.0', '3.5', '3', '3.0', '2.5', '2', '2.0', '1.5', '1', '1.0', '0', '0.0',
+      'a', 'b+', 'b', 'c+', 'c', 'd+', 'd', 'f', 'ร', 'มส', 'มส.', 'ผ', 'มผ',
+    ]);
 
     rawRows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const errors: string[] = [];
+      const errorFields = new Set<string>();
       const studentRef = getVal(row, 'studentId');
       const courseRef = getVal(row, 'courseCode');
       const academicYear = getVal(row, 'academicYear') || context.academicYear || '2569';
@@ -638,17 +851,24 @@ export function validateAndParseMappedRows(
       const matchedCourse = existingCourses.find(
         (c) =>
           c.code.toLowerCase() === courseRef.toLowerCase() ||
-          c.id.toLowerCase() === courseRef.toLowerCase()
+          c.id.toLowerCase() === courseRef.toLowerCase() ||
+          c.titleTh.toLowerCase() === courseRef.toLowerCase()
       );
 
-      if (!studentRef) errors.push('ไม่ได้ระบุรหัสนักเรียน');
-      else if (existingStudents.length > 0 && !matchedStudent) {
+      if (!studentRef) {
+        errors.push('ไม่ได้ระบุรหัสนักเรียน (studentId)');
+        errorFields.add('studentId');
+      } else if (existingStudents.length > 0 && !matchedStudent) {
         errors.push(`ไม่พบนักเรียนรหัส "${studentRef}" ในโรงเรียนนี้`);
+        errorFields.add('studentId');
       }
 
-      if (!courseRef) errors.push('ไม่ได้ระบุรหัสวิชา');
-      else if (existingCourses.length > 0 && !matchedCourse) {
+      if (!courseRef) {
+        errors.push('ไม่ได้ระบุรหัสวิชา (courseCode)');
+        errorFields.add('courseCode');
+      } else if (existingCourses.length > 0 && !matchedCourse) {
         errors.push(`ไม่พบรายวิชารหัส "${courseRef}" ในโรงเรียนนี้`);
+        errorFields.add('courseCode');
       }
 
       const rawMid = getVal(row, 'midtermScore');
@@ -656,25 +876,60 @@ export function validateAndParseMappedRows(
       const rawAsg = getVal(row, 'assignmentScore');
       const rawQuiz = getVal(row, 'quizScore');
       const rawTotal = getVal(row, 'totalScore');
+      const customLetter = getVal(row, 'letterGrade');
 
       const mid = rawMid !== '' ? Number(rawMid) : 0;
       const fin = rawFinal !== '' ? Number(rawFinal) : 0;
       const asg = rawAsg !== '' ? Number(rawAsg) : 0;
       const quiz = rawQuiz !== '' ? Number(rawQuiz) : 0;
 
-      if (rawMid !== '' && (!Number.isFinite(mid) || mid < 0 || mid > 100)) errors.push(`คะแนนกลางภาค "${rawMid}" ไม่ถูกต้อง`);
-      if (rawFinal !== '' && (!Number.isFinite(fin) || fin < 0 || fin > 100)) errors.push(`คะแนนปลายภาค "${rawFinal}" ไม่ถูกต้อง`);
-      if (rawAsg !== '' && (!Number.isFinite(asg) || asg < 0 || asg > 100)) errors.push(`คะแนนเก็บ "${rawAsg}" ไม่ถูกต้อง`);
-      if (rawQuiz !== '' && (!Number.isFinite(quiz) || quiz < 0 || quiz > 100)) errors.push(`คะแนนสอบย่อย "${rawQuiz}" ไม่ถูกต้อง`);
+      if (rawMid !== '' && (!Number.isFinite(mid) || mid < 0 || mid > 100)) {
+        errors.push(`คะแนนกลางภาค "${rawMid}" ไม่ถูกต้อง (ต้องเป็น 0–100)`);
+        errorFields.add('midtermScore');
+      }
+      if (rawFinal !== '' && (!Number.isFinite(fin) || fin < 0 || fin > 100)) {
+        errors.push(`คะแนนปลายภาค "${rawFinal}" ไม่ถูกต้อง (ต้องเป็น 0–100)`);
+        errorFields.add('finalScore');
+      }
+      if (rawAsg !== '' && (!Number.isFinite(asg) || asg < 0 || asg > 100)) {
+        errors.push(`คะแนนเก็บ "${rawAsg}" ไม่ถูกต้อง (ต้องเป็น 0–100)`);
+        errorFields.add('assignmentScore');
+      }
+      if (rawQuiz !== '' && (!Number.isFinite(quiz) || quiz < 0 || quiz > 100)) {
+        errors.push(`คะแนนสอบย่อย "${rawQuiz}" ไม่ถูกต้อง (ต้องเป็น 0–100)`);
+        errorFields.add('quizScore');
+      }
+
+      if (
+        rawMid === '' &&
+        rawFinal === '' &&
+        rawAsg === '' &&
+        rawQuiz === '' &&
+        rawTotal === '' &&
+        customLetter === ''
+      ) {
+        errors.push('ไม่ได้ระบุคะแนนหรือผลการเรียนในแถวนี้');
+        errorFields.add('totalScore');
+      }
+
+      if (customLetter !== '' && !validGradeTokens.has(customLetter.trim().toLowerCase())) {
+        errors.push(`ผลการเรียน "${customLetter}" ไม่ถูกต้อง (ใช้ 0-4, A-F, ร, มส., ผ, มผ)`);
+        errorFields.add('letterGrade');
+      }
 
       const computedTotal = rawTotal !== '' ? Number(rawTotal) : mid + fin + asg + quiz;
       if (!Number.isFinite(computedTotal) || computedTotal < 0 || computedTotal > 100) {
-        errors.push(`คะแนนรวม (${computedTotal}) ต้องอยู่ระหว่าง 0–100`);
+        errors.push(`คะแนนรวม (${Number.isFinite(computedTotal) ? computedTotal : rawTotal}) ต้องอยู่ระหว่าง 0–100`);
+        errorFields.add('totalScore');
       }
 
       const dupKey = `${studentRef.toLowerCase()}|${courseRef.toLowerCase()}|${academicYear}|${semester}`;
       if (studentRef && courseRef) {
-        if (seenGradeKeys.has(dupKey)) errors.push('รายการผลการเรียนซ้ำในไฟล์เดียวกัน');
+        if (seenGradeKeys.has(dupKey)) {
+          errors.push('รายการผลการเรียนซ้ำในไฟล์เดียวกัน');
+          errorFields.add('studentId');
+          errorFields.add('courseCode');
+        }
         seenGradeKeys.add(dupKey);
       }
 
@@ -683,13 +938,14 @@ export function validateAndParseMappedRows(
           rowNumber,
           identifier: `${studentRef || '-'} · ${courseRef || '-'}`,
           errors,
+          errorFields: Array.from(errorFields),
           rawRow: toRawRecord(row),
+          mappedValues: toMappedValues(row),
         });
         return;
       }
 
       const calculated = calculateGrade(computedTotal, 'thai');
-      const customLetter = getVal(row, 'letterGrade');
       const isSpecial = isSpecialMoeGrade(customLetter);
       const record: GradeRecord = {
         id: `grd-imp-${Date.now()}-${idx}`,
@@ -715,13 +971,18 @@ export function validateAndParseMappedRows(
     rawRows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const errors: string[] = [];
+      const errorFields = new Set<string>();
       const studentRef = getVal(row, 'studentId');
-      const parsedDate = normalizeSpreadsheetDate(getRawCell(row, 'date'));
+      const rawDate = getRawCell(row, 'date');
+      const parsedDate = normalizeSpreadsheetDate(rawDate);
       const rawStatus = getVal(row, 'status');
       const status = parseAttendanceStatus(rawStatus);
       const rawType = getVal(row, 'recordType').toLowerCase();
       const recordType = rawType.includes('out') || rawType.includes('ออก') ? 'check_out' : 'check_in';
-      const parsedTime = normalizeSpreadsheetTime(getRawCell(row, 'time')) || '07:45';
+      const rawTimeCell = getRawCell(row, 'time');
+      const rawTimeStr = String(rawTimeCell ?? '').trim();
+      const normalizedTime = normalizeSpreadsheetTime(rawTimeCell);
+      const parsedTime = normalizedTime || '07:45';
 
       const matchedStudent = existingStudents.find(
         (s) =>
@@ -729,25 +990,44 @@ export function validateAndParseMappedRows(
           s.id.toLowerCase() === studentRef.toLowerCase()
       );
 
-      if (!studentRef) errors.push('ไม่ได้ระบุรหัสนักเรียน (studentId)');
-      else if (existingStudents.length > 0 && !matchedStudent) {
+      if (!studentRef) {
+        errors.push('ไม่ได้ระบุรหัสนักเรียน (studentId)');
+        errorFields.add('studentId');
+      } else if (existingStudents.length > 0 && !matchedStudent) {
         errors.push(`ไม่พบนักเรียนรหัส "${studentRef}" ในโรงเรียนนี้`);
+        errorFields.add('studentId');
       }
-      if (!parsedDate) errors.push(`รูปแบบวันที่ "${String(getRawCell(row, 'date') || '-')}" ไม่ถูกต้อง (ควรเป็น YYYY-MM-DD)`);
-      if (!status) errors.push(`สถานะการเข้าเรียน "${rawStatus || '-'}" ไม่รองรับ (ใช้ present/มาเรียน, late/สาย, absent/ขาด, sick/ป่วย, leave/ลา)`);
+      if (!parsedDate) {
+        errors.push(`รูปแบบวันที่ "${String(rawDate || '-')}" ไม่ถูกต้อง (ควรเป็น YYYY-MM-DD หรือ DD/MM/YYYY)`);
+        errorFields.add('date');
+      }
+      if (rawTimeStr !== '' && !normalizedTime) {
+        errors.push(`รูปแบบเวลา "${rawTimeStr}" ไม่ถูกต้อง (ควรเป็น HH:mm เช่น 07:45)`);
+        errorFields.add('time');
+      }
+      if (!status) {
+        errors.push(`สถานะการเข้าเรียน "${rawStatus || '-'}" ไม่รองรับ (ใช้ present/มาเรียน, late/สาย, absent/ขาด, sick/ป่วย, leave/ลา)`);
+        errorFields.add('status');
+      }
 
       const dupKey = `${studentRef.toLowerCase()}|${parsedDate || ''}|${recordType}`;
       if (studentRef && parsedDate) {
-        if (seenAttendanceKeys.has(dupKey)) errors.push('บันทึกเช็คชื่อซ้ำวันเดียวกันภายในไฟล์');
+        if (seenAttendanceKeys.has(dupKey)) {
+          errors.push('บันทึกเช็คชื่อซ้ำวันเดียวกันภายในไฟล์');
+          errorFields.add('studentId');
+          errorFields.add('date');
+        }
         seenAttendanceKeys.add(dupKey);
       }
 
       if (errors.length > 0) {
         failedRows.push({
           rowNumber,
-          identifier: `${studentRef || '-'} · ${parsedDate || String(getRawCell(row, 'date') || '-')}`,
+          identifier: `${studentRef || '-'} · ${parsedDate || String(rawDate || '-')}`,
           errors,
+          errorFields: Array.from(errorFields),
           rawRow: toRawRecord(row),
+          mappedValues: toMappedValues(row),
         });
         return;
       }
@@ -778,6 +1058,7 @@ export function validateAndParseMappedRows(
     rawRows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const errors: string[] = [];
+      const errorFields = new Set<string>();
       const rawDay = getVal(row, 'dayOfWeek');
       const dayOfWeek = parseTimetableDay(rawDay);
       const rawPeriod = getVal(row, 'periodNumber');
@@ -789,20 +1070,36 @@ export function validateAndParseMappedRows(
       const rawCoTeacher = getVal(row, 'coTeacherName');
       const { teacherName, coTeacherName } = parseSlotTeachersFromRaw(rawTeacher, rawCoTeacher);
 
-      if (!dayOfWeek) errors.push(`วันในสัปดาห์ "${rawDay || '-'}" ไม่ถูกต้อง`);
+      if (!dayOfWeek) {
+        errors.push(`วันในสัปดาห์ "${rawDay || '-'}" ไม่ถูกต้อง`);
+        errorFields.add('dayOfWeek');
+      }
       if (!Number.isInteger(periodNumber) || periodNumber < 1 || periodNumber > 16) {
         errors.push(`คาบเรียน "${rawPeriod || '-'}" ต้องเป็นตัวเลข 1–16`);
+        errorFields.add('periodNumber');
       }
-      if (!courseCode && !courseTitleTh) errors.push('ไม่ได้ระบุรหัสวิชาหรือชื่อวิชา');
-      if (!classRoom) errors.push('ไม่ได้ระบุห้องเรียน (classRoom)');
-      if (!teacherName) errors.push('ไม่ได้ระบุชื่อครูผู้สอนหลัก');
+      if (!courseCode && !courseTitleTh) {
+        errors.push('ไม่ได้ระบุรหัสวิชาหรือชื่อวิชา');
+        errorFields.add('courseCode');
+        errorFields.add('courseTitleTh');
+      }
+      if (!classRoom) {
+        errors.push('ไม่ได้ระบุห้องเรียน (classRoom)');
+        errorFields.add('classRoom');
+      }
+      if (!teacherName) {
+        errors.push('ไม่ได้ระบุชื่อครูผู้สอนหลัก');
+        errorFields.add('teacherName');
+      }
 
       if (errors.length > 0) {
         failedRows.push({
           rowNumber,
           identifier: `${courseCode || courseTitleTh || '-'} · ${classRoom || '-'}`,
           errors,
+          errorFields: Array.from(errorFields),
           rawRow: toRawRecord(row),
+          mappedValues: toMappedValues(row),
         });
         return;
       }
@@ -1008,15 +1305,31 @@ export function downloadEntityTemplate(
 
 export function exportFailedRowsReport(
   entity: ManagedImportEntity,
-  failedRows: FailedImportRow[]
+  failedRows: FailedImportRow[],
+  format: 'xlsx' | 'csv' = 'xlsx'
 ): void {
   if (failedRows.length === 0) return;
   const rows = failedRows.map((item) => ({
     'แถวที่ (Row)': item.rowNumber,
     'รายการอ้างอิง': item.identifier,
+    'ฟิลด์ที่มีปัญหา': item.errorFields.join(', '),
     'สาเหตุข้อผิดพลาด': item.errors.join(' | '),
     ...item.rawRow,
   }));
+
+  if (format === 'csv') {
+    const keys = Object.keys(rows[0] || {});
+    const csvLines = [
+      keys.map((k) => escapeCsvCell(k)).join(','),
+      ...rows.map((r) => keys.map((k) => escapeCsvCell((r as Record<string, unknown>)[k])).join(',')),
+    ];
+    triggerDownloadBlob(
+      `error_report_${entity}_${getLocalDateString()}.csv`,
+      new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    );
+    return;
+  }
+
   const sheet = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, sheet, 'Failed_Rows');

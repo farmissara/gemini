@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AdaptivePracticeTopic,
+  AppLanguage,
   AttendanceRecord,
   Course,
   GradeRecord,
@@ -34,9 +35,17 @@ import {
   BellOff,
   Plus,
   Send,
+  Upload,
+  FileDown,
   X,
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
+import {
+  ChartViewMode,
+  GradeDistributionHistogram,
+  HistogramScope,
+} from '../components/GradeDistributionHistogram';
+import { downloadGradeDistributionReportPdf } from '../lib/moeReportPdf';
 import {
   calculateStudentAcademicSummary,
   clampScore,
@@ -68,6 +77,8 @@ interface GradebookViewProps {
   attendance?: AttendanceRecord[];
   periodAttendance?: PeriodAttendanceRecord[];
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
+  onOpenImportExport?: () => void;
+  lang?: AppLanguage;
 }
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
@@ -86,6 +97,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   attendance = [],
   periodAttendance = [],
   onPracticeInAi,
+  onOpenImportExport,
+  lang = 'th',
 }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
@@ -108,6 +121,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [newFinalScore, setNewFinalScore] = useState(0);
   const [newAssignmentScore, setNewAssignmentScore] = useState(0);
   const [newQuizScore, setNewQuizScore] = useState(0);
+  const [histogramScope, setHistogramScope] = useState<HistogramScope>('course');
+  const [histogramChartMode, setHistogramChartMode] = useState<ChartViewMode>('score_bins');
+  const [histogramDeptFilter, setHistogramDeptFilter] = useState<string>('all');
 
   const pendingNotifyRef = useRef<Map<string, { timer: ReturnType<typeof setTimeout>; latestGrade: GradeRecord }>>(
     new Map()
@@ -280,6 +296,38 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     bannerTimerRef.current = setTimeout(() => {
       setGradeAlertBanner(null);
     }, 4500);
+  };
+
+  const handleDownloadGradeDistributionPdf = () => {
+    const courseDeptMap = new Map(courses.map((c) => [c.id, c.department?.trim() || '']));
+    const scopedGradesForPdf =
+      histogramScope === 'course'
+        ? filteredGradebookRows.map((row) => row.grade)
+        : histogramDeptFilter === 'all'
+        ? grades
+        : grades.filter((g) => courseDeptMap.get(g.courseId) === histogramDeptFilter);
+
+    const { fileName } = downloadGradeDistributionReportPdf({
+      courses,
+      grades: scopedGradesForPdf,
+      students,
+      systemConfig,
+      school,
+      selectedCourse,
+      gradingSystem: systemConfig.gradingSystem,
+      scope: histogramScope,
+      chartMode: histogramChartMode,
+      departmentFilter: histogramDeptFilter,
+      roomFilter: gradeRoomFilter,
+      levelFilter: gradeLevelFilter,
+      eligibilityFilter: gradeEligibilityFilter,
+      lang,
+    });
+
+    showAlertToast(
+      lang === 'th' ? 'ดาวน์โหลดรายงานการกระจายเกรด PDF สำเร็จ' : 'Grade distribution PDF downloaded',
+      fileName
+    );
   };
 
   const triggerGradeAlertNow = async (grade: GradeRecord, isNewRecord = false, force = false) => {
@@ -841,6 +889,30 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
 
+          {activeTab === 'gradebook' && onOpenImportExport && (
+            <button
+              type="button"
+              onClick={onOpenImportExport}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              title="นำเข้า/แมปคอลัมน์คะแนนผลการเรียนจาก CSV หรือ Excel"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>นำเข้าคะแนน CSV/Excel</span>
+            </button>
+          )}
+
+          {activeTab === 'gradebook' && (
+            <button
+              type="button"
+              onClick={handleDownloadGradeDistributionPdf}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap"
+              title="ส่งออกรายงานสถิติการกระจายผลการเรียนและฮิสโตแกรมเป็น PDF สำหรับงานทะเบียน/ฝ่ายวิชาการ"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
+            </button>
+          )}
+
           {(activeTab === 'gradebook' || activeTab === 'pp5') && (
             <>
               <button
@@ -1038,6 +1110,26 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
       {/* Tab Panels Scroll Container */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 print:overflow-visible">
+        {/* Visual Grade Distribution Histogram across selected course & all subjects */}
+        {activeTab === 'gradebook' && (
+          <GradeDistributionHistogram
+            courses={courses}
+            grades={grades}
+            filteredCourseGrades={filteredGradebookRows.map((row) => row.grade)}
+            students={students}
+            selectedCourse={selectedCourse}
+            gradingSystem={systemConfig.gradingSystem}
+            lang={lang}
+            scope={histogramScope}
+            onScopeChange={setHistogramScope}
+            chartMode={histogramChartMode}
+            onChartModeChange={setHistogramChartMode}
+            departmentFilter={histogramDeptFilter}
+            onDepartmentFilterChange={setHistogramDeptFilter}
+            onDownloadPdf={handleDownloadGradeDistributionPdf}
+          />
+        )}
+
         {/* ========================================================
             TAB 1: Gradebook Score Entry Table
             ======================================================== */}

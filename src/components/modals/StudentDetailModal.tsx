@@ -16,11 +16,17 @@ import {
   Camera,
   Edit3,
   Check,
-  GraduationCap
+  GraduationCap,
+  QrCode,
+  Printer,
+  Download,
+  Copy,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { StudentAcademicTrendChart } from '../StudentAcademicTrendChart';
 import { PagedList } from '../PagedList';
+import { QrCodeMatrix } from '../QrCodeMatrix';
+import { generateQrMatrix } from '../../lib/qrCode';
 import { STUDENT_STATUS_DETAILS, ALL_GRADE_LEVELS } from '../../data/studentAcademicData';
 import {
   aggregateGradesByAssessmentCycle,
@@ -54,12 +60,105 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   gradingSystem = 'thai',
 }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrPayloadMode, setQrPayloadMode] = useState<'eduverse' | 'raw_id'>('eduverse');
+  const [copiedQrId, setCopiedQrId] = useState(false);
   const [activeSection, setActiveSection] = useState<'overview' | 'grades'>('overview');
   const [isEditingClass, setIsEditingClass] = useState(false);
   const [editGradeLevel, setEditGradeLevel] = useState(student.gradeLevel);
   const [editRoom, setEditRoom] = useState(student.room);
   const [editStatus, setEditStatus] = useState<StudentStatus>(student.status || 'active');
   const [editGpa, setEditGpa] = useState<number>(Number(student.gpa) || 0.0);
+
+  const uniqueStudentId = (student.studentIdNumber || student.id || '').trim();
+  const qrPayload = qrPayloadMode === 'eduverse' ? `EDUVERSE:STU:${uniqueStudentId}` : uniqueStudentId;
+
+  const handleDownloadQrPng = () => {
+    const matrix = generateQrMatrix(qrPayload || 'eduverse');
+    const modules = matrix.length;
+    const quietZone = 4;
+    const scale = 12;
+    const qrPixelSize = (modules + quietZone * 2) * scale;
+    const cardWidth = Math.max(760, qrPixelSize + 180);
+    const cardHeight = qrPixelSize + 300;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cardWidth;
+    canvas.height = cardHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // White printable card background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cardWidth, cardHeight);
+
+    // Subtle border
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(16, 16, cardWidth - 32, cardHeight - 32);
+
+    // Top accent bar
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(16, 16, cardWidth - 32, 84);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText('STUDENT ATTENDANCE QR PASS', cardWidth / 2, 56);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#dbeafe';
+    ctx.fillText('สแกน QR Code เพื่อบันทึกเวลาเข้า-ออกโรงเรียน', cardWidth / 2, 84);
+
+    // QR frame
+    const qrX = Math.round((cardWidth - qrPixelSize) / 2);
+    const qrY = 126;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(qrX, qrY, qrPixelSize, qrPixelSize);
+
+    ctx.fillStyle = '#0f172a';
+    for (let r = 0; r < modules; r++) {
+      for (let c = 0; c < modules; c++) {
+        if (matrix[r][c]) {
+          ctx.fillRect(
+            qrX + (c + quietZone) * scale,
+            qrY + (r + quietZone) * scale,
+            scale,
+            scale
+          );
+        }
+      }
+    }
+
+    // Student details below QR
+    const textTop = qrY + qrPixelSize + 44;
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(`${student.firstNameTh} ${student.lastNameTh}`.trim() || `${student.firstNameEn} ${student.lastNameEn}`, cardWidth / 2, textTop);
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '20px sans-serif';
+    ctx.fillText(`${student.firstNameEn} ${student.lastNameEn} • ${student.gradeLevel} (${student.room})`, cardWidth / 2, textTop + 34);
+
+    ctx.fillStyle = '#1d4ed8';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(`ID: ${uniqueStudentId}`, cardWidth / 2, textTop + 72);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `Student_QR_${uniqueStudentId || 'pass'}.png`;
+    link.click();
+  };
+
+  const handleCopyStudentQrId = async () => {
+    try {
+      await navigator.clipboard.writeText(uniqueStudentId);
+      setCopiedQrId(true);
+      setTimeout(() => setCopiedQrId(false), 1800);
+    } catch {
+      // Ignore clipboard failure
+    }
+  };
 
   const studentAttendance = attendance.filter((a) => a.studentId === student.id);
   const currentStatusConfig = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
@@ -340,14 +439,25 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
+                type="button"
                 onClick={() => onToggleLineSync(student.id)}
                 className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] font-semibold cursor-pointer"
               >
                 {student.lineLinked ? 'Disconnect LINE' : 'Link LINE OA'}
               </button>
               <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5 shadow-sm shadow-emerald-600/25 cursor-pointer"
+                title="พิมพ์รหัส QR ประจำตัวนักเรียนสำหรับการเช็คชื่อ"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Print QR</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => onOpenReportCard(student)}
                 className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-semibold flex items-center gap-1 shadow-md shadow-indigo-700/30 cursor-pointer"
               >
@@ -505,6 +615,132 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Printable Student QR Pass Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-[var(--color-text-body)]">
+            <div className="no-print px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                  บัตร QR เช็คชื่อนักเรียน (Printable QR Pass)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                aria-label="ปิดหน้าต่าง QR"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Printable Pass Card */}
+              <div className="student-qr-print-area rounded-2xl border-2 border-slate-300 bg-white text-slate-900 p-5 shadow-sm flex flex-col items-center text-center space-y-3">
+                <div className="w-full rounded-xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 py-2.5">
+                  <p className="text-[11px] font-bold tracking-widest uppercase text-indigo-200">
+                    EduVerse Attendance Pass
+                  </p>
+                  <p className="text-sm font-bold mt-0.5">
+                    บัตร QR Code ประจำตัวนักเรียนสำหรับการเช็คชื่อ
+                  </p>
+                </div>
+
+                <div className="p-2 rounded-2xl bg-white border border-slate-200">
+                  <QrCodeMatrix
+                    value={qrPayload}
+                    size={220}
+                    label={`Student Attendance QR: ${uniqueStudentId}`}
+                    className="!border-0 !shadow-none !p-1"
+                  />
+                </div>
+
+                <div className="space-y-1 w-full">
+                  <p className="text-base font-extrabold text-slate-900">
+                    {student.firstNameTh} {student.lastNameTh}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-600">
+                    {student.firstNameEn} {student.lastNameEn}
+                  </p>
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 font-mono font-bold text-xs">
+                      ID: {uniqueStudentId}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-semibold text-xs">
+                      {student.gradeLevel} • {student.room}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-500 border-t border-slate-200 pt-2 w-full">
+                  สแกนผ่านเครื่องสแกน Rapid QR หน้าประตู หรือกล้องเช็คชื่อรายคาบ ({qrPayloadMode === 'eduverse' ? qrPayload : uniqueStudentId})
+                </p>
+              </div>
+
+              {/* Payload format switch & actions (hidden when printing) */}
+              <div className="no-print space-y-3">
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="font-semibold text-[var(--color-text-muted)]">รูปแบบข้อมูลใน QR:</span>
+                  <div className="inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setQrPayloadMode('eduverse')}
+                      className={`px-2 py-1 rounded-md font-semibold cursor-pointer transition ${
+                        qrPayloadMode === 'eduverse'
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'text-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      EduVerse Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrPayloadMode('raw_id')}
+                      className={`px-2 py-1 rounded-md font-semibold cursor-pointer transition ${
+                        qrPayloadMode === 'raw_id'
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'text-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      ID ล้วน ({uniqueStudentId})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="col-span-3 sm:col-span-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>พิมพ์ QR</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadQrPng}
+                    className="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>โหลด PNG</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyStudentQrId}
+                    className="col-span-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedQrId ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedQrId ? 'คัดลอกแล้ว' : 'คัดลอก ID'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Capture & Upload Modal */}
       <ImageCaptureUploadModal

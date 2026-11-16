@@ -97,6 +97,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   activeSchoolId = 'sch-bkk-01',
   academicYear = '2569',
   semester = '1',
+  lang = 'th',
   onImportStudents,
   onImportTeachers,
   onImportCourses,
@@ -586,7 +587,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           {activeTab === 'students' && (
             <SmartEntityMapperPanel
               entity="students"
-              subtitle="นำเข้าทะเบียนนักเรียน DMC (รองรับจับคู่คอลัมน์เอง ตรวจสอบเลข 13 หลัก/GPA และรายงานแถวที่ผิดพลาด)"
+              lang={lang}
+              subtitle={
+                lang === 'th'
+                  ? 'นำเข้าทะเบียนนักเรียน DMC (รองรับจับคู่คอลัมน์เอง ตรวจสอบเลข 13 หลัก/GPA และรายงานแถวที่ผิดพลาด)'
+                  : 'Import student records with custom CSV/Excel header mapping, ID/GPA validation, and failed-row reports.'
+              }
               existingRecords={students}
               context={mapperContext}
               exportContext={exportContext}
@@ -599,7 +605,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           {activeTab === 'teachers' && (
             <SmartEntityMapperPanel
               entity="teachers"
-              subtitle="นำเข้าทะเบียนครูและบุคลากร HRMS พร้อมกลุ่มสาระฯ วิทยฐานะ และห้องที่ปรึกษา"
+              lang={lang}
+              subtitle={
+                lang === 'th'
+                  ? 'นำเข้าทะเบียนครูและบุคลากร HRMS พร้อมกลุ่มสาระฯ วิทยฐานะ และห้องที่ปรึกษา'
+                  : 'Import teachers & staff directory with custom column mapping and validation.'
+              }
               existingRecords={teachers}
               context={mapperContext}
               exportContext={exportContext}
@@ -614,7 +625,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           {activeTab === 'courses' && (
             <SmartEntityMapperPanel
               entity="courses"
-              subtitle="นำเข้ารายวิชา รหัสวิชา หน่วยกิต และครูผู้สอน (รองรับจับคู่คอลัมน์ไฟล์ Excel/CSV ภายนอก)"
+              lang={lang}
+              subtitle={
+                lang === 'th'
+                  ? 'นำเข้ารายวิชา รหัสวิชา หน่วยกิต และครูผู้สอน (รองรับจับคู่คอลัมน์ไฟล์ Excel/CSV ภายนอก)'
+                  : 'Import courses, credits, and assigned instructors with custom header mapping.'
+              }
               existingRecords={courses}
               context={mapperContext}
               exportContext={exportContext}
@@ -627,7 +643,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           {activeTab === 'grades' && (
             <SmartEntityMapperPanel
               entity="grades"
-              subtitle="นำเข้าคะแนนกลางภาค ปลายภาค คะแนนเก็บ และเกรด ปพ.5 (ตรวจสอบช่วงคะแนน 0–100 และรหัสนักเรียน/วิชา)"
+              lang={lang}
+              subtitle={
+                lang === 'th'
+                  ? 'นำเข้าคะแนนกลางภาค ปลายภาค คะแนนเก็บ และเกรด ปพ.5 (ตรวจสอบช่วงคะแนน 0–100 และรหัสนักเรียน/วิชา)'
+                  : 'Import grades & scores with custom spreadsheet mapping, 0–100 bounds validation, and row error reporting.'
+              }
               existingRecords={grades}
               context={mapperContext}
               exportContext={exportContext}
@@ -640,7 +661,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           {activeTab === 'attendance' && (
             <SmartEntityMapperPanel
               entity="attendance"
-              subtitle="นำเข้าบันทึกการเช็คชื่อเข้าเรียน-ออก (รองรับวันที่ รูปแบบ Excel/CSV และสถานะมาเรียน/สาย/ขาด/ป่วย/ลา)"
+              lang={lang}
+              subtitle={
+                lang === 'th'
+                  ? 'นำเข้าบันทึกการเช็คชื่อเข้าเรียน-ออก (รองรับวันที่ รูปแบบ Excel/CSV และสถานะมาเรียน/สาย/ขาด/ป่วย/ลา)'
+                  : 'Import attendance logs with custom CSV/Excel header mapping, date/status parsing, and error reporting.'
+              }
               existingRecords={attendance}
               context={mapperContext}
               exportContext={exportContext}
@@ -889,7 +915,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           {activeTab === 'timetable' && (
             <SmartEntityMapperPanel
               entity="timetable"
-              subtitle="นำเข้าตารางเรียนและตารางสอน (รองรับครูผู้สอนหลัก ครูสอนคู่ และการจับคู่หัวคอลัมน์เอง)"
+              lang={lang}
+              subtitle={
+                lang === 'th'
+                  ? 'นำเข้าตารางเรียนและตารางสอน (รองรับครูผู้สอนหลัก ครูสอนคู่ และการจับคู่หัวคอลัมน์เอง)'
+                  : 'Import timetable slots with primary/co-teacher support and custom column mapping.'
+              }
               existingRecords={timetableSlots}
               context={mapperContext}
               exportContext={exportContext}

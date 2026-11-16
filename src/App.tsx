@@ -3454,7 +3454,10 @@ export const App: React.FC = () => {
                       const updateMap = new Map(updatedList.map((s) => [s.id, s]));
                       setStudents((prev) => prev.map((s) => updateMap.get(s.id) || s));
                     }}
-                    onOpenImportExport={() => setShowImportExportModal(true)}
+                    onOpenImportExport={() => {
+                      setImportExportInitialTab('students');
+                      setShowImportExportModal(true);
+                    }}
                   />
                 )}
 
@@ -3471,7 +3474,10 @@ export const App: React.FC = () => {
                     staffPositionOptions={systemConfig.staffPositionOptions}
                     onUpdateStaffPositionOptions={(options) => handleUpdateSchool({ staffPositionOptions: options })}
                     academicYear={systemConfig.academicYear}
-                    onOpenImportExport={() => setShowImportExportModal(true)}
+                    onOpenImportExport={() => {
+                      setImportExportInitialTab('teachers');
+                      setShowImportExportModal(true);
+                    }}
                   />
                 )}
 
@@ -3785,6 +3791,11 @@ export const App: React.FC = () => {
                     onPracticeInAi={(topic) => {
                       setAdaptivePracticeTopic(topic);
                       navigateToAppTab('socratic_tutor');
+                    }}
+                    lang={lang}
+                    onOpenImportExport={() => {
+                      setImportExportInitialTab('grades');
+                      setShowImportExportModal(true);
                     }}
                   />
                 )}

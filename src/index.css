@@ -399,4 +399,37 @@ textarea::placeholder {
     background: #ffffff !important;
     border-color: #94a3b8 !important;
   }
+
+  /* Printable Student Attendance QR Pass Isolation */
+  body:has(.student-qr-print-area) #root,
+  body:has(.student-qr-print-area) #root :has(.student-qr-print-area) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body:has(.student-qr-print-area) #root * {
+    visibility: hidden !important;
+  }
+
+  body:has(.student-qr-print-area) #root .student-qr-print-area,
+  body:has(.student-qr-print-area) #root .student-qr-print-area * {
+    visibility: visible !important;
+  }
+
+  body:has(.student-qr-print-area) #root .student-qr-print-area {
+    position: absolute !important;
+    top: 12mm !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
+    width: 110mm !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

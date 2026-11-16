@@ -169,10 +169,14 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [scannerResult, setScannerResult] = useState<string | null>(null);
 
   const trimmedScannerId = scannerStudentIdInput.trim();
+  const normalizedScannerToken = trimmedScannerId.replace(/^EDUVERSE:STU:/i, '').split(':')[0].trim();
   const matchedScannerStudent = isRestrictedViewer
     ? (ownStudent || scopedStudents[0])
-    : trimmedScannerId
-      ? students.find((s) => s.studentIdNumber.trim().toLowerCase() === trimmedScannerId.toLowerCase())
+    : normalizedScannerToken
+      ? students.find((s) => (
+          s.studentIdNumber.trim().toLowerCase() === normalizedScannerToken.toLowerCase()
+          || s.id.trim().toLowerCase() === normalizedScannerToken.toLowerCase()
+        ))
       : undefined;
 
   const todayDateStr = getLocalDateString();
