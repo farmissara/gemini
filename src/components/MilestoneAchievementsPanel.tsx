@@ -231,10 +231,10 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
   return (
     <section
       aria-label={lang === 'th' ? 'ระบบเหรียญตราความสำเร็จตามเป้าหมาย' : 'Milestone Achievement System'}
-      className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 sm:p-5 space-y-4"
+      className="bg-[var(--color-card)] border border-[var(--color-border)] dash-card dash-card-stack"
     >
       {/* Header Row */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 dash-header-divider border-b border-[var(--color-border)]">
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
             <Award className="w-5 h-5" />

@@ -811,8 +811,8 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         {/* Top Header */}
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
-              <MascotAvatar mood={isMascotGuideEnabled ? 'celebrate' : 'happy'} sleeping={!isMascotGuideEnabled} size={40} />
+            <div className="h-11 min-w-11 px-1.5 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
+              <MascotAvatar mood={isMascotGuideEnabled ? 'celebrate' : 'happy'} sleeping={!isMascotGuideEnabled} size={38} />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1207,7 +1207,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         {/* Modal Footer */}
         <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between text-xs text-[var(--color-text-muted)] shrink-0">
           <div className="flex items-center gap-2">
-            <span>EduVerse Academic Operating System</span>
+            <span>BaanPakKru · บ้านพักครู (Teacher Relief &amp; School System)</span>
           </div>
 
           <button

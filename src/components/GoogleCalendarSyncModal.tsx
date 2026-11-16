@@ -265,7 +265,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
       if (result.errors.length > 0) {
         setErrorMsg(`ลบบางรายการไม่สำเร็จ: ${result.errors[0]}`);
       }
-      setStatusMsg(`ลบกิจกรรมที่เคยซิงค์จาก EduVerse ออกจากปฏิทินแล้ว ${result.deletedCount} รายการ`);
+      setStatusMsg(`ลบกิจกรรมที่เคยซิงค์จาก BaanPakKru ออกจากปฏิทินแล้ว ${result.deletedCount} รายการ`);
       setPendingConfirmation(null);
       await loadCalendarWorkspaceData(accessToken, selectedCalendarId);
     } catch (err) {
@@ -593,7 +593,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                     </p>
                     {syncedEvents.length > 0 && (
                       <p className="text-[11px] font-bold text-slate-600 mt-1.5">
-                        พบกิจกรรมที่เคยซิงค์จาก EduVerse ในปฏิทินนี้แล้ว {syncedEvents.length} รายการ
+                        พบกิจกรรมที่เคยซิงค์จาก BaanPakKru ในปฏิทินนี้แล้ว {syncedEvents.length} รายการ
                       </p>
                     )}
                   </div>
@@ -764,7 +764,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                   </h4>
                   <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                     {pendingConfirmation.type === 'delete'
-                      ? `กำลังจะลบกิจกรรมที่ซิงค์จาก EduVerse จำนวน ${pendingConfirmation.eventIds.length} รายการ ออกจากปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}" การลบไม่สามารถกู้คืนได้`
+                      ? `กำลังจะลบกิจกรรมที่ซิงค์จาก BaanPakKru จำนวน ${pendingConfirmation.eventIds.length} รายการ ออกจากปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}" การลบไม่สามารถกู้คืนได้`
                       : `กำลังจะสร้างหรืออัปเดต ตารางเรียน ${pendingConfirmation.syncSlotsCount} คาบ และงานที่มอบหมาย ${pendingConfirmation.syncAssignmentsCount} งาน ลงในปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}"`}
                   </p>
                 </div>

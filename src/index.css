@@ -517,6 +517,77 @@ textarea::placeholder {
   }
 }
 
+@keyframes mascot-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mascot-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+}
+
+@keyframes mascot-bubble-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mascot-bubble-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+@keyframes mascot-react-success {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-5px) scale(1.04);
+  }
+  70% {
+    transform: translateY(-2px) scale(1.02);
+  }
+}
+
+@keyframes mascot-react-error {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
 .mascot-float {
   animation: mascot-float 3.4s ease-in-out infinite;
 }
@@ -525,14 +596,140 @@ textarea::placeholder {
   animation: mascot-blink 4.5s ease-in-out infinite;
 }
 
+.mascot-enter {
+  animation: mascot-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mascot-exit {
+  animation: mascot-exit 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+.mascot-bubble-enter {
+  animation: mascot-bubble-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mascot-bubble-exit {
+  animation: mascot-bubble-exit 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+.mascot-react-success {
+  animation: mascot-react-success 700ms cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+.mascot-react-error {
+  animation: mascot-react-error 420ms ease-in-out 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .milestone-badge-float,
   .milestone-badge-sweep,
   .milestone-badge-ring,
   .mascot-float,
-  .mascot-blink {
+  .mascot-blink,
+  .mascot-enter,
+  .mascot-exit,
+  .mascot-bubble-enter,
+  .mascot-bubble-exit,
+  .mascot-react-success,
+  .mascot-react-error {
     animation: none !important;
   }
+}
+
+/* ========================================================
+   DASHBOARD CLEAN CARD ARCHITECTURE SPACING SYSTEM (CSS Variables)
+   ======================================================== */
+:root {
+  --dash-shell-pad: 0.25rem;          /* 4px */
+  --dash-shell-gap: 0.75rem;          /* 12px */
+  --dash-grid-gap: 0.875rem;          /* 14px */
+  --dash-subgrid-gap: 0.75rem;        /* 12px */
+  --dash-card-pad: 0.875rem;          /* 14px */
+  --dash-card-gap: 0.75rem;           /* 12px */
+  --dash-divider-space: 0.6875rem;    /* 11px */
+  --dash-strip-px: 0.75rem;           /* 12px */
+  --dash-strip-py: 0.5625rem;         /* 9px */
+  --dash-row-py: 0.4375rem;           /* 7px */
+  --dash-card-radius: 0.875rem;       /* 14px */
+}
+
+@media (min-width: 640px) {
+  :root {
+    --dash-shell-pad: 0.375rem;       /* 6px */
+    --dash-grid-gap: 0.9375rem;       /* 15px */
+    --dash-card-pad: 1rem;            /* 16px */
+    --dash-card-gap: 0.8125rem;       /* 13px */
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --dash-grid-gap: 1rem;            /* 16px */
+    --dash-subgrid-gap: 0.75rem;      /* 12px */
+    --dash-card-pad: 1.0625rem;       /* 17px */
+  }
+}
+
+.dash-shell {
+  padding: var(--dash-shell-pad);
+  gap: var(--dash-shell-gap);
+}
+
+.dash-scroll-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-shell-gap);
+}
+
+.dash-grid {
+  display: grid;
+  gap: var(--dash-grid-gap);
+}
+
+.dash-col-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-grid-gap);
+}
+
+.dash-subgrid {
+  display: grid;
+  gap: var(--dash-subgrid-gap);
+}
+
+.dash-substack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-subgrid-gap);
+}
+
+.dash-card {
+  padding: var(--dash-card-pad);
+  border-radius: var(--dash-card-radius);
+}
+
+.dash-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-card-gap);
+}
+
+.dash-header-divider {
+  padding-bottom: var(--dash-divider-space);
+}
+
+.dash-footer-divider {
+  padding-top: var(--dash-divider-space);
+}
+
+.dash-kpi-strip {
+  padding: var(--dash-strip-py) var(--dash-strip-px);
+}
+
+.dash-row {
+  padding-block: var(--dash-row-py);
 }
 
 /* ========================================================
@@ -631,6 +828,11 @@ textarea::placeholder {
 
   @page timetable {
     margin: 8mm;
+    size: A4 landscape;
+  }
+
+  @page dashboard {
+    margin: 10mm 12mm;
     size: A4 landscape;
   }
 
@@ -798,5 +1000,105 @@ textarea::placeholder {
     margin: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Printable Administrative Dashboard Export (A4 Landscape, Paginated Cards & Charts) */
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 9.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) #root,
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) #root :has(.dashboard-print-area),
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area,
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-scroll {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area {
+    --dash-grid-gap: 10px;
+    --dash-subgrid-gap: 8px;
+    --dash-card-pad: 11px;
+    --dash-card-gap: 8px;
+    --dash-divider-space: 8px;
+    --dash-row-py: 5px;
+    page: dashboard;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) [data-mascot-chrome="true"] {
+    display: none !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area button.print-keep {
+    display: flex !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--dash-grid-gap) !important;
+    align-items: start !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    padding: var(--dash-card-pad) !important;
+  }
+
+  :where(html.dark) body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area :is(h1, h2, h3, h4, p, span, div) {
+    color: #1e293b !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-blue {
+    border-color: #93c5fd !important;
+    background: #f8fbff !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-green {
+    border-color: #6ee7b7 !important;
+    background: #f6fef9 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-purple {
+    border-color: #c4b5fd !important;
+    background: #faf8ff !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-orange {
+    border-color: #fdba74 !important;
+    background: #fffaf5 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-amber {
+    border-color: #fcd34d !important;
+    background: #fffdf5 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area svg {
+    max-width: 100% !important;
   }
 }

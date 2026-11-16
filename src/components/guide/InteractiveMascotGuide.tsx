@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BookOpen,
@@ -21,13 +23,47 @@ import { AppLanguage, AppProgramMode, UserRole } from '../../types';
 import { NavTab } from '../layout/Sidebar';
 import {
   INTERACTIVE_GUIDE_TOPICS,
+  MascotMood,
   ROLE_WORKFLOW_STEPS,
   resolveInteractiveTopic,
 } from '../../data/interactiveGuideTopics';
 import { MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
-import { MascotAvatar } from './MascotAvatar';
+import {
+  MascotAvatar,
+  MascotCharacter,
+  getSavedMascotCharacter,
+  setSavedMascotCharacter,
+} from './MascotAvatar';
 import { useGuideTour } from './GuideTourContext';
 import { GuideModuleId } from '../modals/ModuleGuideModal';
+
+export type MascotDashboardEventType = 'success' | 'warning' | 'error';
+
+export interface MascotDashboardEvent {
+  id?: string;
+  type: MascotDashboardEventType;
+  titleTh: string;
+  titleEn: string;
+  messageTh: string;
+  messageEn: string;
+  durationMs?: number;
+}
+
+const MASCOT_DASHBOARD_EVENT = 'eduverse:mascot-dashboard-event';
+
+export function emitMascotDashboardEvent(event: MascotDashboardEvent): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent<MascotDashboardEvent>(MASCOT_DASHBOARD_EVENT, {
+      detail: {
+        ...event,
+        id:
+          event.id ||
+          `mascot-evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      },
+    })
+  );
+}
 
 interface InteractiveMascotGuideProps {
   enabled: boolean;
@@ -41,6 +77,7 @@ interface InteractiveMascotGuideProps {
     moduleId?: GuideModuleId;
     roleTab?: 'all' | 'teacher' | 'student';
   }) => void;
+  dashboardEvent?: MascotDashboardEvent | null;
 }
 
 interface ActiveHoverTarget {
@@ -52,6 +89,8 @@ interface ActiveHoverTarget {
 const POPUP_MAX_WIDTH = 340;
 const TOUR_CARD_WIDTH = 370;
 const VIEWPORT_MARGIN = 12;
+const MASCOT_EXIT_DURATION_MS = 200;
+const BUBBLE_EXIT_DURATION_MS = 180;
 
 export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   enabled,
@@ -62,24 +101,56 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   lang,
   onNavigateTab,
   onOpenFullGuide,
+  dashboardEvent = null,
 }) => {
   const tourCtx = useGuideTour();
 
   const [hoverTarget, setHoverTarget] = useState<ActiveHoverTarget | null>(null);
   const [isPopupHovered, setIsPopupHovered] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMounted, setDrawerMounted] = useState(false);
+  const [drawerExiting, setDrawerExiting] = useState(false);
   const [drawerRoleTab, setDrawerRoleTab] = useState<'student' | 'teacher' | 'topics'>(() =>
     currentRole === 'student' ? 'student' : 'teacher'
   );
   const [selectedTopicPreviewId, setSelectedTopicPreviewId] = useState<string | null>(null);
   const [bubbleMinimized, setBubbleMinimized] = useState(false);
   const [dockMinimizedWhenOff, setDockMinimizedWhenOff] = useState(false);
+  const [dockMascotExiting, setDockMascotExiting] = useState(false);
   const [tourTargetRect, setTourTargetRect] = useState<DOMRect | null>(null);
+  const [mascotCharacter, setMascotCharacter] = useState<MascotCharacter>(() =>
+    getSavedMascotCharacter()
+  );
+  const [activeDashboardEvent, setActiveDashboardEvent] =
+    useState<MascotDashboardEvent | null>(null);
+
+  const handleSelectCharacter = (next: MascotCharacter) => {
+    setMascotCharacter(next);
+    setSavedMascotCharacter(next);
+  };
+
+  const mascotDisplayNameTh =
+    mascotCharacter === 'charcoal'
+      ? 'ชาร์โคล'
+      : mascotCharacter === 'mee'
+      ? 'หมี'
+      : 'ชาร์โคล & หมี';
+  const mascotDisplayNameEn =
+    mascotCharacter === 'charcoal'
+      ? 'Charcoal'
+      : mascotCharacter === 'mee'
+      ? 'Mee'
+      : 'Charcoal & Mee';
 
   const openTimerRef = useRef<number | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const currentHoverElementRef = useRef<HTMLElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
+  const dashboardEventTimerRef = useRef<number | null>(null);
+  const drawerExitTimerRef = useRef<number | null>(null);
+  const dockExitTimerRef = useRef<number | null>(null);
+  const hoverExitTimerRef = useRef<number | null>(null);
+  const bubbleExitTimerRef = useRef<number | null>(null);
 
   const isTourRunning = Boolean(
     tourCtx?.activeTourModuleId && tourCtx.activeTourSteps.length > 0
@@ -95,6 +166,102 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       ? 'parent_portal'
       : currentTab;
   const currentModuleTourDef = MODULE_GUIDED_TOURS[activeModuleKey] || null;
+
+  const triggerDashboardEvent = useCallback((evt: MascotDashboardEvent) => {
+    if (dashboardEventTimerRef.current !== null) {
+      window.clearTimeout(dashboardEventTimerRef.current);
+      dashboardEventTimerRef.current = null;
+    }
+    setActiveDashboardEvent(evt);
+    setBubbleMinimized(false);
+    setDockMinimizedWhenOff(false);
+    setDockMascotExiting(false);
+
+    const ttl = Math.max(2000, evt.durationMs ?? 5500);
+    dashboardEventTimerRef.current = window.setTimeout(() => {
+      setActiveDashboardEvent(null);
+      dashboardEventTimerRef.current = null;
+    }, ttl);
+  }, []);
+
+  const dismissDashboardEvent = useCallback(() => {
+    if (dashboardEventTimerRef.current !== null) {
+      window.clearTimeout(dashboardEventTimerRef.current);
+      dashboardEventTimerRef.current = null;
+    }
+    setActiveDashboardEvent(null);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleEvent = (event: Event) => {
+      const detail = (event as CustomEvent<MascotDashboardEvent>).detail;
+      if (detail && (detail.type === 'success' || detail.type === 'warning' || detail.type === 'error')) {
+        triggerDashboardEvent(detail);
+      }
+    };
+    window.addEventListener(MASCOT_DASHBOARD_EVENT, handleEvent);
+    return () => {
+      window.removeEventListener(MASCOT_DASHBOARD_EVENT, handleEvent);
+      if (dashboardEventTimerRef.current !== null) {
+        window.clearTimeout(dashboardEventTimerRef.current);
+      }
+    };
+  }, [triggerDashboardEvent]);
+
+  useEffect(() => {
+    if (dashboardEvent) {
+      triggerDashboardEvent(dashboardEvent);
+    }
+  }, [dashboardEvent, triggerDashboardEvent]);
+
+  const openDrawer = useCallback(() => {
+    if (drawerExitTimerRef.current !== null) {
+      window.clearTimeout(drawerExitTimerRef.current);
+      drawerExitTimerRef.current = null;
+    }
+    setDrawerExiting(false);
+    setDrawerOpen(true);
+    setDrawerMounted(true);
+    setBubbleMinimized(false);
+  }, []);
+
+  const closeDrawer = useCallback((afterClose?: () => void) => {
+    if (drawerExitTimerRef.current !== null) {
+      window.clearTimeout(drawerExitTimerRef.current);
+      drawerExitTimerRef.current = null;
+    }
+    setDrawerOpen(false);
+    setDrawerExiting(true);
+    drawerExitTimerRef.current = window.setTimeout(() => {
+      setDrawerMounted(false);
+      setDrawerExiting(false);
+      drawerExitTimerRef.current = null;
+      afterClose?.();
+    }, MASCOT_EXIT_DURATION_MS);
+  }, []);
+
+  const minimizeDockWhenOff = useCallback(() => {
+    if (dockExitTimerRef.current !== null) {
+      window.clearTimeout(dockExitTimerRef.current);
+      dockExitTimerRef.current = null;
+    }
+    setDockMascotExiting(true);
+    dockExitTimerRef.current = window.setTimeout(() => {
+      setDockMascotExiting(false);
+      setDockMinimizedWhenOff(true);
+      dockExitTimerRef.current = null;
+    }, MASCOT_EXIT_DURATION_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (drawerExitTimerRef.current !== null) window.clearTimeout(drawerExitTimerRef.current);
+      if (dockExitTimerRef.current !== null) window.clearTimeout(dockExitTimerRef.current);
+      if (hoverExitTimerRef.current !== null) window.clearTimeout(hoverExitTimerRef.current);
+      if (bubbleExitTimerRef.current !== null) window.clearTimeout(bubbleExitTimerRef.current);
+    };
+  }, []);
 
   const clearTimers = useCallback(() => {
     if (openTimerRef.current !== null) {
@@ -125,6 +292,11 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       setIsPopupHovered(false);
     }
     if (enabled) {
+      if (dockExitTimerRef.current !== null) {
+        window.clearTimeout(dockExitTimerRef.current);
+        dockExitTimerRef.current = null;
+      }
+      setDockMascotExiting(false);
       setDockMinimizedWhenOff(false);
     }
   }, [enabled, isTourRunning, clearTimers]);
@@ -354,6 +526,108 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     );
   }, [activeModuleKey, currentRole, lang]);
 
+  // Manage CSS enter/exit transition state for the Floating Hover Popup Card
+  const shouldShowHover = Boolean(enabled && !isTourRunning && resolvedHover && popupPosition);
+  const [renderedHover, setRenderedHover] = useState<{
+    topic: NonNullable<typeof resolvedHover>;
+    pos: NonNullable<typeof popupPosition>;
+  } | null>(null);
+  const [hoverExiting, setHoverExiting] = useState(false);
+
+  useEffect(() => {
+    if (shouldShowHover && resolvedHover && popupPosition) {
+      if (hoverExitTimerRef.current !== null) {
+        window.clearTimeout(hoverExitTimerRef.current);
+        hoverExitTimerRef.current = null;
+      }
+      setHoverExiting(false);
+      setRenderedHover({ topic: resolvedHover, pos: popupPosition });
+      return;
+    }
+
+    if (renderedHover) {
+      setHoverExiting(true);
+      if (hoverExitTimerRef.current !== null) {
+        window.clearTimeout(hoverExitTimerRef.current);
+      }
+      hoverExitTimerRef.current = window.setTimeout(() => {
+        setRenderedHover(null);
+        setHoverExiting(false);
+        hoverExitTimerRef.current = null;
+      }, MASCOT_EXIT_DURATION_MS);
+    }
+  }, [shouldShowHover, resolvedHover, popupPosition]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Manage CSS enter/exit transition state for the Dock Speech / Event Bubble
+  const shouldShowBubble = Boolean(
+    !drawerMounted &&
+      (activeDashboardEvent || (enabled && !bubbleMinimized && activeContextTopic))
+  );
+  const [bubbleMounted, setBubbleMounted] = useState(shouldShowBubble);
+  const [bubbleExiting, setBubbleExiting] = useState(false);
+
+  const liveBubbleSnapshot = useMemo(() => {
+    if (activeDashboardEvent) {
+      return {
+        kind: 'event' as const,
+        event: activeDashboardEvent,
+      };
+    }
+    if (resolvedHover || activeContextTopic) {
+      return {
+        kind: 'guide' as const,
+        title: resolvedHover ? resolvedHover.title : activeContextTopic!.title,
+        summary: resolvedHover
+          ? resolvedHover.summary
+          : lang === 'th'
+          ? `เอาเมาส์ชี้ปุ่มหรือเมนูใดก็ได้เพื่อดูวิธีใช้ หรือคลิก${mascotDisplayNameTh}เพื่อเริ่มทัวร์หน้านี้`
+          : `Hover any button for hints or click ${mascotDisplayNameEn} to start this page’s Guided Tour.`,
+      };
+    }
+    return null;
+  }, [
+    activeDashboardEvent,
+    resolvedHover,
+    activeContextTopic,
+    lang,
+    mascotDisplayNameTh,
+    mascotDisplayNameEn,
+  ]);
+
+  const [renderedBubble, setRenderedBubble] = useState(liveBubbleSnapshot);
+
+  useEffect(() => {
+    if (shouldShowBubble && liveBubbleSnapshot) {
+      if (bubbleExitTimerRef.current !== null) {
+        window.clearTimeout(bubbleExitTimerRef.current);
+        bubbleExitTimerRef.current = null;
+      }
+      setBubbleExiting(false);
+      setBubbleMounted(true);
+      setRenderedBubble(liveBubbleSnapshot);
+      return;
+    }
+
+    if (bubbleMounted) {
+      setBubbleExiting(true);
+      if (bubbleExitTimerRef.current !== null) {
+        window.clearTimeout(bubbleExitTimerRef.current);
+      }
+      bubbleExitTimerRef.current = window.setTimeout(() => {
+        setBubbleMounted(false);
+        setBubbleExiting(false);
+        bubbleExitTimerRef.current = null;
+      }, BUBBLE_EXIT_DURATION_MS);
+    }
+  }, [shouldShowBubble, liveBubbleSnapshot]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dockMascotMood: MascotMood = activeDashboardEvent
+    ? activeDashboardEvent.type
+    : resolvedHover
+    ? resolvedHover.topic.mood
+    : 'happy';
+  const dockMascotSleeping = !enabled && !activeDashboardEvent;
+
   const roleWorkflowSteps = useMemo(() => {
     const targetRole = drawerRoleTab === 'student' ? 'student' : 'teacher';
     return ROLE_WORKFLOW_STEPS.filter((s) => s.role === targetRole);
@@ -429,12 +703,12 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
               top: tourCardPosition.top,
               width: tourCardPosition.width,
             }}
-            className="fixed z-50 pointer-events-auto rounded-2xl border-2 border-[var(--color-primary)] bg-[var(--color-card)] shadow-2xl p-4 text-[var(--color-text-body)] space-y-3"
+            className="fixed z-50 pointer-events-auto rounded-2xl border-2 border-[var(--color-primary)] bg-[var(--color-card)] shadow-2xl p-4 text-[var(--color-text-body)] space-y-3 mascot-enter"
           >
             {/* Card Header with Animated Mascot & Step Counter */}
             <div className="flex items-start gap-3">
-              <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] p-1 border border-[var(--color-border)]">
-                <MascotAvatar mood={activeTourStep.mood} size={46} />
+              <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] px-1.5 py-1 border border-[var(--color-border)] flex items-center justify-center">
+                <MascotAvatar mood={activeTourStep.mood} character={mascotCharacter} size={42} />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -545,7 +819,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       )}
 
       {/* 1. FLOATING HOVER-TO-EXPLAIN POPUP CARD (when Guide ON, no tour running, & hovering a tagged feature) */}
-      {enabled && !isTourRunning && resolvedHover && popupPosition && (
+      {renderedHover && (
         <div
           ref={popupRef}
           data-mascot-chrome="true"
@@ -563,22 +837,24 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
             setHoverTarget(null);
           }}
           style={{
-            left: popupPosition.left,
-            top: popupPosition.top,
-            width: popupPosition.width,
+            left: renderedHover.pos.left,
+            top: renderedHover.pos.top,
+            width: renderedHover.pos.width,
           }}
-          className="fixed z-50 rounded-2xl border border-[var(--color-primary)]/40 bg-[var(--color-card)]/98 backdrop-blur-md shadow-xl p-3.5 text-[var(--color-text-body)] transition-opacity duration-150"
+          className={`fixed z-50 rounded-2xl border border-[var(--color-primary)]/40 bg-[var(--color-card)]/98 backdrop-blur-md shadow-xl p-3.5 text-[var(--color-text-body)] ${
+            hoverExiting ? 'mascot-exit' : 'mascot-enter'
+          }`}
         >
           <div className="flex items-start gap-2.5">
-            <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] p-1 border border-[var(--color-border)]">
-              <MascotAvatar mood={resolvedHover.topic.mood} size={42} />
+            <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] px-1.5 py-1 border border-[var(--color-border)] flex items-center justify-center">
+              <MascotAvatar mood={renderedHover.topic.topic.mood} character={mascotCharacter} size={38} />
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-1.5">
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[var(--color-primary-text)]">
                   <Sparkles className="w-3 h-3 shrink-0" />
-                  <span>{audienceBadgeText(resolvedHover.topic.audience)}</span>
+                  <span>{audienceBadgeText(renderedHover.topic.topic.audience)}</span>
                 </span>
                 <button
                   type="button"
@@ -594,22 +870,22 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 </button>
               </div>
               <h4 className="text-xs font-extrabold text-[var(--color-text-title)] leading-snug mt-0.5">
-                {resolvedHover.title}
+                {renderedHover.topic.title}
               </h4>
               <p className="text-[11px] text-[var(--color-text-body)] leading-relaxed mt-1">
-                {resolvedHover.summary}
+                {renderedHover.topic.summary}
               </p>
             </div>
           </div>
 
-          {resolvedHover.howTo.length > 0 && (
+          {renderedHover.topic.howTo.length > 0 && (
             <div className="mt-2.5 pt-2 border-t border-[var(--color-border)] space-y-1">
               <div className="text-[10px] font-bold text-[var(--color-text-muted)] flex items-center gap-1">
                 <MousePointerClick className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
                 <span>{lang === 'th' ? 'วิธีใช้งานด่วน:' : 'Quick Steps:'}</span>
               </div>
               <ul className="space-y-1">
-                {resolvedHover.howTo.slice(0, 3).map((step, idx) => (
+                {renderedHover.topic.howTo.slice(0, 3).map((step, idx) => (
                   <li key={idx} className="flex items-start gap-1.5 text-[11px] leading-snug">
                     <span className="mt-0.5 w-4 h-4 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold text-[10px] flex items-center justify-center shrink-0 tabular-nums">
                       {idx + 1}
@@ -621,10 +897,10 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
             </div>
           )}
 
-          {resolvedHover.tip && (
+          {renderedHover.topic.tip && (
             <div className="mt-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 text-[10px] text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
               <Lightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-300" />
-              <span className="leading-snug">{resolvedHover.tip}</span>
+              <span className="leading-snug">{renderedHover.topic.tip}</span>
             </div>
           )}
 
@@ -641,12 +917,12 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
             </button>
 
             <div className="flex items-center gap-1.5">
-              {resolvedHover.topic.guideModuleId && (
+              {renderedHover.topic.topic.guideModuleId && (
                 <button
                   type="button"
                   onClick={() => {
                     onOpenFullGuide({
-                      moduleId: resolvedHover.topic.guideModuleId as GuideModuleId,
+                      moduleId: renderedHover.topic.topic.guideModuleId as GuideModuleId,
                       roleTab: currentRole === 'student' ? 'student' : 'teacher',
                     });
                     setHoverTarget(null);
@@ -669,16 +945,25 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
         className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 max-w-[calc(100vw-2rem)]"
       >
         {/* Expandable In-Module Student & Teacher Guide Explorer */}
-        {drawerOpen && (
-          <div className="w-[min(410px,calc(100vw-2rem))] max-h-[76vh] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden text-[var(--color-text-body)]">
+        {drawerMounted && (
+          <div
+            className={`w-[min(410px,calc(100vw-2rem))] max-h-[76vh] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden text-[var(--color-text-body)] ${
+              drawerExiting ? 'mascot-exit' : 'mascot-enter'
+            }`}
+          >
             {/* Drawer Header */}
             <div className="p-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <MascotAvatar mood={enabled ? 'celebrate' : 'happy'} sleeping={!enabled} size={42} />
+                <MascotAvatar
+                  mood={activeDashboardEvent ? activeDashboardEvent.type : enabled ? 'celebrate' : 'happy'}
+                  sleeping={!enabled && !activeDashboardEvent}
+                  character={mascotCharacter}
+                  size={40}
+                />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-xs font-extrabold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'น้องเอดู · การ์ตูนนำทางวิธีใช้' : 'EduBuddy · Interactive Guide'}
+                      {lang === 'th' ? `${mascotDisplayNameTh} · สุนัขนำทางวิธีใช้` : `${mascotDisplayNameEn} · Guide Buddies`}
                     </h3>
                   </div>
                   <p className="text-[10px] text-[var(--color-text-muted)] truncate">
@@ -695,7 +980,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
 
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
+                onClick={() => closeDrawer()}
                 aria-label={lang === 'th' ? 'พับหน้าต่างการ์ตูนนำทาง' : 'Collapse guide drawer'}
                 className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)] transition cursor-pointer shrink-0"
               >
@@ -709,10 +994,9 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setDrawerOpen(false);
-                    window.setTimeout(() => {
+                    closeDrawer(() => {
                       tourCtx.startModuleTour(activeModuleKey);
-                    }, 40);
+                    });
                   }}
                   className="w-full flex items-center justify-between gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-3 py-2.5 shadow-sm transition cursor-pointer"
                 >
@@ -757,6 +1041,48 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   <Power className="w-3.5 h-3.5" />
                   <span>{enabled ? (lang === 'th' ? 'เปิดอยู่' : 'ON') : lang === 'th' ? 'ปิดอยู่' : 'OFF'}</span>
                 </button>
+              </div>
+
+              {/* Mascot Buddy Selector: Duo / Charcoal / Mee */}
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2 space-y-1.5">
+                <div className="text-[10px] font-bold text-[var(--color-text-muted)] px-0.5">
+                  {lang === 'th' ? 'เลือกน้องหมานำทาง' : 'Choose Guide Dog'}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCharacter('duo')}
+                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition cursor-pointer whitespace-nowrap ${
+                      mascotCharacter === 'duo'
+                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-2xs'
+                        : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'ชาร์โคล & หมี' : 'Both Dogs'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCharacter('charcoal')}
+                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition cursor-pointer whitespace-nowrap ${
+                      mascotCharacter === 'charcoal'
+                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-2xs'
+                        : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'ชาร์โคล (อ้วน)' : 'Charcoal'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCharacter('mee')}
+                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition cursor-pointer whitespace-nowrap ${
+                      mascotCharacter === 'mee'
+                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-2xs'
+                        : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'หมี (ไส้กรอก)' : 'Mee'}
+                  </button>
+                </div>
               </div>
 
               {/* Dedicated In-Module Student & Teacher Guide Switcher */}
@@ -858,7 +1184,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                             type="button"
                             onClick={() => {
                               onNavigateTab(step.targetTab!);
-                              setDrawerOpen(false);
+                              closeDrawer();
                             }}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[10px] font-bold shrink-0 cursor-pointer whitespace-nowrap"
                           >
@@ -892,7 +1218,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                           type="button"
                           onClick={() => {
                             onNavigateTab(previewTopic.topic.targetTab!);
-                            setDrawerOpen(false);
+                            closeDrawer();
                           }}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white text-[10px] font-bold cursor-pointer"
                         >
@@ -937,9 +1263,10 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setDrawerOpen(false);
-                  onOpenFullGuide({
-                    roleTab: drawerRoleTab === 'student' ? 'student' : 'teacher',
+                  closeDrawer(() => {
+                    onOpenFullGuide({
+                      roleTab: drawerRoleTab === 'student' ? 'student' : 'teacher',
+                    });
                   });
                 }}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-[11px] font-bold text-[var(--color-primary-text)] cursor-pointer whitespace-nowrap"
@@ -952,36 +1279,82 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
         )}
 
         {/* Speech Bubble + Mascot Trigger Pill */}
-        {!drawerOpen && (
+        {!drawerMounted && (
           <div className="flex items-end gap-2">
-            {/* Live Cartoon Speech Bubble when Guide is ON and not minimized */}
-            {enabled && !bubbleMinimized && activeContextTopic && (
-              <div className="hidden sm:flex flex-col max-w-[260px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-sm shadow-lg px-3 py-2 text-[var(--color-text-body)]">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-extrabold text-[var(--color-primary-text)] truncate">
-                    {resolvedHover ? resolvedHover.title : activeContextTopic.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setBubbleMinimized(true)}
-                    aria-label={lang === 'th' ? 'ซ่อนกล่องข้อความ' : 'Hide speech bubble'}
-                    className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-[10px] cursor-pointer shrink-0"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <p className="text-[11px] text-[var(--color-text-body)] leading-snug mt-0.5 line-clamp-2">
-                  {resolvedHover
-                    ? resolvedHover.summary
-                    : lang === 'th'
-                    ? 'เอาเมาส์ชี้ปุ่มหรือเมนูใดก็ได้เพื่อดูวิธีใช้ หรือคลิกน้องเอดูเพื่อเริ่มทัวร์หน้านี้'
-                    : 'Hover any button for hints or click EduBuddy to start this page’s Guided Tour.'}
-                </p>
+            {/* Live Cartoon Speech Bubble (Event reaction OR Hover/Context guide) */}
+            {bubbleMounted && renderedBubble && (
+              <div
+                className={`hidden sm:flex flex-col max-w-[280px] rounded-2xl border backdrop-blur-sm shadow-lg px-3 py-2 text-[var(--color-text-body)] ${
+                  renderedBubble.kind === 'event'
+                    ? renderedBubble.event.type === 'success'
+                      ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/95 dark:bg-emerald-950/90'
+                      : renderedBubble.event.type === 'warning'
+                      ? 'border-amber-300 dark:border-amber-700 bg-amber-50/95 dark:bg-amber-950/90'
+                      : 'border-rose-300 dark:border-rose-700 bg-rose-50/95 dark:bg-rose-950/90'
+                    : 'border-[var(--color-border)] bg-[var(--color-card)]/95'
+                } ${bubbleExiting ? 'mascot-bubble-exit' : 'mascot-bubble-enter'}`}
+              >
+                {renderedBubble.kind === 'event' ? (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-extrabold truncate ${
+                          renderedBubble.event.type === 'success'
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : renderedBubble.event.type === 'warning'
+                            ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-rose-700 dark:text-rose-300'
+                        }`}
+                      >
+                        {renderedBubble.event.type === 'success' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        ) : renderedBubble.event.type === 'warning' ? (
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {lang === 'th' ? renderedBubble.event.titleTh : renderedBubble.event.titleEn}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={dismissDashboardEvent}
+                        aria-label={lang === 'th' ? 'ปิดการแจ้งเตือนจากน้องหมา' : 'Dismiss status message'}
+                        className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-[10px] cursor-pointer shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-body)] leading-snug mt-0.5 line-clamp-2">
+                      {lang === 'th' ? renderedBubble.event.messageTh : renderedBubble.event.messageEn}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-extrabold text-[var(--color-primary-text)] truncate">
+                        {renderedBubble.title}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBubbleMinimized(true)}
+                        aria-label={lang === 'th' ? 'ซ่อนกล่องข้อความ' : 'Hide speech bubble'}
+                        className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-[10px] cursor-pointer shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-body)] leading-snug mt-0.5 line-clamp-2">
+                      {renderedBubble.summary}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
             {/* Compact Floating Cartoon Mascot Launcher */}
-            {!enabled && dockMinimizedWhenOff ? (
+            {!enabled && dockMinimizedWhenOff && !activeDashboardEvent ? (
               <button
                 type="button"
                 onClick={() => {
@@ -989,17 +1362,21 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   setDockMinimizedWhenOff(false);
                 }}
                 title={lang === 'th' ? 'เปิดตัวการ์ตูนนำทางวิธีใช้' : 'Turn ON Interactive Cartoon Guide'}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-card)]/90 px-3 py-1.5 text-[11px] font-bold text-[var(--color-text-muted)] hover:text-[var(--color-primary-text)] hover:border-[var(--color-primary)] shadow-md transition cursor-pointer whitespace-nowrap"
+                className="mascot-enter inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-card)]/90 px-3 py-1.5 text-[11px] font-bold text-[var(--color-text-muted)] hover:text-[var(--color-primary-text)] hover:border-[var(--color-primary)] shadow-md transition cursor-pointer whitespace-nowrap"
               >
                 <HelpCircle className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                 <span>{lang === 'th' ? 'เปิดการ์ตูนนำทาง' : 'Guide OFF'}</span>
               </button>
             ) : (
-              <div className="flex items-center gap-1.5">
-                {!enabled && (
+              <div
+                className={`flex items-center gap-1.5 ${
+                  dockMascotExiting ? 'mascot-exit' : 'mascot-enter'
+                }`}
+              >
+                {!enabled && !activeDashboardEvent && (
                   <button
                     type="button"
-                    onClick={() => setDockMinimizedWhenOff(true)}
+                    onClick={minimizeDockWhenOff}
                     aria-label={lang === 'th' ? 'ย่อปุ่มการ์ตูน' : 'Minimize guide button'}
                     className="p-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] shadow-sm text-[10px] cursor-pointer"
                   >
@@ -1008,10 +1385,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    setDrawerOpen(true);
-                    setBubbleMinimized(false);
-                  }}
+                  onClick={openDrawer}
                   title={
                     enabled
                       ? lang === 'th'
@@ -1022,28 +1396,53 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                       : 'Guide is OFF — click to open guides or re-enable'
                   }
                   className={`group relative flex items-center gap-2 rounded-2xl border px-2.5 py-1.5 shadow-lg transition cursor-pointer ${
-                    enabled
+                    activeDashboardEvent?.type === 'success'
+                      ? 'border-emerald-400 bg-emerald-50/90 dark:bg-emerald-950/80'
+                      : activeDashboardEvent?.type === 'warning'
+                      ? 'border-amber-400 bg-amber-50/90 dark:bg-amber-950/80'
+                      : activeDashboardEvent?.type === 'error'
+                      ? 'border-rose-400 bg-rose-50/90 dark:bg-rose-950/80'
+                      : enabled
                       ? 'border-[var(--color-primary)]/50 bg-[var(--color-card)] hover:border-[var(--color-primary)]'
                       : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-90 hover:opacity-100'
                   }`}
                 >
                   <MascotAvatar
-                    mood={resolvedHover ? resolvedHover.topic.mood : 'happy'}
-                    sleeping={!enabled}
-                    size={42}
+                    mood={dockMascotMood}
+                    sleeping={dockMascotSleeping}
+                    character={mascotCharacter}
+                    size={38}
                   />
                   <div className="text-left pr-1">
                     <div className="text-[11px] font-extrabold text-[var(--color-text-title)] leading-tight whitespace-nowrap">
-                      {lang === 'th' ? 'คู่มือนำทาง' : 'Guide'}
+                      {lang === 'th' ? mascotDisplayNameTh : mascotDisplayNameEn}
                     </div>
                     <div
                       className={`text-[10px] font-bold leading-tight whitespace-nowrap ${
-                        enabled
+                        activeDashboardEvent?.type === 'success'
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : activeDashboardEvent?.type === 'warning'
+                          ? 'text-amber-700 dark:text-amber-300'
+                          : activeDashboardEvent?.type === 'error'
+                          ? 'text-rose-700 dark:text-rose-300'
+                          : enabled
                           ? 'text-emerald-700 dark:text-emerald-300'
                           : 'text-[var(--color-text-muted)]'
                       }`}
                     >
-                      {enabled
+                      {activeDashboardEvent
+                        ? activeDashboardEvent.type === 'success'
+                          ? lang === 'th'
+                            ? 'สำเร็จ!'
+                            : 'Success!'
+                          : activeDashboardEvent.type === 'warning'
+                          ? lang === 'th'
+                            ? 'แจ้งเตือน'
+                            : 'Warning'
+                          : lang === 'th'
+                          ? 'พบปัญหา'
+                          : 'Error'
+                        : enabled
                         ? lang === 'th'
                           ? 'เปิดอยู่'
                           : 'Tour ON'

@@ -130,7 +130,10 @@ import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
 import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
 import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
-import { InteractiveMascotGuide } from './components/guide/InteractiveMascotGuide';
+import {
+  InteractiveMascotGuide,
+  emitMascotDashboardEvent,
+} from './components/guide/InteractiveMascotGuide';
 import { GuideTourProvider } from './components/guide/GuideTourContext';
 import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
@@ -1054,8 +1057,33 @@ export const App: React.FC = () => {
         setDataSyncError(result.success ? null : result.message);
         setDataSyncWarnings(result.warnings || []);
         setDataSyncSummary(result.warnings && result.warnings.length > 0 ? result.message : null);
+        if (!result.success) {
+          emitMascotDashboardEvent({
+            type: 'error',
+            titleTh: 'ซิงค์ข้อมูลไม่สำเร็จ',
+            titleEn: 'Data Sync Error',
+            messageTh: result.message || 'ไม่สามารถบันทึกข้อมูลล่าสุดขึ้นคลาวด์ได้ กรุณาลองใหม่',
+            messageEn: result.message || 'Could not sync latest changes to cloud storage.',
+          });
+        } else if (result.warnings && result.warnings.length > 0) {
+          emitMascotDashboardEvent({
+            type: 'warning',
+            titleTh: 'ซิงค์สำเร็จพร้อมคำเตือน',
+            titleEn: 'Synced With Warnings',
+            messageTh: result.warnings[0] || result.message,
+            messageEn: result.warnings[0] || result.message,
+          });
+        }
       }).catch((error: unknown) => {
-        setDataSyncError(error instanceof Error ? error.message : String(error));
+        const errMsg = error instanceof Error ? error.message : String(error);
+        setDataSyncError(errMsg);
+        emitMascotDashboardEvent({
+          type: 'error',
+          titleTh: 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+          titleEn: 'Connection Error',
+          messageTh: errMsg || 'ระบบเชื่อมต่อฐานข้อมูลขัดข้องชั่วคราว',
+          messageEn: errMsg || 'Database synchronization failed.',
+        });
       });
     }, 500);
     return () => window.clearTimeout(timeoutId);
@@ -1777,6 +1805,28 @@ export const App: React.FC = () => {
       category: 'attendance',
       tag: `att-${studentId}-${todayStr}`,
       data: { studentId, status, date: todayStr }
+    });
+
+    emitMascotDashboardEvent({
+      type: status === 'late' || status === 'absent' ? 'warning' : 'success',
+      titleTh:
+        status === 'late'
+          ? 'บันทึกมาสาย'
+          : status === 'absent'
+          ? 'บันทึกขาดเรียน'
+          : isCheckOut
+          ? 'สแกนออกสำเร็จ'
+          : 'เช็คชื่อสำเร็จ',
+      titleEn:
+        status === 'late'
+          ? 'Late Arrival Recorded'
+          : status === 'absent'
+          ? 'Absence Recorded'
+          : isCheckOut
+          ? 'Check-Out Recorded'
+          : 'Check-In Recorded',
+      messageTh: `${personName} • ${statusLabel} (${nowTime})`,
+      messageEn: `${personName} • ${status} at ${nowTime}`,
     });
 
     if (
@@ -2847,7 +2897,16 @@ export const App: React.FC = () => {
   const handleSyncOfflineItem = async (item: OfflineQueueItem): Promise<boolean> => {
     try {
       const payload = item.payload as Record<string, any> | null;
-      if (!payload) return false;
+      if (!payload) {
+        emitMascotDashboardEvent({
+          type: 'error',
+          titleTh: 'ซิงค์รายการออฟไลน์ไม่สำเร็จ',
+          titleEn: 'Offline Sync Failed',
+          messageTh: 'ไม่พบข้อมูลของรายการที่ค้างอยู่ในคิวออฟไลน์',
+          messageEn: 'Missing payload for queued offline item.',
+        });
+        return false;
+      }
       if (item.actionType === 'attendance' && payload.studentId) {
         handleRecordAttendance(
           String(payload.studentId),
@@ -2860,10 +2919,31 @@ export const App: React.FC = () => {
       }
       if (item.actionType === 'health_visit') {
         handleAddInfirmaryVisit(payload as unknown as InfirmaryVisit);
+        emitMascotDashboardEvent({
+          type: 'success',
+          titleTh: 'ซิงค์ข้อมูลห้องพยาบาลแล้ว',
+          titleEn: 'Health Visit Synced',
+          messageTh: 'นำเข้ารายการห้องพยาบาลจากโหมดออฟไลน์สำเร็จ',
+          messageEn: 'Queued infirmary visit synced successfully.',
+        });
         return true;
       }
+      emitMascotDashboardEvent({
+        type: 'warning',
+        titleTh: 'รายการออฟไลน์ยังไม่รองรับ',
+        titleEn: 'Unsupported Offline Item',
+        messageTh: 'ชนิดข้อมูลออฟไลน์นี้ยังไม่สามารถซิงค์อัตโนมัติได้',
+        messageEn: 'This queued offline item type could not be synced.',
+      });
       return false;
     } catch {
+      emitMascotDashboardEvent({
+        type: 'error',
+        titleTh: 'ซิงค์รายการออฟไลน์ผิดพลาด',
+        titleEn: 'Offline Sync Error',
+        messageTh: 'เกิดข้อผิดพลาดระหว่างส่งข้อมูลคิวออฟไลน์ขึ้นระบบ',
+        messageEn: 'An error occurred while syncing the offline queue item.',
+      });
       return false;
     }
   };
@@ -3288,7 +3368,7 @@ export const App: React.FC = () => {
           />
           <div className="relative w-72 max-w-[85vw] bg-[var(--color-card)] text-[var(--color-text-body)] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-[var(--color-border)]">
             <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
-              <span className="font-bold text-xs text-[var(--color-text-title)]">เมนูระบบโรงเรียน (EduVerse)</span>
+              <span className="font-bold text-xs text-[var(--color-text-title)]">เมนูระบบโรงเรียน (BaanPakKru · บ้านพักครู)</span>
               <button 
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -4262,7 +4342,7 @@ export const App: React.FC = () => {
                   <li>{lang === 'th' ? 'กดปุ่ม "คัดลอก SQL Migration ทั้งหมด" ด้านล่าง' : 'Click "Copy Full SQL Migration" below'}</li>
                   <li>{lang === 'th' ? 'เปิดหน้า Supabase Dashboard ของโปรเจกต์คุณ → เมนูซ้ายเลือก SQL Editor → กด New query' : 'Open your Supabase Dashboard → SQL Editor → New query'}</li>
                   <li>{lang === 'th' ? 'วางโค้ด SQL ลงไป แล้วกดปุ่ม Run (ด้านล่างขวา) จนขึ้น Success' : 'Paste the SQL and click Run until Success appears'}</li>
-                  <li>{lang === 'th' ? 'กลับมาที่หน้าเว็บ EduVerse แล้วกดรีเฟรช (F5) ข้อมูลครูและรูปเช็คชื่อจะซิงก์ครบถ้วนทันที' : 'Return to EduVerse and refresh the page; teachers and attendance photos will sync immediately'}</li>
+                  <li>{lang === 'th' ? 'กลับมาที่หน้าเว็บ BaanPakKru (บ้านพักครู) แล้วกดรีเฟรช (F5) ข้อมูลครูและรูปเช็คชื่อจะซิงก์ครบถ้วนทันที' : 'Return to BaanPakKru and refresh the page; teachers and attendance photos will sync immediately'}</li>
                 </ol>
               </div>
 

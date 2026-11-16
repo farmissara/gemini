@@ -55,12 +55,12 @@ const STUDENT_STEPS: GuideStepItem[] = [
     summaryEn: 'Your school administrator sends an account invitation link to your email after registering your student profile.',
     detailsTh: [
       'เปิดกล่องข้อความอีเมลของคุณ (ใช้ได้ทั้งบนมือถือและคอมพิวเตอร์)',
-      'ค้นหาอีเมลหัวข้อคำเชิญเข้าใช้งานระบบ EduVerse จากโรงเรียน',
+      'ค้นหาอีเมลหัวข้อคำเชิญเข้าใช้งานระบบ BaanPakKru จากโรงเรียน',
       'หากไม่พบในกล่องจดหมายหลัก ให้ตรวจสอบในโฟลเดอร์ Spam หรือ Junk ด้วย',
     ],
     detailsEn: [
       'Open your email inbox on your phone or computer.',
-      'Look for the EduVerse account invitation message sent by your school.',
+      'Look for the BaanPakKru account invitation message sent by your school.',
       'Check your Spam or Junk folder if you do not see it in your primary inbox.',
     ],
     tipTh: 'นักเรียนไม่สามารถกดสมัครเองจากแท็บ "สมัครสมาชิก" หน้าแรกได้ ต้องเข้าผ่านลิงก์เชิญที่โรงเรียนส่งให้เท่านั้น',
@@ -99,15 +99,15 @@ const STUDENT_STEPS: GuideStepItem[] = [
     stepNumber: '03',
     titleTh: 'กรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ',
     titleEn: 'Sign In with Email & Password',
-    summaryTh: 'กลับมาที่หน้าเข้าสู่ระบบ EduVerse เลือกแท็บ "เข้าสู่ระบบ" แล้วกรอกอีเมลพร้อมรหัสผ่านที่ตั้งไว้',
-    summaryEn: 'Return to the EduVerse Sign In screen, enter your email and password, and click Sign In.',
+    summaryTh: 'กลับมาที่หน้าเข้าสู่ระบบ BaanPakKru เลือกแท็บ "เข้าสู่ระบบ" แล้วกรอกอีเมลพร้อมรหัสผ่านที่ตั้งไว้',
+    summaryEn: 'Return to the BaanPakKru Sign In screen, enter your email and password, and click Sign In.',
     detailsTh: [
-      'เปิดหน้าเว็บ EduVerse แล้วตรวจสอบว่าเลือกอยู่ที่แท็บ "เข้าสู่ระบบ"',
+      'เปิดหน้าเว็บ BaanPakKru แล้วตรวจสอบว่าเลือกอยู่ที่แท็บ "เข้าสู่ระบบ"',
       'ช่องอีเมล: กรอกอีเมลเดียวกับที่รับคำเชิญจากโรงเรียน',
       'ช่องรหัสผ่าน: กรอกรหัสผ่านที่ตั้งไว้ จากนั้นกดปุ่ม "เข้าสู่ระบบ"',
     ],
     detailsEn: [
-      'Open EduVerse and make sure the "Sign In" tab is selected.',
+      'Open BaanPakKru and make sure the "Sign In" tab is selected.',
       'Email: enter the exact email address that received your school invitation.',
       'Password: enter your password and click "Sign In".',
     ],
@@ -115,7 +115,7 @@ const STUDENT_STEPS: GuideStepItem[] = [
     tipEn: 'If you forget your password, click "Forgot Password?" below the form to receive a reset link via email.',
     imageSrc: studentSigninImg,
     imageAltTh: 'ภาพประกอบนักเรียนเข้าสู่ระบบและเปิดใช้งานบัตร QR เช็คชื่อ',
-    imageAltEn: 'Illustration of a student signing into the EduVerse portal on tablet and mobile',
+    imageAltEn: 'Illustration of a student signing into the BaanPakKru portal on tablet and mobile',
     captionTh: 'ขั้นตอน 03 · ลงชื่อเข้าใช้ด้วยอีเมลและรหัสผ่านของคุณ',
     captionEn: 'Step 03 · Sign in with your email and password',
   },
@@ -133,13 +133,13 @@ const STUDENT_STEPS: GuideStepItem[] = [
     detailsEn: [
       'Attendance: open "Mobile Check-in" to scan classroom period QR codes or check in with GPS.',
       'Digital Student ID: display your personal QR card at the school gate.',
-      'Mobile App: tap "Install Mobile App" to add EduVerse to your phone home screen.',
+      'Mobile App: tap "Install Mobile App" to add BaanPakKru to your phone home screen.',
     ],
     tipTh: 'หากเปิดผ่านมือถือ แนะนำให้กดเพิ่มลงหน้าจอโฮมไว้ จะเข้าเช็คชื่อและดูตารางเรียนได้เร็วขึ้นในครั้งต่อไป',
-    tipEn: 'Adding EduVerse to your phone home screen gives one-tap fullscreen access for daily check-in.',
+    tipEn: 'Adding BaanPakKru to your phone home screen gives one-tap fullscreen access for daily check-in.',
     imageSrc: studentSigninImg,
-    imageAltTh: 'ภาพประกอบนักเรียนใช้งานแอป EduVerse และบัตร QR ดิจิทัล',
-    imageAltEn: 'Illustration of a student using EduVerse digital ID card and mobile check-in',
+    imageAltTh: 'ภาพประกอบนักเรียนใช้งานแอป BaanPakKru และบัตร QR ดิจิทัล',
+    imageAltEn: 'Illustration of a student using BaanPakKru digital ID card and mobile check-in',
     captionTh: 'ขั้นตอน 04 · พร้อมใช้งานตารางเรียน เช็คชื่อมือถือ และบัตรนักเรียนดิจิทัล',
     captionEn: 'Step 04 · Ready to use timetable, mobile check-in, and digital ID card',
   },
@@ -166,7 +166,7 @@ const TEACHER_STEPS: GuideStepItem[] = [
     tipEn: 'Teachers should not use the "Sign Up" tab on the home screen—that tab is strictly for registering a new school.',
     imageSrc: teacherSigninImg,
     imageAltTh: 'ภาพประกอบคุณครูเตรียมเข้าสู่ระบบบริหารจัดการเรียนการสอน',
-    imageAltEn: 'Illustration of a school teacher logging into EduVerse on a laptop',
+    imageAltEn: 'Illustration of a school teacher logging into BaanPakKru on a laptop',
     captionTh: 'ขั้นตอน 01 · ใช้บัญชีอีเมลที่ผู้ดูแลโรงเรียนกำหนดสิทธิ์อาจารย์ผู้สอนให้แล้ว',
     captionEn: 'Step 01 · Use the teacher email account provisioned by your school administrator',
   },
@@ -174,15 +174,15 @@ const TEACHER_STEPS: GuideStepItem[] = [
     stepNumber: '02',
     titleTh: 'กรอกอีเมลและรหัสผ่านในหน้า "เข้าสู่ระบบ"',
     titleEn: 'Enter Your Email & Password on Sign In',
-    summaryTh: 'เปิดหน้าเข้าสู่ระบบ EduVerse เลือกแท็บ "เข้าสู่ระบบ" กรอกอีเมลและรหัสผ่านของคุณ',
-    summaryEn: 'Open EduVerse, keep the "Sign In" tab selected, and enter your email and password.',
+    summaryTh: 'เปิดหน้าเข้าสู่ระบบ BaanPakKru เลือกแท็บ "เข้าสู่ระบบ" กรอกอีเมลและรหัสผ่านของคุณ',
+    summaryEn: 'Open BaanPakKru, keep the "Sign In" tab selected, and enter your email and password.',
     detailsTh: [
-      'ไปที่ลิงก์เว็บไซต์ EduVerse ของโรงเรียน (แนะนำให้บันทึกบุ๊กมาร์กหรือติดตั้งเป็นแอป)',
+      'ไปที่ลิงก์เว็บไซต์ BaanPakKru ของโรงเรียน (แนะนำให้บันทึกบุ๊กมาร์กหรือติดตั้งเป็นแอป)',
       'กรอกอีเมลในช่อง "อีเมล" และรหัสผ่านในช่อง "รหัสผ่าน"',
       'กดปุ่ม "เข้าสู่ระบบ" ระบบจะตรวจสอบสิทธิ์และพาเข้าสู่หน้าหลักของคุณครูทันที',
     ],
     detailsEn: [
-      'Go to your school EduVerse URL (bookmark it or install the PWA app for quick access).',
+      'Go to your school BaanPakKru URL (bookmark it or install the PWA app for quick access).',
       'Enter your teacher email and password in the Sign In form.',
       'Click "Sign In" to load your school workspace automatically.',
     ],
@@ -211,7 +211,7 @@ const TEACHER_STEPS: GuideStepItem[] = [
       'Teaching & Grades: manage courses, homework, LMS lessons, and scores in the Gradebook.',
     ],
     tipTh: 'คุณครูสามารถกดสลับไปมุมมองมือถือหรือติดตั้งเป็นแอปลงสมาร์ตโฟนเพื่อเช็คชื่อหน้าห้องเรียนได้สะดวกขึ้น',
-    tipEn: 'You can also install EduVerse on your smartphone for quick in-class QR generation and attendance.',
+    tipEn: 'You can also install BaanPakKru on your smartphone for quick in-class QR generation and attendance.',
     imageSrc: teacherSigninImg,
     imageAltTh: 'ภาพประกอบคุณครูใช้งานแดชบอร์ดเช็คชื่อและจัดการห้องเรียน',
     imageAltEn: 'Illustration of a teacher managing attendance and classroom tasks on dashboard',
@@ -550,7 +550,7 @@ export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
                     <span>
                       {lang === 'th'
                         ? 'เปิดจากเบราว์เซอร์ Chrome / Safari หรือติดตั้งเป็นแอปบนมือถือ'
-                        : 'Chrome / Safari browser or installed EduVerse mobile app'}
+                        : 'Chrome / Safari browser or installed BaanPakKru mobile app'}
                     </span>
                   </div>
                 </div>

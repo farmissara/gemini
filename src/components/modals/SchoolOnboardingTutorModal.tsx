@@ -337,7 +337,7 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
           {activeTab === 'systems_reference' && (
             <div className="space-y-4">
               <p className="text-xs text-[var(--color-text-muted)]">
-                EduVerse ออกแบบและเชื่อมโยงข้อมูลตามมาตรฐานระบบงานของกระทรวงศึกษาธิการ (ศธ.) และสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) ดังนี้:
+                BaanPakKru (บ้านพักครู) ออกแบบและเชื่อมโยงข้อมูลตามมาตรฐานระบบงานของกระทรวงศึกษาธิการ (ศธ.) และสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) ดังนี้:
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {officialSystems.map((sys) => (

@@ -74,7 +74,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           type="button"
           onClick={handleInstallClick}
           className={`group relative inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-blue-700/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer ${className}`}
-          title={lang === 'th' ? 'ติดตั้งแอป EduVerse สำหรับ Android และ iOS' : 'Install EduVerse for Android and iOS'}
+          title={lang === 'th' ? 'ติดตั้งแอป BaanPakKru (บ้านพักครู) สำหรับ Android และ iOS' : 'Install BaanPakKru for Android and iOS'}
         >
           <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
             <Smartphone className="w-4 h-4 text-white" />
@@ -100,7 +100,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h2 className="text-xs sm:text-sm font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'ติดตั้ง EduVerse ลงบนมือถือ' : 'Install EduVerse on Mobile'}
+                  {lang === 'th' ? 'ติดตั้ง BaanPakKru ลงบนมือถือ' : 'Install BaanPakKru on Mobile'}
                 </h2>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold">
                   {lang === 'th' ? 'Android & iOS' : 'PWA App'}
@@ -246,7 +246,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-extrabold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'รับแอป EduVerse (Get EduVerse App)' : 'Get EduVerse App'}
+                  {lang === 'th' ? 'รับแอปบ้านพักครู (BaanPakKru)' : 'Get BaanPakKru App'}
                 </span>
               </div>
               <p className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">
@@ -274,8 +274,8 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <Smartphone className="w-4 h-4 shrink-0" />
             <span>
               {lang === 'th'
-                ? 'ติดตั้ง EduVerse บนมือถือ (Android & iOS) เพื่อการใช้งานที่รวดเร็วยิ่งขึ้น'
-                : 'Install EduVerse for Android and iOS'}
+                ? 'ติดตั้ง BaanPakKru (บ้านพักครู) บนมือถือ (Android & iOS) เพื่อการใช้งานที่รวดเร็วยิ่งขึ้น'
+                : 'Install BaanPakKru for Android and iOS'}
             </span>
           </div>
           <button
@@ -295,7 +295,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         type="button"
         onClick={handleInstallClick}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer bg-[var(--color-primary-light)] border-[var(--color-primary)]/25 text-[var(--color-primary-text)] hover:border-[var(--color-primary)] hover:opacity-95 shadow-2xs whitespace-nowrap shrink-0 ${className}`}
-        title={lang === 'th' ? 'ติดตั้ง EduVerse ลงบนมือถือ Android & iOS' : 'Install EduVerse on Mobile (Android & iOS)'}
+        title={lang === 'th' ? 'ติดตั้ง BaanPakKru ลงบนมือถือ Android & iOS' : 'Install BaanPakKru on Mobile (Android & iOS)'}
       >
         <Smartphone className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
         <span className="sm:hidden">{lang === 'th' ? 'ติดตั้งแอป' : 'Install'}</span>
@@ -334,7 +334,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               </div>
               <div className="min-w-0">
                 <h3 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] leading-tight">
-                  {lang === 'th' ? 'ติดตั้งแอป EduVerse บนมือถือ' : 'Install EduVerse on Mobile'}
+                  {lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนมือถือ' : 'Install BaanPakKru on Mobile'}
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                   {lang === 'th'
@@ -447,7 +447,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                       <div>
                         <span>{lang === 'th' ? 'เลือก' : 'Select'} <strong>"{lang === 'th' ? 'ติดตั้งแอป' : 'Install app'}"</strong> {lang === 'th' ? 'หรือ' : 'or'} <strong>"{lang === 'th' ? 'เพิ่มลงในหน้าจอหลัก' : 'Add to Home screen'}"</strong></span>
                         <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                          {lang === 'th' ? 'แตะ "ติดตั้ง" จะได้ไอคอน EduVerse บนหน้าจอมือถือทันที' : 'Tap Install to place the app on your home screen.'}
+                          {lang === 'th' ? 'แตะ "ติดตั้ง" จะได้ไอคอน BaanPakKru บนหน้าจอมือถือทันที' : 'Tap Install to place the app on your home screen.'}
                         </p>
                       </div>
                     </li>
@@ -514,7 +514,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                         4
                       </span>
                       <div>
-                        <span>{lang === 'th' ? 'แตะปุ่ม' : 'Tap'} <strong>"{lang === 'th' ? 'เพิ่ม' : 'Add'}"</strong> {lang === 'th' ? 'มุมขวาบน จะมีไอคอนแอป EduVerse บนหน้าจอ iPhone ทันที' : 'at top-right to finish.'}</span>
+                        <span>{lang === 'th' ? 'แตะปุ่ม' : 'Tap'} <strong>"{lang === 'th' ? 'เพิ่ม' : 'Add'}"</strong> {lang === 'th' ? 'มุมขวาบน จะมีไอคอนแอป BaanPakKru บนหน้าจอ iPhone ทันที' : 'at top-right to finish.'}</span>
                       </div>
                     </li>
                   </ol>
@@ -530,7 +530,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                 </div>
 
                 <div className="flex justify-center py-2">
-                  <QrCodeMatrix value={appUrl} size={200} label="EduVerse Mobile PWA Install URL" />
+                  <QrCodeMatrix value={appUrl} size={200} label="BaanPakKru Mobile PWA Install URL" />
                 </div>
 
                 <div className="flex items-center gap-2 max-w-sm mx-auto">
@@ -575,7 +575,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       {installSuccess && (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold shadow-xl animate-bounce">
           <CheckCircle2 className="w-4 h-4" />
-          <span>{lang === 'th' ? 'ติดตั้งแอป EduVerse บนอุปกรณ์เรียบร้อยแล้ว!' : 'EduVerse installed successfully!'}</span>
+          <span>{lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนอุปกรณ์เรียบร้อยแล้ว!' : 'BaanPakKru installed successfully!'}</span>
         </div>
       )}
     </>

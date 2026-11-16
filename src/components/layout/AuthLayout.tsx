@@ -330,7 +330,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-white shrink-0">
               <GraduationCap className="h-4.5 w-4.5" />
             </span>
-            <span>EduVerse</span>
+            <span>BaanPakKru</span>
+            <span className="text-xs font-semibold text-[var(--color-text-muted)]">· บ้านพักครู</span>
           </a>
 
           {/* Utility Actions */}
@@ -401,7 +402,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
                   <img
                     src={heroImage}
-                    alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนของ EduVerse' : 'Classroom learning with EduVerse'}
+                    alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนของ BaanPakKru (บ้านพักครู)' : 'Classroom learning with BaanPakKru'}
                     className="aspect-[16/10] w-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -506,8 +507,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 ? 'เข้าสู่ระบบนักเรียน'
                                 : 'Student Sign In'
                               : lang === 'th'
-                                ? 'เข้าสู่ระบบบัญชีโรงเรียน'
-                                : 'Sign in to EduVerse'
+                                ? 'เข้าสู่ระบบบ้านพักครู (BaanPakKru)'
+                                : 'Sign in to BaanPakKru'
                             : lang === 'th'
                               ? 'ลงทะเบียนสถานศึกษาใหม่'
                               : 'Register New School'}
@@ -885,9 +886,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span className="font-semibold text-[var(--color-text-title)]">EduVerse Academic Operations</span>
+            <span className="font-semibold text-[var(--color-text-title)]">BaanPakKru · บ้านพักครู</span>
             <span>·</span>
-            <span>© 2026</span>
+            <span>{lang === 'th' ? 'ระบบช่วยลดภาระงานคุณครู © 2026' : 'Teacher Workload Relief Platform © 2026'}</span>
           </div>
         </div>
       </footer>
@@ -996,7 +997,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
               <span>{lang === 'th' ? 'ต้องการความช่วยเหลือด่วน?' : 'Need immediate help?'}</span>
               <a
-                href={`mailto:${MASTER_SYSTEM_EMAIL}?subject=${encodeURIComponent('ขอเปลี่ยนรหัสผ่าน EduVerse / Password Reset Request')}&body=${encodeURIComponent(`เรียน Master Administrator (${MASTER_SYSTEM_EMAIL}),\n\nต้องการขอรีเซ็ตรหัสผ่านสำหรับอีเมล: ${resetEmail || ''}\nโรงเรียน / หน่วยงาน:\nหมายเหตุ:\n`)}`}
+                href={`mailto:${MASTER_SYSTEM_EMAIL}?subject=${encodeURIComponent('ขอเปลี่ยนรหัสผ่าน BaanPakKru (บ้านพักครู) / Password Reset Request')}&body=${encodeURIComponent(`เรียน Master Administrator (${MASTER_SYSTEM_EMAIL}),\n\nต้องการขอรีเซ็ตรหัสผ่านสำหรับอีเมล: ${resetEmail || ''}\nโรงเรียน / หน่วยงาน:\nหมายเหตุ:\n`)}`}
                 className="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 <Mail className="w-3.5 h-3.5" />

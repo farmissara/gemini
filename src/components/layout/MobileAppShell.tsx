@@ -314,7 +314,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <GraduationCap className="w-3.5 h-3.5" />
               )}
             </div>
-            <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">EduVerse</span>
+            <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">BaanPakKru · บ้านพักครู</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
               {lang === 'th' ? 'มือถือ' : 'Mobile'}
             </span>
@@ -428,7 +428,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <p className="text-xs text-slate-100 mt-0.5">
                     {currentRole === 'teacher' ? '👨‍🏫 อาจารย์ประจำวิชา' :
                      currentRole === 'student' ? '🎒 นักเรียนชั้น ม.6/1' :
-                     currentRole === 'admin' ? '🏛️ ผู้บริหารโรงเรียน' : '🛡️ สมาชิก EduVerse'}
+                     currentRole === 'admin' ? '🏛️ ผู้บริหารโรงเรียน' : '🛡️ สมาชิก BaanPakKru'}
                   </p>
                 </div>
 

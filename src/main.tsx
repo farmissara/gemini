@@ -22,7 +22,7 @@ if ('serviceWorker' in navigator) {
       });
     },
     onOfflineReady() {
-      console.log('[PWA] EduVerse is ready for offline operation.');
+      console.log('[PWA] BaanPakKru (บ้านพักครู) is ready for offline operation.');
     },
   });
 }

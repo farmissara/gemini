@@ -22,6 +22,7 @@ import {
 } from '../types';
 import { NavTab } from './layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
+import { emitMascotDashboardEvent } from './guide/InteractiveMascotGuide';
 
 interface PriorityActionWidgetProps {
   students: Student[];
@@ -127,6 +128,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
   }, [storageKey]);
 
   const toggleFollowUp = (studentId: string) => {
+    const willMarkFollowed = !followedUpIds[studentId];
     setFollowedUpIds((prev) => {
       const next = { ...prev };
       if (next[studentId]) {
@@ -146,6 +148,26 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
       }
       return next;
     });
+
+    if (willMarkFollowed) {
+      const targetStudent = students.find((s) => s.id === studentId);
+      const studentName = targetStudent
+        ? lang === 'th'
+          ? `${targetStudent.firstNameTh} ${targetStudent.lastNameTh}`
+          : `${targetStudent.firstNameEn} ${targetStudent.lastNameEn}`
+        : '';
+      emitMascotDashboardEvent({
+        type: 'success',
+        titleTh: 'บันทึกการติดตามแล้ว',
+        titleEn: 'Follow-Up Recorded',
+        messageTh: studentName
+          ? `ชาร์โคล & หมีจดบันทึกการติดตาม ${studentName} เรียบร้อยแล้ว`
+          : 'บันทึกสถานะการติดต่อติดตามนักเรียนเรียบร้อยแล้ว',
+        messageEn: studentName
+          ? `Recorded follow-up status for ${studentName}.`
+          : 'Student follow-up status saved.',
+      });
+    }
   };
 
   const priorityItems = useMemo<PriorityStudentItem[]>(() => {
@@ -361,13 +383,13 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
   return (
     <section
       aria-label={lang === 'th' ? 'รายการเร่งด่วนสำหรับครู' : 'Priority Actions'}
-      className="frosted-card frosted-orange rounded-2xl p-5 flex flex-col justify-between h-full"
+      className="frosted-card frosted-orange dash-card flex flex-col justify-between h-full print-avoid-break"
     >
-      <div className="space-y-3.5">
+      <div className="dash-card-stack">
         {/* Header Row */}
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2.5">
           <div className="flex items-start gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-orange-100/90 dark:bg-orange-950/60 border border-orange-200/80 dark:border-orange-800/60 text-orange-700 dark:text-orange-300 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-orange-100/90 dark:bg-orange-950/60 border border-orange-200/80 dark:border-orange-800/60 text-orange-700 dark:text-orange-300 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div className="min-w-0">
@@ -384,8 +406,19 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
 
           <button
             type="button"
-            onClick={() => onNavigate('executive_warning')}
-            className="text-[11px] font-semibold text-orange-800 dark:text-orange-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap shrink-0"
+            onClick={() => {
+              if (counts.all > 0) {
+                emitMascotDashboardEvent({
+                  type: 'warning',
+                  titleTh: 'มีรายการเร่งด่วนรอตรวจสอบ',
+                  titleEn: 'Urgent Items Need Attention',
+                  messageTh: `พบนักเรียนเร่งด่วน ${counts.all} รายการ กำลังพาไปยังหน้าเตือนภัย`,
+                  messageEn: `${counts.all} priority student alerts require attention.`,
+                });
+              }
+              onNavigate('executive_warning');
+            }}
+            className="no-print text-[11px] font-semibold text-orange-800 dark:text-orange-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap shrink-0"
           >
             <span>{lang === 'th' ? 'เตือนภัย' : 'Alerts'}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -393,7 +426,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
         </div>
 
         {/* Segmented Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="no-print flex flex-wrap items-center justify-between gap-2">
           <div
             role="tablist"
             aria-label={lang === 'th' ? 'กรองตามประเภทปัญหา' : 'Filter priority items'}
@@ -442,7 +475,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
         </div>
 
         {/* Search & Hide Followed */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+        <div className="no-print flex flex-wrap items-center gap-2 text-xs">
           <div className="relative flex-1 min-w-[140px]">
             <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -507,7 +540,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               return (
                 <div
                   key={student.id}
-                  className={`py-2.5 first:pt-1 last:pb-1 flex flex-col gap-2 transition ${
+                  className={`dash-row first:pt-1 last:pb-1 flex flex-col gap-1.5 transition ${
                     followedTime ? 'opacity-65' : ''
                   }`}
                 >
@@ -585,7 +618,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleFollowUp(student.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 transition ${
+                      className={`no-print px-2.5 py-1 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 transition ${
                         followedTime
                           ? 'bg-emerald-700 text-white hover:bg-emerald-800'
                           : 'bg-orange-600 text-white hover:bg-orange-700'
@@ -606,7 +639,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                   </div>
 
                   {/* Quick contextual links */}
-                  <div className="flex flex-wrap items-center gap-2 pl-10 text-[11px]">
+                  <div className="no-print flex flex-wrap items-center gap-2 pl-10 text-[11px]">
                     {onSelectStudent && (
                       <button
                         type="button"
@@ -650,7 +683,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
 
       {/* Footer Show More / Actions */}
       {filteredItems.length > defaultLimit && (
-        <div className="pt-3 mt-3 border-t border-orange-200/70 dark:border-orange-800/50 flex items-center justify-between text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+        <div className="no-print dash-footer-divider mt-2.5 border-t border-orange-200/70 dark:border-orange-800/50 flex items-center justify-between text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
           <span>
             {lang === 'th'
               ? `แสดง ${visibleItems.length} / ${filteredItems.length} รายการ`

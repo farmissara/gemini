@@ -66,7 +66,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
     <>
       {/* Toast Notification when Sync completes */}
       {syncToast && (
-        <div className="fixed bottom-16 left-4 z-50 flex items-center gap-2 rounded-xl bg-emerald-800 text-white px-4 py-2.5 text-xs font-bold shadow-2xl border border-emerald-500 animate-bounce">
+        <div className="no-print fixed bottom-16 left-4 z-50 flex items-center gap-2 rounded-xl bg-emerald-800 text-white px-4 py-2.5 text-xs font-bold shadow-2xl border border-emerald-500 animate-bounce">
           <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
           <span>{syncToast}</span>
         </div>
@@ -74,7 +74,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
 
       {/* Floating Indicator Banner: Offline or Pending Queue */}
       {(!isOnline || pendingCount > 0) && (
-        <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 p-2 sm:px-3 sm:py-2 text-xs font-semibold shadow-2xl">
+        <div className="no-print fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 p-2 sm:px-3 sm:py-2 text-xs font-semibold shadow-2xl">
           {!isOnline ? (
             <div className="flex items-center gap-2 text-amber-400">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />

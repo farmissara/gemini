@@ -267,13 +267,13 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
   return (
     <section
       aria-label={lang === 'th' ? 'กราฟเปรียบเทียบการมาเรียนและผลสัมฤทธิ์' : 'Comparison Charts'}
-      className="frosted-card frosted-amber rounded-2xl p-5 sm:p-6 space-y-5"
+      className="frosted-card frosted-amber dash-card dash-card-stack print-avoid-break"
     >
       {/* Header */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 pb-4 border-b border-amber-200/75 dark:border-amber-800/50">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-amber-100/95 dark:bg-amber-950/60 border border-amber-300/70 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-5 h-5" />
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 dash-header-divider border-b border-amber-200/75 dark:border-amber-800/50">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-100/95 dark:bg-amber-950/60 border border-amber-300/70 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 tracking-wide">
@@ -296,7 +296,7 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
         <div
           role="tablist"
           aria-label={lang === 'th' ? 'กรองระดับชั้น' : 'Filter grade stage'}
-          className="inline-flex items-center rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-1 text-xs font-medium self-start xl:self-auto shrink-0"
+          className="no-print inline-flex items-center rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-1 text-xs font-medium self-start xl:self-auto shrink-0"
         >
           <button
             type="button"
@@ -338,20 +338,25 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
             {lang === 'th' ? 'ม.1–ม.6' : 'Secondary'}
           </button>
         </div>
+        <span className="hidden print:inline-block text-xs font-semibold text-amber-900">
+          {lang === 'th'
+            ? `ขอบเขต: ${stageFilter === 'all' ? 'ทุกระดับชั้น' : stageFilter === 'primary' ? 'ป.1–ป.6' : 'ม.1–ม.6'}`
+            : `Scope: ${stageFilter === 'all' ? 'All Grades' : stageFilter === 'primary' ? 'Primary' : 'Secondary'}`}
+        </span>
       </div>
 
       {/* Clean Unboxed KPI Summary Strip (separated by subtle hairline dividers) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:divide-x sm:divide-amber-200/75 dark:sm:divide-amber-800/50 bg-white/60 dark:bg-slate-900/45 rounded-xl px-4 py-3.5 border border-amber-200/60 dark:border-amber-800/40">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-0 sm:divide-x sm:divide-amber-200/75 dark:sm:divide-amber-800/50 bg-white/60 dark:bg-slate-900/45 rounded-xl dash-kpi-strip border border-amber-200/60 dark:border-amber-800/40">
         <div className="sm:pr-4 flex items-center justify-between gap-2">
           <div>
             <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
               {lang === 'th' ? 'อัตราการมาเรียนเฉลี่ย' : 'Avg. Attendance'}
             </p>
-            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-0.5 tabular-nums">
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mt-0.5 tabular-nums">
               {overviewStats.avgAttendance}%
             </p>
           </div>
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
         </div>
 
         <div className="sm:px-4 flex items-center justify-between gap-2">
@@ -359,11 +364,11 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
             <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
               {lang === 'th' ? 'ผลสัมฤทธิ์เฉลี่ย' : 'Avg. Academic'}
             </p>
-            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5 tabular-nums">
+            <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300 mt-0.5 tabular-nums">
               {overviewStats.avgAcademic}%
             </p>
           </div>
-          <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
         </div>
 
         <div className="sm:pl-4 flex items-center justify-between gap-2">
@@ -371,17 +376,17 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
             <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
               {lang === 'th' ? 'ขอบเขตข้อมูล' : 'Coverage'}
             </p>
-            <p className="text-base font-bold text-[#1e293b] dark:text-slate-100 mt-0.5 tabular-nums">
+            <p className="text-sm font-bold text-[#1e293b] dark:text-slate-100 mt-0.5 tabular-nums">
               {overviewStats.gradeCount} {lang === 'th' ? 'ชั้น' : 'grades'} · {overviewStats.totalStudents}{' '}
               {lang === 'th' ? 'คน' : 'students'}
             </p>
           </div>
-          <Users className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0" />
+          <Users className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
         </div>
       </div>
 
       {/* Bar Chart */}
-      <div className="w-full h-[290px] min-w-0 pt-1">
+      <div className="w-full h-[245px] min-w-0">
         {filteredData.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[#475569] dark:text-slate-300">
             <GraduationCap className="w-9 h-9 mb-2 opacity-55 text-amber-600 dark:text-amber-400" />

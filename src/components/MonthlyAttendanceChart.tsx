@@ -261,9 +261,9 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
     selectedYear === today.getFullYear() && selectedMonth === today.getMonth();
 
   return (
-    <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 sm:p-5 shadow-xs space-y-4">
+    <div className="bg-[var(--color-card)] border border-[var(--color-border)] dash-card dash-card-stack shadow-xs">
       {/* Header and Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 border-b border-[var(--color-border)] dash-header-divider">
         <div className="flex items-start gap-3">
           <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 shrink-0 mt-0.5">
             <TrendingUp className="w-5 h-5 text-[var(--color-primary-text)]" />

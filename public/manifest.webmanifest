@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "EduVerse - School Management",
-  "short_name": "EduVerse",
-  "description": "Comprehensive school management, grading, SDQ screening, virtual ID cards, and smart attendance system.",
+  "name": "BaanPakKru (บ้านพักครู) - ระบบช่วยงานและลดภาระคุณครู",
+  "short_name": "BaanPakKru",
+  "description": "BaanPakKru (บ้านพักครู) ระบบบริหารจัดการโรงเรียนและลดภาระงานเอกสารคุณครู ทั้งเช็คชื่อ บันทึกคะแนน จัดตารางสอน และแจ้งเตือนผู้ปกครอง",
   "theme_color": "#1e40af",
   "background_color": "#ffffff",
   "display": "standalone",

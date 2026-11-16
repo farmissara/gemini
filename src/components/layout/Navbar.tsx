@@ -137,7 +137,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-extrabold text-sm tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
-              EduVerse
+              BaanPakKru
+              <span className="hidden sm:inline font-semibold text-xs text-[var(--color-text-muted)] ml-1">
+                · บ้านพักครู
+              </span>
             </span>
 
             {/* School Switcher */}

@@ -35,10 +35,12 @@ import {
   Monitor,
   BookOpen,
   GraduationCap,
-  ClipboardList
+  ClipboardList,
+  Printer
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { 
   Student, 
   Teacher,
@@ -67,6 +69,7 @@ import { PagedList } from '../components/PagedList';
 import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsPanel';
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
 import { GradeLevelAnalyticsChart } from '../components/GradeLevelAnalyticsChart';
+import { D3DailyAttendanceLineChart } from '../components/D3DailyAttendanceLineChart';
 import { PriorityActionWidget } from '../components/PriorityActionWidget';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
@@ -286,6 +289,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Export selected date attendance to Excel CSV
   const handleExportSelectedDateCsv = () => {
+    if (filteredAttendanceByDate.length === 0) {
+      emitMascotDashboardEvent({
+        type: 'warning',
+        titleTh: 'ไม่พบข้อมูลการมาเรียน',
+        titleEn: 'No Attendance Records',
+        messageTh: `ยังไม่มีบันทึกการมาเรียนในวันที่ ${selectedDate} สำหรับส่งออก CSV`,
+        messageEn: `No attendance records found on ${selectedDate} to export.`,
+      });
+      return;
+    }
+
     const headers = lang === 'th' ? [
       'วันที่',
       'เวลา',
@@ -337,6 +351,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     link.download = `attendance_${selectedDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    emitMascotDashboardEvent({
+      type: 'success',
+      titleTh: 'ส่งออก CSV สำเร็จ',
+      titleEn: 'CSV Export Ready',
+      messageTh: `ดาวน์โหลดข้อมูลการมาเรียน ${filteredAttendanceByDate.length} รายการเรียบร้อยแล้ว`,
+      messageEn: `Exported ${filteredAttendanceByDate.length} attendance records to CSV.`,
+    });
   };
 
   const fallbackAvatarSvg = (name?: string) => {
@@ -344,10 +365,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23e2e8f0"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="%23334155">${letter}</text></svg>`;
   };
 
+  const printedAtLabel = new Date().toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-4 dashboard-frosted-backdrop rounded-2xl p-1 sm:p-2 ${getModuleTone('dashboard')}`}>
+    <div className={`dashboard-print-area h-full flex flex-col min-h-0 overflow-hidden dash-shell dashboard-frosted-backdrop rounded-2xl ${getModuleTone('dashboard')}`}>
+      {/* Print-Only Administrative Report Header */}
+      <div className="hidden print:flex items-center justify-between gap-4 pb-3 mb-2 border-b-2 border-slate-300">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-[#0f172a] truncate">
+              {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
+            </h1>
+            <p className="text-xs text-[#475569] font-medium">
+              {lang === 'th'
+                ? `รายงานสรุปผู้บริหารและสถิติประจำวัน · ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
+                : `Administrative Dashboard Report · AY ${systemConfig.academicYear} (${systemConfig.currentSemester})`}
+            </p>
+          </div>
+        </div>
+        <div className="text-right text-xs text-[#475569] shrink-0 tabular-nums space-y-0.5">
+          <div className="font-bold text-[#0f172a]">
+            {lang === 'th' ? `ข้อมูลวันที่: ${selectedDate}` : `Report Date: ${selectedDate}`}
+          </div>
+          <div>
+            {lang === 'th' ? `พิมพ์เมื่อ: ${printedAtLabel}` : `Printed: ${printedAtLabel}`}
+          </div>
+          {currentUser && (
+            <div>
+              {lang === 'th' ? `ผู้จัดทำ: ${currentUser.fullNameTh || currentUser.email}` : `Prepared by: ${currentUser.fullNameEn || currentUser.email}`}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Clean Frosted Header & Subtabs Bar */}
-      <div className="shrink-0 frosted-card rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="no-print shrink-0 frosted-card rounded-[var(--dash-card-radius)] px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-sky-100/90 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
             <BarChart3 className="w-4 h-4" />
@@ -417,6 +475,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              emitMascotDashboardEvent({
+                type: 'success',
+                titleTh: 'เตรียมพิมพ์แดชบอร์ดพร้อมแล้ว',
+                titleEn: 'Dashboard Print Ready',
+                messageTh: 'จัดหน้าสำหรับพิมพ์รายงาน PDF เรียบร้อย — ชาร์โคล & หมีเอาใจช่วย!',
+                messageEn: 'Print layout prepared for administrative PDF export.',
+              });
+              window.print();
+            }}
+            className="btn-tool-tone"
+            title={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'พิมพ์แดชบอร์ด' : 'Print Dashboard'}</span>
+          </button>
+
           {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
             <button
               type="button"
@@ -432,13 +509,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Main Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5">
+      <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto pr-1 dash-scroll-stack">
         {/* TAB 1: CLEAN 2-COLUMN (50% / 50%) FROSTED ARCHITECTURE */}
         {dashboardTab === 'overview' && (
-          <div className="space-y-5 animate-in fade-in duration-150">
+          <div className="dash-scroll-stack animate-in fade-in duration-150">
             {unclaimedCentralPacksCount > 0 &&
               (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
-                <div className="frosted-card frosted-amber px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="no-print frosted-card frosted-amber px-3.5 py-2.5 rounded-[var(--dash-card-radius)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
                   <div className="flex items-center gap-2.5 text-[#1e293b] dark:text-amber-100 font-semibold">
                     <BookOpen className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
                     <span>
@@ -468,7 +545,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* 3-Step Onboarding Checklist (Visible for Admins when incomplete) */}
             {showOnboardingCard && (
-              <div className="frosted-card rounded-2xl p-5 space-y-3.5">
+              <div className="no-print frosted-card dash-card dash-card-stack">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
@@ -544,16 +621,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* ==============================================================
                 MAIN 2-COLUMN WORKSPACE (50% LEFT / 50% RIGHT)
                ============================================================== */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="dashboard-print-grid dash-grid grid-cols-1 lg:grid-cols-2 items-start">
               {/* ──────────────────────────────────────────────────────────
                   LEFT COLUMN (50%): School Overview (Blue) + Attendance & Parent Link (Green)
                  ────────────────────────────────────────────────────────── */}
-              <div className="space-y-6 min-w-0">
+              <div className="dash-col-stack min-w-0">
                 {/* 1. LEFT TOP — BLUE GROUP: SCHOOL OVERVIEW */}
                 <section
                   data-guide-id="dashboard-kpis"
                   aria-label={lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
-                  className="frosted-card frosted-blue rounded-2xl p-6 space-y-5"
+                  className="frosted-card frosted-blue dash-card dash-card-stack print-avoid-break"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -571,7 +648,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Quick Date Selector */}
-                    <div className="flex items-center gap-1.5 text-xs">
+                    <div className="no-print flex items-center gap-1.5 text-xs">
                       <button
                         type="button"
                         onClick={() => setSelectedDate(todayStr)}
@@ -595,6 +672,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
                       </button>
                     </div>
+                    <span className="hidden print:inline-block text-xs font-semibold text-[#1e293b] tabular-nums">
+                      {lang === 'th' ? `วันที่: ${selectedDate}` : `Date: ${selectedDate}`}
+                    </span>
                   </div>
 
                   {/* Primary Overview Metrics (Unboxed 2-Column Split inside Blue Card) */}
@@ -659,7 +739,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   {/* Secondary Quiet Metadata Strip (Zero-pill clean inline text) */}
-                  <div className="pt-4 border-t border-sky-200/75 dark:border-sky-800/50 flex flex-wrap items-center justify-between gap-3 text-xs text-[#475569] dark:text-slate-300">
+                  <div className="dash-footer-divider border-t border-sky-200/75 dark:border-sky-800/50 flex flex-wrap items-center justify-between gap-2.5 text-xs text-[#475569] dark:text-slate-300">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
                       <span className="inline-flex items-center gap-1.5 font-medium text-[#1e293b] dark:text-slate-200">
                         <Receipt className="w-3.5 h-3.5 text-sky-700 dark:text-sky-300" />
@@ -675,7 +755,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigate('billing')}
-                      className="text-sky-800 dark:text-sky-300 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                      className="no-print text-sky-800 dark:text-sky-300 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
                     >
                       <span>{lang === 'th' ? 'การเงิน' : 'Billing'}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -686,7 +766,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {/* 2. LEFT MIDDLE — GREEN GROUP: ATTENDANCE & PARENT LINK */}
                 <section
                   aria-label={lang === 'th' ? 'สถานะการเช็กชื่อและการผูกผู้ปกครอง' : 'Attendance & Parent Link'}
-                  className="frosted-card frosted-green rounded-2xl p-6 space-y-5"
+                  className="frosted-card frosted-green dash-card dash-card-stack print-avoid-break"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -706,7 +786,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setDashboardTab('live_attendance')}
-                      className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                      className="no-print text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
                     >
                       <span>{lang === 'th' ? 'ดูเช็กชื่อสด' : 'Live Feed'}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -774,14 +854,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               key={rec.id}
                               type="button"
                               onClick={() => openPhotoRecord(rec)}
-                              className="w-full py-2.5 flex items-center justify-between gap-3 text-left text-xs cursor-pointer hover:bg-white/65 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 transition"
+                              className="print-keep dash-row w-full flex items-center justify-between gap-2.5 text-left text-xs cursor-pointer hover:bg-white/65 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 transition"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <img
                                   src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                                   alt={rec.userName || 'User'}
                                   referrerPolicy="no-referrer"
-                                  className="w-8 h-8 rounded-full object-cover border border-emerald-200/80 dark:border-emerald-800/60 shrink-0"
+                                  className="w-7 h-7 rounded-full object-cover border border-emerald-200/80 dark:border-emerald-800/60 shrink-0"
                                 />
                                 <div className="min-w-0">
                                   <div className="font-semibold text-[#1e293b] dark:text-slate-100 truncate">
@@ -816,7 +896,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   {/* Hairline Separator */}
-                  <div className="border-t border-emerald-200/75 dark:border-emerald-800/50 pt-5 space-y-3">
+                  <div className="dash-footer-divider border-t border-emerald-200/75 dark:border-emerald-800/50 space-y-2.5">
                     {/* Part B: Guardian LINE Sync Status */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -856,7 +936,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onNavigate('students')}
-                        className="font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                        className="no-print font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                       >
                         <span>{lang === 'th' ? 'จัดการรายชื่อผู้ปกครอง' : 'Manage Guardians'}</span>
                         <ArrowUpRight className="w-3.5 h-3.5" />
@@ -869,10 +949,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* ──────────────────────────────────────────────────────────
                   RIGHT COLUMN (50%): Today's Academic Desk (Purple + Orange) & Comparison Charts (Amber/Gold)
                  ────────────────────────────────────────────────────────── */}
-              <div className="space-y-6 min-w-0">
+              <div className="dash-col-stack min-w-0">
                 {/* 3. RIGHT TOP — PURPLE & ORANGE GROUP: TODAY'S ACADEMIC DESK */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-0.5">
                     <div>
                       <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
                         Today’s Academic Desk · <span className="tabular-nums">{todayStr}</span>
@@ -883,17 +963,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
 
-                  <div className={`grid grid-cols-1 ${isStaffUser ? 'md:grid-cols-2' : ''} gap-5 items-stretch`}>
+                  <div className={`dash-subgrid grid-cols-1 ${isStaffUser ? 'md:grid-cols-2' : ''} items-stretch`}>
                     {/* Sub-card 1: Soft Purple — Teacher's Desk */}
                     <section
                       data-guide-id="dashboard-today-desk"
                       aria-label={lang === 'th' ? 'โต๊ะงานครู' : "Teacher's Desk"}
-                      className="frosted-card frosted-purple rounded-2xl p-5 flex flex-col justify-between h-full"
+                      className="frosted-card frosted-purple dash-card flex flex-col justify-between h-full print-avoid-break"
                     >
-                      <div className="space-y-4">
+                      <div className="dash-card-stack">
                         <div className="flex items-start justify-between gap-2.5">
                           <div className="flex items-start gap-2.5 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-purple-100/95 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 rounded-xl bg-purple-100/95 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
                               <ClipboardList className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
@@ -918,7 +998,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onNavigate('timetable')}
-                            className="w-full py-3 first:pt-1 flex items-center justify-between gap-3 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
+                            className="print-keep dash-row w-full first:pt-1 flex items-center justify-between gap-2.5 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <Calendar className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
@@ -949,7 +1029,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onNavigate('attendance')}
-                            className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
+                            className="print-keep dash-row w-full flex items-center justify-between gap-2.5 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <FileCheck2 className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
@@ -985,7 +1065,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onNavigate('homework')}
-                            className="w-full py-3 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
+                            className="print-keep dash-row w-full last:pb-1 flex items-center justify-between gap-2.5 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <BookOpen className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
@@ -1020,7 +1100,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="pt-3 mt-3 border-t border-purple-200/70 dark:border-purple-800/50 flex items-center justify-between text-[11px]">
+                      <div className="no-print dash-footer-divider mt-2.5 border-t border-purple-200/70 dark:border-purple-800/50 flex items-center justify-between text-[11px]">
                         <button
                           type="button"
                           onClick={() => onNavigate('timetable')}
@@ -1060,21 +1140,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 {/* 4. RIGHT BOTTOM — YELLOW/GOLD GROUP: COMPARISON CHARTS */}
-                <GradeLevelAnalyticsChart
-                  students={students}
-                  attendance={scopedAttendance}
-                  courses={courses}
-                  grades={grades}
-                  systemConfig={systemConfig}
-                  lang={lang}
-                />
+                <div className="dash-substack">
+                  <GradeLevelAnalyticsChart
+                    students={students}
+                    attendance={scopedAttendance}
+                    courses={courses}
+                    grades={grades}
+                    systemConfig={systemConfig}
+                    lang={lang}
+                  />
+
+                  <D3DailyAttendanceLineChart
+                    students={students}
+                    attendance={scopedAttendance}
+                    lang={lang}
+                  />
+                </div>
 
                 {/* Optional Secondary Collapsible Analytics (Monthly Trend & Milestones) */}
                 <details
                   data-guide-id="dashboard-charts"
-                  className="group frosted-card rounded-2xl overflow-hidden"
+                  className="no-print group frosted-card rounded-[var(--dash-card-radius)] overflow-hidden"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3.5 hover:bg-white/60 dark:hover:bg-slate-800/40">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-white/60 dark:hover:bg-slate-800/40">
                     <div>
                       <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
                         {lang === 'th'
@@ -1092,7 +1180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </span>
                   </summary>
-                  <div className="border-t border-slate-200/80 dark:border-slate-700/60 p-4 space-y-4">
+                  <div className="border-t border-slate-200/80 dark:border-slate-700/60 p-3.5 dash-substack">
                     <MonthlyAttendanceChart
                       attendance={scopedAttendance}
                       students={students}
@@ -1119,6 +1207,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </details>
               </div>
+            </div>
+
+            {/* Print-Only Administrative Footer */}
+            <div className="hidden print:flex items-center justify-between gap-4 pt-3 mt-4 border-t border-slate-300 text-[11px] text-[#475569]">
+              <span>
+                {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn} · {lang === 'th' ? 'ระบบบริหารจัดการสถานศึกษา' : 'School Administration System'}
+              </span>
+              <span className="tabular-nums">
+                {lang === 'th' ? `เอกสารรายงานอัตโนมัติ · ${printedAtLabel}` : `Generated Report · ${printedAtLabel}`}
+              </span>
             </div>
           </div>
         )}

@@ -852,7 +852,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
                 <div className="space-y-1">
                   <span className="text-xs font-bold text-emerald-300">
-                    EduVerse Geofence Radar
+                    BaanPakKru Geofence Radar
                   </span>
                   <p className="text-[11px] text-slate-200">
                     ตรวจจับตำแหน่งอัตโนมัติสำหรับการสแกนบัตรนักเรียนผ่านแอปพลิเคชัน

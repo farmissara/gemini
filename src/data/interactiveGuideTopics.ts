@@ -5,7 +5,14 @@ import studentSigninImg from '../assets/images/login_guide_student_signin_179455
 import teacherSigninImg from '../assets/images/login_guide_teacher_signin_1794551974875.jpg';
 
 export type GuideAudience = 'all' | 'teacher' | 'student' | 'admin' | 'parent';
-export type MascotMood = 'happy' | 'pointing' | 'thinking' | 'celebrate';
+export type MascotMood =
+  | 'happy'
+  | 'pointing'
+  | 'thinking'
+  | 'celebrate'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 export interface RoleOverrideText {
   summaryTh?: string;
