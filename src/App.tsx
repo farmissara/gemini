@@ -3060,6 +3060,22 @@ export const App: React.FC = () => {
           onAddQuestion={handleAddQuestion}
           onImportQuestions={handleImportQuestions}
           onUpdateStudent={handleUpdateStudent}
+          schools={schools}
+          isDemoMode={isDemoMode}
+          coordinationUnreadCount={coordinationUnreadCount}
+          onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
+          onUpdateSchool={handleUpdateSchool}
+          onAddAnnouncement={handleAddAnnouncement}
+          onApproveInvoiceSlip={handleApproveInvoiceSlip}
+          onRejectInvoiceSlip={handleRejectInvoiceSlip}
+          onViewSchool={handleViewSchool}
+          onToggleSchoolStatus={handleToggleSchoolStatus}
+          onUpdateSchoolFeatureFlags={handleUpdateSchoolFeatureFlags}
+          onJumpToDesktopTab={(tab) => {
+            setDeviceViewPreference('desktop');
+            setProgramMode('school_erp');
+            navigateToAppTab(tab);
+          }}
           initialMobileTab={deepLinkParams ? 'checkin' : 'home'}
           initialAttendanceSubTab={deepLinkParams?.subTab || 'selfie_mobile'}
           initialPeriodCourseId={deepLinkParams?.courseId}
@@ -3253,6 +3269,20 @@ export const App: React.FC = () => {
         focusMode={focusMode}
         onToggleFocusMode={() => setFocusMode((prev) => !prev)}
       />}
+      {!useImmersiveGameLayout && isMobileInDesktopView && (
+        <div className="shrink-0 mx-2 mt-1.5 px-3 py-1.5 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/60 text-xs text-sky-950 dark:text-sky-100 flex items-center justify-between gap-2">
+          <span className="truncate font-medium">
+            {lang === 'th' ? 'กำลังเปิดมุมมองคอมพิวเตอร์บนมือถือ (เลื่อนซ้าย-ขวาได้)' : 'Desktop view active on mobile'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDeviceViewPreference('mobile')}
+            className="shrink-0 min-h-[34px] px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-bold cursor-pointer whitespace-nowrap"
+          >
+            {lang === 'th' ? 'กลับโหมดมือถือ' : 'Mobile View'}
+          </button>
+        </div>
+      )}
       {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
           <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>

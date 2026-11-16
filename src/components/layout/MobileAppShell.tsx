@@ -33,6 +33,10 @@ import {
   Receipt,
   ShieldCheck,
   BarChart3,
+  BellRing,
+  Edit3,
+  Megaphone,
+  SlidersHorizontal,
   Users
 } from 'lucide-react';
 import { 
@@ -62,7 +66,8 @@ import {
   TuitionInvoice,
   InfirmaryVisit,
   BehaviorRecord,
-  SdqAssessment
+  SdqAssessment,
+  SchoolFeatureFlags
 } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import {
@@ -82,8 +87,21 @@ import { PagedList } from '../PagedList';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
+import { MobileAdminQuickHub, MobileSuperAdminHub } from './MobileRoleWorkspace';
+import { AdminDailyDashboardView } from '../../views/AdminDailyDashboardView';
+import type { NavTab } from './Sidebar';
 
-export type MobileTab = 'home' | 'executive' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
+export type MobileTab =
+  | 'home'
+  | 'admin_quick'
+  | 'super_schools'
+  | 'executive'
+  | 'checkin'
+  | 'leave'
+  | 'games'
+  | 'profile'
+  | 'homework'
+  | 'announcements';
 
 const splitAnnouncementIntoPages = (content: string, pageLength = 420) => {
   const characters = Array.from(content);
@@ -162,6 +180,19 @@ interface MobileAppShellProps {
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onUpdateStudent?: (student: Student) => void;
+  // Role-first Mobile & Desktop Continuity Props
+  schools?: School[];
+  isDemoMode?: boolean;
+  coordinationUnreadCount?: number;
+  onOpenSchoolSwitcher?: () => void;
+  onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
+  onAddAnnouncement?: (announcement: Announcement) => void;
+  onApproveInvoiceSlip?: (invoiceId: string) => void;
+  onRejectInvoiceSlip?: (invoiceId: string, reason: string) => void;
+  onViewSchool?: (school: School) => void;
+  onToggleSchoolStatus?: (schoolId: string, status: School['status']) => Promise<void>;
+  onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
+  onJumpToDesktopTab?: (tab: NavTab) => void;
   initialMobileTab?: MobileTab;
   initialAttendanceSubTab?: 'selfie_mobile' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
   initialPeriodCourseId?: string;
@@ -211,6 +242,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onAddQuestion,
   onImportQuestions,
   onUpdateStudent,
+  schools = [],
+  isDemoMode = false,
+  coordinationUnreadCount = 0,
+  onOpenSchoolSwitcher,
+  onUpdateSchool,
+  onAddAnnouncement,
+  onApproveInvoiceSlip,
+  onRejectInvoiceSlip,
+  onViewSchool,
+  onToggleSchoolStatus,
+  onUpdateSchoolFeatureFlags,
+  onJumpToDesktopTab,
   initialMobileTab = 'home',
   initialAttendanceSubTab = 'selfie_mobile',
   initialPeriodCourseId,
@@ -300,93 +343,75 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none">
       {/* ======================================================== */}
-      {/* 1. TOP MOBILE HEADER (VERTICALLY STACKED UTILITY TIERS) */}
+      {/* 1. COMPACT TOP MOBILE HEADER (Capped for <=15% sticky chrome) */}
       {/* ======================================================== */}
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-col shadow-xs transition-colors">
-        {/* Tier 1: Persistent Get BaanPakKru App Banner (Platform-aware iOS/Safari & Android/Chrome) */}
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md flex flex-col shadow-xs transition-colors">
         <PWAInstallButton lang={lang} variant="top_mobile_banner" />
 
-        {/* Tier 2: App Wordmark, Mode Switchers & Language Switcher */}
-        <div className="px-3.5 py-1.5 border-b border-[var(--color-border)]/70 bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
+        {/* Row 1: Logo + Active Role/School Switcher + Utility Actions */}
+        <div className="px-3 py-1.5 flex items-center justify-between gap-2 min-h-[48px]">
           <div className="flex items-center gap-2 min-w-0">
             <BaanPakKruLogo size={24} />
-            <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">BaanPakKru · บ้านพักครู</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
-              {lang === 'th' ? 'มือถือ' : 'Mobile'}
-            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">
+                  BaanPakKru
+                </span>
+                <span className="text-[10px] font-semibold text-[var(--color-primary-text)] truncate">
+                  · {currentRole === 'super_admin'
+                    ? (lang === 'th' ? 'แม่ข่าย' : 'Super Admin')
+                    : currentRole === 'admin'
+                    ? (lang === 'th' ? 'แอดมิน' : 'Admin')
+                    : currentRole === 'teacher'
+                    ? (lang === 'th' ? 'ครู' : 'Teacher')
+                    : currentRole === 'parent'
+                    ? (lang === 'th' ? 'ผู้ปกครอง' : 'Parent')
+                    : (lang === 'th' ? 'นักเรียน' : 'Student')}
+                </span>
+              </div>
+              {onOpenSchoolSwitcher && currentRole === 'super_admin' ? (
+                <button
+                  type="button"
+                  onClick={onOpenSchoolSwitcher}
+                  className="text-[10px] text-[var(--color-primary-text)] font-semibold truncate max-w-[165px] flex items-center gap-1 hover:underline cursor-pointer"
+                >
+                  <Building2 className="w-3 h-3 shrink-0" />
+                  <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
+                </button>
+              ) : (
+                <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[165px]">
+                  {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Switch to Full Computer / Desktop View */}
             <button
               type="button"
               onClick={onSwitchToDesktopMode}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
-              title="สลับเป็นมุมมองคอมพิวเตอร์ (Desktop ERP)"
+              className="min-h-[36px] flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
+              title="สลับเป็นมุมมองคอมพิวเตอร์ (Desktop)"
             >
-              <Laptop className="w-3 h-3" />
-              <span>{lang === 'th' ? 'คอมพิวเตอร์' : 'Desktop'}</span>
+              <Laptop className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'คอม' : 'PC'}</span>
             </button>
 
-            {/* Quick Language Switcher */}
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[11px] font-bold text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
+              className="min-h-[36px] inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[11px] font-bold text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
               title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
             >
               <Globe className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
-              <span>{lang === 'th' ? 'ไทย (TH)' : 'EN'}</span>
+              <span>{lang === 'th' ? 'TH' : 'EN'}</span>
             </button>
-          </div>
-        </div>
-
-        {/* Tier 3: User Profile Area & Alerts */}
-        <div className="px-3.5 py-2 bg-[var(--color-card)] flex items-center justify-between gap-2.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className="flex items-center gap-2.5 min-w-0 text-left group cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shadow-xs shrink-0">
-              {currentUser?.avatarUrl ? (
-                <img
-                  src={currentUser.avatarUrl}
-                  alt={currentUser.fullNameTh || currentUser.fullNameEn || 'User'}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-4 h-4" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] truncate leading-tight">
-                {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)] truncate">
-                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-              </p>
-            </div>
-          </button>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {onOpenOnboardingTutor && (
-              <button
-                type="button"
-                onClick={onOpenOnboardingTutor}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-[11px] font-bold transition cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
-                title="คู่มือและติวเตอร์ระบบการศึกษาไทย"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>{lang === 'th' ? 'ติวเตอร์' : 'Tutor'}</span>
-              </button>
-            )}
 
             {onOpenNotifications && (
               <button
                 type="button"
                 onClick={onOpenNotifications}
-                className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
+                className="relative min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
                 title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
               >
                 <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
@@ -414,87 +439,168 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             setActiveTab('home');
           }}
         >
-        {/* TAB A: HOME / MOBILE BRIEFING */}
+        {/* TAB A: ROLE-FIRST HOME / MOBILE BRIEFING */}
         {activeTab === 'home' && (
-          <div className="flex flex-col gap-4 py-1 animate-in fade-in duration-200">
+          <div className="flex flex-col gap-3.5 py-1 animate-in fade-in duration-200">
+            {currentRole === 'super_admin' ? (
+              <MobileSuperAdminHub
+                schools={schools}
+                activeSchool={activeSchool}
+                isDemoMode={isDemoMode}
+                lang={lang}
+                coordinationUnreadCount={coordinationUnreadCount}
+                onViewSchool={onViewSchool}
+                onToggleSchoolStatus={onToggleSchoolStatus}
+                onUpdateSchoolFeatureFlags={onUpdateSchoolFeatureFlags}
+                onJumpToDesktopTab={onJumpToDesktopTab}
+              />
+            ) : currentRole === 'admin' ? (
+              <AdminDailyDashboardView
+                activeSchool={activeSchool}
+                currentUser={currentUser}
+                lang={lang}
+                students={students}
+                attendance={attendance}
+                leaveRequests={leaveRequests}
+                invoices={invoices}
+                isDemoMode={isDemoMode}
+                coordinationUnreadCount={coordinationUnreadCount}
+                onRecordAttendance={onRecordAttendance}
+                onUpdateLeaveStatus={onUpdateLeaveStatus}
+                onApproveInvoiceSlip={onApproveInvoiceSlip}
+                onRejectInvoiceSlip={onRejectInvoiceSlip}
+                onOpenQuickHub={() => setActiveTab('admin_quick')}
+                onOpenCheckin={() => setActiveTab('checkin')}
+                onOpenExecutive={() => setActiveTab('executive')}
+                onJumpToDesktopTab={onJumpToDesktopTab}
+              />
+            ) : (
+              <>
             {homePage === 0 && (
               <>
-            {/* Welcome & Persona Card */}
-            <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-800 to-indigo-950 text-white shadow-xl shadow-blue-950/20">
+            {/* Welcome & Persona Card (Role-aware) */}
+            <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-r from-blue-700 via-indigo-800 to-indigo-950 text-white shadow-lg">
               <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="text-[11px] text-blue-100 font-semibold flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3 text-amber-300" />
-                    <span>{todayStr} • โรงเรียนเปิดทำการ</span>
+                <div className="min-w-0">
+                  <span className="text-[11px] text-blue-100 font-semibold flex items-center gap-1.5 tabular-nums">
+                    <Calendar className="w-3 h-3 text-amber-300 shrink-0" />
+                    <span>{todayStr} · {activeSchool.nameTh}</span>
                   </span>
-                  <h1 className="text-lg font-black mt-1">
-                    สวัสดี {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
+                  <h1 className="text-lg font-black mt-1 truncate">
+                    {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
                   </h1>
                   <p className="text-xs text-slate-100 mt-0.5">
-                    {currentRole === 'teacher' ? '👨‍🏫 อาจารย์ประจำวิชา' :
-                     currentRole === 'student' ? '🎒 นักเรียนชั้น ม.6/1' :
-                     currentRole === 'admin' ? '🏛️ ผู้บริหารโรงเรียน' : '🛡️ สมาชิก BaanPakKru'}
+                    {currentRole === 'teacher'
+                      ? (lang === 'th' ? 'อาจารย์ประจำวิชา · โหมดสอนและเช็คชื่อด่วน' : 'Teacher · Quick Teaching & Check-in')
+                      : currentRole === 'student'
+                      ? (ownStudent
+                          ? (lang === 'th' ? `นักเรียนชั้น ${ownStudent.gradeLevel}/${ownStudent.room}` : `Student · ${ownStudent.gradeLevel}/${ownStudent.room}`)
+                          : (lang === 'th' ? 'บัญชีนักเรียน' : 'Student Account'))
+                      : currentRole === 'parent'
+                      ? (ownStudent
+                          ? (lang === 'th' ? `ผู้ปกครองของ ${ownStudent.firstNameTh} (${ownStudent.gradeLevel}/${ownStudent.room})` : `Parent of ${ownStudent.firstNameEn}`)
+                          : (lang === 'th' ? 'พอร์ทัลผู้ปกครอง' : 'Parent Portal'))
+                      : (lang === 'th' ? 'ผู้บริหารโรงเรียน · โหมดสั่งการด่วน' : 'School Admin · Quick Command Mode')}
                   </p>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/50 backdrop-blur-md border border-white/25 text-xs font-bold text-amber-300">
-                    <Flame className="w-3.5 h-3.5 fill-current" />
-                    <span>{currentScore.exp} EXP</span>
+                {currentRole === 'student' ? (
+                  <div className="text-right shrink-0">
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/50 border border-white/25 text-xs font-bold text-amber-300 tabular-nums">
+                      <Flame className="w-3.5 h-3.5 fill-current" />
+                      <span>{currentScore.exp} EXP</span>
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             </div>
 
-            {/* Quick Core Actions */}
+            {/* Role-Specific Quick Core Actions */}
             <div className="grid grid-cols-1 gap-2.5">
-              {/* Executive Monitor Card (ผอ. & ฝ่ายบริหาร) */}
-              {(currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+              {/* TEACHER: Executive Monitor */}
+              {currentRole === 'teacher' && (
                 <button
                   type="button"
                   onClick={() => setActiveTab('executive')}
-                  className="tone-1 tone-card p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                  className="tone-1 tone-card p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
                 >
                   <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                     <Monitor className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">แดชบอร์ดผู้บริหาร (Executive Monitor)</h2>
-                      <span className="px-1.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-[9px] font-bold">ผอ. / บริหาร</span>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      มาเรียน {execMetrics.attendanceRate}% • GPAX {execMetrics.avgGpa} • ป่วย {execMetrics.todayInfirmary}
+                    <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                      {lang === 'th' ? 'แดชบอร์ดภาพรวมโรงเรียน (MIS)' : 'School Executive Monitor'}
+                    </h2>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                      มาเรียน {execMetrics.attendanceRate}% · GPAX {execMetrics.avgGpa} · ป่วย {execMetrics.todayInfirmary}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
+                  <ChevronRight className="w-4 h-4 text-[var(--tone)] shrink-0" />
                 </button>
               )}
 
-              {/* Action 1: Check-in */}
+              {/* PARENT: Child Daily Summary Card */}
+              {currentRole === 'parent' && (
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'สถานะบุตรหลานวันนี้' : "Child's Status Today"}
+                    </h2>
+                    <span className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)]">
+                      GPA {ownStudent ? ownStudent.gpa.toFixed(2) : '-'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                      <p className="text-[10px] text-[var(--color-text-muted)]">{lang === 'th' ? 'เข้าเรียนวันนี้' : 'Attendance'}</p>
+                      <p className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
+                        {todayCheckin ? `${todayCheckin.time} น.` : (lang === 'th' ? 'ยังไม่เช็คอิน' : 'Not checked in')}
+                      </p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                      <p className="text-[10px] text-[var(--color-text-muted)]">{lang === 'th' ? 'ใบแจ้งหนี้ค้างชำระ' : 'Pending Invoices'}</p>
+                      <p className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
+                        {invoices.filter((i) => (!ownStudent || i.studentId === ownStudent.id) && i.status !== 'paid').length} {lang === 'th' ? 'รายการ' : 'items'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action 1: Check-in (Everyone except parent goes to selfie/proxy, parent goes to history) */}
               <button
                 type="button"
                 onClick={() => setActiveTab('checkin')}
-                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
               >
                 <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">เช็คชื่อเข้า-ออก (Check-in)</h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">GPS Geofence &amp; สแกนใบหน้า</p>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                    {currentRole === 'teacher'
+                      ? (lang === 'th' ? 'เช็คชื่อเข้าสอน / แทนนักเรียน' : 'Period & Class Check-in')
+                      : currentRole === 'parent'
+                      ? (lang === 'th' ? 'ประวัติการมาเรียนบุตรหลาน' : 'Child Attendance Log')
+                      : (lang === 'th' ? 'เช็คชื่อเข้า-ออก (Check-in)' : 'Check-in & Out')}
+                  </h2>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                    {currentRole === 'parent'
+                      ? (lang === 'th' ? 'ตรวจสอบเวลาเข้า-ออกประตูโรงเรียน' : 'Gate arrival & departure records')
+                      : 'GPS Geofence & สแกนใบหน้า / QR คาบเรียน'}
+                  </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
               </button>
 
               {/* Action 2: Leave Request */}
               <button
                 type="button"
                 onClick={() => setActiveTab('leave')}
-                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group relative"
+                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group relative min-h-[68px]"
               >
                 {pendingLeavesCount > 0 && (
-                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black shadow-xs">
+                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black shadow-xs tabular-nums">
                     {pendingLeavesCount}
                   </span>
                 )}
@@ -502,46 +608,100 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <FileText className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">ใบลาออนไลน์</h2>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                    {currentRole === 'teacher'
+                      ? (lang === 'th' ? 'ใบลาออนไลน์ (ส่ง/อนุมัติ)' : 'Leave Requests & Approval')
+                      : (lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Submit Leave Request')}
+                  </h2>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ลาป่วย / ลากิจ &amp; ติดตามสถานะ</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
               </button>
 
-              {/* Action 3: Games Hub */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('games');
-                  setActiveGameView('hub');
-                  setGameHubPage(0);
-                }}
-                className="tone-5 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
-              >
-                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
-                  <Gamepad2 className="w-5 h-5" />
+              {/* TEACHER: Direct Jump to Desktop Gradebook & Timetable */}
+              {currentRole === 'teacher' && onJumpToDesktopTab && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('gradebook')}
+                    className="min-h-[54px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="text-xs font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'กรอกคะแนน (คอม)' : 'Gradebook (PC)'}
+                    </span>
+                    <Laptop className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('timetable')}
+                    className="min-h-[54px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="text-xs font-bold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'ตารางสอน (คอม)' : 'Timetable (PC)'}
+                    </span>
+                    <Calendar className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  </button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">เกมส์ความรู้ &amp; เวิร์กช็อป 6 มิติ</h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
-              </button>
+              )}
+
+              {/* STUDENT & TEACHER: Games Hub */}
+              {(currentRole === 'student' || currentRole === 'teacher') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('games');
+                    setActiveGameView('hub');
+                    setGameHubPage(0);
+                  }}
+                  className="tone-5 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                >
+                  <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                    <Gamepad2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">เกมส์ความรู้ &amp; เวิร์กช็อป 6 มิติ</h2>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
+                </button>
+              )}
+
+              {/* PARENT: Announcements + Desktop Billing Shortcut */}
+              {currentRole === 'parent' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('announcements')}
+                  className="tone-3 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                >
+                  <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                    <BellRing className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                      {lang === 'th' ? 'ประกาศและข่าวสารโรงเรียน' : 'School Announcements'}
+                    </h2>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                      {announcements.length} {lang === 'th' ? 'ประกาศล่าสุดจากโรงเรียน' : 'announcements'}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
+                </button>
+              )}
 
               {/* Action 4: Virtual ID / Profile */}
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
-                className="tone-4 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                className="tone-4 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
               >
                 <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">บัตรดิจิทัล &amp; โปรไฟล์</h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Virtual ID Card &amp; ผลการเรียน</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Virtual ID Card &amp; ตั้งค่าบัญชี</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
               </button>
             </div>
               </>
@@ -643,7 +803,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setHomePage(0)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
+                className={`min-h-[40px] rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
                   homePage === 0
                     ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
                     : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
@@ -651,14 +811,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               >
                 ภาพรวม (หน้า 1)
               </button>
-              <div aria-live="polite" className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 0 ? 'bg-[var(--color-primary)] scale-125' : 'bg-[var(--color-border)]'}`} />
-                <span className={`w-2 h-2 rounded-full transition-all ${homePage === 1 ? 'bg-[var(--color-primary)] scale-125' : 'bg-[var(--color-border)]'}`} />
+              <div aria-live="polite" className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)]">
+                {homePage + 1} / 2
               </div>
               <button
                 type="button"
                 onClick={() => setHomePage(1)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
+                className={`min-h-[40px] rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
                   homePage === 1
                     ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
                     : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
@@ -667,7 +826,47 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 สรุปวันนี้ (หน้า 2)
               </button>
             </nav>
+              </>
+            )}
           </div>
+        )}
+
+        {/* TAB: ADMIN QUICK WORKSPACE */}
+        {activeTab === 'admin_quick' && (
+          <MobileAdminQuickHub
+            activeSchool={activeSchool}
+            students={students}
+            teachers={teachers}
+            courses={courses}
+            leaveRequests={leaveRequests}
+            invoices={invoices}
+            announcements={announcements}
+            lang={lang}
+            currentUser={currentUser}
+            onUpdateStudent={onUpdateStudent}
+            onUpdateSchool={onUpdateSchool}
+            onAddAnnouncement={onAddAnnouncement}
+            onUpdateLeaveStatus={onUpdateLeaveStatus}
+            onApproveInvoiceSlip={onApproveInvoiceSlip}
+            onRejectInvoiceSlip={onRejectInvoiceSlip}
+            onJumpToDesktopTab={onJumpToDesktopTab}
+            onOpenCheckin={() => setActiveTab('checkin')}
+          />
+        )}
+
+        {/* TAB: SUPER ADMIN SCHOOLS & APPROVALS */}
+        {activeTab === 'super_schools' && (
+          <MobileSuperAdminHub
+            schools={schools}
+            activeSchool={activeSchool}
+            isDemoMode={isDemoMode}
+            lang={lang}
+            coordinationUnreadCount={coordinationUnreadCount}
+            onViewSchool={onViewSchool}
+            onToggleSchoolStatus={onToggleSchoolStatus}
+            onUpdateSchoolFeatureFlags={onUpdateSchoolFeatureFlags}
+            onJumpToDesktopTab={onJumpToDesktopTab}
+          />
         )}
 
         {/* TAB EXECUTIVE: CLEAN, MOBILE-FIRST DIRECTOR DASHBOARD */}
@@ -938,7 +1137,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-black text-sm text-[var(--color-text-title)]">3D EduArena Battle Royale</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black animate-pulse">3D HOT</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black">3D</span>
                         </div>
                         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">วิ่งล่าหีบสมบัติ ตอบคำถามชิงคะแนน มีปุ่มซูม 3D</p>
                       </div>
@@ -1374,73 +1573,178 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       </main>
 
       {/* ======================================================== */}
-      {/* 3. SLEEK MOBILE BOTTOM NAVIGATION BAR */}
+      {/* 3. ROLE-ADAPTIVE MOBILE BOTTOM NAVIGATION BAR (THUMB ZONE) */}
       {/* ======================================================== */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 shadow-2xl safe-area-bottom">
+      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-1.5 py-1 shadow-2xl safe-area-bottom">
         <div className="max-w-md mx-auto grid grid-cols-5 gap-1">
-          {/* 1. Home (tone-1) */}
+          {/* SLOT 1: HOME (All roles) */}
           <button
             type="button"
             onClick={() => setActiveTab('home')}
-            className={`tone-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'home'
                 ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <Home className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] font-semibold">หน้าหลัก</span>
+            {currentRole === 'super_admin' ? <ShieldCheck className="w-5 h-5 mb-0.5" /> : <Home className="w-5 h-5 mb-0.5" />}
+            <span className="text-[10px] font-semibold truncate max-w-full">
+              {currentRole === 'super_admin'
+                ? (lang === 'th' ? 'แม่ข่าย' : 'Master')
+                : currentRole === 'parent'
+                ? (lang === 'th' ? 'บุตรหลาน' : 'Child')
+                : (lang === 'th' ? 'หน้าหลัก' : 'Home')}
+            </span>
           </button>
 
-          {/* 2. Checkin (tone-2) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('checkin')}
-            className={`tone-2 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
-              activeTab === 'checkin'
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {!todayCheckin && (
-              <span className="absolute top-1 right-4 w-2 h-2 rounded-full bg-amber-500" />
-            )}
-            <Clock className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] font-semibold">เช็คชื่อ</span>
-          </button>
-
-          {/* 3. Leave Requests (tone-2) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('leave')}
-            className={`tone-2 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
-              activeTab === 'leave'
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {pendingLeavesCount > 0 && (
-              <span className="absolute top-1 right-4 px-1 py-0.5 rounded-full bg-rose-700 text-white text-[9px] font-black">
-                {pendingLeavesCount}
+          {/* SLOT 2: ROLE-SPECIFIC PRIMARY WORKSPACE */}
+          {currentRole === 'admin' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin_quick')}
+              className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+                activeTab === 'admin_quick'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              {(pendingLeavesCount + invoices.filter((i) => i.slipStatus === 'pending_review').length) > 0 && (
+                <span className="absolute top-1 right-3 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black tabular-nums">
+                  {pendingLeavesCount + invoices.filter((i) => i.slipStatus === 'pending_review').length}
+                </span>
+              )}
+              <Edit3 className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'จัดการด่วน' : 'Quick Edit'}</span>
+            </button>
+          ) : currentRole === 'super_admin' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('super_schools')}
+              className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'super_schools'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Building2 className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkin')}
+              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+                activeTab === 'checkin'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Clock className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">
+                {currentRole === 'parent' ? (lang === 'th' ? 'มาเรียน' : 'Logs') : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
               </span>
-            )}
-            <FileText className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] font-semibold">ใบลา</span>
-          </button>
+            </button>
+          )}
 
-          {/* 4. Executive (tone-1) or Games (tone-5) */}
-          {(currentRole === 'admin' || currentRole === 'super_admin') ? (
+          {/* SLOT 3: CHECKIN (Admin) / EXECUTIVE (Super Admin) / LEAVE (Teacher, Student, Parent) */}
+          {currentRole === 'admin' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkin')}
+              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'checkin'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Clock className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
+            </button>
+          ) : currentRole === 'super_admin' ? (
             <button
               type="button"
               onClick={() => setActiveTab('executive')}
-              className={`tone-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'executive'
                   ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Monitor className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold">ผอ./บริหาร</span>
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'ภาพรวม' : 'Monitor'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab('leave')}
+              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+                activeTab === 'leave'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              {pendingLeavesCount > 0 && (
+                <span className="absolute top-1 right-3 px-1 rounded-full bg-rose-700 text-white text-[9px] font-black tabular-nums">
+                  {pendingLeavesCount}
+                </span>
+              )}
+              <FileText className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'ใบลา' : 'Leave'}</span>
+            </button>
+          )}
+
+          {/* SLOT 4: ROLE SECONDARY DESTINATION */}
+          {currentRole === 'admin' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('executive')}
+              className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'executive'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Monitor className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'มอนิเตอร์' : 'MIS'}</span>
+            </button>
+          ) : currentRole === 'super_admin' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('checkin')}
+              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'checkin'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Clock className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
+            </button>
+          ) : currentRole === 'teacher' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('homework')}
+              className={`tone-5 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'homework'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <BookOpen className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'การบ้าน' : 'Tasks'}</span>
+            </button>
+          ) : currentRole === 'parent' ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('announcements')}
+              className={`tone-3 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+                activeTab === 'announcements'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <BellRing className="w-5 h-5 mb-0.5" />
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'ประกาศ' : 'News'}</span>
             </button>
           ) : (
             <button
@@ -1449,29 +1753,33 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 setActiveTab('games');
                 setActiveGameView('hub');
               }}
-              className={`tone-5 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`tone-5 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'games'
                   ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Gamepad2 className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold">เกมส์</span>
+              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'เกมส์' : 'Arcade'}</span>
             </button>
           )}
 
-          {/* 5. Profile (tone-4) */}
+          {/* SLOT 5: PROFILE & SETTINGS (All roles) */}
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`tone-4 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`tone-4 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'profile'
                 ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <User className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] font-semibold">โปรไฟล์</span>
+            <span className="text-[10px] font-semibold truncate max-w-full">
+              {currentRole === 'admin' || currentRole === 'super_admin'
+                ? (lang === 'th' ? 'ตั้งค่า' : 'Settings')
+                : (lang === 'th' ? 'โปรไฟล์' : 'Profile')}
+            </span>
           </button>
         </div>
       </nav>

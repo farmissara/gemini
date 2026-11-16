@@ -34,7 +34,8 @@ import {
   Link2,
   ScanLine,
   Maximize2,
-  Search
+  Search,
+  Plus
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import {
@@ -72,6 +73,7 @@ import {
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
+import { MobileBottomSheet } from '../components/layout/MobileRoleWorkspace';
 import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
@@ -131,7 +133,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   students,
   teachers = [],
   courses,
-  attendance: _attendance,
+  attendance,
   periodAttendance,
   currentUser,
   school: _school,
@@ -173,6 +175,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   );
   const [compactPane, setCompactPane] = useState<'camera' | 'identity' | 'geofence'>('camera');
   const [showRapidScanner, setShowRapidScanner] = useState(false);
+  const [showQuickRosterSheet, setShowQuickRosterSheet] = useState(false);
+  const [rosterSheetQuery, setRosterSheetQuery] = useState('');
+  const [rosterSheetGradeFilter, setRosterSheetGradeFilter] = useState('all');
+  const [fabMenuOpen, setFabMenuOpen] = useState(false);
+  const [rosterToast, setRosterToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -1049,8 +1056,185 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     ? students 
     : students.filter(s => s.gradeLevel === proxyGradeFilter);
 
+  const todayDateStr = getLocalDateString();
+  const todayAttendanceByStudent = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const rec of attendance) {
+      if (rec.date !== todayDateStr || rec.userType === 'teacher') continue;
+      const prev = map.get(rec.studentId);
+      if (!prev || rec.recordType === 'check_in') {
+        map.set(rec.studentId, rec);
+      }
+    }
+    return map;
+  }, [attendance, todayDateStr]);
+
+  const rosterGradeOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of scopedStudents) {
+      if (s.gradeLevel) set.add(s.gradeLevel);
+    }
+    return Array.from(set);
+  }, [scopedStudents]);
+
+  const filteredRosterStudents = useMemo(() => {
+    const q = rosterSheetQuery.trim().toLowerCase();
+    return scopedStudents.filter((s) => {
+      if (rosterSheetGradeFilter !== 'all' && s.gradeLevel !== rosterSheetGradeFilter) return false;
+      if (!q) return true;
+      return (
+        `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase().includes(q) ||
+        `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase().includes(q) ||
+        s.studentIdNumber.toLowerCase().includes(q) ||
+        `${s.gradeLevel}/${s.room}`.toLowerCase().includes(q)
+      );
+    });
+  }, [scopedStudents, rosterSheetGradeFilter, rosterSheetQuery]);
+
+  const rosterTodayStats = useMemo(() => {
+    let checkedIn = 0;
+    let late = 0;
+    for (const s of scopedStudents) {
+      const rec = todayAttendanceByStudent.get(s.id);
+      if (rec?.status === 'present') checkedIn += 1;
+      else if (rec?.status === 'late') late += 1;
+    }
+    return {
+      checkedIn,
+      late,
+      pending: Math.max(0, scopedStudents.length - checkedIn - late),
+    };
+  }, [scopedStudents, todayAttendanceByStudent]);
+
+  const handleQuickRosterCheckin = (st: Student, status: AttendanceStatus = 'present') => {
+    const statusLabel = status === 'present' ? 'มาเรียน' : status === 'late' ? 'มาสาย' : 'ลา';
+    onRecordAttendance(
+      st.id,
+      status,
+      `เช็คชื่อด่วนด้วยมือเดียว (${statusLabel}) โดย ${currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครู/ผู้ดูแล'}`,
+      'teacher_proxy',
+      {
+        recordType: 'check_in',
+        userType: 'student',
+        userName: `${st.firstNameTh} ${st.lastNameTh}`,
+        userRole: `นักเรียน (${st.gradeLevel})`,
+        userAvatar: st.avatarUrl,
+        userDepartmentOrRoom: st.room,
+        date: todayDateStr,
+        recordedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'เจ้าหน้าที่',
+        recordedByRole: currentUser?.role || 'staff',
+      }
+    );
+    playChime();
+    setRosterToast(
+      lang === 'th'
+        ? `เช็คชื่อ ${st.firstNameTh} (${statusLabel}) เรียบร้อย`
+        : `Checked in ${st.firstNameEn} (${status})`
+    );
+    window.setTimeout(() => setRosterToast(null), 2600);
+  };
+
+  const handleSelectRosterStudentForCurrentTab = (st: Student) => {
+    if (subTab === 'teacher_proxy') {
+      setProxyStudentIdInput(st.studentIdNumber);
+      setShowQuickRosterSheet(false);
+      return;
+    }
+    if (subTab === 'period_checkin' && isStaffUser) {
+      const existing = periodAttendance.find(
+        (p) => p.studentId === st.id && p.courseId === selectedCourse.id && p.date === periodDate && p.periodNumber === selectedPeriod
+      );
+      const current = periodStatuses[st.id] || existing?.status || 'present';
+      const next: AttendanceStatus =
+        current === 'present' ? 'late' : current === 'late' ? 'absent' : 'present';
+      setPeriodStatuses((prev) => ({ ...prev, [st.id]: next }));
+      setRosterToast(
+        `${st.firstNameTh}: ${next === 'present' ? 'เข้าเรียน' : next === 'late' ? 'สาย' : 'ขาด'} (คาบ ${selectedPeriod})`
+      );
+      window.setTimeout(() => setRosterToast(null), 2200);
+      return;
+    }
+    if (isStaffUser) {
+      setAttendanceMode('proxy');
+      setActiveUserType('student');
+      setSelectedStudentId(st.id);
+      setSubTab('selfie_mobile');
+      setCompactPane('camera');
+      setShowQuickRosterSheet(false);
+    } else {
+      setSubTab('selfie_mobile');
+      setCompactPane('camera');
+      setShowQuickRosterSheet(false);
+    }
+  };
+
+  const handlePrimaryFabCheckin = () => {
+    setFabMenuOpen(false);
+    if (subTab === 'selfie_mobile') {
+      if (embeddedMobile && compactPane !== 'camera') {
+        setCompactPane('camera');
+        return;
+      }
+      if (capturedPhotoUrl) {
+        void handleConfirmCheckin();
+      } else {
+        handleCaptureSnapshot();
+      }
+      return;
+    }
+    if (subTab === 'teacher_proxy') {
+      if (matchedProxyStudent) {
+        handleConfirmProxySingleCheckin();
+      } else {
+        setShowRapidScanner(true);
+      }
+      return;
+    }
+    if (subTab === 'period_checkin') {
+      if (isStaffUser) {
+        handleSavePeriodAttendance();
+      } else {
+        handleStudentSelfPeriodCheckin();
+      }
+      return;
+    }
+    setSubTab('selfie_mobile');
+    setCompactPane('camera');
+  };
+
+  const primaryFabLabel = (() => {
+    if (subTab === 'selfie_mobile') {
+      if (embeddedMobile && compactPane !== 'camera') {
+        return lang === 'th' ? 'เปิดกล้องเช็คชื่อ' : 'Open Camera';
+      }
+      if (capturedPhotoUrl) {
+        return lang === 'th' ? 'ยืนยันเช็คชื่อ' : 'Confirm';
+      }
+      return lang === 'th' ? 'ถ่ายเช็คชื่อ' : 'Snap Check-in';
+    }
+    if (subTab === 'teacher_proxy') {
+      if (matchedProxyStudent) {
+        return lang === 'th' ? 'เช็คชื่อคนนี้' : 'Confirm';
+      }
+      return lang === 'th' ? 'สแกน QR รัว' : 'Rapid Scan';
+    }
+    if (subTab === 'period_checkin') {
+      return isStaffUser
+        ? (lang === 'th' ? 'บันทึกทั้งคาบ' : 'Save Period')
+        : (lang === 'th' ? 'เช็คชื่อคาบนี้' : 'Check Period');
+    }
+    return lang === 'th' ? 'ไปเช็คชื่อ' : 'Check-in';
+  })();
+
+  const hideFloatingToolbar =
+    showRapidScanner ||
+    showPeriodQrModal ||
+    showGpsAdminModal ||
+    showQuickRosterSheet ||
+    Boolean(checkinSuccessFeedback);
+
   return (
-    <div className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full'}`}>
+    <div className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full pb-20' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}>
       {/* Top Header - Compact for mobile */}
       {embeddedMobile ? (
         <div className="shrink-0 flex items-center justify-between px-1 py-1 text-[var(--color-text-title)]">
@@ -1453,7 +1637,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {isSelfCheckin ? (
                 <div className="space-y-2">
                   <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="truncate">
                       อ้างอิงบัญชีที่เข้าสู่ระบบ: <strong>{currentUser?.fullNameTh || loggedInProfile.userName}</strong> ({currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'})
                     </span>
@@ -2942,6 +3126,280 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* ONE-HANDED FLOATING ACTION TOOLBAR (FAB) — THUMB-ZONE ACCESSIBLE          */}
+      {/* ========================================================================= */}
+      {!hideFloatingToolbar && (
+        <div
+          className={`fixed ${embeddedMobile ? 'bottom-[74px] right-3' : 'bottom-5 right-4 sm:right-6'} z-30 flex flex-col items-end gap-2 pointer-events-none`}
+        >
+          {fabMenuOpen && (
+            <div className="pointer-events-auto flex flex-col items-end gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              {isStaffUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFabMenuOpen(false);
+                    setShowRapidScanner(true);
+                  }}
+                  className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                >
+                  <ScanLine className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  <span>{lang === 'th' ? 'สแกน QR รัว (1วิ/คน)' : 'Rapid QR Scanner'}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFabMenuOpen(false);
+                  setSubTab('period_checkin');
+                }}
+                className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              >
+                <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span>{lang === 'th' ? 'เช็คชื่อรายคาบ (QR)' : 'Period Check-in'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFabMenuOpen(false);
+                  setSubTab('leave_request');
+                  setLeaveFormStep(1);
+                }}
+                className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              >
+                <FileText className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span>{lang === 'th' ? 'ยื่น / ตรวจใบลา' : 'Leave Requests'}</span>
+              </button>
+            </div>
+          )}
+
+          <div className="pointer-events-auto flex items-center gap-2">
+            {/* Quick Roster Drawer Trigger (Thumb Zone) */}
+            <button
+              type="button"
+              onClick={() => {
+                setFabMenuOpen(false);
+                setShowQuickRosterSheet(true);
+              }}
+              aria-label={lang === 'th' ? 'ดูรายชื่อนักเรียน' : 'Open Student Roster'}
+              className="min-h-[48px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
+            >
+              <Users className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+              <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
+              <span className="text-[11px] font-mono tabular-nums text-[var(--color-text-muted)]">
+                ({scopedStudents.length})
+              </span>
+            </button>
+
+            {/* Primary Context Check-in FAB */}
+            <button
+              type="button"
+              onClick={handlePrimaryFabCheckin}
+              disabled={isSavingAttendance}
+              className="min-h-[48px] px-4 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white shadow-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
+            >
+              {subTab === 'selfie_mobile' && !capturedPhotoUrl ? (
+                <Camera className="w-4 h-4 shrink-0" />
+              ) : subTab === 'teacher_proxy' && !matchedProxyStudent ? (
+                <QrCode className="w-4 h-4 shrink-0" />
+              ) : (
+                <Check className="w-4 h-4 shrink-0" />
+              )}
+              <span>{primaryFabLabel}</span>
+            </button>
+
+            {/* Expandable Quick Tools FAB */}
+            <button
+              type="button"
+              onClick={() => setFabMenuOpen((prev) => !prev)}
+              aria-expanded={fabMenuOpen}
+              aria-label={lang === 'th' ? 'เมนูลัดเช็คชื่อ' : 'Quick attendance tools'}
+              className="min-h-[48px] min-w-[48px] rounded-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white border border-white/15 shadow-xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+            >
+              <Plus className={`w-5 h-5 transition-transform duration-150 ${fabMenuOpen ? 'rotate-45' : ''}`} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ONE-HANDED STUDENT ROSTER & QUICK CHECK-IN BOTTOM SHEET                   */}
+      {/* ========================================================================= */}
+      <MobileBottomSheet
+        isOpen={showQuickRosterSheet}
+        onClose={() => setShowQuickRosterSheet(false)}
+        title={
+          isRestrictedViewer
+            ? (lang === 'th' ? 'รายชื่อและสถานะเช็คชื่อของคุณ' : 'Your Attendance Status')
+            : (lang === 'th' ? 'รายชื่อนักเรียน & เช็คชื่อมือเดียว' : 'Student Roster & 1-Tap Check-in')
+        }
+        subtitle={
+          lang === 'th'
+            ? `มา ${rosterTodayStats.checkedIn} · สาย ${rosterTodayStats.late} · ยังไม่เช็ค ${rosterTodayStats.pending} (จาก ${scopedStudents.length} คน)`
+            : `${rosterTodayStats.checkedIn} present · ${rosterTodayStats.late} late · ${rosterTodayStats.pending} pending`
+        }
+      >
+        <div className="space-y-3">
+          {rosterToast && (
+            <div
+              role="status"
+              className="px-3 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{rosterToast}</span>
+            </div>
+          )}
+
+          {/* Search & Grade Filter (when multiple students) */}
+          {scopedStudents.length > 1 && (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={rosterSheetQuery}
+                  onChange={(e) => setRosterSheetQuery(e.target.value)}
+                  placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส หรือห้อง...' : 'Search name, ID, or room...'}
+                  className="w-full min-h-[44px] pl-9 pr-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                />
+                {rosterSheetQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setRosterSheetQuery('')}
+                    aria-label={lang === 'th' ? 'ล้างคำค้นหา' : 'Clear search'}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {rosterGradeOptions.length > 1 && (
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setRosterSheetGradeFilter('all')}
+                    className={`min-h-[38px] px-3 rounded-lg text-xs font-semibold border transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      rosterSheetGradeFilter === 'all'
+                        ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                        : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'ทุกชั้น' : 'All'}
+                  </button>
+                  {rosterGradeOptions.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setRosterSheetGradeFilter(g)}
+                      className={`min-h-[38px] px-3 rounded-lg text-xs font-semibold border transition cursor-pointer whitespace-nowrap shrink-0 ${
+                        rosterSheetGradeFilter === g
+                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Student List */}
+          {filteredRosterStudents.length === 0 ? (
+            <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">
+              {lang === 'th' ? 'ไม่พบรายชื่อนักเรียนที่ค้นหา' : 'No matching students found.'}
+            </p>
+          ) : (
+            <div className="divide-y divide-[var(--color-border)]">
+              {filteredRosterStudents.slice(0, 40).map((st) => {
+                const todayRec = todayAttendanceByStudent.get(st.id);
+                const statusLabel = !todayRec
+                  ? (lang === 'th' ? 'ยังไม่เช็คชื่อ' : 'Pending')
+                  : todayRec.status === 'present'
+                  ? (lang === 'th' ? `มาเรียน · ${todayRec.time}` : `Present · ${todayRec.time}`)
+                  : todayRec.status === 'late'
+                  ? (lang === 'th' ? `มาสาย · ${todayRec.time}` : `Late · ${todayRec.time}`)
+                  : (lang === 'th' ? 'ลา/ขาด' : todayRec.status);
+
+                const statusCls = !todayRec
+                  ? 'text-[var(--color-text-muted)]'
+                  : todayRec.status === 'present'
+                  ? 'text-emerald-700 dark:text-emerald-400'
+                  : todayRec.status === 'late'
+                  ? 'text-amber-700 dark:text-amber-400'
+                  : 'text-rose-700 dark:text-rose-400';
+
+                return (
+                  <div
+                    key={st.id}
+                    className="py-2.5 flex items-center justify-between gap-2 min-h-[60px]"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <img
+                        src={st.avatarUrl}
+                        alt={st.firstNameTh}
+                        referrerPolicy="no-referrer"
+                        className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0 bg-[var(--color-card-subtle)]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                          {st.firstNameTh} {st.lastNameTh}
+                        </p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
+                          {st.studentIdNumber} · {st.gradeLevel}/{st.room}
+                        </p>
+                        <p className={`text-[11px] font-semibold truncate tabular-nums ${statusCls}`}>
+                          {statusLabel}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isStaffUser ? (
+                        <>
+                          {!todayRec && (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickRosterCheckin(st, 'present')}
+                              className="min-h-[44px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                            >
+                              <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span>{lang === 'th' ? 'เช็คเข้า' : 'Check in'}</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectRosterStudentForCurrentTab(st)}
+                            className="min-h-[44px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-semibold cursor-pointer whitespace-nowrap"
+                          >
+                            {subTab === 'period_checkin'
+                              ? (lang === 'th' ? 'สลับคาบ' : 'Toggle')
+                              : (lang === 'th' ? 'เลือก' : 'Select')}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectRosterStudentForCurrentTab(st)}
+                          className="min-h-[44px] px-3 rounded-xl bg-[var(--color-primary)] text-white text-xs font-semibold cursor-pointer whitespace-nowrap"
+                        >
+                          {lang === 'th' ? 'เช็คชื่อ' : 'Check in'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </MobileBottomSheet>
     </div>
   );
 };

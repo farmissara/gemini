@@ -231,37 +231,70 @@ export const QuickActionDock: React.FC<QuickActionDockProps> = ({
     switch (currentTab) {
       case 'dashboard': {
         items.push(focusToggleItem);
-        items.push({
-          id: 'go_attendance',
-          labelTh: isStaff ? 'เช็คชื่อวันนี้' : 'เช็คชื่อมือถือ',
-          labelEn: isStaff ? 'Attendance' : 'Check-in',
-          icon: QrCode,
-          primary: true,
-          badge: pendingLeaveCount > 0 ? pendingLeaveCount : undefined,
-          onClick: () => onNavigateTab(isStaff ? 'attendance' : 'mobile_checkin'),
-        });
-        items.push({
-          id: 'go_timetable',
-          labelTh: 'ตารางสอน',
-          labelEn: 'Timetable',
-          icon: Calendar,
-          onClick: () => onNavigateTab('timetable'),
-        });
-        items.push({
-          id: 'go_gradebook',
-          labelTh: 'บันทึกคะแนน',
-          labelEn: 'Gradebook',
-          icon: Award,
-          onClick: () => onNavigateTab('gradebook'),
-        });
-        items.push({
-          id: 'go_homework',
-          labelTh: 'การบ้าน',
-          labelEn: 'Homework',
-          icon: BookOpen,
-          badge: ungradedHomeworkCount > 0 ? ungradedHomeworkCount : undefined,
-          onClick: () => onNavigateTab('homework'),
-        });
+        if (currentRole === 'admin') {
+          items.push({
+            id: 'go_students',
+            labelTh: 'ทะเบียนนักเรียน',
+            labelEn: 'Students',
+            icon: Users,
+            primary: true,
+            onClick: () => onNavigateTab('students'),
+          });
+          items.push({
+            id: 'go_attendance',
+            labelTh: 'เช็คชื่อวันนี้',
+            labelEn: 'Attendance',
+            icon: QrCode,
+            badge: pendingLeaveCount > 0 ? pendingLeaveCount : undefined,
+            onClick: () => onNavigateTab('attendance'),
+          });
+          items.push({
+            id: 'go_billing',
+            labelTh: 'ค่าเทอม & สลิป',
+            labelEn: 'Billing',
+            icon: FileSpreadsheet,
+            onClick: () => onNavigateTab('billing'),
+          });
+          items.push({
+            id: 'go_settings',
+            labelTh: 'ตั้งค่าระบบ',
+            labelEn: 'Settings',
+            icon: Calendar,
+            onClick: () => onNavigateTab('system_settings'),
+          });
+        } else {
+          items.push({
+            id: 'go_attendance',
+            labelTh: isStaff ? 'เช็คชื่อวันนี้' : 'เช็คชื่อมือถือ',
+            labelEn: isStaff ? 'Attendance' : 'Check-in',
+            icon: QrCode,
+            primary: true,
+            badge: pendingLeaveCount > 0 ? pendingLeaveCount : undefined,
+            onClick: () => onNavigateTab(isStaff ? 'attendance' : 'mobile_checkin'),
+          });
+          items.push({
+            id: 'go_timetable',
+            labelTh: 'ตารางสอน',
+            labelEn: 'Timetable',
+            icon: Calendar,
+            onClick: () => onNavigateTab('timetable'),
+          });
+          items.push({
+            id: 'go_gradebook',
+            labelTh: 'บันทึกคะแนน',
+            labelEn: 'Gradebook',
+            icon: Award,
+            onClick: () => onNavigateTab('gradebook'),
+          });
+          items.push({
+            id: 'go_homework',
+            labelTh: 'การบ้าน',
+            labelEn: 'Homework',
+            icon: BookOpen,
+            badge: ungradedHomeworkCount > 0 ? ungradedHomeworkCount : undefined,
+            onClick: () => onNavigateTab('homework'),
+          });
+        }
         items.push(searchItem);
         break;
       }
