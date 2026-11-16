@@ -522,12 +522,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const filtered = students.filter((s) => {
       // 1. Search filter
       const matchesSearch =
-        s.firstNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.lastNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.firstNameTh.includes(searchTerm) ||
-        s.lastNameTh.includes(searchTerm) ||
-        s.studentIdNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.room.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.firstNameEn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.lastNameEn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.firstNameTh || '').includes(searchTerm) ||
+        (s.lastNameTh || '').includes(searchTerm) ||
+        (s.studentIdNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.room || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (s.nationalId && s.nationalId.includes(searchTerm));
 
       // 2. Grade level filter
@@ -960,8 +960,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const batchNameSet = new Set<string>();
     let hasIntraDuplicate = false;
     newStudents.forEach((s) => {
-      const idKey = s.studentIdNumber.toLowerCase();
-      const nameKey = `${s.firstNameTh}|${s.lastNameTh}`.toLowerCase();
+      const idKey = (s.studentIdNumber || '').toLowerCase();
+      const nameKey = `${s.firstNameTh || ''}|${s.lastNameTh || ''}`.toLowerCase();
       if (batchIdSet.has(idKey) || batchNameSet.has(nameKey)) hasIntraDuplicate = true;
       batchIdSet.add(idKey);
       batchNameSet.add(nameKey);

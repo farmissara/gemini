@@ -94,7 +94,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
   const handleStartUpload = (quest: RealWorldSnapQuest) => {
     setActiveQuestForUpload(quest);
-    setSelectedSamplePhoto(samplePhotos[0].url);
+    setSelectedSamplePhoto(samplePhotos[0]?.url || '');
     setStudentNote('');
   };
 

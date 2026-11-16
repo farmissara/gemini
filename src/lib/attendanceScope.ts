@@ -13,7 +13,7 @@ export function resolveOwnStudent(currentUser: AuthUser | null | undefined, stud
 
   if (currentUser.studentIdNumber) {
     const targetCode = currentUser.studentIdNumber.trim().toLowerCase();
-    const byStudentCode = students.find((s) => s.studentIdNumber.trim().toLowerCase() === targetCode);
+    const byStudentCode = students.find((s) => (s.studentIdNumber || '').trim().toLowerCase() === targetCode);
     if (byStudentCode) return byStudentCode;
   }
 

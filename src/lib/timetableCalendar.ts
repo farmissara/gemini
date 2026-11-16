@@ -1,4 +1,4 @@
-import { DayOfWeek, TimetableSlot } from '../types';
+import { Assignment, Course, DayOfWeek, TimetableSlot } from '../types';
 import { parseSlotTeachersFromRaw } from './timetableTeachers';
 
 const BANGKOK_OFFSET_MINUTES = 7 * 60;
@@ -109,13 +109,56 @@ export function formatCalendarDate(value: string): string {
   });
 }
 
+export interface BuildTimetableIcsOptions {
+  assignments?: Assignment[];
+  courses?: Course[];
+  includeTimetable?: boolean;
+  includeAssignments?: boolean;
+}
+
+function parseAssignmentDueWindow(dueDateRaw: string): {
+  date: Date;
+  startMinutes: number;
+  endMinutes: number;
+} | null {
+  const trimmed = (dueDateRaw || '').trim();
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (dateOnly) {
+    return {
+      date: parseDateInput(`${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}`),
+      startMinutes: 16 * 60,
+      endMinutes: 17 * 60,
+    };
+  }
+  const dateTime = /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/.exec(trimmed);
+  if (dateTime) {
+    const [, y, m, d, hhStr, mmStr] = dateTime;
+    const startMinutes = Number(hhStr) * 60 + Number(mmStr);
+    const endMinutes = Math.min(23 * 60 + 59, startMinutes + 60);
+    return {
+      date: parseDateInput(`${y}-${m}-${d}`),
+      startMinutes,
+      endMinutes,
+    };
+  }
+  return null;
+}
+
 export function buildTimetableIcs(
   slots: TimetableSlot[],
   startDateValue: string,
   endDateValue: string,
   calendarName: string,
-  schoolId: string
+  schoolId: string,
+  options: BuildTimetableIcsOptions = {}
 ): string {
+  const {
+    assignments = [],
+    courses = [],
+    includeTimetable = true,
+    includeAssignments = assignments.length > 0,
+  } = options;
+
   const startDate = parseDateInput(startDateValue);
   const endDate = parseDateInput(endDateValue);
   if (startDate > endDate) throw new Error('วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่มต้น');
@@ -125,59 +168,103 @@ export function buildTimetableIcs(
   const events: string[][] = [];
   const invalidSlots: TimetableSlot[] = [];
 
-  slots.forEach((slot) => {
-    const firstOccurrence = new Date(startDate);
-    const targetDay = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(slot.dayOfWeek);
-    if (targetDay < 0 || !ICAL_DAYS[slot.dayOfWeek]) {
-      invalidSlots.push(slot);
-      return;
-    }
-    const daysUntilOccurrence = (targetDay - firstOccurrence.getUTCDay() + 7) % 7;
-    firstOccurrence.setUTCDate(firstOccurrence.getUTCDate() + daysUntilOccurrence);
-    if (firstOccurrence > endDate) return;
+  if (includeTimetable) {
+    slots.forEach((slot) => {
+      const firstOccurrence = new Date(startDate);
+      const targetDay = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(slot.dayOfWeek);
+      if (targetDay < 0 || !ICAL_DAYS[slot.dayOfWeek]) {
+        invalidSlots.push(slot);
+        return;
+      }
+      const daysUntilOccurrence = (targetDay - firstOccurrence.getUTCDay() + 7) % 7;
+      firstOccurrence.setUTCDate(firstOccurrence.getUTCDate() + daysUntilOccurrence);
+      if (firstOccurrence > endDate) return;
 
-    const startMinutes = parseTime(slot.startTime);
-    const endMinutes = parseTime(slot.endTime);
-    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-      invalidSlots.push(slot);
-      return;
-    }
+      const startMinutes = parseTime(slot.startTime);
+      const endMinutes = parseTime(slot.endTime);
+      if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+        invalidSlots.push(slot);
+        return;
+      }
 
-    const termKey = `${slot.academicYear || ''}-${slot.semester || ''}`;
-    const { teacherName, coTeacherName } = parseSlotTeachersFromRaw(slot.teacherName, slot.coTeacherName);
-    const description = [
-      `ห้องเรียน: ${slot.classRoom || 'ไม่ระบุ'}`,
-      `ครูผู้สอนหลัก: ${teacherName || 'ไม่ระบุ'}`,
-      ...(coTeacherName ? [`ครูสอนคู่: ${coTeacherName}`] : []),
-      `สถานที่: ${slot.room || 'ไม่ระบุ'}`,
-      `ภาคเรียน: ${termKey}`,
-    ].join('\n');
-    const uid = `${encodeURIComponent(schoolId)}-${encodeURIComponent(slot.id)}-${encodeURIComponent(termKey)}@eduverse`;
-    events.push([
-      'BEGIN:VEVENT',
-      `UID:${uid}`,
-      `DTSTAMP:${dtstamp}`,
-      `DTSTART:${formatIcsUtc(firstOccurrence, startMinutes)}`,
-      `DTEND:${formatIcsUtc(firstOccurrence, endMinutes)}`,
-      `RRULE:FREQ=WEEKLY;BYDAY=${ICAL_DAYS[slot.dayOfWeek]};UNTIL=${endUntil}`,
-      `SUMMARY:${escapeIcsText(`${slot.courseCode} - ${slot.courseTitleTh || slot.courseTitleEn}`)}`,
-      `DESCRIPTION:${escapeIcsText(description)}`,
-      `LOCATION:${escapeIcsText(slot.room || slot.classRoom || '')}`,
-      'END:VEVENT',
-    ]);
-  });
+      const termKey = `${slot.academicYear || ''}-${slot.semester || ''}`;
+      const { teacherName, coTeacherName } = parseSlotTeachersFromRaw(slot.teacherName, slot.coTeacherName);
+      const description = [
+        `ห้องเรียน: ${slot.classRoom || 'ไม่ระบุ'}`,
+        `ครูผู้สอนหลัก: ${teacherName || 'ไม่ระบุ'}`,
+        ...(coTeacherName ? [`ครูสอนคู่: ${coTeacherName}`] : []),
+        `สถานที่: ${slot.room || 'ไม่ระบุ'}`,
+        `ภาคเรียน: ${termKey}`,
+      ].join('\n');
+      const uid = `${encodeURIComponent(schoolId)}-${encodeURIComponent(slot.id)}-${encodeURIComponent(termKey)}@baanpakkru`;
+      events.push([
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${formatIcsUtc(firstOccurrence, startMinutes)}`,
+        `DTEND:${formatIcsUtc(firstOccurrence, endMinutes)}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${ICAL_DAYS[slot.dayOfWeek]};UNTIL=${endUntil}`,
+        `SUMMARY:${escapeIcsText(`${slot.courseCode} - ${slot.courseTitleTh || slot.courseTitleEn}`)}`,
+        `DESCRIPTION:${escapeIcsText(description)}`,
+        `LOCATION:${escapeIcsText(slot.room || slot.classRoom || '')}`,
+        'END:VEVENT',
+      ]);
+    });
+  }
 
   if (invalidSlots.length > 0) {
     throw new Error(`มีคาบที่กำหนดวันหรือเวลาไม่ถูกต้อง ${invalidSlots.length} รายการ กรุณาตรวจสอบก่อนส่งออก`);
   }
-  if (events.length === 0) throw new Error('ไม่พบคาบเรียนในช่วงวันที่เลือก');
+
+  if (includeAssignments && assignments.length > 0) {
+    const courseMap = new Map(courses.map((c) => [c.id, c]));
+    assignments.forEach((assignment) => {
+      if (assignment.status === 'closed') return;
+      const dueWindow = parseAssignmentDueWindow(assignment.dueDate);
+      if (!dueWindow) return;
+
+      const course = courseMap.get(assignment.courseId);
+      const courseCode = assignment.courseCode || course?.code || '';
+      const courseName = course?.titleTh || course?.titleEn || '';
+      const description = [
+        courseCode || courseName ? `รายวิชา: ${[courseCode, courseName].filter(Boolean).join(' - ')}` : '',
+        `ชื่องาน: ${assignment.titleTh || assignment.titleEn}`,
+        `คะแนนเต็ม: ${assignment.maxScore ?? assignment.points ?? 10} คะแนน`,
+        `กำหนดส่ง: ${assignment.dueDate}`,
+        assignment.description ? `รายละเอียด: ${assignment.description}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const uid = `${encodeURIComponent(schoolId)}-asg-${encodeURIComponent(assignment.id)}@baanpakkru`;
+      events.push([
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${formatIcsUtc(dueWindow.date, dueWindow.startMinutes)}`,
+        `DTEND:${formatIcsUtc(dueWindow.date, dueWindow.endMinutes)}`,
+        `SUMMARY:${escapeIcsText(`กำหนดส่งงาน${courseCode ? ` [${courseCode}]` : ''}: ${assignment.titleTh || assignment.titleEn}`)}`,
+        `DESCRIPTION:${escapeIcsText(description)}`,
+        'BEGIN:VALARM',
+        'TRIGGER:-PT24H',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:${escapeIcsText(`แจ้งเตือนครบกำหนดส่งงาน: ${assignment.titleTh || assignment.titleEn}`)}`,
+        'END:VALARM',
+        'END:VEVENT',
+      ]);
+    });
+  }
+
+  if (events.length === 0) {
+    throw new Error('ไม่พบตารางเรียนหรือกำหนดส่งงานที่พร้อมส่งออก');
+  }
 
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'PRODID:-//EduVerse//Timetable//TH',
+    'PRODID:-//BaanPakKru//Timetable//TH',
     'X-WR-TIMEZONE:Asia/Bangkok',
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
     ...events.flat(),

@@ -215,21 +215,23 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
 
     // Touch events for mobile
     const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      if (e.touches.length === 1 && touch) {
         isDragging = true;
-        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        previousMousePosition = { x: touch.clientX, y: touch.clientY };
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      if (!isDragging || !trophyGroupRef.current || e.touches.length !== 1) return;
-      const deltaX = e.touches[0].clientX - previousMousePosition.x;
-      const deltaY = e.touches[0].clientY - previousMousePosition.y;
+      const touch = e.touches[0];
+      if (!isDragging || !trophyGroupRef.current || e.touches.length !== 1 || !touch) return;
+      const deltaX = touch.clientX - previousMousePosition.x;
+      const deltaY = touch.clientY - previousMousePosition.y;
 
       trophyGroupRef.current.rotation.y += deltaX * 0.01;
       trophyGroupRef.current.rotation.x = Math.max(-0.4, Math.min(0.4, trophyGroupRef.current.rotation.x + deltaY * 0.005));
 
-      previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      previousMousePosition = { x: touch.clientX, y: touch.clientY };
     };
 
     const onTouchEnd = () => {

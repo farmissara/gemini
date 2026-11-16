@@ -100,6 +100,7 @@ import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { QuickActionDock } from './components/layout/QuickActionDock';
 import { AuthLayout } from './components/layout/AuthLayout';
+import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
 import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
 import { DashboardView } from './views/DashboardView';
 import { StudentsView } from './views/StudentsView';
@@ -3017,6 +3018,7 @@ export const App: React.FC = () => {
   if (shouldShowMobileView) {
     return (
       <div className="h-dvh overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] font-sans">
+        <ViewErrorBoundary resetKey={`mobile-shell:${activeSchool.id}`} lang={lang} viewName="MobileAppShell">
         <MobileAppShell
           currentUser={currentUser}
           activeSchool={activeSchool}
@@ -3146,8 +3148,32 @@ export const App: React.FC = () => {
           />
         )}
 
+        {showOnboardingTutorModal && (
+          <SchoolOnboardingTutorModal
+            isOpen={showOnboardingTutorModal}
+            onClose={() => setShowOnboardingTutorModal(false)}
+            activeSchool={activeSchool}
+            studentsCount={schoolStudents.length}
+            teachersCount={schoolTeachers.length}
+            coursesCount={schoolCourses.length}
+            lang={lang}
+            onNavigateToTab={(tab) => {
+              setShowOnboardingTutorModal(false);
+              setDeviceViewPreference('desktop');
+              navigateToAppTab(tab);
+            }}
+            onOpenImportExport={(tab) => {
+              setShowOnboardingTutorModal(false);
+              setDeviceViewPreference('desktop');
+              setImportExportInitialTab(tab || 'students');
+              setShowImportExportModal(true);
+            }}
+          />
+        )}
+
         {/* Offline Status Connectivity Banner */}
         <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
+        </ViewErrorBoundary>
       </div>
     );
   }
@@ -3160,7 +3186,7 @@ export const App: React.FC = () => {
       isGuideEnabled={isMascotGuideEnabled}
       onSetGuideEnabled={(next) => handleToggleMascotGuide(next)}
     >
-    <div className={`${isMobileInDesktopView ? 'min-h-dvh w-full overflow-x-auto overflow-y-auto' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
+    <div className={`${isMobileInDesktopView ? 'h-dvh max-h-dvh w-full overflow-x-auto overflow-y-hidden' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
       {/* Sticky Top Banner when viewing Desktop View on Mobile Screen */}
       {isMobileInDesktopView && (
         <div className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-3 py-1.5 text-xs flex items-center justify-between shadow-md shrink-0">
@@ -3430,7 +3456,7 @@ export const App: React.FC = () => {
       )}
 
       <div 
-        className={`flex-1 flex min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950 overflow-hidden' : (isMobileInDesktopView ? 'overflow-visible' : 'overflow-hidden')}`}
+        className={`flex-1 flex min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950 overflow-hidden' : 'overflow-hidden'}`}
         style={isMobileInDesktopView ? { minWidth: '1120px' } : undefined}
       >
         {/* Desktop Left Sidebar only shown in School ERP mode (collapsed completely in Focus Mode) */}
@@ -3455,7 +3481,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-1.5 pb-16 overflow-visible' : 'app-workspace p-1.5 sm:p-2 pb-28 md:pb-16 overflow-y-auto')}`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'app-workspace p-1.5 sm:p-2 pb-28 md:pb-16 overflow-y-auto'}`}>
           <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : focusMode ? 'max-w-none mx-auto' : 'max-w-[1680px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1">
@@ -3471,6 +3497,15 @@ export const App: React.FC = () => {
                 </button>
               </div>
             )}
+            <ViewErrorBoundary
+              resetKey={`${programMode}:${currentTab}:${activeSchool.id}`}
+              lang={lang}
+              viewName={`${programMode}:${currentTab}`}
+              onBackHome={() => {
+                setProgramMode('school_erp');
+                navigateToAppTab('dashboard');
+              }}
+            >
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
@@ -4082,6 +4117,7 @@ export const App: React.FC = () => {
                 onSubmitInvoiceSlip={handleSubmitInvoiceSlip}
               />
             )}
+            </ViewErrorBoundary>
           </div>
         </main>
       </div>

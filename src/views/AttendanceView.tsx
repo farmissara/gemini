@@ -194,8 +194,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     ? (ownStudent || scopedStudents[0])
     : normalizedScannerToken
       ? students.find((s) => (
-          s.studentIdNumber.trim().toLowerCase() === normalizedScannerToken.toLowerCase()
-          || s.id.trim().toLowerCase() === normalizedScannerToken.toLowerCase()
+          (s.studentIdNumber || '').trim().toLowerCase() === normalizedScannerToken.toLowerCase()
+          || (s.id || '').trim().toLowerCase() === normalizedScannerToken.toLowerCase()
         ))
       : undefined;
 

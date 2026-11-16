@@ -48,7 +48,7 @@ function createPng(width, height, drawFn) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // 8 bits per sample
+  ihdr[8] = 8;
   ihdr[9] = 6; // RGBA
   ihdr[10] = 0;
   ihdr[11] = 0;
@@ -62,94 +62,118 @@ function createPng(width, height, drawFn) {
   ]);
 }
 
-// Draw EduVerse Logo: Deep royal blue gradient, rounded corners, graduation cap icon + book
-function drawEduVerseIcon(x, y, width, height, isMaskable = false) {
-  const cx = width / 2;
-  const cy = height / 2;
-  const r = width / 2;
+function pointToSegmentDist(px, py, ax, ay, bx, by) {
+  const vx = bx - ax;
+  const vy = by - ay;
+  const wx = px - ax;
+  const wy = py - ay;
+  const lenSq = vx * vx + vy * vy || 1;
+  const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / lenSq));
+  return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
+}
 
-  // Background: Deep royal blue gradient (#1e3a8a to #1d4ed8 to #0284c7)
-  const gradY = y / height;
-  const bgR = Math.round(30 + gradY * 10);
-  const bgG = Math.round(58 + gradY * 40);
-  const bgB = Math.round(138 + gradY * 80);
+function inRoundedRect(px, py, x, y, w, h, r) {
+  if (px < x || px > x + w || py < y || py > y + h) return false;
+  const rx = Math.min(r, w / 2);
+  const ry = Math.min(r, h / 2);
+  const dx = Math.max(x + rx - px, 0, px - (x + w - rx));
+  const dy = Math.max(y + ry - py, 0, py - (y + h - ry));
+  return dx * dx + dy * dy <= rx * rx;
+}
 
-  // If not maskable, round corners with 22% radius
+// Draw BaanPakKru (บ้านพักครู) Logo matching /public/icon.svg:
+// Royal-blue-to-sky gradient, welcoming cottage roof + warm sunlit 4-pane window + chimney + open book porch
+function drawBaanPakKruIcon(x, y, width, height, isMaskable = false) {
+  // Background diagonal gradient matching icon.svg (#1e3a8a -> #2563eb -> #0ea5e9)
+  const t = Math.max(0, Math.min(1, (x / width + y / height) * 0.5));
+  const bgR = Math.round(t < 0.52 ? 30 + (37 - 30) * (t / 0.52) : 37 + (14 - 37) * ((t - 0.52) / 0.48));
+  const bgG = Math.round(t < 0.52 ? 58 + (99 - 58) * (t / 0.52) : 99 + (165 - 99) * ((t - 0.52) / 0.48));
+  const bgB = Math.round(t < 0.52 ? 138 + (235 - 138) * (t / 0.52) : 235 + (233 - 235) * ((t - 0.52) / 0.48));
+
+  // Rounded corners for standard icons; full-bleed square for maskable icons
   if (!isMaskable) {
-    const cornerR = width * 0.22;
+    const cornerR = width * 0.226;
     const dx = Math.min(x, width - 1 - x);
     const dy = Math.min(y, height - 1 - y);
     if (dx < cornerR && dy < cornerR) {
       const dist = Math.hypot(cornerR - dx, cornerR - dy);
       if (dist > cornerR) {
-        return [0, 0, 0, 0]; // Transparent outside rounded corner
+        return [0, 0, 0, 0];
       }
     }
   }
 
-  // Draw Graduation Cap Emblem centered inside safe zone
-  // Safe zone scale: maskable has 0.70 scale, standard has 0.78 scale
-  const scale = (isMaskable ? 0.70 : 0.78) * (width / 512);
-  const nx = (x - cx) / scale;
-  const ny = (y - cy) / scale;
+  // Map pixel into 512x512 vector space respecting maskable 20% safe zone (0.72 scale for maskable, 0.94 for standard)
+  const scale = (isMaskable ? 0.72 : 0.96) * (width / 512);
+  const cx = width / 2;
+  const cy = height / 2;
+  const vx = 256 + (x - cx) / scale;
+  const vy = 256 + (y - cy) / scale;
 
-  // 1. Cap Top Rhombus (Diamond): center at (0, -35)
-  // Diamond vertices: (0, -85), (120, -35), (0, 15), (-120, -35)
-  const capY = -30;
-  const dxRhombus = Math.abs(nx);
-  const dyRhombus = Math.abs(ny - capY);
-  // equation: dx / 130 + dy / 45 <= 1
-  if (dxRhombus / 125 + dyRhombus / 48 <= 1.0) {
-    // White cap top
-    return [255, 255, 255, 255];
-  }
-
-  // Cap underside rim
-  if (Math.abs(nx) <= 65 && ny >= capY && ny <= capY + 35) {
-    const rimY = ny - capY;
-    if (Math.abs(nx) <= 65 - rimY * 0.3) {
-      return [240, 245, 255, 255];
-    }
-  }
-
-  // Gold tassel hanging on right: from (95, capY) to (115, capY + 70)
-  if (nx >= 85 && nx <= 108 && ny >= capY && ny <= capY + 75) {
-    const tasselDx = Math.abs(nx - (95 + (ny - capY) * 0.15));
-    if (tasselDx <= 4) {
-      return [250, 204, 21, 255]; // Golden tassel
-    }
-    // Tassel bottom ball
-    if (ny >= capY + 65 && Math.hypot(nx - 106, ny - (capY + 70)) <= 8) {
-      return [234, 179, 8, 255]; // Gold ball
-    }
-  }
-
-  // 2. Open Book below cap: center at (0, 75)
-  // Left page and Right page
-  if (ny >= 35 && ny <= 100) {
-    const pageX = Math.abs(nx);
-    if (pageX >= 8 && pageX <= 110) {
-      const pageY = ny - 35;
-      // Slight arc on top and bottom of book pages
-      const arcTop = Math.sin((pageX / 110) * Math.PI) * 10;
-      if (pageY >= 10 - arcTop && pageY <= 55 - arcTop) {
-        // Book page lines (accent stripes)
-        if (pageY >= 20 - arcTop && pageY <= 24 - arcTop && pageX >= 22 && pageX <= 95) {
-          return [59, 130, 246, 255]; // Cyan-blue text line
-        }
-        if (pageY >= 30 - arcTop && pageY <= 34 - arcTop && pageX >= 22 && pageX <= 80) {
-          return [59, 130, 246, 255]; // Cyan-blue text line
-        }
-        return [255, 255, 255, 255]; // White open page
+  // 1. Open Teacher Book Porch at base (vx 100..412, vy 356..442)
+  if (vx >= 100 && vx <= 412 && vy >= 355 && vy <= 445) {
+    const halfDist = Math.abs(vx - 256) / 156;
+    const topY = 394 - Math.sin(halfDist * Math.PI) * 24 - (halfDist > 0.65 ? (halfDist - 0.65) * 10 : 0);
+    const botY = topY + 50;
+    if (vy >= topY && vy <= botY) {
+      if (Math.abs(vx - 256) <= 5 && vy >= 394) {
+        return [37, 99, 235, 255]; // Blue book spine (#2563eb)
       }
-    }
-    // Book center spine
-    if (Math.abs(nx) <= 6 && ny >= 40 && ny <= 95) {
-      return [203, 213, 225, 255];
+      return [255, 255, 255, 255];
     }
   }
 
-  // Base background
+  // 2. Welcoming sloped roof strokes
+  const dRoofLeft = pointToSegmentDist(vx, vy, 88, 260, 256, 112);
+  const dRoofRight = pointToSegmentDist(vx, vy, 256, 112, 424, 260);
+  const dRoof = Math.min(dRoofLeft, dRoofRight);
+  const dGoldLeft = pointToSegmentDist(vx, vy, 116, 260, 256, 134);
+  const dGoldRight = pointToSegmentDist(vx, vy, 256, 134, 396, 260);
+  const dGold = Math.min(dGoldLeft, dGoldRight);
+
+  if (dGold <= 5.2) {
+    return [251, 191, 36, 255]; // Warm gold accent (#fbbf24)
+  }
+  if (dRoof <= 17) {
+    return [255, 255, 255, 255]; // Crisp white roof
+  }
+
+  // 3. Cozy chimney sparks (circles)
+  if (Math.hypot(vx - 356, vy - 96) <= 16) {
+    return [253, 224, 71, 255]; // #fde047
+  }
+  if (Math.hypot(vx - 378, vy - 68) <= 10) {
+    return [254, 240, 138, 255]; // #fef08a
+  }
+
+  // 4. Cozy chimney (x: 336..374, y: 130..198)
+  if (inRoundedRect(vx, vy, 332, 126, 46, 76, 8)) {
+    if (inRoundedRect(vx, vy, 339, 133, 32, 62, 4)) {
+      return [253, 230, 138, 255]; // #fde68a
+    }
+    return [255, 255, 255, 255]; // White border
+  }
+
+  // 5. House cottage body + 4-pane window
+  const roofPeakYAtX = 150 + Math.abs(vx - 256) * (94 / 112);
+  if (vx >= 144 && vx <= 368 && vy >= roofPeakYAtX && vy <= 382) {
+    // Sunlit 4-pane window (210..302, 238..324)
+    if (inRoundedRect(vx, vy, 205, 233, 102, 96, 18)) {
+      const inPane = inRoundedRect(vx, vy, 215, 243, 82, 76, 10);
+      if (!inPane || Math.abs(vx - 256) <= 4.5 || Math.abs(vy - 281) <= 4.5) {
+        return [30, 64, 175, 255]; // Deep blue window frame & mullions (#1e40af)
+      }
+      const winT = (vy - 243) / 76;
+      return [
+        Math.round(253 + (245 - 253) * winT),
+        Math.round(224 + (158 - 224) * winT),
+        Math.round(71 + (11 - 71) * winT),
+        255,
+      ];
+    }
+    return [239, 246, 255, 255]; // Soft cottage cream-blue (#eff6ff)
+  }
+
   return [bgR, bgG, bgB, 255];
 }
 
@@ -158,60 +182,64 @@ if (!fs.existsSync(publicDir)) {
   fs.mkdirSync(publicDir, { recursive: true });
 }
 
-console.log('Generating PWA PNG icons in', publicDir);
+console.log('Generating BaanPakKru PWA PNG icons in', publicDir);
 
-// 1. 192x192 Standard
-const png192 = createPng(192, 192, (x, y, w, h) => drawEduVerseIcon(x, y, w, h, false));
+const png192 = createPng(192, 192, (x, y, w, h) => drawBaanPakKruIcon(x, y, w, h, false));
 fs.writeFileSync(path.join(publicDir, 'pwa-192x192.png'), png192);
 
-// 2. 512x512 Standard
-const png512 = createPng(512, 512, (x, y, w, h) => drawEduVerseIcon(x, y, w, h, false));
+const png512 = createPng(512, 512, (x, y, w, h) => drawBaanPakKruIcon(x, y, w, h, false));
 fs.writeFileSync(path.join(publicDir, 'pwa-512x512.png'), png512);
 
-// 3. 512x512 Maskable (Safe margins, no corner clip)
-const pngMaskable = createPng(512, 512, (x, y, w, h) => drawEduVerseIcon(x, y, w, h, true));
+const pngMaskable = createPng(512, 512, (x, y, w, h) => drawBaanPakKruIcon(x, y, w, h, true));
 fs.writeFileSync(path.join(publicDir, 'pwa-maskable-512x512.png'), pngMaskable);
 
-// 4. Apple Touch Icon (180x180)
-const pngApple = createPng(180, 180, (x, y, w, h) => drawEduVerseIcon(x, y, w, h, false));
+const pngApple = createPng(180, 180, (x, y, w, h) => drawBaanPakKruIcon(x, y, w, h, false));
 fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), pngApple);
 
-// 5. Favicon (64x64 PNG saved as favicon.ico and favicon.png)
-const pngFavicon = createPng(64, 64, (x, y, w, h) => drawEduVerseIcon(x, y, w, h, false));
+const pngFavicon = createPng(64, 64, (x, y, w, h) => drawBaanPakKruIcon(x, y, w, h, false));
 fs.writeFileSync(path.join(publicDir, 'favicon.ico'), pngFavicon);
 fs.writeFileSync(path.join(publicDir, 'favicon.png'), pngFavicon);
 
-// 6. SVG Brand Vector Icon
 const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1e3a8a" />
-      <stop offset="50%" stop-color="#1d4ed8" />
-      <stop offset="100%" stop-color="#0284c7" />
+      <stop offset="52%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+    <linearGradient id="winGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25" />
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-opacity="0.22" />
     </filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
-  <g filter="url(#shadow)" transform="translate(0, 10)">
-    <!-- Graduation Cap Diamond -->
-    <polygon points="256,120 420,185 256,250 92,185" fill="#ffffff" />
-    <!-- Cap Underneath Base -->
-    <path d="M176,218 L176,270 C176,306 336,306 336,270 L336,218 Z" fill="#e0e7ff" />
-    <!-- Golden Tassel -->
-    <path d="M386,198 C386,198 406,230 404,290" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none" />
-    <circle cx="404" cy="298" r="12" fill="#eab308" />
-    <!-- Open Book -->
-    <path d="M120,330 C180,315 240,335 256,345 C272,335 332,315 392,330 L392,400 C332,385 272,405 256,415 C240,405 180,385 120,400 Z" fill="#ffffff" />
-    <path d="M256,345 L256,415" stroke="#94a3b8" stroke-width="4" />
-    <!-- Book lines -->
-    <line x1="150" y1="352" x2="228" y2="352" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
-    <line x1="150" y1="370" x2="216" y2="370" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
-    <line x1="284" y1="352" x2="362" y2="352" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
-    <line x1="284" y1="370" x2="350" y2="370" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
+  <rect width="512" height="512" rx="116" fill="url(#bgGrad)" />
+  <g filter="url(#shadow)">
+    <!-- Cozy chimney + warm rising sparks -->
+    <rect x="336" y="130" width="38" height="68" rx="6" fill="#fde68a" stroke="#ffffff" stroke-width="8" />
+    <circle cx="356" cy="96" r="16" fill="#fde047" />
+    <circle cx="378" cy="68" r="10" fill="#fef08a" opacity="0.85" />
+
+    <!-- House cottage body -->
+    <path d="M144 244 L256 150 L368 244 V366 C368 375 361 382 352 382 H160 C151 382 144 375 144 366 Z" fill="#eff6ff" />
+
+    <!-- Warm sunlit 4-pane window -->
+    <rect x="210" y="238" width="92" height="86" rx="16" fill="url(#winGrad)" stroke="#1e40af" stroke-width="10" />
+    <line x1="256" y1="238" x2="256" y2="324" stroke="#1e40af" stroke-width="9" />
+    <line x1="210" y1="281" x2="302" y2="281" stroke="#1e40af" stroke-width="9" />
+
+    <!-- Welcoming sloped roof -->
+    <path d="M88 260 L256 112 L424 260" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M116 260 L256 134 L396 260" stroke="#fbbf24" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" />
+
+    <!-- Open Teacher Book Porch at base -->
+    <path d="M100 374 C156 356 220 370 256 394 C292 370 356 356 412 374 V424 C356 406 292 420 256 442 C220 420 156 406 100 424 Z" fill="#ffffff" />
+    <line x1="256" y1="394" x2="256" y2="442" stroke="#2563eb" stroke-width="10" stroke-linecap="round" />
   </g>
-</svg>`;
+</svg>
+`;
 fs.writeFileSync(path.join(publicDir, 'icon.svg'), svgContent);
 
-console.log('Successfully generated all PWA icons & icon.svg!');
+console.log('Successfully generated all BaanPakKru PWA icons & icon.svg!');

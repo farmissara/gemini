@@ -22,9 +22,9 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: '/',
-          name: 'EduVerse - School Management',
-          short_name: 'EduVerse',
-          description: 'Comprehensive school management, grading, SDQ screening, virtual ID card, and smart attendance system.',
+          name: 'BaanPakKru (บ้านพักครู) - ระบบช่วยงานและลดภาระคุณครู',
+          short_name: 'BaanPakKru',
+          description: 'BaanPakKru (บ้านพักครู) ระบบบริหารจัดการโรงเรียนและลดภาระงานเอกสารคุณครู ทั้งเช็คชื่อ บันทึกคะแนน จัดตารางสอน และแจ้งเตือนผู้ปกครอง',
           theme_color: '#1e40af',
           background_color: '#ffffff',
           display: 'standalone',
@@ -57,6 +57,7 @@ export default defineConfig(() => {
           clientsClaim: true,
           skipWaiting: true,
           importScripts: ['/push-sw.js'],
+          navigateFallbackDenylist: [/^\/api\//, /^\/manifest\.webmanifest$/],
           maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [

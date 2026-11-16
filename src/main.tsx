@@ -27,6 +27,21 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Recover gracefully if an outdated cached PWA chunk fails to preload after deploy
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', () => {
+    try {
+      const flagKey = 'baanpakkru_preload_reloaded';
+      if (!window.sessionStorage.getItem(flagKey)) {
+        window.sessionStorage.setItem(flagKey, '1');
+        window.location.reload();
+      }
+    } catch {
+      window.location.reload();
+    }
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

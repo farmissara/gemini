@@ -791,15 +791,20 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     const container = mountRef.current;
     if (!container) return;
 
-    // Detect software WebGL
+    // Detect software WebGL safely (never crash on mobile browsers without WebGL2)
     const isSoftwareGl = (() => {
-      const gl = document.createElement('canvas').getContext('webgl2');
-      if (!gl) return true;
-      const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
-      const gpu = String(gl.getParameter(param));
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
-      return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+      try {
+        const testCanvas = document.createElement('canvas');
+        const gl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
+        if (!gl) return true;
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
+        const gpu = String(gl.getParameter(param) || '');
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+      } catch {
+        return true;
+      }
     })();
 
     const scene = new THREE.Scene();
@@ -808,7 +813,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     scene.background = new THREE.Color(0xd99557); // Warm golden sunset
     scene.fog = new THREE.FogExp2(0xd99557, 0.0065);
 
-    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1200);
+    const initW = container.clientWidth || window.innerWidth || 800;
+    const initH = container.clientHeight || window.innerHeight || 600;
+    const camera = new THREE.PerspectiveCamera(60, initW / Math.max(1, initH), 0.1, 1200);
     camera.position.set(0, 6, 10);
 
     let renderer: THREE.WebGLRenderer;
@@ -1290,11 +1297,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     // Resize Handler
     const onResize = () => {
       if (!container) return;
-      camera.aspect = container.clientWidth / container.clientHeight;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
+    resizeObserver?.observe(container);
 
     // Physics & Movement Loop Variables
     let animClock = new THREE.Clock();
@@ -1519,6 +1531,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
     return () => {
       cancelAnimationFrame(frameId);
+      resizeObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', onResize);
@@ -1669,6 +1682,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   // Touch handlers for Virtual Joystick (Left Thumb)
   const handleTouchStartLeft = (e: React.TouchEvent) => {
     const touch = e.touches[0];
+    if (!touch) return;
     touchJoystickRef.current = {
       active: true,
       startX: touch.clientX,
@@ -1683,6 +1697,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const handleTouchMoveLeft = (e: React.TouchEvent) => {
     if (!touchJoystickRef.current.active) return;
     const touch = e.touches[0];
+    if (!touch) return;
     const dx = touch.clientX - touchJoystickRef.current.startX;
     const dy = touch.clientY - touchJoystickRef.current.startY;
     const maxRadius = 45;

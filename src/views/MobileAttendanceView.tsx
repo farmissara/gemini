@@ -215,16 +215,67 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
   }, [isRestrictedViewer, currentUser?.role, ownStudent, ownTeacher, scopedStudents, selectedStudentId]);
 
-  // Selected or nearest gate
-  const [selectedGateId, setSelectedGateId] = useState<string>(campusGates[0]?.id || 'gate-1');
-  const selectedGate = campusGates.find(g => g.id === selectedGateId) || campusGates[0];
+  // Selected or nearest gate (always guaranteed defined via fallback to school/default coordinates)
+  const fallbackDefaultGate: CampusGateGeofence = useMemo(() => {
+    const lat = Number.isFinite(_school?.latitude) ? Number(_school?.latitude) : 13.7563;
+    const lng = Number.isFinite(_school?.longitude) ? Number(_school?.longitude) : 100.5018;
+    const radius =
+      Number.isFinite(_school?.geofenceRadiusMeters) && Number(_school?.geofenceRadiusMeters) > 0
+        ? Number(_school?.geofenceRadiusMeters)
+        : 120;
+    return {
+      id: `gate_${_school?.id || 'default'}_1`,
+      schoolId: _school?.id || 'sch-1',
+      nameTh: _school?.nameTh ? `จุดเช็คชื่อ ${_school.nameTh}` : 'จุดเช็คชื่อหลักของโรงเรียน',
+      nameEn: _school?.nameEn ? `Main Gate ${_school.nameEn}` : 'Main School Gate',
+      lat,
+      lng,
+      latitude: lat,
+      longitude: lng,
+      radiusMeters: radius,
+      isPrimary: true,
+      isActive: true,
+      type: 'main_gate',
+    };
+  }, [_school?.id, _school?.nameTh, _school?.nameEn, _school?.latitude, _school?.longitude, _school?.geofenceRadiusMeters]);
+
+  const normalizedGates = useMemo<CampusGateGeofence[]>(() => {
+    const valid = (campusGates || []).map((g, idx) => {
+      const lat = Number.isFinite(g?.lat)
+        ? Number(g.lat)
+        : Number.isFinite(g?.latitude)
+          ? Number(g.latitude)
+          : fallbackDefaultGate.lat;
+      const lng = Number.isFinite(g?.lng)
+        ? Number(g.lng)
+        : Number.isFinite(g?.longitude)
+          ? Number(g.longitude)
+          : fallbackDefaultGate.lng;
+      const radiusMeters =
+        Number.isFinite(g?.radiusMeters) && Number(g.radiusMeters) > 0
+          ? Number(g.radiusMeters)
+          : fallbackDefaultGate.radiusMeters;
+      return {
+        ...g,
+        id: g?.id || `gate-${idx + 1}`,
+        nameTh: g?.nameTh || g?.nameEn || `จุดเช็คชื่อ ${idx + 1}`,
+        lat,
+        lng,
+        radiusMeters,
+      };
+    });
+    return valid.length > 0 ? valid : [fallbackDefaultGate];
+  }, [campusGates, fallbackDefaultGate]);
+
+  const [selectedGateId, setSelectedGateId] = useState<string>(normalizedGates[0]?.id || 'gate-1');
+  const selectedGate = normalizedGates.find((g) => g.id === selectedGateId) || normalizedGates[0];
 
   const [currentGpsDistance, setCurrentGpsDistance] = useState<number>(18); // Default: 18m inside campus
   const [isGpsLoading, setIsGpsLoading] = useState(false);
-  const [realGpsCoords, setRealGpsCoords] = useState<{ lat: number; lng: number } | null>({
-    lat: selectedGate.lat + 0.0001,
-    lng: selectedGate.lng + 0.0001
-  });
+  const [realGpsCoords, setRealGpsCoords] = useState<{ lat: number; lng: number } | null>(() => ({
+    lat: (selectedGate?.lat ?? 13.7563) + 0.0001,
+    lng: (selectedGate?.lng ?? 100.5018) + 0.0001,
+  }));
 
   // Camera Live Feed & Selfie Snapshot
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -352,17 +403,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     if (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0) {
       return selectedCourse.enrolledStudentIds;
     }
-    // Strict room matching: only students enrolled in this course or room can check in
     if (selectedCourse.room) {
+      const targetRoom = selectedCourse.room.trim().toLowerCase();
       const roomStudents = students.filter(
-        s => s.room && s.room.trim().toLowerCase() === selectedCourse.room.trim().toLowerCase()
+        s => (s.room || '').trim().toLowerCase() === targetRoom
       );
       if (roomStudents.length > 0) return roomStudents.map(s => s.id);
     }
     // If course specifies category matching grade level
     if (selectedCourse.category) {
+      const targetCategory = selectedCourse.category.toLowerCase();
       const gradeStudents = students.filter(
-        s => s.gradeLevel && s.gradeLevel.toLowerCase().includes(selectedCourse.category.toLowerCase())
+        s => (s.gradeLevel || '').toLowerCase().includes(targetCategory)
       );
       if (gradeStudents.length > 0) return gradeStudents.map(s => s.id);
     }
@@ -780,7 +832,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // Matched student from mandatory Student ID input for Teacher Proxy Check-in
   const trimmedProxyStudentId = proxyStudentIdInput.trim();
   const matchedProxyStudent = trimmedProxyStudentId
-    ? students.find((s) => s.studentIdNumber.trim().toLowerCase() === trimmedProxyStudentId.toLowerCase())
+    ? students.find((s) => (s.studentIdNumber || '').trim().toLowerCase() === trimmedProxyStudentId.toLowerCase())
     : undefined;
 
   const handleConfirmProxySingleCheckin = () => {
@@ -921,7 +973,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     } else if (targetCourse.room && targetStudent.room) {
       isStudentEnrolledInClass = targetCourse.room.trim().toLowerCase() === targetStudent.room.trim().toLowerCase();
     } else if (targetCourse.category && targetStudent.gradeLevel) {
-      isStudentEnrolledInClass = targetStudent.gradeLevel.toLowerCase().includes(targetCourse.category.toLowerCase());
+      isStudentEnrolledInClass = (targetStudent.gradeLevel || '').toLowerCase().includes((targetCourse.category || '').toLowerCase());
     }
 
     if (!isStudentEnrolledInClass) {
@@ -1185,11 +1237,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
                   <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
                   <select
-                    value={selectedGateId}
+                    value={selectedGate.id}
                     onChange={(e) => setSelectedGateId(e.target.value)}
                     className="bg-slate-800 text-white text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-600 truncate min-w-0 max-w-full"
                   >
-                    {campusGates.map(gate => (
+                    {normalizedGates.map(gate => (
                       <option key={gate.id} value={gate.id} className="bg-slate-800 text-white">{gate.nameTh}</option>
                     ))}
                   </select>
@@ -1360,9 +1412,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>}
 
           {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & Identity */}
-          {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'h-full min-h-0 overflow-hidden' : 'lg:col-span-5 space-y-5'}`}>
+          {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pb-4' : 'lg:col-span-5 space-y-5'}`}>
             {/* User Profile Card: Accurately references loggedIn user in self mode; allows proxy mode for staff */}
-            {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 flex flex-col justify-center' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs`}>
+            {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'p-3 space-y-3' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs`}>
               <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <Smartphone className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
@@ -1497,11 +1549,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>}
 
             {/* Multi-Gate Geofence Radar */}
-            {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'h-full p-3 space-y-3 overflow-hidden' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs text-[var(--color-text-body)]`}>
+            {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'p-3 space-y-3' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs text-[var(--color-text-body)]`}>
               <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็คชื่อพิกัด Geofence ({campusGates.length} จุด)</h3>
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็คชื่อพิกัด Geofence ({normalizedGates.length} จุด)</h3>
                 </div>
                 <div className="flex items-center gap-2">
                   {(currentRole === 'admin' || currentRole === 'super_admin') && (
@@ -1525,12 +1577,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
               </div>
 
+              {campusGates.length === 0 && (
+                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-[11px] text-amber-900 dark:text-amber-200">
+                  โรงเรียนยังไม่ได้ตั้งค่าจุดพิกัดประตูเพิ่มเติม ระบบใช้พิกัดหลักของโรงเรียนชั่วคราว
+                </div>
+              )}
+
               {/* Multi-gate Selector List */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกประตูหรือจุดเช็คชื่อ:</label>
                 <div className="grid grid-cols-1 gap-2">
-                  <PagedList items={campusGates} pageSize={3} renderItem={(gate) => {
-                    const isSelected = gate.id === selectedGateId;
+                  <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
+                    const isSelected = gate.id === selectedGate.id;
                     return (
                       <button
                         key={gate.id}
@@ -1549,7 +1607,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                           <div>
                             <p className="font-bold text-xs text-[var(--color-text-title)]">{gate.nameTh}</p>
                             <p className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                              รัศมี {gate.radiusMeters} ม. • พิกัด {gate.lat.toFixed(4)}, {gate.lng.toFixed(4)}
+                              รัศมี {gate.radiusMeters} ม. • พิกัด {Number(gate.lat).toFixed(4)}, {Number(gate.lng).toFixed(4)}
                             </p>
                           </div>
                         </div>
@@ -1621,7 +1679,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 2: ONLINE LEAVE REQUEST SUBMISSION (ใบลาออนไลน์) */}
       {/* ========================================================================= */}
       {subTab === 'leave_request' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Form */}
           <div className="lg:col-span-7 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-5 text-[var(--color-text-body)]">
             <div className="flex items-center gap-2.5 border-b border-[var(--color-border)] pb-4">
@@ -2085,6 +2144,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               )} />
             </div>
           </div>
+          </div>
         </div>
       )}
 
@@ -2092,7 +2152,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 3: TEACHER PROXY CHECK-IN (REQUIRES STUDENT ID BEFORE CHECK-IN) */}
       {/* ========================================================================= */}
       {subTab === 'teacher_proxy' && isStaffUser && (
-        <div className="space-y-4">
+        <div className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
           <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>

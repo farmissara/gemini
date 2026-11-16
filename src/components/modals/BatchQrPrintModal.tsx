@@ -53,10 +53,10 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
       if (gradeFilter !== 'all' && s.gradeLevel !== gradeFilter) return false;
       if (!q) return true;
       return (
-        `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase().includes(q) ||
-        `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase().includes(q) ||
-        s.studentIdNumber.toLowerCase().includes(q) ||
-        s.room.toLowerCase().includes(q)
+        `${s.firstNameTh || ''} ${s.lastNameTh || ''}`.toLowerCase().includes(q) ||
+        `${s.firstNameEn || ''} ${s.lastNameEn || ''}`.toLowerCase().includes(q) ||
+        (s.studentIdNumber || '').toLowerCase().includes(q) ||
+        (s.room || '').toLowerCase().includes(q)
       );
     });
   }, [students, gradeFilter, searchQuery]);

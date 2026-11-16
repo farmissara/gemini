@@ -239,17 +239,18 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     }
   };
   const filteredTeachers = teachers.filter((t) => {
+    const q = searchTerm.toLowerCase();
     const matchesSearch =
-      t.fullNameTh.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.fullNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.teacherIdNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.positionTitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.major.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.minor && t.minor.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      t.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.teachingSubjects.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.otherSkills && t.otherSkills.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase())));
+      (t.fullNameTh || '').toLowerCase().includes(q) ||
+      (t.fullNameEn || '').toLowerCase().includes(q) ||
+      (t.teacherIdNumber || '').toLowerCase().includes(q) ||
+      (t.positionTitle || '').toLowerCase().includes(q) ||
+      (t.email || '').toLowerCase().includes(q) ||
+      (t.major || '').toLowerCase().includes(q) ||
+      (t.minor && t.minor.toLowerCase().includes(q)) ||
+      (t.department || '').toLowerCase().includes(q) ||
+      (t.teachingSubjects || []).some((s) => (s || '').toLowerCase().includes(q)) ||
+      (t.otherSkills && t.otherSkills.some((s) => (s || '').toLowerCase().includes(q)));
 
     const matchesDept = departmentFilter === 'all' || t.department === departmentFilter;
     const matchesPosition = positionFilter === 'all' || (t.positionTitle || '') === positionFilter;

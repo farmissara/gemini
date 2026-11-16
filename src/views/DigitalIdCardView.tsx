@@ -49,15 +49,15 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   const filteredStudents = students.filter((s) => {
     const q = searchTerm.toLowerCase();
     return (
-      s.firstNameTh.toLowerCase().includes(q) ||
-      s.lastNameTh.toLowerCase().includes(q) ||
-      s.studentIdNumber.toLowerCase().includes(q) ||
-      s.room.toLowerCase().includes(q)
+      (s.firstNameTh || '').toLowerCase().includes(q) ||
+      (s.lastNameTh || '').toLowerCase().includes(q) ||
+      (s.studentIdNumber || '').toLowerCase().includes(q) ||
+      (s.room || '').toLowerCase().includes(q)
     );
   });
 
   return (
-    <div className={`${getModuleTone('student_id_cards')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
+    <div className={`${getModuleTone('student_id_cards')} lg:h-full flex flex-col min-h-0 lg:overflow-hidden space-y-2`}>
       {/* Compact Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header text-[var(--color-text-title)]">
         <div className="flex items-center gap-2 min-w-0">
@@ -202,8 +202,8 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 {/* Card Top: School Branding */}
                 <div className="flex items-center justify-between relative z-10 border-b border-cyan-500/30 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-indigo-700 flex items-center justify-center font-bold text-white shadow">
-                      EV
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-700 flex items-center justify-center font-bold text-white shadow text-[10px]">
+                      BPK
                     </div>
                     <div>
                       <h4 className="text-[11px] font-bold tracking-tight text-white line-clamp-1">{school.nameTh}</h4>
@@ -220,16 +220,22 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   <div 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowPhotoModal(true);
+                      if (selectedStudent) setShowPhotoModal(true);
                     }}
                     className="relative shrink-0 group cursor-pointer"
                     title="แตะเพื่อถ่ายรูปสด หรืออัปโหลดรูปภาพใหม่ลงบัตร"
                   >
-                    <img
-                      src={selectedStudent?.avatarUrl}
-                      alt={selectedStudent?.firstNameTh}
-                      className="w-20 h-24 rounded-xl object-cover border-2 border-cyan-400/60 shadow-md group-hover:ring-2 group-hover:ring-cyan-300 transition"
-                    />
+                    {selectedStudent?.avatarUrl ? (
+                      <img
+                        src={selectedStudent.avatarUrl}
+                        alt={selectedStudent.firstNameTh || 'Student'}
+                        className="w-20 h-24 rounded-xl object-cover border-2 border-cyan-400/60 shadow-md group-hover:ring-2 group-hover:ring-cyan-300 transition"
+                      />
+                    ) : (
+                      <div className="w-20 h-24 rounded-xl border-2 border-cyan-400/60 shadow-md bg-slate-800 flex items-center justify-center text-cyan-200">
+                        <User className="w-9 h-9" />
+                      </div>
+                    )}
                     <span className="absolute -bottom-1 -right-1 p-1 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 shadow-md transition">
                       <Camera className="w-3 h-3" />
                     </span>
@@ -238,17 +244,23 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   <div className="space-y-1 text-xs truncate">
                     <div>
                       <h3 className="text-sm font-bold text-white truncate">
-                        {lang === 'th'
-                          ? `${selectedStudent?.firstNameTh} ${selectedStudent?.lastNameTh}`
-                          : `${selectedStudent?.firstNameEn} ${selectedStudent?.lastNameEn}`}
+                        {selectedStudent
+                          ? (lang === 'th'
+                              ? `${selectedStudent.firstNameTh || ''} ${selectedStudent.lastNameTh || ''}`.trim() || school.nameTh
+                              : `${selectedStudent.firstNameEn || ''} ${selectedStudent.lastNameEn || ''}`.trim() || school.nameEn)
+                          : (lang === 'th' ? 'ยังไม่มีข้อมูลบัตรนักเรียน' : 'No Student Record')}
                       </h3>
-                      <p className="text-[10px] text-slate-200 font-medium">{selectedStudent?.firstNameEn} {selectedStudent?.lastNameEn}</p>
+                      <p className="text-[10px] text-slate-200 font-medium">
+                        {selectedStudent
+                          ? `${selectedStudent.firstNameEn || ''} ${selectedStudent.lastNameEn || ''}`.trim() || '-'
+                          : (school.nameTh || 'BaanPakKru')}
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-200 pt-1">
                       <div>
                         <span className="text-slate-300">ID: </span>
-                        <strong className="font-mono text-cyan-200">{selectedStudent?.studentIdNumber}</strong>
+                        <strong className="font-mono text-cyan-200">{selectedStudent?.studentIdNumber || '-'}</strong>
                       </div>
                       <div>
                         <span className="text-slate-300">Blood: </span>
@@ -256,7 +268,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                       </div>
                       <div className="col-span-2 truncate">
                         <span className="text-slate-300">Class: </span>
-                        <strong className="text-white">{selectedStudent?.room}</strong>
+                        <strong className="text-white">{selectedStudent?.room || '-'}</strong>
                       </div>
                     </div>
                   </div>

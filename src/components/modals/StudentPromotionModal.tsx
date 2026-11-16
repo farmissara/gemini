@@ -103,10 +103,10 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
       const matchStatus = s.status === 'active' || s.status === 'transferred_in';
       const matchSearch =
         !searchTerm.trim() ||
-        s.firstNameTh.includes(searchTerm) ||
-        s.lastNameTh.includes(searchTerm) ||
-        s.firstNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.studentIdNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        (s.firstNameTh || '').includes(searchTerm) ||
+        (s.lastNameTh || '').includes(searchTerm) ||
+        (s.firstNameEn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.studentIdNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchGrade && matchRoom && matchStatus && matchSearch;
     });
   }, [students, selectedSourceGrade, selectedSourceRoom, searchTerm]);

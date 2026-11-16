@@ -81,6 +81,7 @@ import { DigitalIdCardView } from '../../views/DigitalIdCardView';
 import { PagedList } from '../PagedList';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
+import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
 
 export type MobileTab = 'home' | 'executive' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
 
@@ -302,7 +303,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* 1. TOP MOBILE HEADER (VERTICALLY STACKED UTILITY TIERS) */}
       {/* ======================================================== */}
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-col shadow-xs transition-colors">
-        {/* Tier 1: Persistent Get EduVerse App Banner (Platform-aware iOS/Safari & Android/Chrome) */}
+        {/* Tier 1: Persistent Get BaanPakKru App Banner (Platform-aware iOS/Safari & Android/Chrome) */}
         <PWAInstallButton lang={lang} variant="top_mobile_banner" />
 
         {/* Tier 2: App Wordmark, Mode Switchers & Language Switcher */}
@@ -404,6 +405,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* 2. MAIN ACTIVE VIEW CONTAINER */}
       {/* ======================================================== */}
       <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-y-auto">
+        <ViewErrorBoundary
+          resetKey={`${activeTab}:${activeGameView}:${homePage}:${profilePage}`}
+          lang={lang}
+          viewName={`mobile:${activeTab}`}
+          onBackHome={() => {
+            setActiveGameView('hub');
+            setActiveTab('home');
+          }}
+        >
         {/* TAB A: HOME / MOBILE BRIEFING */}
         {activeTab === 'home' && (
           <div className="flex flex-col gap-4 py-1 animate-in fade-in duration-200">
@@ -1342,6 +1352,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             )}
           </div>
         )}
+        </ViewErrorBoundary>
       </main>
 
       {/* ======================================================== */}
@@ -1452,6 +1463,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       {activeGameView !== 'hub' && (
         <div className="fixed inset-0 z-50 bg-slate-950 w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
+          <ViewErrorBoundary
+            resetKey={`game:${activeGameView}`}
+            lang={lang}
+            viewName={`mobile-game:${activeGameView}`}
+            onBackHome={() => setActiveGameView('hub')}
+          >
           {activeGameView === 'battle_royale_3d' && (
             <div className="h-full w-full overflow-hidden">
               <EduBattleRoyale3DView
@@ -1536,6 +1553,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               />
             </div>
           )}
+          </ViewErrorBoundary>
         </div>
       )}
     </div>

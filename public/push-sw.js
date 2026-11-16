@@ -6,7 +6,7 @@ self.addEventListener('push', (event) => {
     payload = {};
   }
 
-  const title = typeof payload.title === 'string' ? payload.title : 'EduVerse';
+  const title = typeof payload.title === 'string' ? payload.title : 'BaanPakKru (บ้านพักครู)';
   const body = typeof payload.body === 'string'
     ? payload.body
     : 'มีการแจ้งเตือนใหม่เกี่ยวกับบุตรหลาน';

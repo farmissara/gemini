@@ -60,9 +60,9 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
-          s.firstNameTh.toLowerCase().includes(q) ||
-          s.lastNameTh.toLowerCase().includes(q) ||
-          s.studentIdNumber.toLowerCase().includes(q)
+          (s.firstNameTh || '').toLowerCase().includes(q) ||
+          (s.lastNameTh || '').toLowerCase().includes(q) ||
+          (s.studentIdNumber || '').toLowerCase().includes(q)
         );
       }
       return true;

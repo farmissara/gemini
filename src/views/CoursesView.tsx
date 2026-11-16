@@ -976,7 +976,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                             const fullNameTh = `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase();
                             const fullNameEn = `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase();
                             return (
-                              s.studentIdNumber.toLowerCase().includes(normalizedQuery) ||
+                              (s.studentIdNumber || '').toLowerCase().includes(normalizedQuery) ||
                               fullNameTh.includes(normalizedQuery) ||
                               fullNameEn.includes(normalizedQuery) ||
                               (s.room || '').toLowerCase().includes(normalizedQuery)

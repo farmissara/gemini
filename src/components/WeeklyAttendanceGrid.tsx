@@ -135,13 +135,13 @@ export const WeeklyAttendanceGrid: React.FC<WeeklyAttendanceGridProps> = ({
         }
       }
       if (!q) return true;
-      const fullTh = `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase();
-      const fullEn = `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase();
+      const fullTh = `${s.firstNameTh || ''} ${s.lastNameTh || ''}`.toLowerCase();
+      const fullEn = `${s.firstNameEn || ''} ${s.lastNameEn || ''}`.toLowerCase();
       return (
         fullTh.includes(q) ||
         fullEn.includes(q) ||
-        s.studentIdNumber.toLowerCase().includes(q) ||
-        s.room.toLowerCase().includes(q)
+        (s.studentIdNumber || '').toLowerCase().includes(q) ||
+        (s.room || '').toLowerCase().includes(q)
       );
     });
   }, [students, classFilter, selectedCourse, searchQuery]);
