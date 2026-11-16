@@ -1553,7 +1553,7 @@ export const App: React.FC = () => {
           currentAcademicYear: systemConfig.academicYear,
           currentSemester: systemConfig.currentSemester,
         });
-        if (summary.gpax === null) return stu;
+        if (summary.hideGpaCalculations || summary.gpax === null) return stu;
         return { ...stu, gpa: summary.gpax };
       })
     );

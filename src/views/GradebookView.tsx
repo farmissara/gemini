@@ -37,6 +37,7 @@ import {
   clampScore,
   detectCourseEducationStage,
   getEducationStageLabelTh,
+  getRawScoreFeedback,
   getStudentPrefixTh,
   getStudentShortPrefixTh,
   isActivityCourse,
@@ -143,7 +144,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       grades,
       gradingSystem: systemConfig.gradingSystem,
     });
-    const effectiveGpa = summary.gpax ?? Number(stu.gpa || 0);
+    const effectiveGpa = summary.gpax ?? summary.annualGradeAverage ?? Number(stu.gpa || 0);
     const stuGrades = grades.filter((g) => g.studentId === stu.id);
     const findSubjectScore = (keywords: string[], fallback: number) => {
       const matched = stuGrades.find((g) => {
@@ -316,13 +317,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       'แบบทดสอบย่อย (10)',
       'คะแนนรวม (100)',
       'ร้อยละ (%)',
-      'ผลการเรียน (ปพ.5)',
-      'ค่าระดับ (0-4)',
+      isPrimaryCourse ? 'ระดับพัฒนาการ (Feedback)' : 'ผลการเรียน (ปพ.5)',
+      ...(isPrimaryCourse ? ['ผลประเมินรายปี (ศธ.)'] : ['ค่าระดับ (0-4)']),
     ];
 
     const rows = courseGrades.map((g) => {
       const stu = students.find((s) => s.id === g.studentId);
       const disp = getGradeDisplay(g);
+      const feedback = getRawScoreFeedback(g.totalScore);
       return [
         `"${stu?.studentIdNumber || ''}"`,
         `"${stu?.firstNameTh || ''} ${stu?.lastNameTh || ''}"`,
@@ -335,8 +337,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         g.quizScore,
         g.totalScore,
         `${g.totalScore}%`,
-        `"${disp.letter}"`,
-        disp.isSpecial ? '-' : disp.point.toFixed(1),
+        `"${isPrimaryCourse ? (disp.isSpecial ? disp.letter : `${feedback.labelTh} (${feedback.labelEn})`) : disp.letter}"`,
+        isPrimaryCourse ? `"${disp.letter}"` : (disp.isSpecial ? '-' : disp.point.toFixed(1)),
       ];
     });
 
@@ -376,8 +378,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         grades,
         gradingSystem: systemConfig.gradingSystem,
       });
-      const metricValue = summary.isPrimary && summary.averageRawScore !== null
-        ? `${summary.averageRawScore}% (เกรด ${(summary.gpax ?? s.gpa).toFixed(2)})`
+      const metricValue = summary.hideGpaCalculations
+        ? (summary.averageRawScore !== null
+            ? `${summary.averageRawScore}% (${getRawScoreFeedback(summary.averageRawScore).labelTh})`
+            : 'รอประเมิน (รายปี)')
         : (summary.gpax ?? s.gpa).toFixed(2);
       return [
         idx + 1,
@@ -479,7 +483,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         grades,
         gradingSystem: systemConfig.gradingSystem,
       });
-      const effectiveGpax = summary.gpax ?? Number(s.gpa || 0);
+      const effectiveGpax = summary.gpax ?? summary.annualGradeAverage ?? Number(s.gpa || 0);
       return [
         `"${s.schoolId || ''}"`,
         `"${s.nationalId || `1100${idx.toString().padStart(9, '0')}`}"`,
@@ -840,7 +844,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
 
             <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
-              {getGradingScaleLegend(systemConfig.gradingSystem)}
+              {isPrimaryCourse
+                ? 'ประเมินรายปี • 80–100% ดีเยี่ยม · 70–79% ดีมาก · 60–69% ดี · 50–59% ผ่านเกณฑ์ (ไม่คิด GPA)'
+                : getGradingScaleLegend(systemConfig.gradingSystem)}
             </div>
           </div>
 
@@ -947,8 +953,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-3 px-3 text-center">Final (40)</th>
                   <th className="py-3 px-3 text-center">Homework (20)</th>
                   <th className="py-3 px-3 text-center">Quiz (10)</th>
-                  <th className="py-3 px-3 text-center font-bold text-[var(--color-text-title)]">Total (100)</th>
-                  <th className="py-3 px-3 text-center font-bold text-[var(--color-primary-text)]">Grade</th>
+                  <th className={`py-3 px-3 text-center font-bold ${isPrimaryCourse ? 'text-sky-700 dark:text-sky-300 bg-sky-50/70 dark:bg-sky-950/30' : 'text-[var(--color-text-title)]'}`}>
+                    {isPrimaryCourse ? 'Raw Score / 100 (%)' : 'Total (100)'}
+                  </th>
+                  <th className="py-3 px-3 text-center font-bold text-[var(--color-primary-text)]">
+                    {isPrimaryCourse ? 'Feedback (พัฒนาการรายปี)' : 'Grade'}
+                  </th>
                   <th className="py-3 px-3 text-right">Transcript</th>
                 </tr>
               </thead>
@@ -1056,14 +1066,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           />
                         </td>
 
-                        <td className="py-3 px-3 text-center font-mono font-bold text-sm text-[var(--color-text-title)]">
-                          <div>{grade.totalScore}</div>
-                          <div className="text-[10px] font-normal text-[var(--color-text-muted)]">{grade.totalScore}%</div>
+                        <td className={`py-3 px-3 text-center font-mono font-bold ${isPrimaryCourse ? 'bg-sky-50/40 dark:bg-sky-950/20' : ''}`}>
+                          {isPrimaryCourse ? (
+                            <div className="inline-flex flex-col items-center">
+                              <span className="text-base font-extrabold text-sky-700 dark:text-sky-300">{grade.totalScore}%</span>
+                              <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">({grade.totalScore} / 100)</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-sm text-[var(--color-text-title)]">{grade.totalScore}</div>
+                              <div className="text-[10px] font-normal text-[var(--color-text-muted)]">{grade.totalScore}%</div>
+                            </>
+                          )}
                         </td>
 
                         <td className="py-3 px-3 text-center">
                           {(() => {
                             const disp = getGradeDisplay(grade);
+                            const feedback = getRawScoreFeedback(grade.totalScore);
                             const currentSpecialValue =
                               grade.letterGrade === 'ร' ||
                               grade.letterGrade === 'มส.' ||
@@ -1073,19 +1093,42 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                                 : 'auto';
                             return (
                               <div className="inline-flex flex-col items-center gap-1">
-                                <span
-                                  className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
-                                    disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ' || disp.letter === '0' || disp.letter === 'F'
-                                      ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                                      : disp.point >= 3.5 || disp.letter === 'ผ'
-                                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                      : disp.point >= 2.5
-                                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                                      : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                                  }`}
-                                >
-                                  {disp.isSpecial ? disp.letter : `${disp.letter} (${disp.point.toFixed(1)})`}
-                                </span>
+                                {isPrimaryCourse ? (
+                                  disp.isSpecial ? (
+                                    <span
+                                      className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
+                                        disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ'
+                                          ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                      }`}
+                                    >
+                                      {disp.letter}
+                                    </span>
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${feedback.badgeClass}`}>
+                                        {feedback.labelTh}
+                                      </span>
+                                      <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                                        ผลรายปี: {disp.letter}
+                                      </span>
+                                    </div>
+                                  )
+                                ) : (
+                                  <span
+                                    className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
+                                      disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ' || disp.letter === '0' || disp.letter === 'F'
+                                        ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                        : disp.point >= 3.5 || disp.letter === 'ผ'
+                                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                        : disp.point >= 2.5
+                                        ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                                        : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                    }`}
+                                  >
+                                    {disp.isSpecial ? disp.letter : `${disp.letter} (${disp.point.toFixed(1)})`}
+                                  </span>
+                                )}
                                 <select
                                   aria-label={`สถานะเกรด ปพ.5 ของ ${student.firstNameTh}`}
                                   value={currentSpecialValue}
@@ -1182,13 +1225,27 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Total Score & Grade Badge */}
+                      {/* Total Score & Feedback/Grade Badge */}
                       <div className="text-right shrink-0">
-                        <div className="text-base font-bold font-mono text-[var(--color-text-title)]">
-                          {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100 ({grade.totalScore}%)</span>
-                        </div>
+                        {isPrimaryCourse ? (
+                          <div className="text-base font-extrabold font-mono text-sky-700 dark:text-sky-300">
+                            {grade.totalScore}% <span className="text-[10px] font-normal text-[var(--color-text-muted)]">({grade.totalScore}/100)</span>
+                          </div>
+                        ) : (
+                          <div className="text-base font-bold font-mono text-[var(--color-text-title)]">
+                            {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100 ({grade.totalScore}%)</span>
+                          </div>
+                        )}
                         {(() => {
                           const disp = getGradeDisplay(grade);
+                          const feedback = getRawScoreFeedback(grade.totalScore);
+                          if (isPrimaryCourse && !disp.isSpecial) {
+                            return (
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${feedback.badgeClass}`}>
+                                {feedback.labelTh} (ผลรายปี {disp.letter})
+                              </span>
+                            );
+                          }
                           return (
                             <span
                               className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
@@ -1451,6 +1508,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     gradingSystem: systemConfig.gradingSystem,
                   });
                   const effectiveGpax = summary.gpax ?? Number(stu.gpa || 0);
+                  const primaryFeedback = getRawScoreFeedback(summary.averageRawScore);
                   return (
                     <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
                       <td className="py-2.5 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
@@ -1466,11 +1524,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                        {summary.isPrimary && summary.averageRawScore !== null ? (
-                          <div>
-                            <span>{summary.averageRawScore}%</span>
-                            <span className="block text-[10px] text-[var(--color-text-muted)]">รายปี {effectiveGpax.toFixed(2)}</span>
-                          </div>
+                        {summary.hideGpaCalculations ? (
+                          summary.averageRawScore !== null ? (
+                            <div>
+                              <span>{summary.averageRawScore}%</span>
+                              <span className="block text-[10px] text-[var(--color-text-muted)]">
+                                {primaryFeedback.labelTh} (รายปี)
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--color-text-muted)]">รอประเมิน (รายปี)</span>
+                          )
                         ) : (
                           effectiveGpax.toFixed(2)
                         )}

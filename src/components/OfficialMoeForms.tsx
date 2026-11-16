@@ -8,12 +8,14 @@ import {
   SystemConfig,
   TimetableSlot,
 } from '../types';
-import { calculateGrade, formatSemesterLabel } from '../lib/schoolSettings';
+import { formatSemesterLabel } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
 import {
+  aggregateGradesByAssessmentCycle,
   calculateStudentAcademicSummary,
   detectCourseEducationStage,
   getEducationStageLabelTh,
+  getRawScoreFeedback,
   getStudentShortPrefixTh,
   isActivityCourse,
   isPrimaryStage,
@@ -592,8 +594,8 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                         <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
                           {row.grade ? (
                             <span>
-                              {row.grade.totalScore}
-                              {isPrimaryCourse ? <span className="block text-[9px] font-normal text-slate-600">({row.grade.totalScore}%)</span> : null}
+                              {isPrimaryCourse ? `${row.grade.totalScore}%` : row.grade.totalScore}
+                              {isPrimaryCourse ? <span className="block text-[9px] font-normal text-slate-600">({row.grade.totalScore}/100)</span> : null}
                             </span>
                           ) : '-'}
                         </td>
@@ -833,6 +835,8 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
       return {
         isPrimary: false,
         isEarlyPrimary: false,
+        hideGpaCalculations: false,
+        gradedSubjectCount: 0,
         registeredCredits: 0,
         earnedCredits: 0,
         termGpa: '0.00',
@@ -853,6 +857,8 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
     return {
       isPrimary: summary.isPrimary,
       isEarlyPrimary: summary.isEarlyPrimary,
+      hideGpaCalculations: summary.hideGpaCalculations,
+      gradedSubjectCount: summary.gradedSubjectCount,
       registeredCredits: summary.registeredCredits,
       earnedCredits: summary.earnedCredits,
       termGpa: summary.termGpa !== null ? summary.termGpa.toFixed(2) : fallbackGpa,
@@ -861,6 +867,25 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
       stageLabel: getEducationStageLabelTh(summary.stage),
     };
   }, [studentCourses, grades, selectedStudent, systemConfig.gradingSystem, systemConfig.academicYear, systemConfig.currentSemester]);
+
+  const pp6CycleEntries = useMemo(() => {
+    if (!selectedStudent) return [];
+    return aggregateGradesByAssessmentCycle({
+      student: selectedStudent,
+      courses: studentCourses,
+      grades,
+      gradingSystem: systemConfig.gradingSystem,
+      currentAcademicYear: systemConfig.academicYear,
+      currentSemester: systemConfig.currentSemester,
+    });
+  }, [selectedStudent, studentCourses, grades, systemConfig.gradingSystem, systemConfig.academicYear, systemConfig.currentSemester]);
+
+  const pp6GradeByCourseId = useMemo(
+    () => new Map(pp6CycleEntries.map((entry) => [entry.grade.courseId, entry])),
+    [pp6CycleEntries]
+  );
+
+  const pp6OverallFeedback = getRawScoreFeedback(academicSummary.averageRawScore);
 
   // Student Attendance Summary
   const attendanceStats = useMemo(() => {
@@ -1048,10 +1073,14 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 </thead>
                 <tbody>
                   {studentCourses.map((course, index) => {
-                    const grade = grades.find(
-                      (g) => g.courseId === course.id && g.studentId === selectedStudent.id
-                    );
-                    const resolved = resolveEffectiveGrade(grade, course, systemConfig.gradingSystem, false);
+                    const cycleEntry = pp6GradeByCourseId.get(course.id);
+                    const grade =
+                      cycleEntry?.grade ||
+                      grades.find((g) => g.courseId === course.id && g.studentId === selectedStudent.id);
+                    const resolved =
+                      cycleEntry?.resolved ||
+                      resolveEffectiveGrade(grade, course, systemConfig.gradingSystem, false);
+                    const rawFeedback = grade ? getRawScoreFeedback(grade.totalScore) : null;
                     const isVisible =
                       index >= currentPp6CoursePage * pp6CoursePageSize &&
                       index < (currentPp6CoursePage + 1) * pp6CoursePageSize;
@@ -1074,7 +1103,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                         </td>
                         <td className="border border-slate-400 py-1.5 font-mono">100</td>
                         <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
-                          {grade ? `${grade.totalScore} (${grade.totalScore}%)` : '-'}
+                          {grade ? `${grade.totalScore}% (${grade.totalScore}/100)` : '-'}
                         </td>
                         <td className={`border border-slate-400 py-1.5 font-mono font-extrabold ${
                           resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
@@ -1092,7 +1121,13 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                                 : 'text-slate-500'
                           }`}
                         >
-                          {resolved.passed === true ? 'ผ่านเกณฑ์' : resolved.passed === false ? (resolved.isSpecial ? resolved.letter : 'ไม่ผ่านเกณฑ์') : 'รอประเมิน'}
+                          {academicSummary.isPrimary && rawFeedback && !resolved.isSpecial
+                            ? rawFeedback.labelTh
+                            : resolved.passed === true
+                            ? 'ผ่านเกณฑ์'
+                            : resolved.passed === false
+                            ? (resolved.isSpecial ? resolved.letter : 'ไม่ผ่านเกณฑ์')
+                            : 'รอประเมิน'}
                         </td>
                       </tr>
                     );
@@ -1100,16 +1135,16 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-100 font-bold text-slate-950 border-t-2 border-slate-700">
-                    {academicSummary.isPrimary ? (
+                    {academicSummary.hideGpaCalculations ? (
                       <>
                         <td colSpan={4} className="border border-slate-600 py-2 px-3 text-left">
-                          สรุปผลการประเมินรายปี (ป.1–ป.6)
+                          สรุปผลการประเมินรายปี (ป.1–ป.6 • {academicSummary.gradedSubjectCount} รายวิชา)
                         </td>
-                        <td colSpan={3} className="border border-slate-600 py-2 px-3 text-right font-mono">
+                        <td colSpan={3} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
                           คะแนนดิบเฉลี่ย: {academicSummary.averageRawScore !== null ? `${academicSummary.averageRawScore}% (เต็ม 100)` : '-'}
                         </td>
-                        <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
-                          เกรดรายปีเฉลี่ย (0–4): {academicSummary.gpax}
+                        <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-semibold text-sm text-emerald-900">
+                          พัฒนาการภาพรวม: {pp6OverallFeedback.labelTh}
                         </td>
                       </>
                     ) : (

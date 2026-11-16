@@ -22,8 +22,10 @@ import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from '../PagedList';
 import { STUDENT_STATUS_DETAILS, ALL_GRADE_LEVELS } from '../../data/studentAcademicData';
 import {
+  aggregateGradesByAssessmentCycle,
   calculateStudentAcademicSummary,
   getEducationStageLabelTh,
+  getRawScoreFeedback,
   resolveEffectiveGrade,
 } from '../../lib/moeGrading';
 
@@ -58,7 +60,6 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const [editStatus, setEditStatus] = useState<StudentStatus>(student.status || 'active');
   const [editGpa, setEditGpa] = useState<number>(Number(student.gpa) || 0.0);
 
-  const studentGrades = grades.filter((g) => g.studentId === student.id);
   const studentAttendance = attendance.filter((a) => a.studentId === student.id);
   const currentStatusConfig = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
   const academicSummary = calculateStudentAcademicSummary({
@@ -67,7 +68,15 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     grades,
     gradingSystem,
   });
+  const cycleEntries = aggregateGradesByAssessmentCycle({
+    student,
+    courses,
+    grades,
+    gradingSystem,
+  });
+  const studentGrades = grades.filter((g) => g.studentId === student.id);
   const stageLabelTh = getEducationStageLabelTh(academicSummary.stage);
+  const primaryFeedback = getRawScoreFeedback(academicSummary.averageRawScore);
   const effectiveGpax = academicSummary.gpax ?? Number(student.gpa || 0);
 
   const handlePhotoUpdated = (newUrl: string) => {
@@ -201,32 +210,34 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
-                  เกรดเฉลี่ยสะสม (GPA: 0-4.00)
-                </label>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="4.00"
-                    value={editGpa}
-                    onChange={(e) => setEditGpa(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-bold tabular-nums"
-                  />
-                  {studentGrades.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleCalculateGpaFromGrades}
-                      className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] whitespace-nowrap cursor-pointer"
-                      title="คำนวณเฉลี่ยจากรายวิชาที่มีในระบบ"
-                    >
-                      ออโต้
-                    </button>
-                  )}
+              {!academicSummary.hideGpaCalculations && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
+                    เกรดเฉลี่ยสะสม (GPA: 0-4.00)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="4.00"
+                      value={editGpa}
+                      onChange={(e) => setEditGpa(Number(e.target.value))}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-bold tabular-nums"
+                    />
+                    {studentGrades.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleCalculateGpaFromGrades}
+                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] whitespace-nowrap cursor-pointer"
+                        title="คำนวณเฉลี่ยจากรายวิชาที่มีในระบบ"
+                      >
+                        ออโต้
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="block text-[11px] font-semibold text-[var(--color-text-title)] mb-0.5">
@@ -274,40 +285,48 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">
-                    {academicSummary.isPrimary ? 'คะแนนดิบเฉลี่ย & เกรดรายปี' : 'GPA / GPAX สะสม'}
+                    {academicSummary.hideGpaCalculations ? 'คะแนนดิบเฉลี่ย & พัฒนาการรายปี' : 'GPA / GPAX สะสม'}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
                     {stageLabelTh} • {academicSummary.isPrimary ? 'ประเมินรายปี' : 'ประเมินรายภาคเรียน'}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2.5 mt-0.5 flex-wrap">
-                  {academicSummary.isPrimary && academicSummary.averageRawScore !== null ? (
-                    <>
-                      <span className="text-2xl font-mono font-extrabold text-emerald-700 dark:text-emerald-300">
-                        {academicSummary.averageRawScore}%
+                  {academicSummary.hideGpaCalculations ? (
+                    academicSummary.averageRawScore !== null ? (
+                      <>
+                        <span className="text-2xl font-mono font-extrabold text-emerald-700 dark:text-emerald-300">
+                          {academicSummary.averageRawScore}%
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${primaryFeedback.badgeClass}`}>
+                          {primaryFeedback.labelTh} ({academicSummary.averageRawScore}/100)
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-bold text-[var(--color-text-muted)]">
+                        ยังไม่มีผลคะแนนดิบรายปี
                       </span>
-                      <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-300">
-                        (เต็ม 100 • เกรดรายปี {effectiveGpax.toFixed(2)})
-                      </span>
-                    </>
+                    )
                   ) : (
-                    <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300">
-                      {effectiveGpax.toFixed(2)}
-                    </span>
+                    <>
+                      <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300">
+                        {effectiveGpax.toFixed(2)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingClass(true)}
+                        className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                      >
+                        [ปรับแก้เกรดเฉลี่ย]
+                      </button>
+                    </>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingClass(true)}
-                    className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
-                  >
-                    [ปรับแก้เกรดเฉลี่ย]
-                  </button>
                 </div>
                 <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
                   {academicSummary.isPrimary
                     ? academicSummary.isEarlyPrimary
-                      ? 'ป.1–ป.3 สื่อสารด้วยคะแนนดิบ (เต็ม 100) / เปอร์เซ็นต์พัฒนาการ และสรุปตัดสินผลรายปีระดับ 0–4'
-                      : 'ระดับประถมศึกษา (ป.4–ป.6) ตัดสินผลการเรียนรายปี ใช้คะแนนเต็ม 100 / % ควบคู่ระดับผลการเรียน 0–4'
+                      ? 'ป.1–ป.3 สื่อสารด้วยคะแนนดิบ (เต็ม 100) และร้อยละพัฒนาการ (%) ประเมินผลรายปี (ซ่อนการคำนวณ GPA)'
+                      : 'ระดับประถมศึกษา (ป.4–ป.6) ประเมินผลรายปี เน้นคะแนนดิบ (เต็ม 100) และร้อยละ (%) เป็นหลัก'
                     : `คำนวณแบบถ่วงน้ำหนักหน่วยกิต (${academicSummary.gradedCredits} หน่วยกิตที่ตัดสินแล้ว) ไม่นับกิจกรรมพัฒนาผู้เรียน และ ร/มส.`}
                 </p>
               </div>
@@ -427,12 +446,11 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               {academicSummary.isPrimary ? 'ผลการประเมินพัฒนาการและรายวิชา (รายปี)' : 'ผลการเรียนประจำภาคเรียน (ถ่วงน้ำหนักหน่วยกิต)'}
             </span>
             <div className="space-y-2 pr-1">
-              {studentGrades.length === 0 ? (
-                <p className="text-[var(--color-text-muted)] py-3 text-center">ยังไม่มีข้อมูลเกรดในระบบ</p>
+              {cycleEntries.length === 0 ? (
+                <p className="text-[var(--color-text-muted)] py-3 text-center">ยังไม่มีข้อมูลผลการเรียนในระบบ</p>
               ) : (
-                <PagedList items={studentGrades} pageSize={4} renderItem={(g) => {
-                  const course = courses.find((c) => c.id === g.courseId);
-                  const resolved = resolveEffectiveGrade(g, course, gradingSystem, false);
+                <PagedList items={cycleEntries} pageSize={4} renderItem={({ grade: g, course, resolved }) => {
+                  const feedback = getRawScoreFeedback(g.totalScore);
                   return (
                     <div
                       key={g.id}
@@ -443,16 +461,22 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         <span className="text-[var(--color-text-title)] font-medium">{course?.titleTh || course?.titleEn}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-[var(--color-text-body)]">
-                          {resolved.isActivity ? `${g.totalScore}%` : `${g.totalScore}/100 (${g.totalScore}%)`}
+                        <span className="font-mono text-[var(--color-text-body)] font-bold">
+                          {resolved.isActivity ? `${g.totalScore}%` : `${g.totalScore}% (${g.totalScore}/100)`}
                         </span>
-                        <span className={`font-mono font-bold px-2 py-0.5 rounded border ${
-                          resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
-                            ? 'text-red-900 dark:text-red-200 bg-red-100 dark:bg-red-950 border-red-300 dark:border-red-700'
-                            : 'text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700'
-                        }`}>
-                          {resolved.letter}
-                        </span>
+                        {academicSummary.hideGpaCalculations && !resolved.isSpecial ? (
+                          <span className={`font-bold px-2 py-0.5 rounded border text-[11px] ${feedback.badgeClass}`}>
+                            {feedback.labelTh} (ผลรายปี {resolved.letter})
+                          </span>
+                        ) : (
+                          <span className={`font-mono font-bold px-2 py-0.5 rounded border ${
+                            resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
+                              ? 'text-red-900 dark:text-red-200 bg-red-100 dark:bg-red-950 border-red-300 dark:border-red-700'
+                              : 'text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700'
+                          }`}>
+                            {resolved.letter}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );

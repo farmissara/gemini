@@ -2,10 +2,11 @@ import React, { useRef, useState } from 'react';
 import { Student, Course, GradeRecord, SystemConfig, School } from '../../types';
 import { formatSemesterLabel } from '../../lib/schoolSettings';
 import {
+  aggregateGradesByAssessmentCycle,
   calculateStudentAcademicSummary,
   getEducationStageLabelTh,
+  getRawScoreFeedback,
   getStudentShortPrefixTh,
-  resolveEffectiveGrade,
 } from '../../lib/moeGrading';
 import {
   Award,
@@ -35,8 +36,6 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   const [advisorName, setAdvisorName] = useState('');
   const [principalName, setPrincipalName] = useState('');
 
-  // Student grades
-  const studentGrades = grades.filter((g) => g.studentId === student.id);
   const summary = calculateStudentAcademicSummary({
     student,
     courses,
@@ -46,11 +45,22 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
     currentSemester: systemConfig.currentSemester,
   });
 
+  const cycleGradeEntries = aggregateGradesByAssessmentCycle({
+    student,
+    courses,
+    grades,
+    gradingSystem: systemConfig.gradingSystem,
+    currentAcademicYear: systemConfig.academicYear,
+    currentSemester: systemConfig.currentSemester,
+  });
+
+  const hideGpa = summary.hideGpaCalculations;
   const termGPA = summary.termGpa !== null ? summary.termGpa.toFixed(2) : Number(student.gpa || 0).toFixed(2);
   const cumulativeGPAX = summary.gpax !== null ? summary.gpax.toFixed(2) : Number(student.gpa || 0).toFixed(2);
+  const overallPrimaryFeedback = getRawScoreFeedback(summary.averageRawScore);
   const gradesPerPage = 8;
-  const gradePageCount = Math.max(1, Math.ceil(studentGrades.length / gradesPerPage));
-  const visibleGrades = studentGrades.slice(gradePage * gradesPerPage, (gradePage + 1) * gradesPerPage);
+  const gradePageCount = Math.max(1, Math.ceil(cycleGradeEntries.length / gradesPerPage));
+  const visibleEntries = cycleGradeEntries.slice(gradePage * gradesPerPage, (gradePage + 1) * gradesPerPage);
   const schoolNameEn = school?.nameEn || systemConfig.schoolNameEn || 'School';
   const schoolNameTh = school?.nameTh || systemConfig.schoolNameTh || 'สถานศึกษา';
   const issuedDateTh = new Date().toLocaleDateString('th-TH', {
@@ -73,7 +83,9 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             <Award className="w-5 h-5 text-indigo-400" />
             <div>
               <h3 className="text-sm font-bold">
-                Official Bilingual Transcript (ใบแสดงผลการเรียน ปพ.1)
+                {summary.isPrimary
+                  ? 'แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (รายปี ป.1–ป.6)'
+                  : 'Official Bilingual Transcript (ใบแสดงผลการเรียน ปพ.1)'}
               </h3>
               <p className="text-[11px] text-slate-300">
                 {getStudentShortPrefixTh(student)} {student.firstNameTh} {student.lastNameTh} • {student.studentIdNumber}
@@ -181,14 +193,14 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-l-4 border-indigo-700 pl-2">
                 {summary.isPrimary
-                  ? 'ผลการประเมินพัฒนาการและรายวิชา (ตัดเกรดรายปี)'
+                  ? 'ผลการประเมินพัฒนาการและรายวิชา (รอบการประเมินรายปี • คะแนนดิบและร้อยละ)'
                   : 'Academic Performance Record (ผลการเรียนรายภาคเรียน)'}
               </h4>
               {summary.isPrimary && (
                 <span className="text-[11px] font-semibold text-sky-900 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
                   {summary.isEarlyPrimary
-                    ? 'ป.1–ป.3: สื่อสารผลด้วยคะแนนดิบ (เต็ม 100) / ร้อยละ (%) ควบคู่ระดับเกรด 0–4 รายปี'
-                    : 'ป.1–ป.6: ประเมินผลรายปีด้วยคะแนนเต็ม 100 (%) และระดับผลการเรียน 0–4'}
+                    ? 'ป.1–ป.3: รายงานผลด้วยคะแนนดิบ (เต็ม 100) / ร้อยละ (%) และระดับพัฒนาการรายปี (ไม่คำนวณ GPA)'
+                    : 'ป.1–ป.6: ประเมินผลรายปีด้วยคะแนนดิบ (เต็ม 100) / ร้อยละ (%) (ไม่เน้น GPA)'}
                 </span>
               )}
             </div>
@@ -198,24 +210,29 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 <tr className="bg-slate-100 text-slate-700 border-y border-slate-300">
                   <th className="py-2 px-2.5 font-bold">Course Code</th>
                   <th className="py-2 px-2.5 font-bold">Course Title (รายวิชา)</th>
-                  <th className="py-2 px-2.5 text-center font-bold">{summary.isPrimary ? 'Weight' : 'Credits'}</th>
-                  <th className="py-2 px-2.5 text-center font-bold">Score (เต็ม 100 / %)</th>
-                  <th className="py-2 px-2.5 text-center font-bold">Grade (เกรด)</th>
-                  <th className="py-2 px-2.5 text-center font-bold">Grade Point</th>
+                  <th className="py-2 px-2.5 text-center font-bold">{summary.isPrimary ? 'รอบประเมิน' : 'Credits'}</th>
+                  <th className={`py-2 px-2.5 text-center font-bold ${summary.isPrimary ? 'bg-sky-50 text-sky-950' : ''}`}>
+                    {summary.isPrimary ? 'คะแนนดิบ / 100 (%)' : 'Score (เต็ม 100 / %)'}
+                  </th>
+                  <th className="py-2 px-2.5 text-center font-bold">
+                    {summary.isPrimary ? 'ระดับพัฒนาการ (Feedback)' : 'Grade (เกรด)'}
+                  </th>
+                  {!hideGpa && (
+                    <th className="py-2 px-2.5 text-center font-bold">Grade Point</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {studentGrades.length === 0 ? (
+                {cycleGradeEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-600">
-                      ยังไม่มีบันทึกผลการเรียนในภาคเรียน/ปีการศึกษานี้
+                    <td colSpan={hideGpa ? 5 : 6} className="py-6 text-center text-slate-600">
+                      ยังไม่มีบันทึกผลการเรียนในรอบการประเมินนี้
                     </td>
                   </tr>
                 ) : (
-                  visibleGrades.map((grade) => {
-                    const course = courses.find((c) => c.id === grade.courseId);
+                  visibleEntries.map(({ grade, course, cycleLabelTh, resolved }) => {
                     if (!course) return null;
-                    const resolved = resolveEffectiveGrade(grade, course, systemConfig.gradingSystem, false);
+                    const rawFeedback = getRawScoreFeedback(grade.totalScore);
                     return (
                       <tr key={grade.id} className="hover:bg-slate-50">
                         <td className="py-2 px-2.5 font-mono font-bold text-slate-900">
@@ -226,27 +243,78 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                           <div className="text-[11px] text-slate-600">{course.titleEn}</div>
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono text-slate-800">
-                          {resolved.isActivity ? 'กิจกรรม' : course.credits.toFixed(1)}
+                          {summary.isPrimary
+                            ? (resolved.isActivity ? 'กิจกรรม (รายปี)' : cycleLabelTh)
+                            : (resolved.isActivity ? 'กิจกรรม' : course.credits.toFixed(1))}
                         </td>
-                        <td className="py-2 px-2.5 text-center font-mono font-semibold text-slate-900">
-                          {grade.totalScore} ({grade.totalScore}%)
+                        <td className={`py-2 px-2.5 text-center font-mono ${summary.isPrimary ? 'bg-sky-50/50' : ''}`}>
+                          {summary.isPrimary ? (
+                            <div className="inline-flex flex-col items-center">
+                              <span className="text-sm font-extrabold text-sky-900">
+                                {grade.totalScore}% <span className="text-[11px] font-semibold text-slate-600">({grade.totalScore}/100)</span>
+                              </span>
+                              <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    grade.totalScore >= 80
+                                      ? 'bg-emerald-600'
+                                      : grade.totalScore >= 60
+                                      ? 'bg-sky-600'
+                                      : grade.totalScore >= 50
+                                      ? 'bg-amber-500'
+                                      : 'bg-rose-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(0, grade.totalScore))}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="font-semibold text-slate-900">
+                              {grade.totalScore} ({grade.totalScore}%)
+                            </span>
+                          )}
                         </td>
-                        <td className="py-2 px-2.5 text-center font-bold font-mono">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs ${
-                            resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
-                              ? 'bg-rose-100 text-rose-800'
-                              : resolved.point >= 3.5 || resolved.letter === 'ผ'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : resolved.point >= 2.5
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {resolved.letter}
-                          </span>
+                        <td className="py-2 px-2.5 text-center font-bold">
+                          {summary.isPrimary ? (
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              {resolved.isSpecial ? (
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-mono border ${
+                                  resolved.letter === 'ผ'
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : 'bg-rose-100 text-rose-800 border-rose-300'
+                                }`}>
+                                  {resolved.letter}
+                                </span>
+                              ) : (
+                                <>
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] border ${rawFeedback.badgeClass}`}>
+                                    {rawFeedback.labelTh} ({rawFeedback.labelEn})
+                                  </span>
+                                  <span className="text-[10px] font-mono text-slate-500">
+                                    ผลรายปี ศธ.: {resolved.letter}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-mono ${
+                              resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
+                                ? 'bg-rose-100 text-rose-800'
+                                : resolved.point >= 3.5 || resolved.letter === 'ผ'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : resolved.point >= 2.5
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {resolved.letter}
+                            </span>
+                          )}
                         </td>
-                        <td className="py-2 px-2.5 text-center font-mono font-bold text-slate-900">
-                          {resolved.isSpecial ? '-' : resolved.point.toFixed(1)}
-                        </td>
+                        {!hideGpa && (
+                          <td className="py-2 px-2.5 text-center font-mono font-bold text-slate-900">
+                            {resolved.isSpecial ? '-' : resolved.point.toFixed(1)}
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -256,28 +324,43 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             {gradePageCount > 1 && (
               <div className="flex items-center justify-between gap-3 text-xs text-slate-700 print:hidden">
                 <button type="button" onClick={() => setGradePage(page => Math.max(0, page - 1))} disabled={gradePage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-                <span className="font-medium">หน้า {gradePage + 1} / {gradePageCount} · {studentGrades.length} รายวิชา</span>
+                <span className="font-medium">หน้า {gradePage + 1} / {gradePageCount} · {cycleGradeEntries.length} รายวิชา</span>
                 <button type="button" onClick={() => setGradePage(page => Math.min(gradePageCount - 1, page + 1))} disabled={gradePage >= gradePageCount - 1} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold disabled:opacity-40 cursor-pointer">ถัดไป</button>
               </div>
             )}
 
             {/* Summary Statistics */}
             <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 grid grid-cols-3 gap-4 text-center">
-              {summary.isPrimary ? (
+              {hideGpa ? (
                 <>
                   <div>
-                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">จำนวนวิชาที่ประเมิน</span>
-                    <span className="text-xl font-bold font-mono text-slate-900">{summary.gradedSubjectCount} วิชา</span>
-                  </div>
-                  <div className="border-x border-slate-200">
-                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">คะแนนดิบเฉลี่ย (เต็ม 100 / %)</span>
-                    <span className="text-xl font-extrabold font-mono text-emerald-700">
-                      {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : '-'}
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">
+                      รอบประเมินรายปี (ป.1–ป.6)
+                    </span>
+                    <span className="text-xl font-bold font-mono text-slate-900">
+                      {summary.gradedSubjectCount} รายวิชา
                     </span>
                   </div>
+                  <div className="border-x border-slate-200">
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">
+                      คะแนนดิบเฉลี่ย (เต็ม 100 / %)
+                    </span>
+                    <span className="text-2xl font-extrabold font-mono text-emerald-700">
+                      {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : '-'}
+                    </span>
+                    {summary.averageRawScore !== null && (
+                      <span className="block text-[10px] text-slate-500 font-mono">
+                        ({summary.averageRawScore} / 100 คะแนน)
+                      </span>
+                    )}
+                  </div>
                   <div>
-                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">เกรดเฉลี่ยรายปี (0–4)</span>
-                    <span className="text-xl font-extrabold font-mono text-indigo-700">{cumulativeGPAX}</span>
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">
+                      พัฒนาการภาพรวม (Feedback)
+                    </span>
+                    <span className={`inline-block mt-1 px-3 py-0.5 rounded-full text-sm font-bold border ${overallPrimaryFeedback.badgeClass}`}>
+                      {overallPrimaryFeedback.labelTh} ({overallPrimaryFeedback.labelEn})
+                    </span>
                   </div>
                 </>
               ) : (

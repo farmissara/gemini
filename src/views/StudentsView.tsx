@@ -49,7 +49,7 @@ import {
 import { StudentPromotionModal } from '../components/modals/StudentPromotionModal';
 import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
-import { calculateStudentAcademicSummary } from '../lib/moeGrading';
+import { calculateStudentAcademicSummary, getRawScoreFeedback, isPrimaryGradeLevel } from '../lib/moeGrading';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -1125,15 +1125,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       </td>
 
                       <td className="py-3.5 px-4">
-                        {summary.isPrimary && summary.averageRawScore !== null ? (
-                          <div className="space-y-0.5">
-                            <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700">
-                              {summary.averageRawScore}%
-                            </span>
-                            <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                              รายปี {displayGpa.toFixed(2)}
+                        {summary.hideGpaCalculations ? (
+                          summary.averageRawScore !== null ? (
+                            <div className="space-y-0.5">
+                              <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700">
+                                {summary.averageRawScore}%
+                              </span>
+                              <div className="text-[10px] text-[var(--color-text-muted)] font-semibold">
+                                {getRawScoreFeedback(summary.averageRawScore).labelTh} (รายปี)
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
+                              ประเมินรายปี (%)
+                            </span>
+                          )
                         ) : (
                           <span
                             className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border ${
@@ -2287,52 +2293,61 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                   {/* Academic GPA */}
                   <div className="pt-2 border-t border-[var(--color-border)] space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-[var(--color-text-title)] font-bold text-xs">
-                        เกรดเฉลี่ยสะสม (GPA / GPAX)
-                      </label>
-                      <span className="text-[11px] text-[var(--color-primary-text)] font-semibold">
-                        ค่าระหว่าง 0.00 - 4.00 (ค่าเริ่มต้น 0.00)
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        max="4"
-                        step="0.01"
-                        value={formData.gpa}
-                        onChange={(e) => {
-                          const parsed = Number(e.target.value);
-                          const val = Number.isFinite(parsed) ? Math.min(4.00, Math.max(0, parsed)) : 0;
-                          setFormData({ ...formData, gpa: Number(val.toFixed(2)) });
-                        }}
-                        placeholder="0.00"
-                        className="w-36 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm"
-                      />
-                      {editingStudent && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const summary = calculateStudentAcademicSummary({
-                              student: editingStudent,
-                              courses,
-                              grades,
-                              gradingSystem,
-                            });
-                            if (summary.gpax !== null) {
-                              setFormData({ ...formData, gpa: summary.gpax });
-                            }
-                          }}
-                          className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-bold cursor-pointer"
-                        >
-                          คำนวณจาก ปพ.5
-                        </button>
-                      )}
-                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1 min-w-[200px]">
-                        หากยังไม่ตัดเกรดให้คงค่า 0.00 (สำหรับ ป.1–ป.6 ระบบจะเน้นคะแนนดิบ/เปอร์เซ็นต์และตัดสินรายปี และ ม.1–ม.6 จะคำนวณ GPA/GPAX ถ่วงน้ำหนักหน่วยกิตจาก ปพ.5)
-                      </p>
-                    </div>
+                    {isPrimaryGradeLevel(formData.gradeLevel) ? (
+                      <div className="rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 p-3 text-[11px] text-sky-900 dark:text-sky-200">
+                        <strong className="block mb-0.5">รอบการประเมินระดับประถมศึกษา (ป.1–ป.6): ประเมินผลรายปี</strong>
+                        ระบบจะสื่อสารผลการเรียนด้วยคะแนนดิบ (เต็ม 100) และร้อยละ (%) จากสมุดวัดผล (ปพ.5) เป็นหลัก โดยไม่แสดงการคำนวณ GPA/GPAX สำหรับระดับประถมศึกษา
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-[var(--color-text-title)] font-bold text-xs">
+                            เกรดเฉลี่ยสะสม (GPA / GPAX)
+                          </label>
+                          <span className="text-[11px] text-[var(--color-primary-text)] font-semibold">
+                            ค่าระหว่าง 0.00 - 4.00 (ค่าเริ่มต้น 0.00)
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            type="number"
+                            min="0"
+                            max="4"
+                            step="0.01"
+                            value={formData.gpa}
+                            onChange={(e) => {
+                              const parsed = Number(e.target.value);
+                              const val = Number.isFinite(parsed) ? Math.min(4.00, Math.max(0, parsed)) : 0;
+                              setFormData({ ...formData, gpa: Number(val.toFixed(2)) });
+                            }}
+                            placeholder="0.00"
+                            className="w-36 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm"
+                          />
+                          {editingStudent && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const summary = calculateStudentAcademicSummary({
+                                  student: editingStudent,
+                                  courses,
+                                  grades,
+                                  gradingSystem,
+                                });
+                                if (summary.gpax !== null) {
+                                  setFormData({ ...formData, gpa: summary.gpax });
+                                }
+                              }}
+                              className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-bold cursor-pointer"
+                            >
+                              คำนวณจาก ปพ.5
+                            </button>
+                          )}
+                          <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1 min-w-[200px]">
+                            หากยังไม่ตัดเกรดให้คงค่า 0.00 (ม.1–ม.6 จะคำนวณ GPA/GPAX ถ่วงน้ำหนักหน่วยกิตจาก ปพ.5 รายภาคเรียน)
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

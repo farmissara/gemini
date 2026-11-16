@@ -45,6 +45,7 @@ import {
 import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
 import { getConsentForms, getConsentResponses, upsertConsentResponse } from '../lib/campusDataStore';
+import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 
 interface ParentPortalViewProps {
   schoolId?: string;
@@ -469,24 +470,57 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 )}
               </div>
 
-              {/* GPA & Report Card Button */}
-              <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-[var(--color-text-muted)] block">เกรดเฉลี่ยสะสม (GPAX)</span>
-                  <span className="text-xl font-bold font-mono text-[var(--color-primary-text)]">
-                    {student?.gpa.toFixed(2)}
-                  </span>
-                </div>
+              {/* GPA / Primary Percentage & Report Card Button */}
+              {(() => {
+                const summary = student
+                  ? calculateStudentAcademicSummary({
+                      student,
+                      courses: _courses,
+                      grades,
+                      gradingSystem: systemConfig.gradingSystem,
+                      currentAcademicYear: systemConfig.academicYear,
+                      currentSemester: systemConfig.currentSemester,
+                    })
+                  : null;
+                const primaryFeedback = getRawScoreFeedback(summary?.averageRawScore);
+                return (
+                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                    {summary?.hideGpaCalculations ? (
+                      <div>
+                        <span className="text-[11px] text-[var(--color-text-muted)] block">
+                          คะแนนดิบเฉลี่ยรายปี (เต็ม 100)
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-bold font-mono text-[var(--color-primary-text)]">
+                            {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : 'รอประเมิน'}
+                          </span>
+                          {summary.averageRawScore !== null && (
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${primaryFeedback.badgeClass}`}>
+                              {primaryFeedback.labelTh}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-[11px] text-[var(--color-text-muted)] block">เกรดเฉลี่ยสะสม (GPAX)</span>
+                        <span className="text-xl font-bold font-mono text-[var(--color-primary-text)]">
+                          {(summary?.gpax ?? Number(student?.gpa || 0)).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
 
-                <button
-                  type="button"
-                  onClick={() => onOpenReportCard(student)}
-                  className="px-3.5 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <Award className="w-4 h-4" />
-                  <span>ดูใบเกรด ปพ.1</span>
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => onOpenReportCard(student)}
+                      className="px-3.5 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                    >
+                      <Award className="w-4 h-4" />
+                      <span>{summary?.hideGpaCalculations ? 'ดูผลประเมินรายปี' : 'ดูใบเกรด ปพ.1'}</span>
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

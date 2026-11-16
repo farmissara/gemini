@@ -31,6 +31,7 @@ import {
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
+import { isPrimaryGradeLevel } from '../lib/moeGrading';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -1083,7 +1084,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span className="text-[11px] font-mono tabular-nums text-[var(--color-primary-text)] font-bold">
-                                    GPA {student.gpa}
+                                    {isPrimaryGradeLevel(student.gradeLevel) ? 'ประเมินรายปี' : `GPA ${student.gpa}`}
                                   </span>
                                   {canManageCourses && (
                                     <button

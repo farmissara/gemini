@@ -63,6 +63,7 @@ import { PagedList } from '../components/PagedList';
 import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsPanel';
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
 import { PriorityActionWidget } from '../components/PriorityActionWidget';
+import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 
 interface DashboardViewProps {
   students: Student[];
@@ -266,8 +267,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalCollected = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.totalAmount, 0);
   const collectionRate = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : 0;
 
-  // Top honor students
-  const topStudents = [...students].sort((a, b) => b.gpa - a.gpa).slice(0, 4);
+  // Top honor students (sorted by percentage for primary or GPA for secondary)
+  const topStudents = [...students]
+    .sort((a, b) => {
+      const sumA = calculateStudentAcademicSummary({ student: a, courses, grades, gradingSystem: systemConfig.gradingSystem });
+      const sumB = calculateStudentAcademicSummary({ student: b, courses, grades, gradingSystem: systemConfig.gradingSystem });
+      const scoreA = sumA.hideGpaCalculations ? (sumA.averageRawScore ?? 0) / 25 : (sumA.gpax ?? a.gpa);
+      const scoreB = sumB.hideGpaCalculations ? (sumB.averageRawScore ?? 0) / 25 : (sumB.gpax ?? b.gpa);
+      return scoreB - scoreA;
+    })
+    .slice(0, 4);
 
   // Export selected date attendance to Excel CSV
   const handleExportSelectedDateCsv = () => {
@@ -1540,10 +1549,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
 
                       <div className="text-right">
-                        <div className="font-bold text-[var(--color-primary-text)] font-mono text-sm">
-                          {st.gpa.toFixed(2)}
-                        </div>
-                        <div className="text-[10px] text-[var(--color-text-muted)] font-medium">GPA</div>
+                        {(() => {
+                          const summary = calculateStudentAcademicSummary({
+                            student: st,
+                            courses,
+                            grades,
+                            gradingSystem: systemConfig.gradingSystem,
+                          });
+                          if (summary.hideGpaCalculations) {
+                            const feedback = getRawScoreFeedback(summary.averageRawScore);
+                            return (
+                              <>
+                                <div className="font-bold text-emerald-700 dark:text-emerald-300 font-mono text-sm">
+                                  {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : 'รายปี'}
+                                </div>
+                                <div className="text-[10px] text-[var(--color-text-muted)] font-medium">
+                                  {summary.averageRawScore !== null ? feedback.labelTh : 'ประเมินรายปี'}
+                                </div>
+                              </>
+                            );
+                          }
+                          const effectiveGpa = summary.gpax ?? st.gpa;
+                          return (
+                            <>
+                              <div className="font-bold text-[var(--color-primary-text)] font-mono text-sm">
+                                {effectiveGpa.toFixed(2)}
+                              </div>
+                              <div className="text-[10px] text-[var(--color-text-muted)] font-medium">GPA</div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   )} />

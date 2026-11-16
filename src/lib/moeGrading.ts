@@ -281,17 +281,199 @@ export function resolveEffectiveGrade(
   };
 }
 
+export interface RawScoreFeedback {
+  tier: 'excellent' | 'very_good' | 'good' | 'pass' | 'improve' | 'pending';
+  labelTh: string;
+  labelEn: string;
+  badgeClass: string;
+}
+
+export function getRawScoreFeedback(score: number | null | undefined): RawScoreFeedback {
+  if (score === null || score === undefined || !Number.isFinite(score)) {
+    return {
+      tier: 'pending',
+      labelTh: 'รอประเมิน',
+      labelEn: 'Pending',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
+    };
+  }
+  if (score >= 80) {
+    return {
+      tier: 'excellent',
+      labelTh: 'ดีเยี่ยม',
+      labelEn: 'Excellent',
+      badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    };
+  }
+  if (score >= 70) {
+    return {
+      tier: 'very_good',
+      labelTh: 'ดีมาก',
+      labelEn: 'Very Good',
+      badgeClass: 'bg-sky-100 text-sky-900 border-sky-300',
+    };
+  }
+  if (score >= 60) {
+    return {
+      tier: 'good',
+      labelTh: 'ดี',
+      labelEn: 'Good',
+      badgeClass: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+    };
+  }
+  if (score >= 50) {
+    return {
+      tier: 'pass',
+      labelTh: 'ผ่านเกณฑ์',
+      labelEn: 'Pass',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+    };
+  }
+  return {
+    tier: 'improve',
+    labelTh: 'ควรเสริมทักษะ',
+    labelEn: 'Needs Support',
+    badgeClass: 'bg-rose-100 text-rose-900 border-rose-300',
+  };
+}
+
+export interface CycleGradeEntry {
+  grade: GradeRecord;
+  course?: Course;
+  cycleLabelTh: string;
+  resolved: EffectiveGradeResolution;
+}
+
+/**
+ * Resolves student grades according to the MOE assessment cycle:
+ * - Primary (ป.1-ป.6 / Grade 1-6): Yearly cycle ("รายปี") — aggregates all records in the
+ *   target academic year per course (averaging term entries if multiple exist in the same year).
+ * - Secondary (ม.1-ม.6 / Grade 7-12): Semester cycle ("รายภาคเรียน") — preserves per-semester records.
+ */
+export function aggregateGradesByAssessmentCycle({
+  student,
+  courses,
+  grades,
+  gradingSystem = 'thai',
+  currentAcademicYear,
+  currentSemester,
+}: {
+  student: Student;
+  courses: Course[];
+  grades: GradeRecord[];
+  gradingSystem?: GradingSystem;
+  currentAcademicYear?: string;
+  currentSemester?: string;
+}): CycleGradeEntry[] {
+  const stage = detectEducationStage(student.gradeLevel);
+  const isPrimary = isPrimaryStage(stage);
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+  const studentGrades = grades.filter((g) => g.studentId === student.id);
+
+  if (isPrimary) {
+    const yearScoped = currentAcademicYear
+      ? studentGrades.filter((g) => !g.academicYear || g.academicYear === currentAcademicYear)
+      : studentGrades;
+    const sourceGrades = yearScoped.length > 0 ? yearScoped : studentGrades;
+
+    const groupedByCourse = new Map<string, GradeRecord[]>();
+    sourceGrades.forEach((g) => {
+      const list = groupedByCourse.get(g.courseId) || [];
+      list.push(g);
+      groupedByCourse.set(g.courseId, list);
+    });
+
+    const entries: CycleGradeEntry[] = [];
+    groupedByCourse.forEach((group, courseId) => {
+      const course = courseById.get(courseId);
+      const count = group.length;
+      const latest = group[count - 1];
+
+      if (count === 1) {
+        const resolved = resolveEffectiveGrade(latest, course, gradingSystem, false);
+        entries.push({
+          grade: latest,
+          course,
+          cycleLabelTh: `รายปี ${latest.academicYear || currentAcademicYear || ''}`.trim(),
+          resolved,
+        });
+        return;
+      }
+
+      // Yearly consolidation across semesters in the same academic year
+      const hasSpecialBlocking = group.some((g) => g.letterGrade === 'ร' || g.letterGrade === 'มส.');
+      const avgMidterm = clampScore(group.reduce((s, g) => s + g.midtermScore, 0) / count, 30);
+      const avgFinal = clampScore(group.reduce((s, g) => s + g.finalScore, 0) / count, 40);
+      const avgAssign = clampScore(group.reduce((s, g) => s + g.assignmentScore, 0) / count, 20);
+      const avgQuiz = clampScore(group.reduce((s, g) => s + g.quizScore, 0) / count, 10);
+      const avgTotal = clampScore(group.reduce((s, g) => s + g.totalScore, 0) / count, 100);
+
+      const consolidatedGrade: GradeRecord = {
+        ...latest,
+        semester: 'รายปี',
+        midtermScore: Math.round(avgMidterm),
+        finalScore: Math.round(avgFinal),
+        assignmentScore: Math.round(avgAssign),
+        quizScore: Math.round(avgQuiz),
+        totalScore: Math.round(avgTotal),
+        letterGrade: hasSpecialBlocking
+          ? (group.find((g) => g.letterGrade === 'ร' || g.letterGrade === 'มส.')?.letterGrade || latest.letterGrade)
+          : latest.letterGrade,
+      };
+      const resolved = resolveEffectiveGrade(consolidatedGrade, course, gradingSystem, false);
+      entries.push({
+        grade: {
+          ...consolidatedGrade,
+          letterGrade: resolved.letter as GradeRecord['letterGrade'],
+          gradePoint: resolved.point,
+        },
+        course,
+        cycleLabelTh: `รายปี ${consolidatedGrade.academicYear || currentAcademicYear || ''}`.trim(),
+        resolved,
+      });
+    });
+
+    return entries;
+  }
+
+  // Secondary: semester-based assessment cycle
+  const termScoped =
+    currentAcademicYear || currentSemester
+      ? studentGrades.filter(
+          (g) =>
+            (!currentAcademicYear || !g.academicYear || g.academicYear === currentAcademicYear) &&
+            (!currentSemester || !g.semester || g.semester === currentSemester)
+        )
+      : studentGrades;
+  const effectiveList = termScoped.length > 0 ? termScoped : studentGrades;
+
+  return effectiveList.map((grade) => {
+    const course = courseById.get(grade.courseId);
+    const resolved = resolveEffectiveGrade(grade, course, gradingSystem, false);
+    const termLabel = grade.semester ? `ภาคเรียนที่ ${grade.semester}` : 'รายภาคเรียน';
+    return {
+      grade,
+      course,
+      cycleLabelTh: `${termLabel}${grade.academicYear ? `/${grade.academicYear}` : ''}`,
+      resolved,
+    };
+  });
+}
+
 export interface StudentAcademicSummary {
   stage: EducationStage;
   isPrimary: boolean;
   isEarlyPrimary: boolean;
   isSecondary: boolean;
   evaluationCycle: 'yearly' | 'semester';
+  evaluationCycleLabelTh: string;
+  hideGpaCalculations: boolean;
   registeredCredits: number;
   earnedCredits: number;
   gradedCredits: number;
   termGpa: number | null;
   gpax: number | null;
+  annualGradeAverage: number | null;
   averageRawScore: number | null;
   gradedSubjectCount: number;
   hasRecordedGrades: boolean;
@@ -317,6 +499,10 @@ export function calculateStudentAcademicSummary({
   const isEarlyPrimary = stage === 'primary_early';
   const isSecondary = isSecondaryStage(stage);
   const evaluationCycle: 'yearly' | 'semester' = isPrimary ? 'yearly' : 'semester';
+  const evaluationCycleLabelTh = isPrimary
+    ? 'ประเมินผลรายปี (ป.1–ป.6)'
+    : 'ประเมินผลรายภาคเรียน (ม.1–ม.6)';
+  const hideGpaCalculations = isPrimary;
 
   const courseById = new Map(courses.map((c) => [c.id, c]));
   const studentGrades = grades.filter((g) => g.studentId === student.id);
@@ -332,7 +518,68 @@ export function calculateStudentAcademicSummary({
   let rawScoreSum = 0;
   let rawScoreCount = 0;
 
-  // Courses enrolled without grades yet still count towards registered credits if in current scope
+  if (isPrimary) {
+    // Primary (Grade 1-6): Yearly cycle aggregates scores per subject across the academic year
+    const yearlyEntries = aggregateGradesByAssessmentCycle({
+      student,
+      courses,
+      grades,
+      gradingSystem,
+      currentAcademicYear,
+    });
+    const gradedCourseIds = new Set(yearlyEntries.map((e) => e.grade.courseId));
+
+    const enrolledCourses = courses.filter((c) => (c.enrolledStudentIds || []).includes(student.id));
+    enrolledCourses.forEach((course) => {
+      if (!gradedCourseIds.has(course.id) && !isActivityCourse(course)) {
+        totalRegisteredCredits += course.credits || 0;
+      }
+    });
+
+    yearlyEntries.forEach(({ grade, course, resolved }) => {
+      if (resolved.isActivity) return;
+      const weight = course?.credits && course.credits > 0 ? course.credits : 1;
+      totalRegisteredCredits += course?.credits ?? 0;
+
+      if (!resolved.isSpecial) {
+        rawScoreSum += grade.totalScore;
+        rawScoreCount += 1;
+        cumulativeWeightedPoints += resolved.point * weight;
+        cumulativeGradedCredits += weight;
+        if (resolved.passed) {
+          totalEarnedCredits += course?.credits ?? 0;
+        }
+      }
+    });
+
+    const annualGradeAverage =
+      cumulativeGradedCredits > 0
+        ? Number((cumulativeWeightedPoints / cumulativeGradedCredits).toFixed(2))
+        : null;
+    const averageRawScore =
+      rawScoreCount > 0 ? Number((rawScoreSum / rawScoreCount).toFixed(1)) : null;
+
+    return {
+      stage,
+      isPrimary,
+      isEarlyPrimary,
+      isSecondary,
+      evaluationCycle,
+      evaluationCycleLabelTh,
+      hideGpaCalculations,
+      registeredCredits: totalRegisteredCredits,
+      earnedCredits: totalEarnedCredits,
+      gradedCredits: cumulativeGradedCredits,
+      termGpa: null,
+      gpax: null,
+      annualGradeAverage,
+      averageRawScore,
+      gradedSubjectCount: rawScoreCount,
+      hasRecordedGrades: yearlyEntries.length > 0,
+    };
+  }
+
+  // Secondary (Grade 7-12) and default: semester-based Term GPA & cumulative GPAX
   const enrolledCourses = courses.filter((c) => (c.enrolledStudentIds || []).includes(student.id));
   const gradedCourseIds = new Set(studentGrades.map((g) => g.courseId));
 
@@ -390,11 +637,14 @@ export function calculateStudentAcademicSummary({
     isEarlyPrimary,
     isSecondary,
     evaluationCycle,
+    evaluationCycleLabelTh,
+    hideGpaCalculations,
     registeredCredits: totalRegisteredCredits,
     earnedCredits: totalEarnedCredits,
     gradedCredits: cumulativeGradedCredits,
     termGpa,
     gpax,
+    annualGradeAverage: gpax,
     averageRawScore,
     gradedSubjectCount: rawScoreCount,
     hasRecordedGrades: studentGrades.length > 0,
