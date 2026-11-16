@@ -19,6 +19,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { StudentAcademicTrendChart } from '../StudentAcademicTrendChart';
 import { PagedList } from '../PagedList';
 import { STUDENT_STATUS_DETAILS, ALL_GRADE_LEVELS } from '../../data/studentAcademicData';
 import {
@@ -438,10 +439,27 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* Multi-Semester Academic Performance Trend Line Chart */}
+            <div className="md:col-span-2">
+              <StudentAcademicTrendChart
+                student={student}
+                courses={courses}
+                grades={grades}
+                gradingSystem={gradingSystem}
+                compact
+              />
+            </div>
           </div>
           ) : (
           /* Enrolled Courses & Grades */
           <div className="space-y-3">
+            <StudentAcademicTrendChart
+              student={student}
+              courses={courses}
+              grades={grades}
+              gradingSystem={gradingSystem}
+            />
             <span className="text-[11px] font-bold text-[var(--color-primary-text)] uppercase tracking-wider block">
               {academicSummary.isPrimary ? 'ผลการประเมินพัฒนาการและรายวิชา (รายปี)' : 'ผลการเรียนประจำภาคเรียน (ถ่วงน้ำหนักหน่วยกิต)'}
             </span>

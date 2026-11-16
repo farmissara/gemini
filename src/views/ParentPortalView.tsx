@@ -46,6 +46,7 @@ import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
 import { getConsentForms, getConsentResponses, upsertConsentResponse } from '../lib/campusDataStore';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
+import { getStoredGradeAlerts } from '../lib/gradeNotifications';
 
 interface ParentPortalViewProps {
   schoolId?: string;
@@ -162,6 +163,16 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         category: 'health',
       });
     });
+    const storedGradeAlerts = getStoredGradeAlerts(schoolId, student?.id);
+    storedGradeAlerts.slice(0, 4).forEach((alert) => {
+      events.push({
+        id: alert.id,
+        timeLabel: alert.timestamp.slice(0, 16).replace('T', ' '),
+        title: alert.title.replace(/^📊\s*/, ''),
+        detail: alert.body,
+        category: 'homework',
+      });
+    });
     if (pendingInvoice) {
       events.push({
         id: `inv-${pendingInvoice.id}`,
@@ -174,7 +185,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       });
     }
     return events.sort((a, b) => b.timeLabel.localeCompare(a.timeLabel)).slice(0, 8);
-  }, [studentAttendance, studentPeriodAttendance, studentHomework, studentInfirmary, pendingInvoice]);
+  }, [schoolId, student?.id, studentAttendance, studentPeriodAttendance, studentHomework, studentInfirmary, pendingInvoice]);
 
   // Filter attendance for the selected date in child's selfie album
   const dateRecords = studentAttendance.filter((a) => a.date === albumSelectedDate);

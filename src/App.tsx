@@ -158,6 +158,7 @@ import {
 } from './lib/centralExamBank';
 import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
 import { getParentUnreadNotificationCount, sendPrivateParentNotification } from './lib/parentNotifications';
+import { dispatchGradeAlert } from './lib/gradeNotifications';
 import { getLocalDateString } from './lib/date';
 import type { OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
@@ -1563,6 +1564,8 @@ export const App: React.FC = () => {
     const duplicateReasons = getGradeDuplicateReasons(newGrades, schoolGrades);
     if (duplicateReasons.length > 0 &&
       !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
+
+    const dispatchedItems: { grade: GradeRecord; isNewRecord: boolean }[] = [];
     setGrades((prev) => {
       const updated = [...prev];
       const affectedIds = new Set<string>();
@@ -1570,18 +1573,55 @@ export const App: React.FC = () => {
         affectedIds.add(ng.studentId);
         const idx = updated.findIndex((g) => (g.studentId === ng.studentId || g.id === ng.id) && g.courseId === ng.courseId);
         if (idx >= 0) {
-          updated[idx] = { ...updated[idx], ...ng, schoolId: activeSchool.id };
+          const merged = { ...updated[idx], ...ng, schoolId: activeSchool.id };
+          updated[idx] = merged;
+          dispatchedItems.push({ grade: merged, isNewRecord: false });
         } else {
-          updated.push({
+          const created: GradeRecord = {
             ...ng,
             id: ng.id || `grd-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             schoolId: activeSchool.id,
-          });
+          };
+          updated.push(created);
+          dispatchedItems.push({ grade: created, isNewRecord: true });
         }
       });
       syncStudentGpaFromGrades(updated, affectedIds);
       return updated;
     });
+
+    if (dispatchedItems.length > 0) {
+      if (dispatchedItems.length <= 10) {
+        dispatchedItems.forEach(({ grade, isNewRecord }) => {
+          const student = schoolStudents.find((s) => s.id === grade.studentId);
+          const course = schoolCourses.find((c) => c.id === grade.courseId);
+          if (student) {
+            void dispatchGradeAlert({
+              student,
+              course,
+              grade,
+              systemConfig,
+              schoolId: activeSchool.id,
+              isNewRecord,
+              isDemoMode,
+            });
+          }
+        });
+      } else {
+        void sendEduVerseNotification({
+          title: `📊 นำเข้าและอัปเดตผลการเรียน ${dispatchedItems.length} รายการ`,
+          body: `ระบบได้บันทึกผลการเรียนและส่งแจ้งเตือนไปยังนักเรียนและผู้ปกครองที่เกี่ยวข้องเรียบร้อยแล้ว`,
+          category: 'homework',
+          priority: 'normal',
+          tag: `grade-import-${Date.now()}`,
+          metadata: {
+            alertType: 'grade_update',
+            count: dispatchedItems.length,
+            targetAudience: ['student', 'parent'],
+          },
+        });
+      }
+    }
   };
 
   const handleRecordAttendance = (
@@ -2563,6 +2603,52 @@ export const App: React.FC = () => {
     );
   };
 
+  const handleNotifyGradeChange = async (grade: GradeRecord, isNewRecord = false) => {
+    const student = schoolStudents.find((s) => s.id === grade.studentId);
+    if (!student) return;
+    const course = schoolCourses.find((c) => c.id === grade.courseId);
+    return dispatchGradeAlert({
+      student,
+      course,
+      grade,
+      systemConfig,
+      schoolId: activeSchool.id,
+      isNewRecord,
+      isDemoMode,
+      actorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email,
+    });
+  };
+
+  const handleAddGrade = (newGrade: GradeRecord, options?: { notify?: boolean }) => {
+    const created: GradeRecord = {
+      ...newGrade,
+      id: newGrade.id || `grd-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      schoolId: activeSchool.id,
+    };
+    setGrades((prev) => {
+      const existingIdx = prev.findIndex(
+        (g) => (g.schoolId === activeSchool.id || !g.schoolId) && g.studentId === created.studentId && g.courseId === created.courseId
+      );
+      const next = existingIdx >= 0
+        ? prev.map((g, idx) => (idx === existingIdx ? { ...g, ...created, id: g.id } : g))
+        : [...prev, created];
+      syncStudentGpaFromGrades(next, new Set([created.studentId]));
+      return next;
+    });
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'grade_update',
+        targetLabel: created.studentId,
+        details: `บันทึกคะแนนรายวิชาใหม่ (คะแนนรวม ${created.totalScore})`,
+      });
+    }
+    if (options?.notify !== false) {
+      void handleNotifyGradeChange(created, true);
+    }
+  };
+
   const handleUpdateGrade = (gradeId: string, updates: Partial<GradeRecord>) => {
     setGrades((prev) => {
       let affectedStudentId: string | undefined;
@@ -2593,6 +2679,7 @@ export const App: React.FC = () => {
     entries: { studentId: string; quizScore: number }[]
   ) => {
     if (entries.length === 0) return;
+    const syncedRecords: { grade: GradeRecord; isNewRecord: boolean }[] = [];
     setGrades((prev) => {
       const next = [...prev];
       const affectedIds = new Set<string>();
@@ -2612,17 +2699,19 @@ export const App: React.FC = () => {
           );
           const preserveSpecial = isSpecialMoeGrade(existing.letterGrade);
           const graded = calculateGrade(totalScore, systemConfig.gradingSystem);
-          next[idx] = {
+          const updatedRecord: GradeRecord = {
             ...existing,
             quizScore: entry.quizScore,
             totalScore,
             letterGrade: preserveSpecial ? existing.letterGrade : graded.letter,
             gradePoint: preserveSpecial ? 0 : graded.point,
           };
+          next[idx] = updatedRecord;
+          syncedRecords.push({ grade: updatedRecord, isNewRecord: false });
         } else {
           const totalScore = Math.min(100, entry.quizScore);
           const graded = calculateGrade(totalScore, systemConfig.gradingSystem);
-          next.push({
+          const createdRecord: GradeRecord = {
             id: `grd-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             schoolId: activeSchool.id,
             studentId: entry.studentId,
@@ -2636,7 +2725,9 @@ export const App: React.FC = () => {
             totalScore,
             letterGrade: graded.letter,
             gradePoint: graded.point,
-          });
+          };
+          next.push(createdRecord);
+          syncedRecords.push({ grade: createdRecord, isNewRecord: true });
         }
       }
       syncStudentGpaFromGrades(next, affectedIds);
@@ -2650,6 +2741,28 @@ export const App: React.FC = () => {
         targetLabel: courseId,
         details: `นำเข้าคะแนน Quiz จาก "${packTitle}" เข้าสมุดคะแนน ${entries.length} คน`,
       });
+    }
+    if (syncedRecords.length > 0) {
+      if (syncedRecords.length <= 10) {
+        syncedRecords.forEach(({ grade, isNewRecord }) => {
+          void handleNotifyGradeChange(grade, isNewRecord);
+        });
+      } else {
+        const course = schoolCourses.find((c) => c.id === courseId);
+        void sendEduVerseNotification({
+          title: `📊 ซิงค์คะแนน Quiz "${packTitle}" (${syncedRecords.length} คน)`,
+          body: `อัปเดตคะแนนรายวิชา ${course?.code || courseId} ${course?.titleTh || ''} และแจ้งเตือนนักเรียนและผู้ปกครองแล้ว`,
+          category: 'homework',
+          priority: 'normal',
+          tag: `quiz-sync-${courseId}-${Date.now()}`,
+          metadata: {
+            alertType: 'grade_update',
+            courseId,
+            count: syncedRecords.length,
+            targetAudience: ['student', 'parent'],
+          },
+        });
+      }
     }
   };
 
@@ -3643,6 +3756,8 @@ export const App: React.FC = () => {
                     currentRole={currentRole}
                     onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
                     onUpdateGrade={handleUpdateGrade}
+                    onAddGrade={handleAddGrade}
+                    onNotifyGradeChange={handleNotifyGradeChange}
                     onOpenReportCard={setSelectedStudentForReport}
                     timetableSlots={schoolTimetableSlots}
                     attendance={schoolAttendance}

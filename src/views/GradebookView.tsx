@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AdaptivePracticeTopic,
   AttendanceRecord,
@@ -14,13 +14,13 @@ import {
 } from '../types';
 import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
-import { 
-  Award, 
-  FileText, 
-  Printer, 
-  Download, 
-  CheckCircle, 
-  Sparkles, 
+import {
+  Award,
+  FileText,
+  Printer,
+  Download,
+  CheckCircle,
+  Sparkles,
   Search,
   Filter,
   Sliders,
@@ -29,7 +29,12 @@ import {
   UserCheck,
   CheckCircle2,
   FileSpreadsheet,
-  AlertTriangle
+  AlertTriangle,
+  BellRing,
+  BellOff,
+  Plus,
+  Send,
+  X,
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import {
@@ -45,6 +50,7 @@ import {
   matchesEducationLevelFilter,
   resolveEffectiveGrade,
 } from '../lib/moeGrading';
+import { dispatchGradeAlert, GradeAlertRecord } from '../lib/gradeNotifications';
 
 interface GradebookViewProps {
   students: Student[];
@@ -55,6 +61,8 @@ interface GradebookViewProps {
   currentRole?: UserRole;
   onChangeGradingSystem?: (mode: GradingSystem) => Promise<void> | void;
   onUpdateGrade: (gradeId: string, updates: Partial<GradeRecord>) => void;
+  onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
+  onNotifyGradeChange?: (grade: GradeRecord, isNewRecord?: boolean) => Promise<GradeAlertRecord | void> | GradeAlertRecord | void;
   onOpenReportCard: (student: Student) => void;
   timetableSlots?: TimetableSlot[];
   attendance?: AttendanceRecord[];
@@ -71,6 +79,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   currentRole = 'teacher',
   onChangeGradingSystem,
   onUpdateGrade,
+  onAddGrade,
+  onNotifyGradeChange,
   onOpenReportCard,
   timetableSlots = [],
   attendance = [],
@@ -90,9 +100,40 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [gradeRoomFilter, setGradeRoomFilter] = useState('all');
   const [gradeLevelFilter, setGradeLevelFilter] = useState('all');
   const [gradeEligibilityFilter, setGradeEligibilityFilter] = useState<'all' | 'eligible' | 'at_risk'>('all');
+  const [autoNotifyEnabled, setAutoNotifyEnabled] = useState(true);
+  const [gradeAlertBanner, setGradeAlertBanner] = useState<{ message: string; detail?: string } | null>(null);
+  const [showAddGradeForm, setShowAddGradeForm] = useState(false);
+  const [newGradeStudentId, setNewGradeStudentId] = useState('');
+  const [newMidtermScore, setNewMidtermScore] = useState(0);
+  const [newFinalScore, setNewFinalScore] = useState(0);
+  const [newAssignmentScore, setNewAssignmentScore] = useState(0);
+  const [newQuizScore, setNewQuizScore] = useState(0);
+
+  const pendingNotifyRef = useRef<Map<string, { timer: ReturnType<typeof setTimeout>; latestGrade: GradeRecord }>>(
+    new Map()
+  );
+  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const timersMap = pendingNotifyRef.current;
+    return () => {
+      timersMap.forEach((entry) => clearTimeout(entry.timer));
+      timersMap.clear();
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    };
+  }, []);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const courseGrades = grades.filter((g) => g.courseId === selectedCourseId);
+  const gradedStudentIdsInCourse = new Set(courseGrades.map((g) => g.studentId));
+  const studentsWithoutGradeInCourse = students
+    .filter((s) => !gradedStudentIdsInCourse.has(s.id))
+    .sort((a, b) =>
+      `${a.gradeLevel} ${a.room} ${a.studentIdNumber}`.localeCompare(
+        `${b.gradeLevel} ${b.room} ${b.studentIdNumber}`,
+        'th'
+      )
+    );
   const filteredCourses = courses.filter((course) => {
     const search = courseSearchTerm.trim().toLocaleLowerCase();
     return !search || [course.code, course.titleTh, course.titleEn, course.teacherName]
@@ -233,6 +274,64 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const getGradeDisplay = (grade: GradeRecord) =>
     resolveEffectiveGrade(grade, selectedCourse, systemConfig.gradingSystem, false);
 
+  const showAlertToast = (message: string, detail?: string) => {
+    setGradeAlertBanner({ message, detail });
+    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    bannerTimerRef.current = setTimeout(() => {
+      setGradeAlertBanner(null);
+    }, 4500);
+  };
+
+  const triggerGradeAlertNow = async (grade: GradeRecord, isNewRecord = false, force = false) => {
+    if (!force && !autoNotifyEnabled) return;
+    const student = studentsById.get(grade.studentId);
+    if (!student) return;
+
+    if (onNotifyGradeChange) {
+      await onNotifyGradeChange(grade, isNewRecord);
+    } else {
+      await dispatchGradeAlert({
+        student,
+        course: selectedCourse,
+        grade,
+        systemConfig,
+        schoolId: school?.id || grade.schoolId || '',
+        isNewRecord,
+        isDemoMode: true,
+      });
+    }
+
+    const studentLabel = `${student.firstNameTh} ${student.lastNameTh}`.trim();
+    const courseLabel = selectedCourse?.code || grade.courseId;
+    const stagePrimary = isPrimaryStage(detectCourseEducationStage(selectedCourse, [student]));
+    const detail = stagePrimary
+      ? `${courseLabel} • คะแนนรวม ${grade.totalScore}/100 (${grade.totalScore}%)`
+      : `${courseLabel} • คะแนนรวม ${grade.totalScore}/100 • เกรด ${grade.letterGrade}`;
+    showAlertToast(
+      `ส่งแจ้งเตือนผลการเรียนไปยัง ${studentLabel} และผู้ปกครองแล้ว`,
+      detail
+    );
+  };
+
+  const scheduleDebouncedGradeAlert = (updatedGrade: GradeRecord) => {
+    if (!autoNotifyEnabled) return;
+    const existing = pendingNotifyRef.current.get(updatedGrade.id);
+    if (existing) clearTimeout(existing.timer);
+    const timer = setTimeout(() => {
+      pendingNotifyRef.current.delete(updatedGrade.id);
+      void triggerGradeAlertNow(updatedGrade, false);
+    }, 1400);
+    pendingNotifyRef.current.set(updatedGrade.id, { timer, latestGrade: updatedGrade });
+  };
+
+  const flushPendingGradeAlert = (gradeId: string) => {
+    const pending = pendingNotifyRef.current.get(gradeId);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingNotifyRef.current.delete(gradeId);
+    void triggerGradeAlertNow(pending.latestGrade, false);
+  };
+
   const handleScoreChange = (
     grade: GradeRecord,
     field: 'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore',
@@ -255,51 +354,129 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     );
 
     if (courseIsActivity || grade.letterGrade === 'ผ' || grade.letterGrade === 'มผ') {
+      const nextLetter = total >= 50 ? 'ผ' : 'มผ';
+      const nextGrade: GradeRecord = {
+        ...updated,
+        totalScore: total,
+        letterGrade: nextLetter,
+        gradePoint: 0,
+      };
       onUpdateGrade(grade.id, {
         [field]: clampedVal,
         totalScore: total,
-        letterGrade: total >= 50 ? 'ผ' : 'มผ',
+        letterGrade: nextLetter,
         gradePoint: 0,
       });
+      scheduleDebouncedGradeAlert(nextGrade);
       return;
     }
 
     if (grade.letterGrade === 'ร' || grade.letterGrade === 'มส.') {
+      const nextGrade: GradeRecord = {
+        ...updated,
+        totalScore: total,
+        letterGrade: grade.letterGrade,
+        gradePoint: 0,
+      };
       onUpdateGrade(grade.id, {
         [field]: clampedVal,
         totalScore: total,
         letterGrade: grade.letterGrade,
         gradePoint: 0,
       });
+      scheduleDebouncedGradeAlert(nextGrade);
       return;
     }
 
     const { letter, point } = calculateGrade(total, systemConfig.gradingSystem);
+    const nextGrade: GradeRecord = {
+      ...updated,
+      totalScore: total,
+      letterGrade: letter,
+      gradePoint: point,
+    };
     onUpdateGrade(grade.id, {
       [field]: clampedVal,
       totalScore: total,
       letterGrade: letter,
       gradePoint: point,
     });
+    scheduleDebouncedGradeAlert(nextGrade);
   };
 
   const handleSpecialStatusChange = (grade: GradeRecord, status: 'auto' | 'ร' | 'มส.' | 'ผ' | 'มผ') => {
+    const existingPending = pendingNotifyRef.current.get(grade.id);
+    if (existingPending) {
+      clearTimeout(existingPending.timer);
+      pendingNotifyRef.current.delete(grade.id);
+    }
+
+    let nextLetter = grade.letterGrade;
+    let nextPoint = grade.gradePoint;
+
     if (status === 'auto') {
       if (courseIsActivity) {
-        onUpdateGrade(grade.id, {
-          letterGrade: grade.totalScore >= 50 ? 'ผ' : 'มผ',
-          gradePoint: 0,
-        });
+        nextLetter = grade.totalScore >= 50 ? 'ผ' : 'มผ';
+        nextPoint = 0;
       } else {
         const { letter, point } = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
-        onUpdateGrade(grade.id, { letterGrade: letter, gradePoint: point });
+        nextLetter = letter;
+        nextPoint = point;
       }
-      return;
+    } else {
+      nextLetter = status;
+      nextPoint = 0;
     }
-    onUpdateGrade(grade.id, {
-      letterGrade: status,
-      gradePoint: 0,
-    });
+
+    onUpdateGrade(grade.id, { letterGrade: nextLetter, gradePoint: nextPoint });
+    const nextGrade: GradeRecord = { ...grade, letterGrade: nextLetter, gradePoint: nextPoint };
+    void triggerGradeAlertNow(nextGrade, false);
+  };
+
+  const handleCreateGradeRecord = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedCourse || !newGradeStudentId || !onAddGrade) return;
+    const midterm = clampScore(newMidtermScore, 30);
+    const final = clampScore(newFinalScore, 40);
+    const assignment = clampScore(newAssignmentScore, 20);
+    const quiz = clampScore(newQuizScore, 10);
+    const total = clampScore(midterm + final + assignment + quiz, 100);
+    const graded = courseIsActivity
+      ? { letter: total >= 50 ? 'ผ' : 'มผ', point: 0 }
+      : calculateGrade(total, systemConfig.gradingSystem);
+
+    const newRecord: GradeRecord = {
+      id: `grd-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      schoolId: school?.id || '',
+      studentId: newGradeStudentId,
+      courseId: selectedCourse.id,
+      academicYear: systemConfig.academicYear || school?.academicYear || '2568',
+      semester: systemConfig.currentSemester || school?.currentSemester || '1',
+      midtermScore: midterm,
+      finalScore: final,
+      assignmentScore: assignment,
+      quizScore: quiz,
+      totalScore: total,
+      letterGrade: graded.letter,
+      gradePoint: graded.point,
+    };
+
+    onAddGrade(newRecord, { notify: autoNotifyEnabled });
+    const stu = studentsById.get(newGradeStudentId);
+    if (stu) {
+      showAlertToast(
+        autoNotifyEnabled
+          ? `บันทึกคะแนนใหม่และแจ้งเตือนไปยัง ${stu.firstNameTh} ${stu.lastNameTh} และผู้ปกครองแล้ว`
+          : `บันทึกคะแนนใหม่ของ ${stu.firstNameTh} ${stu.lastNameTh} แล้ว (ปิดแจ้งเตือนอัตโนมัติ)`,
+        `${selectedCourse.code} • คะแนนรวม ${total}/100 (${total}%)`
+      );
+    }
+    setShowAddGradeForm(false);
+    setNewGradeStudentId('');
+    setNewMidtermScore(0);
+    setNewFinalScore(0);
+    setNewAssignmentScore(0);
+    setNewQuizScore(0);
   };
 
   const handleExportCSV = () => {
@@ -631,6 +808,39 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {activeTab === 'gradebook' && (
+            <button
+              type="button"
+              onClick={() => setAutoNotifyEnabled((prev) => !prev)}
+              aria-pressed={autoNotifyEnabled}
+              title="เปิด/ปิดการส่งแจ้งเตือนผลการเรียนอัตโนมัติถึงนักเรียนและผู้ปกครองเมื่อบันทึกหรือแก้ไขคะแนน"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                autoNotifyEnabled
+                  ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-200'
+                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)]'
+              }`}
+            >
+              {autoNotifyEnabled ? <BellRing className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+              <span>{autoNotifyEnabled ? 'แจ้งเตือนอัตโนมัติ: เปิด' : 'แจ้งเตือนอัตโนมัติ: ปิด'}</span>
+            </button>
+          )}
+
+          {activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddGradeForm((prev) => !prev);
+                if (!newGradeStudentId && studentsWithoutGradeInCourse[0]) {
+                  setNewGradeStudentId(studentsWithoutGradeInCourse[0].id);
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>บันทึกคะแนนนักเรียน</span>
+            </button>
+          )}
+
           {(activeTab === 'gradebook' || activeTab === 'pp5') && (
             <>
               <button
@@ -850,6 +1060,133 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
           </div>
 
+          {/* Automated Grade Notification Confirmation Toast */}
+          {gradeAlertBanner && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/60 px-3 py-2 text-xs text-indigo-900 dark:text-indigo-100 flex items-center justify-between gap-2 print:hidden"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <BellRing className="w-4 h-4 text-indigo-600 dark:text-indigo-300 shrink-0" />
+                <div className="min-w-0">
+                  <span className="font-bold">{gradeAlertBanner.message}</span>
+                  {gradeAlertBanner.detail && (
+                    <span className="ml-2 text-[11px] opacity-85">({gradeAlertBanner.detail})</span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGradeAlertBanner(null)}
+                className="p-1 rounded-md hover:bg-indigo-200/50 dark:hover:bg-indigo-800/50 cursor-pointer shrink-0"
+                aria-label="ปิดข้อความแจ้งเตือน"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Add New Student Grade Form */}
+          {showAddGradeForm && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
+            <form
+              onSubmit={handleCreateGradeRecord}
+              className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-card-subtle)] p-3 space-y-2.5 print:hidden"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                  <span>เพิ่มและบันทึกคะแนนนักเรียนใหม่ในรายวิชา {selectedCourse.code}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddGradeForm(false)}
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
+                <label className="sm:col-span-2">
+                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">นักเรียน</span>
+                  <select
+                    required
+                    value={newGradeStudentId}
+                    onChange={(e) => setNewGradeStudentId(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)]"
+                  >
+                    <option value="">-- เลือกนักเรียน --</option>
+                    {studentsWithoutGradeInCourse.map((stu) => (
+                      <option key={stu.id} value={stu.id}>
+                        {stu.studentIdNumber} · {stu.firstNameTh} {stu.lastNameTh} ({stu.gradeLevel} {stu.room})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">กลางภาค (30)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="30"
+                    value={newMidtermScore}
+                    onChange={(e) => setNewMidtermScore(clampScore(Number(e.target.value), 30))}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-mono text-center text-[var(--color-text-title)]"
+                  />
+                </label>
+                <label>
+                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">ปลายภาค (40)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="40"
+                    value={newFinalScore}
+                    onChange={(e) => setNewFinalScore(clampScore(Number(e.target.value), 40))}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-mono text-center text-[var(--color-text-title)]"
+                  />
+                </label>
+                <label>
+                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">การบ้าน (20)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={newAssignmentScore}
+                    onChange={(e) => setNewAssignmentScore(clampScore(Number(e.target.value), 20))}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-mono text-center text-[var(--color-text-title)]"
+                  />
+                </label>
+                <label>
+                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">ควิซ (10)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={newQuizScore}
+                    onChange={(e) => setNewQuizScore(clampScore(Number(e.target.value), 10))}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-mono text-center text-[var(--color-text-title)]"
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                <span className="text-[var(--color-text-muted)]">
+                  คะแนนรวม:{' '}
+                  <strong className="font-mono text-[var(--color-text-title)]">
+                    {clampScore(newMidtermScore + newFinalScore + newAssignmentScore + newQuizScore, 100)}/100
+                  </strong>
+                </span>
+                <button
+                  type="submit"
+                  disabled={!newGradeStudentId}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>บันทึกและแจ้งเตือนผู้ปกครอง</span>
+                </button>
+              </div>
+            </form>
+          )}
+
           {/* MOE Assessment Standard Banner */}
           <div className={`rounded-xl border px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 ${
             courseIsActivity
@@ -1023,6 +1360,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'midtermScore', Number(e.target.value))
                             }
+                            onBlur={() => flushPendingGradeAlert(grade.id)}
                             className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
@@ -1036,6 +1374,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'finalScore', Number(e.target.value))
                             }
+                            onBlur={() => flushPendingGradeAlert(grade.id)}
                             className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
@@ -1049,6 +1388,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'assignmentScore', Number(e.target.value))
                             }
+                            onBlur={() => flushPendingGradeAlert(grade.id)}
                             className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
@@ -1062,6 +1402,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             onChange={(e) =>
                               handleScoreChange(grade, 'quizScore', Number(e.target.value))
                             }
+                            onBlur={() => flushPendingGradeAlert(grade.id)}
                             className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
@@ -1157,6 +1498,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                         <td className="py-3 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void triggerGradeAlertNow(grade, false, true)}
+                              className="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                              title="ส่งแจ้งเตือนผลการเรียนไปยังนักเรียนและผู้ปกครองทันที"
+                            >
+                              <BellRing className="w-3 h-3" />
+                              <span>แจ้งเตือน</span>
+                            </button>
                             {onPracticeInAi && grade.totalScore < 65 && (
                               <button
                                 type="button"
@@ -1275,6 +1625,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           max="30"
                           value={grade.midtermScore}
                           onChange={(e) => handleScoreChange(grade, 'midtermScore', Number(e.target.value))}
+                          onBlur={() => flushPendingGradeAlert(grade.id)}
                           className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 30)</span>
@@ -1288,6 +1639,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           max="40"
                           value={grade.finalScore}
                           onChange={(e) => handleScoreChange(grade, 'finalScore', Number(e.target.value))}
+                          onBlur={() => flushPendingGradeAlert(grade.id)}
                           className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 40)</span>
@@ -1301,6 +1653,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           max="20"
                           value={grade.assignmentScore}
                           onChange={(e) => handleScoreChange(grade, 'assignmentScore', Number(e.target.value))}
+                          onBlur={() => flushPendingGradeAlert(grade.id)}
                           className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 20)</span>
@@ -1314,6 +1667,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           max="10"
                           value={grade.quizScore}
                           onChange={(e) => handleScoreChange(grade, 'quizScore', Number(e.target.value))}
+                          onBlur={() => flushPendingGradeAlert(grade.id)}
                           className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 10)</span>
@@ -1321,7 +1675,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     </div>
 
                     {/* Bottom Action */}
-                    <div className="flex items-center justify-end pt-1">
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => void triggerGradeAlertNow(grade, false, true)}
+                        className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <BellRing className="w-3.5 h-3.5" />
+                        <span>แจ้งเตือน</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => onOpenReportCard(student)}

@@ -480,13 +480,16 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 </div>
               ) : (
                 notifications.map((notif) => {
-                  const categoryBadge = {
-                    attendance: { label: lang === 'th' ? 'เช็คชื่อ' : 'Attendance', color: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300' },
-                    homework: { label: lang === 'th' ? 'การบ้าน' : 'Homework', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' },
-                    announcement: { label: lang === 'th' ? 'ประกาศ' : 'Bulletin', color: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300' },
-                    billing: { label: lang === 'th' ? 'ค่าเทอม' : 'Billing', color: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300' },
-                    system: { label: lang === 'th' ? 'ระบบ' : 'System', color: 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300' },
-                  }[notif.category];
+                  const isGradeAlert = notif.metadata?.alertType === 'grade_update';
+                  const categoryBadge = isGradeAlert
+                    ? { label: lang === 'th' ? 'ผลการเรียน' : 'Grade Alert', color: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200' }
+                    : {
+                        attendance: { label: lang === 'th' ? 'เช็คชื่อ' : 'Attendance', color: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300' },
+                        homework: { label: lang === 'th' ? 'การบ้าน' : 'Homework', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' },
+                        announcement: { label: lang === 'th' ? 'ประกาศ' : 'Bulletin', color: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300' },
+                        billing: { label: lang === 'th' ? 'ค่าเทอม' : 'Billing', color: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300' },
+                        system: { label: lang === 'th' ? 'ระบบ' : 'System', color: 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300' },
+                      }[notif.category];
 
                   return (
                     <div
