@@ -33,7 +33,9 @@ import {
   BarChart3,
   BellRing,
   Monitor,
-  BookOpen
+  BookOpen,
+  GraduationCap,
+  ClipboardList
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -337,23 +339,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const fallbackAvatarSvg = (name?: string) => {
+    const letter = encodeURIComponent(((name || 'U').trim().charAt(0) || 'U').toUpperCase());
+    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23e2e8f0"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="%23334155">${letter}</text></svg>`;
+  };
+
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('dashboard')}`}>
-      {/* Compact Header & Subtabs Bar */}
-      <div className="shrink-0 app-page-header px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-4 dashboard-frosted-backdrop rounded-2xl p-1 sm:p-2 ${getModuleTone('dashboard')}`}>
+      {/* Clean Frosted Header & Subtabs Bar */}
+      <div className="shrink-0 frosted-card rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-sky-100/90 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
             <BarChart3 className="w-4 h-4" />
           </div>
-          <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
-          </h1>
-          <span className="hidden md:inline text-xs text-[var(--color-text-muted)] whitespace-nowrap">
-            {lang === 'th'
-              ? `ปีการศึกษา ${systemConfig.academicYear} • ${formatSemesterLabel(systemConfig.currentSemester)}`
-              : `AY ${systemConfig.academicYear} • ${systemConfig.currentSemester}`}
-          </span>
-          <ModuleTourTrigger moduleId="dashboard" lang={lang} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-[#0f172a] dark:text-slate-100 truncate">
+                {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
+              </h1>
+              <ModuleTourTrigger moduleId="dashboard" lang={lang} />
+            </div>
+            <p className="text-xs text-[#475569] dark:text-slate-300 truncate tabular-nums">
+              {lang === 'th'
+                ? `ปีการศึกษา ${systemConfig.academicYear} · ${formatSemesterLabel(systemConfig.currentSemester)}`
+                : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -421,25 +432,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Main Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
-        {/* TAB 1: EXECUTIVE OVERVIEW */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5">
+        {/* TAB 1: CLEAN 2-COLUMN (50% / 50%) FROSTED ARCHITECTURE */}
         {dashboardTab === 'overview' && (
-          <div className="space-y-3 animate-in fade-in duration-150">
+          <div className="space-y-5 animate-in fade-in duration-150">
             {unclaimedCentralPacksCount > 0 &&
               (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
-                <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2 text-amber-900 dark:text-amber-100 font-semibold">
-                    <BookOpen className="w-4 h-4 shrink-0" />
+                <div className="frosted-card frosted-amber px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5 text-[#1e293b] dark:text-amber-100 font-semibold">
+                    <BookOpen className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
                     <span>
                       มีข้อสอบกลางชุดใหม่ {unclaimedCentralPacksCount} ชุด รอรับเข้าคลังโรงเรียน
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {currentUser?.role === 'admin' && onOpenCentralExamPopup && (
                       <button
                         type="button"
                         onClick={onOpenCentralExamPopup}
-                        className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer whitespace-nowrap"
+                        className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold cursor-pointer whitespace-nowrap"
                       >
                         รับข้อสอบ
                       </button>
@@ -447,7 +458,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigate('central_exam_hub')}
-                      className="px-2.5 py-1 rounded-md border border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-100 font-semibold hover:bg-amber-100 cursor-pointer whitespace-nowrap"
+                      className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white/80 dark:bg-slate-900 text-[#1e293b] dark:text-amber-100 font-semibold hover:bg-amber-50 cursor-pointer whitespace-nowrap"
                     >
                       คลังข้อสอบกลาง
                     </button>
@@ -455,90 +466,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               )}
 
-            {/* 4 Balanced High-level Overview KPI Cards */}
-            <div data-guide-id="dashboard-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Students */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'นักเรียนทั้งหมด' : 'Total Students'}
-                  </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-                    {totalStudents} <span className="text-xs font-medium text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'students'}</span>
-                  </h3>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5 font-semibold tabular-nums">
-                    {activeStudents} {lang === 'th' ? 'คน สถานะปกติ' : 'active'}
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-lg tone-chip tone-1 shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-              </div>
-
-              {/* Selected Date Attendance Rate */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
-                  </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-                    {onTimePercent}%
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-medium tabular-nums">
-                    {lang === 'th' ? `ตรงเวลา ${presentCount} • สาย ${lateCount}` : `On-time: ${presentCount} • Late: ${lateCount}`}
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-lg tone-chip tone-2 shrink-0">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-
-              {/* Tuition Collection */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'จัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}
-                  </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-                    {collectionRate}%
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-medium tabular-nums">
-                    ฿{totalCollected.toLocaleString()} / ฿{totalInvoiced.toLocaleString()}
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-lg tone-chip tone-3 shrink-0">
-                  <Receipt className="w-5 h-5" />
-                </div>
-              </div>
-
-              {/* LINE Guardian Sync */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'LINE Guardian Sync'}
-                  </p>
-                  <h3 className="text-2xl font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-                    {linePercent}%
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-medium tabular-nums">
-                    {lineConnectedCount} / {totalStudents} {lang === 'th' ? 'รายชื่อ' : 'guardians'}
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-lg tone-chip tone-6 shrink-0">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
-
             {/* 3-Step Onboarding Checklist (Visible for Admins when incomplete) */}
             {showOnboardingCard && (
-              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
+              <div className="frosted-card rounded-2xl p-5 space-y-3.5">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                    <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
                       {lang === 'th' ? 'เริ่มต้นใช้งานโรงเรียนใน 3 ขั้นตอน' : '3-Step School Setup Checklist'}
                     </h2>
-                    <p className="text-xs text-[var(--color-text-muted)]">
+                    <p className="text-xs text-[#475569] dark:text-slate-300 tabular-nums">
                       ตั้งค่าระบบหลักให้พร้อมเปิดภาคเรียน ({completedOnboardingCount}/3 สำเร็จ)
                     </p>
                   </div>
@@ -550,54 +486,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         window.localStorage.setItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`, '1');
                       }
                     }}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-muted)] font-semibold cursor-pointer whitespace-nowrap"
+                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-white/80 dark:bg-slate-800 hover:bg-slate-100 text-[#475569] dark:text-slate-300 font-semibold cursor-pointer whitespace-nowrap"
                   >
                     ซ่อนรายการนี้
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                   <button
                     type="button"
                     onClick={() => onNavigate('students')}
-                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex items-center justify-between gap-2 cursor-pointer transition"
                   >
                     <div>
-                      <div className="font-bold text-[var(--color-text-title)]">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
-                        {students.length} นักเรียน • {courses.length} วิชา
+                      <div className="font-bold text-[#1e293b] dark:text-slate-100">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
+                      <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                        {students.length} นักเรียน · {courses.length} วิชา
                       </div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] whitespace-nowrap ${step1Done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                    <span className={`text-[11px] font-bold whitespace-nowrap ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step1Done ? 'พร้อมแล้ว' : 'ดำเนินการ'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('system_settings')}
-                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex items-center justify-between gap-2 cursor-pointer transition"
                   >
                     <div>
-                      <div className="font-bold text-[var(--color-text-title)]">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                      <div className="font-bold text-[#1e293b] dark:text-slate-100">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
+                      <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
                         {school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : 'ยังไม่ได้ปักหมุด'}
                       </div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] whitespace-nowrap ${step2Done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                    <span className={`text-[11px] font-bold whitespace-nowrap ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step2Done ? 'พร้อมแล้ว' : 'ตั้งค่า'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('timetable')}
-                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex items-center justify-between gap-2 cursor-pointer transition"
                   >
                     <div>
-                      <div className="font-bold text-[var(--color-text-title)]">3. จัดตารางเรียน &amp; ภาคเรียน</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                      <div className="font-bold text-[#1e293b] dark:text-slate-100">3. จัดตารางเรียน &amp; ภาคเรียน</div>
+                      <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
                         {timetableSlots.length} คาบในระบบ
                       </div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] whitespace-nowrap ${step3Done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
+                    <span className={`text-[11px] font-bold whitespace-nowrap ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step3Done ? 'พร้อมแล้ว' : 'จัดตาราง'}
                     </span>
                   </button>
@@ -605,207 +541,585 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             )}
 
-            {/* Teacher / Staff Today's Desk (Zero-Friction Operations) */}
-            {isStaffUser && (
-              <div data-guide-id="dashboard-today-desk" className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'งานวันนี้สำหรับครู (Today’s Desk)' : 'Today’s Teaching Desk'}
-                    </h2>
-                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                      ({todayStr})
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] truncate">
-                    {todayScheduledSlots.length > 0
-                      ? `มีตารางสอนวันนี้ ${todayScheduledSlots.length} คาบ (${todayScheduledSlots.slice(0, 3).map((s) => `${s.courseCode} ${s.classRoom}`).join(' • ')}${todayScheduledSlots.length > 3 ? ' ...' : ''})`
-                      : 'วันนี้ไม่มีคาบสอนที่กำหนดไว้ในตาราง'}
-                  </p>
-                </div>
+            {/* ==============================================================
+                MAIN 2-COLUMN WORKSPACE (50% LEFT / 50% RIGHT)
+               ============================================================== */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* ──────────────────────────────────────────────────────────
+                  LEFT COLUMN (50%): School Overview (Blue) + Attendance & Parent Link (Green)
+                 ────────────────────────────────────────────────────────── */}
+              <div className="space-y-6 min-w-0">
+                {/* 1. LEFT TOP — BLUE GROUP: SCHOOL OVERVIEW */}
+                <section
+                  data-guide-id="dashboard-kpis"
+                  aria-label={lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
+                  className="frosted-card frosted-blue rounded-2xl p-6 space-y-5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-sky-100/95 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-sky-700 dark:text-sky-300 tracking-wide">
+                          School Overview
+                        </p>
+                        <h2 className="text-base font-bold text-[#0f172a] dark:text-slate-100">
+                          {lang === 'th' ? 'ภาพรวมสถิติโรงเรียน' : 'School Overview Statistics'}
+                        </h2>
+                      </div>
+                    </div>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('timetable')}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold cursor-pointer whitespace-nowrap tabular-nums"
-                  >
-                    คาบสอนวันนี้: {todayScheduledSlots.length} คาบ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('attendance')}
-                    className={`px-3 py-1.5 rounded-lg border font-semibold cursor-pointer whitespace-nowrap tabular-nums ${
-                      pendingLeaveCount > 0
-                        ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200'
-                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    ใบลารออนุมัติ: {pendingLeaveCount}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('homework')}
-                    className={`px-3 py-1.5 rounded-lg border font-semibold cursor-pointer whitespace-nowrap tabular-nums ${
-                      ungradedHomeworkCount > 0
-                        ? 'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/50 text-sky-900 dark:text-sky-200'
-                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    การบ้านรอตรวจ: {ungradedHomeworkCount}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Proactive Priority Action Widget for Staff */}
-            {isStaffUser && (
-              <PriorityActionWidget
-                students={students}
-                courses={courses}
-                attendance={attendance}
-                periodAttendance={periodAttendance}
-                leaveRequests={leaveRequests}
-                homeworkSubmissions={homeworkSubmissions}
-                assignments={assignments}
-                schoolId={school?.id || currentUser?.schoolId}
-                lang={lang}
-                onNavigate={onNavigate}
-                onSelectStudent={onSelectStudent}
-              />
-            )}
-
-            {/* Grade-Level Attendance Trends & Academic Performance (Recharts Bar Chart) */}
-            <GradeLevelAnalyticsChart
-              students={students}
-              attendance={scopedAttendance}
-              courses={courses}
-              grades={grades}
-              systemConfig={systemConfig}
-              lang={lang}
-            />
-
-            <details data-guide-id="dashboard-charts" className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl p-4 hover:bg-[var(--color-card-subtle)]">
-                <span>
-                  <span className="block text-sm font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'แนวโน้มและรายการเช็คชื่อล่าสุด' : 'Attendance trends and recent check-ins'}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'เปิดดูกราฟและรายละเอียดเพิ่มเติมเมื่อต้องการ' : 'Open charts and more detailed activity when needed'}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-2 text-[11px] font-semibold text-[var(--color-primary-text)]">
-                  {lang === 'th' ? 'ดูรายละเอียด' : 'View details'}
-                  <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                </span>
-              </summary>
-              <div className="border-t border-[var(--color-border)] p-3">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-              <div className="xl:col-span-2 min-w-0">
-                <MonthlyAttendanceChart
-                  attendance={scopedAttendance}
-                  students={students}
-                  lang={lang}
-                  selectedDate={selectedDate}
-                  onSelectDate={(date) => setSelectedDate(date)}
-                />
-              </div>
-
-              {/* Realtime Attendance Feed Card */}
-              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-2.5 flex flex-col">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'สแกนประตู & เข้าเรียนล่าสุด' : 'Recent Check-ins'}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDashboardTab('live_attendance')}
-                    className="text-xs text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
-                  >
-                    {lang === 'th' ? 'ดูทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {displayRecords.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center py-6 text-xs text-[var(--color-text-muted)]">
-                    {lang === 'th' ? `ยังไม่มีบันทึกวันที่ ${selectedDate}` : `No records for ${selectedDate}`}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-[var(--color-border)]">
-                    {displayRecords.slice(0, 6).map((rec) => (
-                      <div
-                        key={rec.id}
-                        onClick={() => openPhotoRecord(rec)}
-                        className="py-2 flex items-center justify-between gap-2 text-xs cursor-pointer hover:bg-[var(--color-card-subtle)] rounded px-1 -mx-1 transition"
+                    {/* Quick Date Selector */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(todayStr)}
+                        className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap ${
+                          selectedDate === todayStr
+                            ? 'bg-sky-600 text-white'
+                            : 'bg-white/80 dark:bg-slate-800 border border-sky-200/80 dark:border-sky-800/60 text-[#1e293b] dark:text-slate-200 hover:bg-sky-50'
+                        }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <img
-                            src={rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                            alt={rec.userName}
-                            className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <div className="font-semibold text-[var(--color-text-title)] truncate">
-                              {rec.userName}
+                        {lang === 'th' ? 'วันนี้' : 'Today'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(yesterdayStr)}
+                        className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap ${
+                          selectedDate === yesterdayStr
+                            ? 'bg-sky-600 text-white'
+                            : 'bg-white/80 dark:bg-slate-800 border border-sky-200/80 dark:border-sky-800/60 text-[#1e293b] dark:text-slate-200 hover:bg-sky-50'
+                        }`}
+                      >
+                        {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Primary Overview Metrics (Unboxed 2-Column Split inside Blue Card) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-0 sm:divide-x sm:divide-sky-200/75 dark:sm:divide-sky-800/50">
+                    {/* Metric 1: Total Students */}
+                    <div className="sm:pr-6 flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300">
+                          {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students'}
+                        </p>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-3xl font-extrabold text-[#0f172a] dark:text-white tabular-nums tracking-tight">
+                            {totalStudents}
+                          </span>
+                          <span className="text-xs font-semibold text-[#475569] dark:text-slate-300">
+                            {lang === 'th' ? 'คน' : 'students'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-sky-800 dark:text-sky-300 font-semibold tabular-nums">
+                          {activeStudents} {lang === 'th' ? 'คน สถานะปกติ' : 'active enrolled'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('students')}
+                        className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-sky-200/75 dark:border-sky-800/50 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/60 cursor-pointer transition shrink-0"
+                        title={lang === 'th' ? 'ไปยังทะเบียนนักเรียน' : 'Open Student Directory'}
+                      >
+                        <Users className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Metric 2: On-time Attendance Today */}
+                    <div className="sm:pl-6 flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300">
+                          {lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
+                        </p>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-3xl font-extrabold text-[#0f172a] dark:text-white tabular-nums tracking-tight">
+                            {onTimePercent}%
+                          </span>
+                          <span className="text-xs font-semibold text-[#475569] dark:text-slate-300 tabular-nums">
+                            ({presentCount}/{totalForDate})
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#475569] dark:text-slate-300 font-medium tabular-nums">
+                          {lang === 'th'
+                            ? `ตรงเวลา ${presentCount} · มาสาย ${lateCount}`
+                            : `On-time ${presentCount} · Late ${lateCount}`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('attendance')}
+                        className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-sky-200/75 dark:border-sky-800/50 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/60 cursor-pointer transition shrink-0"
+                        title={lang === 'th' ? 'เปิดหน้าเช็กชื่อ' : 'Open Attendance'}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Secondary Quiet Metadata Strip (Zero-pill clean inline text) */}
+                  <div className="pt-4 border-t border-sky-200/75 dark:border-sky-800/50 flex flex-wrap items-center justify-between gap-3 text-xs text-[#475569] dark:text-slate-300">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
+                      <span className="inline-flex items-center gap-1.5 font-medium text-[#1e293b] dark:text-slate-200">
+                        <Receipt className="w-3.5 h-3.5 text-sky-700 dark:text-sky-300" />
+                        {lang === 'th'
+                          ? `จัดเก็บค่าเล่าเรียน ${collectionRate}% (฿${totalCollected.toLocaleString()})`
+                          : `Tuition ${collectionRate}% (฿${totalCollected.toLocaleString()})`}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>{courses.length} {lang === 'th' ? 'รายวิชา' : 'courses'}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{teachers.length} {lang === 'th' ? 'ครูและบุคลากร' : 'staff'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('billing')}
+                      className="text-sky-800 dark:text-sky-300 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <span>{lang === 'th' ? 'การเงิน' : 'Billing'}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </section>
+
+                {/* 2. LEFT MIDDLE — GREEN GROUP: ATTENDANCE & PARENT LINK */}
+                <section
+                  aria-label={lang === 'th' ? 'สถานะการเช็กชื่อและการผูกผู้ปกครอง' : 'Attendance & Parent Link'}
+                  className="frosted-card frosted-green rounded-2xl p-6 space-y-5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100/95 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                        <UserCheck className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 tracking-wide">
+                          Attendance &amp; Parent Link
+                        </p>
+                        <h2 className="text-base font-bold text-[#0f172a] dark:text-slate-100">
+                          {lang === 'th' ? 'สถานะการเช็กชื่อ & ผูก LINE ผู้ปกครอง' : 'Check-in Status & Guardian LINE'}
+                        </h2>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setDashboardTab('live_attendance')}
+                      className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                    >
+                      <span>{lang === 'th' ? 'ดูเช็กชื่อสด' : 'Live Feed'}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Part A: Check-in Status Breakdown + Recent Check-ins */}
+                  <div className="space-y-3.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums">
+                        <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+                          {lang === 'th' ? `มาตรงเวลา ${presentCount} คน (${onTimePercent}%)` : `On-time ${presentCount} (${onTimePercent}%)`}
+                        </span>
+                        <span className="font-semibold text-amber-700 dark:text-amber-300">
+                          {lang === 'th' ? `มาสาย ${lateCount} คน (${latePercent}%)` : `Late ${lateCount} (${latePercent}%)`}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                        {lang === 'th' ? `เข้า ${checkInsCount} · ออก ${checkOutsCount}` : `In ${checkInsCount} · Out ${checkOutsCount}`}
+                      </span>
+                    </div>
+
+                    {/* Punctuality Proportion Bar */}
+                    <div className="w-full h-2.5 rounded-full bg-emerald-100/80 dark:bg-slate-800 overflow-hidden flex">
+                      <div
+                        className="h-full bg-emerald-600 transition-all duration-300"
+                        style={{ width: `${onTimePercent}%` }}
+                      />
+                      <div
+                        className="h-full bg-amber-400 transition-all duration-300"
+                        style={{ width: `${latePercent}%` }}
+                      />
+                    </div>
+
+                    {/* Recent Check-ins List */}
+                    <div className="pt-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-[#1e293b] dark:text-slate-200 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+                          <span>{lang === 'th' ? `บันทึกล่าสุด (${selectedDate})` : `Recent Logs (${selectedDate})`}</span>
+                        </span>
+                        <span className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                          {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
+                        </span>
+                      </div>
+
+                      {displayRecords.length === 0 ? (
+                        <div className="py-5 px-4 rounded-xl bg-white/60 dark:bg-slate-900/45 text-center space-y-2">
+                          <p className="text-xs text-[#475569] dark:text-slate-300">
+                            {lang === 'th' ? `ยังไม่มีบันทึกการเช็กชื่อวันที่ ${selectedDate}` : `No check-in logs for ${selectedDate}`}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('mobile_checkin')}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>{lang === 'th' ? 'เปิดกล้องเช็กชื่อ' : 'Open Camera Check-in'}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-emerald-200/60 dark:divide-emerald-800/40">
+                          {displayRecords.slice(0, 5).map((rec) => (
+                            <button
+                              key={rec.id}
+                              type="button"
+                              onClick={() => openPhotoRecord(rec)}
+                              className="w-full py-2.5 flex items-center justify-between gap-3 text-left text-xs cursor-pointer hover:bg-white/65 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 transition"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <img
+                                  src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
+                                  alt={rec.userName || 'User'}
+                                  referrerPolicy="no-referrer"
+                                  className="w-8 h-8 rounded-full object-cover border border-emerald-200/80 dark:border-emerald-800/60 shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-[#1e293b] dark:text-slate-100 truncate">
+                                    {rec.userName}
+                                  </div>
+                                  <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate tabular-nums">
+                                    {rec.userDepartmentOrRoom || rec.userRole} · {rec.time} {lang === 'th' ? 'น.' : ''}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <span
+                                className={`text-[11px] font-bold shrink-0 ${
+                                  rec.status === 'present'
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : 'text-amber-700 dark:text-amber-300'
+                                }`}
+                              >
+                                {rec.status === 'present'
+                                  ? lang === 'th'
+                                    ? 'มาตรงเวลา'
+                                    : 'On-time'
+                                  : lang === 'th'
+                                    ? 'มาสาย'
+                                    : 'Late'}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hairline Separator */}
+                  <div className="border-t border-emerald-200/75 dark:border-emerald-800/50 pt-5 space-y-3">
+                    {/* Part B: Guardian LINE Sync Status */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100/90 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                          <MessageSquare className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-xs font-bold text-[#0f172a] dark:text-slate-100">
+                            {lang === 'th' ? 'สถานะการผูก LINE ผู้ปกครอง' : 'Guardian LINE Connection'}
+                          </h3>
+                          <p className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                            {lang === 'th'
+                              ? `เชื่อมต่อแล้ว ${lineConnectedCount} จาก ${totalStudents} รายชื่อ`
+                              : `${lineConnectedCount} of ${totalStudents} families connected`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 tabular-nums shrink-0">
+                        {linePercent}%
+                      </span>
+                    </div>
+
+                    <div className="w-full h-2.5 rounded-full bg-emerald-100/80 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-emerald-600 transition-all duration-300"
+                        style={{ width: `${linePercent}%` }}
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                      <span>
+                        {lang === 'th'
+                          ? `ยังไม่ได้ผูก LINE ${Math.max(0, totalStudents - lineConnectedCount)} รายชื่อ`
+                          : `${Math.max(0, totalStudents - lineConnectedCount)} pending connection`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('students')}
+                        className="font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <span>{lang === 'th' ? 'จัดการรายชื่อผู้ปกครอง' : 'Manage Guardians'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              {/* ──────────────────────────────────────────────────────────
+                  RIGHT COLUMN (50%): Today's Academic Desk (Purple + Orange) & Comparison Charts (Amber/Gold)
+                 ────────────────────────────────────────────────────────── */}
+              <div className="space-y-6 min-w-0">
+                {/* 3. RIGHT TOP — PURPLE & ORANGE GROUP: TODAY'S ACADEMIC DESK */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <div>
+                      <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
+                        Today’s Academic Desk · <span className="tabular-nums">{todayStr}</span>
+                      </p>
+                      <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                        {lang === 'th' ? 'งานวิชาการวันนี้ & รายการเร่งด่วน' : 'Today’s Teaching Desk & Priority Actions'}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <div className={`grid grid-cols-1 ${isStaffUser ? 'md:grid-cols-2' : ''} gap-5 items-stretch`}>
+                    {/* Sub-card 1: Soft Purple — Teacher's Desk */}
+                    <section
+                      data-guide-id="dashboard-today-desk"
+                      aria-label={lang === 'th' ? 'โต๊ะงานครู' : "Teacher's Desk"}
+                      className="frosted-card frosted-purple rounded-2xl p-5 flex flex-col justify-between h-full"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-purple-100/95 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                              <ClipboardList className="w-4 h-4" />
                             </div>
-                            <div className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                              {rec.userDepartmentOrRoom || rec.userRole} • {rec.time} {lang === 'th' ? 'น.' : ''}
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
+                                {isStaffUser
+                                  ? lang === 'th'
+                                    ? "Teacher's Desk"
+                                    : "Teacher's Desk"
+                                  : lang === 'th'
+                                    ? 'ตารางเรียน & งานวันนี้'
+                                    : 'My Academic Desk'}
+                              </h3>
+                              <p className="text-xs text-[#475569] dark:text-slate-300 mt-0.5">
+                                {lang === 'th' ? 'ตารางสอน, ใบลา, การบ้านรอตรวจ' : 'Schedule, leaves & grading'}
+                              </p>
                             </div>
                           </div>
                         </div>
 
-                        <span className={`text-[10px] font-bold shrink-0 ${
-                          rec.status === 'present'
-                            ? 'text-emerald-700 dark:text-emerald-300'
-                            : 'text-amber-700 dark:text-amber-300'
-                        }`}>
-                          {rec.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'On-time') : (lang === 'th' ? 'มาสาย' : 'Late')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              </div>
-              </div>
-            </details>
+                        {/* 3 Clean Interactive Rows */}
+                        <div className="divide-y divide-purple-200/70 dark:divide-purple-800/45">
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('timetable')}
+                            className="w-full py-3 first:pt-1 flex items-center justify-between gap-3 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Calendar className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+                                  {lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable'}
+                                </div>
+                                <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate">
+                                  {todayScheduledSlots.length > 0
+                                    ? todayScheduledSlots
+                                        .slice(0, 2)
+                                        .map((s) => `${s.courseCode} (${s.classRoom})`)
+                                        .join(' · ')
+                                    : lang === 'th'
+                                      ? 'ไม่มีคาบสอนวันนี้'
+                                      : 'No classes scheduled'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-sm font-extrabold text-purple-800 dark:text-purple-200 tabular-nums">
+                                {todayScheduledSlots.length} {lang === 'th' ? 'คาบ' : 'slots'}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-purple-600 dark:text-purple-300" />
+                            </div>
+                          </button>
 
-            {playerScores.length > 0 && (
-              <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl p-4 hover:bg-[var(--color-card-subtle)]">
-                  <span>
-                    <span className="block text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ความสำเร็จและความก้าวหน้าของผู้เรียน' : 'Student achievements and progress'}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-[var(--color-text-muted)]">
-                      {lang === 'th' ? 'เปิดดูข้อมูลเชิงลึกและกิจกรรมสะสม' : 'Open detailed progress and milestones'}
-                    </span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[var(--color-primary-text)] transition-transform group-open:rotate-90" />
-                </summary>
-                <div className="border-t border-[var(--color-border)] p-3">
-                  <MilestoneAchievementsPanel
-                    playerScores={playerScores}
-                    students={students}
-                    attendance={scopedAttendance}
-                    grades={grades}
-                    currentUser={currentUser}
-                    lang={lang}
-                    onLogLibraryVisit={(userId) =>
-                      onRecordMilestoneActivity?.(userId, 'library_visit')
-                    }
-                    onQuickAttendanceForMilestone={(studentId, userId) =>
-                      onRecordMilestoneActivity?.(userId, 'attendance', studentId)
-                    }
-                  />
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('attendance')}
+                            className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <FileCheck2 className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+                                  {lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves'}
+                                </div>
+                                <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate">
+                                  {pendingLeaveCount > 0
+                                    ? lang === 'th'
+                                      ? 'มีคำขอลารอการตรวจสอบ'
+                                      : 'Requires review'
+                                    : lang === 'th'
+                                      ? 'ไม่มีใบลาค้างพิจารณา'
+                                      : 'All leaves reviewed'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span
+                                className={`text-sm font-extrabold tabular-nums ${
+                                  pendingLeaveCount > 0
+                                    ? 'text-amber-700 dark:text-amber-300'
+                                    : 'text-[#1e293b] dark:text-slate-200'
+                                }`}
+                              >
+                                {pendingLeaveCount} {lang === 'th' ? 'รายการ' : 'items'}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-purple-600 dark:text-purple-300" />
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('homework')}
+                            className="w-full py-3 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-white/60 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <BookOpen className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+                                  {lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade'}
+                                </div>
+                                <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate">
+                                  {ungradedHomeworkCount > 0
+                                    ? lang === 'th'
+                                      ? 'ส่งแล้ว รอให้คะแนน/ตรวจ'
+                                      : 'Submitted, awaiting score'
+                                    : lang === 'th'
+                                      ? 'ตรวจงานครบถ้วนแล้ว'
+                                      : 'All caught up'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span
+                                className={`text-sm font-extrabold tabular-nums ${
+                                  ungradedHomeworkCount > 0
+                                    ? 'text-purple-800 dark:text-purple-200'
+                                    : 'text-[#1e293b] dark:text-slate-200'
+                                }`}
+                              >
+                                {ungradedHomeworkCount} {lang === 'th' ? 'ชิ้น' : 'items'}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-purple-600 dark:text-purple-300" />
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 mt-3 border-t border-purple-200/70 dark:border-purple-800/50 flex items-center justify-between text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('timetable')}
+                          className="font-semibold text-purple-800 dark:text-purple-300 hover:underline cursor-pointer"
+                        >
+                          {lang === 'th' ? 'เปิดตารางสอน' : 'Full Timetable'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('gradebook')}
+                          className="font-semibold text-purple-800 dark:text-purple-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span>{lang === 'th' ? 'สมุดบันทึกคะแนน' : 'Gradebook'}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </section>
+
+                    {/* Sub-card 2: Soft Orange — Priority Actions */}
+                    {isStaffUser && (
+                      <PriorityActionWidget
+                        students={students}
+                        courses={courses}
+                        attendance={attendance}
+                        periodAttendance={periodAttendance}
+                        leaveRequests={leaveRequests}
+                        homeworkSubmissions={homeworkSubmissions}
+                        assignments={assignments}
+                        schoolId={school?.id || currentUser?.schoolId}
+                        lang={lang}
+                        onNavigate={onNavigate}
+                        onSelectStudent={onSelectStudent}
+                        compact
+                      />
+                    )}
+                  </div>
                 </div>
-              </details>
-            )}
+
+                {/* 4. RIGHT BOTTOM — YELLOW/GOLD GROUP: COMPARISON CHARTS */}
+                <GradeLevelAnalyticsChart
+                  students={students}
+                  attendance={scopedAttendance}
+                  courses={courses}
+                  grades={grades}
+                  systemConfig={systemConfig}
+                  lang={lang}
+                />
+
+                {/* Optional Secondary Collapsible Analytics (Monthly Trend & Milestones) */}
+                <details
+                  data-guide-id="dashboard-charts"
+                  className="group frosted-card rounded-2xl overflow-hidden"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3.5 hover:bg-white/60 dark:hover:bg-slate-800/40">
+                    <div>
+                      <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                        {lang === 'th'
+                          ? 'แนวโน้มรายเดือน & ความสำเร็จผู้เรียนเพิ่มเติม'
+                          : 'Monthly Attendance Trends & Student Milestones'}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[#475569] dark:text-slate-300">
+                        {lang === 'th'
+                          ? 'เปิดดูกราฟสถิติรายเดือนและข้อมูลเชิงลึกเมื่อต้องการ'
+                          : 'Expand monthly chart and student milestone progress'}
+                      </span>
+                    </div>
+                    <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                      <span>{lang === 'th' ? 'ดูเพิ่มเติม' : 'Expand'}</span>
+                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                    </span>
+                  </summary>
+                  <div className="border-t border-slate-200/80 dark:border-slate-700/60 p-4 space-y-4">
+                    <MonthlyAttendanceChart
+                      attendance={scopedAttendance}
+                      students={students}
+                      lang={lang}
+                      selectedDate={selectedDate}
+                      onSelectDate={(date) => setSelectedDate(date)}
+                    />
+                    {playerScores.length > 0 && (
+                      <MilestoneAchievementsPanel
+                        playerScores={playerScores}
+                        students={students}
+                        attendance={scopedAttendance}
+                        grades={grades}
+                        currentUser={currentUser}
+                        lang={lang}
+                        onLogLibraryVisit={(userId) =>
+                          onRecordMilestoneActivity?.(userId, 'library_visit')
+                        }
+                        onQuickAttendanceForMilestone={(studentId, userId) =>
+                          onRecordMilestoneActivity?.(userId, 'attendance', studentId)
+                        }
+                      />
+                    )}
+                  </div>
+                </details>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1145,7 +1459,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 renderItem={(rec) => {
                 const isCheckOut = rec.recordType === 'check_out';
                 const isTeacher = rec.userType === 'teacher';
-                const photoSrc = rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300';
+                const photoSrc = rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName);
 
                 return (
                   <div
@@ -1284,8 +1598,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={rec.photoUrl || rec.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+                        src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                         alt={rec.userName}
+                        referrerPolicy="no-referrer"
                         className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)]"
                       />
                       <div>
@@ -1643,8 +1958,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Captured Photo Container */}
               {photoModalStep === 0 && <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-4/3 max-h-56 mx-auto shadow-inner border border-slate-800 flex items-center justify-center">
                 <img
-                  src={selectedPhotoRecord.photoUrl || selectedPhotoRecord.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600'}
+                  src={selectedPhotoRecord.photoUrl || selectedPhotoRecord.userAvatar || fallbackAvatarSvg(selectedPhotoRecord.userName)}
                   alt={selectedPhotoRecord.userName}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-contain"
                 />
 

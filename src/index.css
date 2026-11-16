@@ -536,6 +536,91 @@ textarea::placeholder {
 }
 
 /* ========================================================
+   SOFT FROSTED GLASS DASHBOARD ARCHITECTURE
+   ======================================================== */
+.dashboard-frosted-backdrop {
+  background:
+    radial-gradient(circle at 8% 6%, rgba(191, 219, 254, 0.28), transparent 36%),
+    radial-gradient(circle at 92% 10%, rgba(221, 214, 254, 0.24), transparent 34%),
+    radial-gradient(circle at 18% 68%, rgba(167, 243, 208, 0.2), transparent 38%),
+    radial-gradient(circle at 86% 78%, rgba(253, 230, 138, 0.22), transparent 38%);
+}
+
+.dark .dashboard-frosted-backdrop {
+  background:
+    radial-gradient(circle at 8% 6%, rgba(30, 58, 138, 0.18), transparent 38%),
+    radial-gradient(circle at 92% 10%, rgba(88, 28, 135, 0.16), transparent 36%),
+    radial-gradient(circle at 18% 68%, rgba(6, 78, 59, 0.16), transparent 40%),
+    radial-gradient(circle at 86% 78%, rgba(120, 53, 15, 0.15), transparent 40%);
+}
+
+.frosted-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #1e293b;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  box-shadow: 0 2px 14px -4px rgba(15, 23, 42, 0.05);
+}
+
+.dark .frosted-card {
+  background: rgba(21, 31, 50, 0.85);
+  color: #e2e8f0;
+  border-color: rgba(51, 65, 85, 0.78);
+  box-shadow: 0 4px 18px -6px rgba(2, 6, 23, 0.4);
+}
+
+.frosted-blue {
+  background: linear-gradient(150deg, rgba(239, 246, 255, 0.88) 0%, rgba(255, 255, 255, 0.85) 58%);
+  border: 1px solid rgba(147, 197, 253, 0.75);
+}
+
+.dark .frosted-blue {
+  background: linear-gradient(150deg, rgba(23, 37, 84, 0.42) 0%, rgba(21, 31, 50, 0.88) 60%);
+  border-color: rgba(59, 130, 246, 0.38);
+}
+
+.frosted-green {
+  background: linear-gradient(150deg, rgba(236, 253, 245, 0.88) 0%, rgba(255, 255, 255, 0.85) 58%);
+  border: 1px solid rgba(110, 231, 183, 0.75);
+}
+
+.dark .frosted-green {
+  background: linear-gradient(150deg, rgba(6, 78, 59, 0.36) 0%, rgba(21, 31, 50, 0.88) 60%);
+  border-color: rgba(16, 185, 129, 0.36);
+}
+
+.frosted-purple {
+  background: linear-gradient(155deg, rgba(245, 243, 255, 0.9) 0%, rgba(255, 255, 255, 0.85) 62%);
+  border: 1px solid rgba(196, 181, 253, 0.78);
+}
+
+.dark .frosted-purple {
+  background: linear-gradient(155deg, rgba(76, 29, 149, 0.34) 0%, rgba(21, 31, 50, 0.88) 62%);
+  border-color: rgba(139, 92, 246, 0.38);
+}
+
+.frosted-orange {
+  background: linear-gradient(155deg, rgba(255, 247, 237, 0.9) 0%, rgba(255, 255, 255, 0.85) 62%);
+  border: 1px solid rgba(253, 186, 116, 0.8);
+}
+
+.dark .frosted-orange {
+  background: linear-gradient(155deg, rgba(124, 45, 18, 0.34) 0%, rgba(21, 31, 50, 0.88) 62%);
+  border-color: rgba(249, 115, 22, 0.38);
+}
+
+.frosted-amber {
+  background: linear-gradient(150deg, rgba(254, 252, 232, 0.9) 0%, rgba(255, 255, 255, 0.85) 58%);
+  border: 1px solid rgba(252, 211, 77, 0.82);
+}
+
+.dark .frosted-amber {
+  background: linear-gradient(150deg, rgba(120, 53, 15, 0.34) 0%, rgba(21, 31, 50, 0.88) 60%);
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+/* ========================================================
    OFFICIAL PRINT STYLESHEET (สำหรับใบ ปพ.1, ปพ.5 และใบเสร็จรับเงิน)
    ======================================================== */
 @media print {

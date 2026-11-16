@@ -526,7 +526,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
     const dedupedItems = Array.from(new Map(visibleItems.map((i) => [i.id, i])).values());
     return (
-      <aside className="w-14 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
+      <aside className="w-15 border-r border-[var(--color-border)] bg-white/85 dark:bg-[#151f32]/85 backdrop-blur-[10px] text-[#1e293b] dark:text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
         {onToggleDesktopCollapse && (
           <div className="shrink-0 p-2 border-b border-[var(--color-border)] flex justify-center">
             <button
@@ -534,7 +534,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={onToggleDesktopCollapse}
               title={lang === 'th' ? 'ขยายเมนูด้านข้าง' : 'Expand sidebar'}
               aria-label={lang === 'th' ? 'ขยายเมนูด้านข้าง' : 'Expand sidebar'}
-              className="w-9 h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition"
+              className="w-10 h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[#1e293b] dark:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition"
             >
               <PanelLeftOpen className="w-4 h-4" />
             </button>
@@ -553,10 +553,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setCurrentTab(item.id)}
                 title={lang === 'th' ? item.labelTh : item.labelEn}
                 aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                className={`${tone} relative w-10 h-10 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                className={`${tone} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                   isActive
                     ? 'tone-active ring-1 ring-[var(--color-primary)]/40'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                    : 'text-[#1e293b] dark:text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -572,7 +572,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-56 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
+    <aside className="w-60 border-r border-[var(--color-border)] bg-white/85 dark:bg-[#151f32]/85 backdrop-blur-[10px] text-[#1e293b] dark:text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
       <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex items-center gap-1.5" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />

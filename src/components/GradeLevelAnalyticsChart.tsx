@@ -265,116 +265,127 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
   }, [filteredData]);
 
   return (
-    <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 sm:p-5 shadow-xs space-y-4">
+    <section
+      aria-label={lang === 'th' ? 'กราฟเปรียบเทียบการมาเรียนและผลสัมฤทธิ์' : 'Comparison Charts'}
+      className="frosted-card frosted-amber rounded-2xl p-5 sm:p-6 space-y-5"
+    >
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 shrink-0 mt-0.5">
-            <BarChart3 className="w-5 h-5 text-[var(--color-primary-text)]" />
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 pb-4 border-b border-amber-200/75 dark:border-amber-800/50">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-100/95 dark:bg-amber-950/60 border border-amber-300/70 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                {lang === 'th'
-                  ? 'กราฟเปรียบเทียบการมาเรียนและผลสัมฤทธิ์ทางการเรียนรายระดับชั้น'
-                  : 'Attendance Trends & Academic Performance by Grade Level'}
-              </h3>
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 dark:bg-sky-950 text-sky-900 dark:text-sky-200 border border-sky-200 dark:border-sky-800">
-                {lang === 'th' ? 'มาตรฐาน ศธ.' : 'MOE Aligned'}
-              </span>
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 tracking-wide">
+              Comparison Charts · มาตรฐาน ศธ.
+            </p>
+            <h3 className="text-base font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
               {lang === 'th'
-                ? 'แสดงอัตราการมาเรียน (%) เทียบกับคะแนนผลสัมฤทธิ์ (%) รายชั้น (ประถม ป.1–ป.6 ใช้คะแนนดิบรายปี • มัธยม ม.1–ม.6 ใช้ผลการเรียนรายภาค)'
-                : 'Compares grade-level attendance rate (%) against academic performance (%) using primary yearly raw scores and secondary semester results.'}
+                ? 'เปรียบเทียบการมาเรียนและผลสัมฤทธิ์รายระดับชั้น'
+                : 'Attendance & Academic Comparison'}
+            </h3>
+            <p className="text-xs text-[#475569] dark:text-slate-300 mt-0.5">
+              {lang === 'th'
+                ? 'ป.1–ป.6 ประเมินคะแนนดิบรายปี · ม.1–ม.6 ประเมินผลการเรียนรายภาค'
+                : 'Primary yearly raw scores · Secondary semester grades'}
             </p>
           </div>
         </div>
 
-        {/* Stage Filter */}
-        <div className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium self-start lg:self-auto">
+        {/* Grade Level Filter Segmented Control */}
+        <div
+          role="tablist"
+          aria-label={lang === 'th' ? 'กรองระดับชั้น' : 'Filter grade stage'}
+          className="inline-flex items-center rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-1 text-xs font-medium self-start xl:self-auto shrink-0"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={stageFilter === 'all'}
             onClick={() => setStageFilter('all')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-bold ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-semibold whitespace-nowrap ${
               stageFilter === 'all'
-                ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-[#1e293b] dark:text-slate-200 hover:bg-amber-50/90 dark:hover:bg-amber-950/40'
             }`}
           >
             {lang === 'th' ? 'ทุกระดับชั้น' : 'All Grades'}
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={stageFilter === 'primary'}
             onClick={() => setStageFilter('primary')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-bold ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-semibold whitespace-nowrap ${
               stageFilter === 'primary'
-                ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-[#1e293b] dark:text-slate-200 hover:bg-amber-50/90 dark:hover:bg-amber-950/40'
             }`}
           >
-            {lang === 'th' ? 'ประถม (ป.1–ป.6)' : 'Primary'}
+            {lang === 'th' ? 'ป.1–ป.6' : 'Primary'}
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={stageFilter === 'secondary'}
             onClick={() => setStageFilter('secondary')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-bold ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-semibold whitespace-nowrap ${
               stageFilter === 'secondary'
-                ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-[#1e293b] dark:text-slate-200 hover:bg-amber-50/90 dark:hover:bg-amber-950/40'
             }`}
           >
-            {lang === 'th' ? 'มัธยม (ม.1–ม.6)' : 'Secondary'}
+            {lang === 'th' ? 'ม.1–ม.6' : 'Secondary'}
           </button>
         </div>
       </div>
 
-      {/* KPI Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between">
+      {/* Clean Unboxed KPI Summary Strip (separated by subtle hairline dividers) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 sm:divide-x sm:divide-amber-200/75 dark:sm:divide-amber-800/50 bg-white/60 dark:bg-slate-900/45 rounded-xl px-4 py-3.5 border border-amber-200/60 dark:border-amber-800/40">
+        <div className="sm:pr-4 flex items-center justify-between gap-2">
           <div>
-            <p className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
-              {lang === 'th' ? 'อัตราการมาเรียนเฉลี่ย' : 'Avg. Attendance Rate'}
+            <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
+              {lang === 'th' ? 'อัตราการมาเรียนเฉลี่ย' : 'Avg. Attendance'}
             </p>
-            <p className="text-xl font-black text-emerald-800 dark:text-emerald-100 font-mono mt-0.5 tabular-nums">
+            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-0.5 tabular-nums">
               {overviewStats.avgAttendance}%
             </p>
           </div>
-          <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
         </div>
 
-        <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/35 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-between">
+        <div className="sm:px-4 flex items-center justify-between gap-2">
           <div>
-            <p className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200">
-              {lang === 'th' ? 'ผลสัมฤทธิ์ทางการเรียนเฉลี่ย' : 'Avg. Academic Score'}
+            <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
+              {lang === 'th' ? 'ผลสัมฤทธิ์เฉลี่ย' : 'Avg. Academic'}
             </p>
-            <p className="text-xl font-black text-indigo-800 dark:text-indigo-100 font-mono mt-0.5 tabular-nums">
+            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5 tabular-nums">
               {overviewStats.avgAcademic}%
             </p>
           </div>
-          <Award className="w-6 h-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
         </div>
 
-        <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between">
+        <div className="sm:pl-4 flex items-center justify-between gap-2">
           <div>
-            <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
-              {lang === 'th' ? 'ขอบเขตข้อมูลระดับชั้น' : 'Grade Coverage'}
+            <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
+              {lang === 'th' ? 'ขอบเขตข้อมูล' : 'Coverage'}
             </p>
-            <p className="text-lg font-black text-[var(--color-text-title)] mt-0.5 tabular-nums">
-              {overviewStats.gradeCount} {lang === 'th' ? 'ระดับชั้น' : 'grades'} •{' '}
-              {overviewStats.totalStudents} {lang === 'th' ? 'คน' : 'students'}
+            <p className="text-base font-bold text-[#1e293b] dark:text-slate-100 mt-0.5 tabular-nums">
+              {overviewStats.gradeCount} {lang === 'th' ? 'ชั้น' : 'grades'} · {overviewStats.totalStudents}{' '}
+              {lang === 'th' ? 'คน' : 'students'}
             </p>
           </div>
-          <Users className="w-6 h-6 text-[var(--color-primary-text)] shrink-0" />
+          <Users className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0" />
         </div>
       </div>
 
       {/* Bar Chart */}
-      <div className="w-full h-[300px] min-w-0 pt-1">
+      <div className="w-full h-[290px] min-w-0 pt-1">
         {filteredData.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[var(--color-text-muted)]">
-            <GraduationCap className="w-9 h-9 mb-2 opacity-50" />
-            <p className="text-sm font-semibold">
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[#475569] dark:text-slate-300">
+            <GraduationCap className="w-9 h-9 mb-2 opacity-55 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm font-semibold text-[#1e293b] dark:text-slate-100">
               {lang === 'th'
                 ? 'ยังไม่มีข้อมูลนักเรียนในระดับชั้นที่เลือก'
                 : 'No student data for the selected grade filter'}
@@ -384,15 +395,15 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={filteredData}
-              margin={{ top: 12, right: 16, left: -12, bottom: 4 }}
+              margin={{ top: 12, right: 12, left: -14, bottom: 4 }}
               barGap={6}
             >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.5} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.55} />
               <XAxis
                 dataKey="gradeLevel"
                 tickLine={false}
                 axisLine={{ stroke: '#cbd5e1' }}
-                tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }}
+                tick={{ fontSize: 12, fill: '#475569', fontWeight: 600 }}
               />
               <YAxis
                 domain={[0, 100]}
@@ -411,12 +422,12 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
               />
               <ReferenceLine
                 y={80}
-                stroke="#0284c7"
+                stroke="#d97706"
                 strokeDasharray="4 4"
                 label={{
-                  value: lang === 'th' ? 'เกณฑ์มาตรฐาน 80%' : '80% Benchmark',
+                  value: lang === 'th' ? 'เกณฑ์ 80%' : '80% Goal',
                   position: 'insideTopLeft',
-                  fill: '#0284c7',
+                  fill: '#b45309',
                   fontSize: 10,
                 }}
               />
@@ -425,20 +436,20 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
                 name={lang === 'th' ? 'อัตราการมาเรียน (%)' : 'Attendance Rate (%)'}
                 fill="#10b981"
                 radius={[6, 6, 0, 0]}
-                maxBarSize={36}
+                maxBarSize={34}
               />
               <Bar
                 dataKey="academicPerformance"
                 name={lang === 'th' ? 'ผลสัมฤทธิ์ทางการเรียน (%)' : 'Academic Performance (%)'}
                 fill="#4f46e5"
                 radius={[6, 6, 0, 0]}
-                maxBarSize={36}
+                maxBarSize={34}
               />
             </BarChart>
           </ResponsiveContainer>
         )}
       </div>
-    </div>
+    </section>
   );
 };
 
