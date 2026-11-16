@@ -56,6 +56,45 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   system_settings: 'tone-6',
 };
 
+export interface ModuleGroupMeta {
+  tone: ModuleTone;
+  labelTh: string;
+  labelEn: string;
+}
+
+export const TONE_GROUP_META: Record<ModuleTone, ModuleGroupMeta> = {
+  'tone-1': {
+    tone: 'tone-1',
+    labelTh: 'วิชาการ & ทะเบียนหลัก',
+    labelEn: 'Academics & Directory',
+  },
+  'tone-2': {
+    tone: 'tone-2',
+    labelTh: 'วัดผล เช็กชื่อ & ภาระงาน',
+    labelEn: 'Assessment & Attendance',
+  },
+  'tone-3': {
+    tone: 'tone-3',
+    labelTh: 'ดูแลช่วยเหลือ & เฝ้าระวัง',
+    labelEn: 'Student Care & Early Warning',
+  },
+  'tone-4': {
+    tone: 'tone-4',
+    labelTh: 'สุขภาพ & ความปลอดภัย',
+    labelEn: 'Health & Digital ID',
+  },
+  'tone-5': {
+    tone: 'tone-5',
+    labelTh: 'AI & นวัตกรรมการเรียนรู้',
+    labelEn: 'AI & Learning Innovation',
+  },
+  'tone-6': {
+    tone: 'tone-6',
+    labelTh: 'การเงิน สื่อสาร & ตั้งค่าระบบ',
+    labelEn: 'Finance, Comms & Settings',
+  },
+};
+
 export const CATEGORY_TONE_MAP: Record<NavCategoryId, ModuleTone> = {
   super_admin: 'tone-3',
   academics: 'tone-1',
@@ -69,6 +108,14 @@ export function getModuleTone(tab: NavTab): ModuleTone {
   return MODULE_TONE_MAP[tab] ?? 'tone-1';
 }
 
+export function getModuleGroupMeta(tab: NavTab): ModuleGroupMeta {
+  return TONE_GROUP_META[getModuleTone(tab)];
+}
+
 export function getCategoryTone(categoryId: NavCategoryId): ModuleTone {
   return CATEGORY_TONE_MAP[categoryId] ?? 'tone-1';
+}
+
+export function getCategoryGroupMeta(categoryId: NavCategoryId): ModuleGroupMeta {
+  return TONE_GROUP_META[getCategoryTone(categoryId)];
 }

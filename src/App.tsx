@@ -3731,6 +3731,7 @@ export const App: React.FC = () => {
                     onSaveSchoolPeriods={handleSaveSchoolPeriods}
                     lang={lang}
                     currentRole={currentRole}
+                    currentUser={currentUser}
                     schoolId={activeSchool.id}
                     schoolName={activeSchool.nameTh}
                     academicYear={timetableAcademicYear}
@@ -3871,6 +3872,7 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     school={activeSchool}
                     currentRole={currentRole}
+                    currentUser={currentUser}
                     onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
                     onUpdateGrade={handleUpdateGrade}
                     onAddGrade={handleAddGrade}

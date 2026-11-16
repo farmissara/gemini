@@ -3,6 +3,7 @@ import {
   AdaptivePracticeTopic,
   AppLanguage,
   AttendanceRecord,
+  AuthUser,
   Course,
   GradeRecord,
   GradingSystem,
@@ -43,7 +44,7 @@ import {
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { getModuleTone } from '../lib/moduleTheme';
+import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   ChartViewMode,
   GradeDistributionHistogram,
@@ -65,7 +66,11 @@ import {
 } from '../lib/moeGrading';
 import { dispatchGradeAlert, GradeAlertRecord } from '../lib/gradeNotifications';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import {
+  buildCourseTeacherOptions,
+  courseMatchesTeacherFilter,
+  resolveTeacherFilterKeyForUser,
+} from '../lib/courseTeacherFilter';
 
 interface GradebookViewProps {
   students: Student[];
@@ -75,6 +80,7 @@ interface GradebookViewProps {
   systemConfig: SystemConfig;
   school?: School;
   currentRole?: UserRole;
+  currentUser?: AuthUser | null;
   onChangeGradingSystem?: (mode: GradingSystem) => Promise<void> | void;
   onUpdateGrade: (gradeId: string, updates: Partial<GradeRecord>) => void;
   onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
@@ -96,6 +102,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   systemConfig,
   school,
   currentRole = 'teacher',
+  currentUser,
   onChangeGradingSystem,
   onUpdateGrade,
   onAddGrade,
@@ -177,6 +184,30 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     ].some((v) => (v || '').toLowerCase().includes(q));
   });
   const courseTeacherOptions = buildCourseTeacherOptions(courses, teachers);
+  const loggedInTeacherFilterKey = resolveTeacherFilterKeyForUser(currentUser, teachers, courseTeacherOptions);
+  const loggedInTeacherOption = loggedInTeacherFilterKey
+    ? courseTeacherOptions.find((opt) => opt.key === loggedInTeacherFilterKey)
+    : undefined;
+  const autoScopedSessionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const scopeKey = `${school?.id || ''}::${currentUser?.id || ''}::${currentRole}`;
+    if (currentRole !== 'teacher' || !loggedInTeacherFilterKey) {
+      return;
+    }
+    if (autoScopedSessionRef.current === scopeKey) return;
+    autoScopedSessionRef.current = scopeKey;
+    setCourseTeacherFilter(loggedInTeacherFilterKey);
+    const firstOwnCourse = courses.find((course) =>
+      courseMatchesTeacherFilter(course, loggedInTeacherFilterKey, courseTeacherOptions)
+    );
+    if (firstOwnCourse) {
+      setSelectedCourseId(firstOwnCourse.id);
+    }
+    setGradePage(0);
+    setPp5Page(0);
+  }, [school?.id, currentUser?.id, currentRole, loggedInTeacherFilterKey, courses, courseTeacherOptions]);
+
   const filteredCourses = courses.filter((course) => {
     if (!courseMatchesTeacherFilter(course, courseTeacherFilter, courseTeacherOptions)) return false;
     const search = courseSearchTerm.trim().toLocaleLowerCase();
@@ -901,17 +932,27 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     studentSearchTerm.trim().length > 0 ||
     courseSearchTerm.trim().length > 0;
 
+  const moduleGroup = getModuleGroupMeta('gradebook');
+  const isMyCoursesFilterActive = Boolean(
+    loggedInTeacherFilterKey && courseTeacherFilter === loggedInTeacherFilterKey
+  );
+
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header Bar */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
+        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <Award className="w-4 h-4" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)]">
-            วัดผลและประเมินผล (Gradebook &amp; ปพ.)
-          </h1>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              {lang === 'th' ? `หมวด: ${moduleGroup.labelTh}` : moduleGroup.labelEn}
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              วัดผลและประเมินผล (Gradebook &amp; ปพ.)
+            </h1>
+          </div>
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
             <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-[11px]">
               <button
@@ -1123,19 +1164,57 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         </button>
       </div>
 
-      {/* Unified Compact Course & Student Search / Filter Toolbar (Gradebook & ปพ.5) */}
+      {/* Unified Functionally-Grouped Course & Student Search / Filter Toolbar (Gradebook & ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden space-y-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden flex flex-wrap items-center gap-2">
+          {/* Functional Group 1: ขอบเขตวิชาและผู้สอน */}
+          <div className="fn-group-tone flex-1 min-w-[280px]">
+            <span className="fn-group-label">
+              <BookOpen className="w-3 h-3" />
+              <span>วิชา &amp; ผู้สอน</span>
+            </span>
+
+            {loggedInTeacherFilterKey && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextKey = isMyCoursesFilterActive ? 'all' : loggedInTeacherFilterKey;
+                  setCourseTeacherFilter(nextKey);
+                  const matchingCourses = courses.filter((course) =>
+                    courseMatchesTeacherFilter(course, nextKey, courseTeacherOptions)
+                  );
+                  if (matchingCourses.length > 0 && !matchingCourses.some((c) => c.id === selectedCourseId)) {
+                    setSelectedCourseId(matchingCourses[0].id);
+                  }
+                  setGradePage(0);
+                  setPp5Page(0);
+                }}
+                data-active={isMyCoursesFilterActive}
+                className="btn-tool-neutral px-2 py-1 text-[11px]"
+                title={
+                  isMyCoursesFilterActive
+                    ? 'คลิกเพื่อดูรายวิชาของครูทุกคนในโรงเรียน'
+                    : 'คลิกเพื่อกรองเฉพาะรายวิชาที่คุณสอน'
+                }
+              >
+                <UserCheck className="w-3 h-3" />
+                <span>
+                  {isMyCoursesFilterActive
+                    ? `เฉพาะวิชาที่ฉันสอน (${loggedInTeacherOption?.count ?? filteredCourses.length})`
+                    : `วิชาของฉัน (${loggedInTeacherOption?.count ?? 0})`}
+                </span>
+              </button>
+            )}
+
             {/* Course Search */}
-            <div className="relative w-full sm:w-40 shrink-0">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <div className="relative w-full sm:w-36 shrink-0">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 type="text"
                 value={courseSearchTerm}
                 onChange={(event) => setCourseSearchTerm(event.target.value)}
                 placeholder={`กรองวิชา (${courses.length})...`}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] py-1 pl-7 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
               />
               {courseSearchTerm && (
                 <button
@@ -1173,7 +1252,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   setGradeEligibilityFilter('all');
                   setGradeStatusFilter('all');
                 }}
-                className="w-full sm:w-44 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                className="w-full sm:w-40 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
               >
                 <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
                 {courseTeacherOptions.map((opt) => (
@@ -1197,7 +1276,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 setGradeStatusFilter('all');
               }}
               disabled={courseSelectOptions.length === 0}
-              className="flex-1 min-w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] disabled:opacity-60"
+              className="flex-1 min-w-40 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] disabled:opacity-60"
             >
               {courseSelectOptions.length === 0 ? (
                 <option value="">ไม่พบรายวิชาที่ตรงกับตัวกรอง</option>
@@ -1211,10 +1290,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 ))
               )}
             </select>
+          </div>
+
+          {/* Functional Group 2: กรองนักเรียน & เกณฑ์ประเมิน */}
+          <div className="fn-group flex-wrap">
+            <span className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1 px-0.5 whitespace-nowrap">
+              <Filter className="w-3 h-3" />
+              <span>นักเรียน</span>
+            </span>
 
             {/* Student Live Search */}
-            <div className="relative w-full sm:w-52 shrink-0">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-primary-text)]" />
+            <div className="relative w-full sm:w-44 shrink-0">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 type="text"
                 value={studentSearchTerm}
@@ -1223,8 +1310,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   setGradePage(0);
                   setPp5Page(0);
                 }}
-                placeholder="ค้นหาชื่อ รหัสนักเรียน ปชช. ห้อง..."
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                placeholder="ชื่อ / รหัส / ห้อง..."
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] py-1 pl-7 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
               />
               {studentSearchTerm && (
                 <button
@@ -1251,7 +1338,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     setGradeLevelFilter(event.target.value);
                     setGradePage(0);
                   }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
                 >
                   <option value="all">ทุกชั้น</option>
                   {gradeLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
@@ -1264,7 +1351,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     setGradeRoomFilter(event.target.value);
                     setGradePage(0);
                   }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
                 >
                   <option value="all">ทุกห้อง</option>
                   {gradeRoomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
@@ -1280,7 +1367,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     }
                     setGradePage(0);
                   }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
                 >
                   <option value="all">ทุกเกรด</option>
                   <option value="excellent">ดีเยี่ยม (3.5–4)</option>
@@ -1298,7 +1385,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     }
                     setGradePage(0);
                   }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
                 >
                   <option value="all">เวลาเรียนทั้งหมด</option>
                   <option value="eligible">มีสิทธิ์สอบ (≥80%)</option>
@@ -1307,7 +1394,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </>
             )}
 
-            <span className="px-2 py-1 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+            <span className="px-2 py-0.5 rounded-md bg-[var(--color-card)] border border-[var(--color-border)] text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
               {activeTab === 'gradebook' ? `${filteredGradebookRows.length}/${gradebookRows.length}` : `${courseGrades.length} คน`}
             </span>
 
@@ -1354,6 +1441,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               onChartModeChange={setHistogramChartMode}
               departmentFilter={histogramDeptFilter}
               onDepartmentFilterChange={setHistogramDeptFilter}
+              teacherFilter={courseTeacherFilter}
+              onTeacherFilterChange={setCourseTeacherFilter}
               onDownloadPdf={handleDownloadGradeDistributionPdf}
             />
           </div>

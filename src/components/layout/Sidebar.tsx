@@ -629,6 +629,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
               const CategoryIcon = cat.icon;
               const catTone = getCategoryTone(cat.id);
+              const isActiveCategory = cat.id === activeCatId;
               return (
                 <div key={cat.id} className={`${catTone} space-y-1`}>
                   <button
@@ -643,16 +644,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }
                     }}
                     className={`w-full flex min-h-9 items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
-                      !isCollapsed
-                        ? 'border-transparent bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
-                        : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+                      isActiveCategory
+                        ? 'tone-active border-transparent'
+                        : !isCollapsed
+                          ? 'border-transparent bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
+                          : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="tone-chip w-5 h-5 rounded-md"><CategoryIcon className="h-3.5 w-3.5" /></span>
                       <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
-                      <span className="shrink-0 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] px-1.5 py-0.5 text-[9px] tabular-nums text-[var(--color-text-muted)]">
-                        {items.length}
+                      <span className="shrink-0 text-[10px] font-medium tabular-nums opacity-75">
+                        · {items.length}
                       </span>
                     </span>
                     {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}

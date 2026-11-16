@@ -42,7 +42,7 @@ import { StaffOrganizationView } from './StaffOrganizationView';
 import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
-import { getModuleTone } from '../lib/moduleTheme';
+import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   inviteTeacherOrParentAccount,
   listSchoolStaffParentAccounts,
@@ -561,20 +561,27 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     }
   };
 
+  const teachersGroup = getModuleGroupMeta('teachers');
+
   return (
     <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header and Controls */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
+        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <GraduationCap className="w-4 h-4" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
-          </h1>
-          <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
-            · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
-          </span>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              {lang === 'th' ? `หมวด: ${teachersGroup.labelTh}` : teachersGroup.labelEn}
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
+              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
+                · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
+              </span>
+            </h1>
+          </div>
 
           <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
             <button
@@ -803,68 +810,77 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       )}
 
       {/* Filter and Search Bar */}
-      <div className="shrink-0 bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-1 items-center gap-2 w-full flex-wrap">
-          <div className="relative flex-1 min-w-48">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+      <div className="shrink-0 toolbar-filter-zone flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="fn-group-tone flex-1 w-full">
+          <span className="fn-group-label">{lang === 'th' ? 'ค้นหา & สังกัด' : 'Filter'}</span>
+          <div className="relative flex-1 min-w-44">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส ตำแหน่ง หรือวิชาที่สอน...' : 'Search by name, ID, position, or subject...'}
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
             />
           </div>
 
-          <div className="relative w-full sm:w-44">
-            <select
-              value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-            >
-              <option value="all">{lang === 'th' ? 'ทุกตำแหน่งบุคลากร' : 'All Staff Positions'}</option>
-              {resolvedPositionOptions.map((pos) => (
-                <option key={pos} value={pos}>{pos}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            aria-label={lang === 'th' ? 'กรองตามตำแหน่งบุคลากร' : 'Filter by staff position'}
+            value={positionFilter}
+            onChange={(e) => setPositionFilter(e.target.value)}
+            className="w-full sm:w-44 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+          >
+            <option value="all">{lang === 'th' ? 'ทุกตำแหน่งบุคลากร' : 'All Staff Positions'}</option>
+            {resolvedPositionOptions.map((pos) => (
+              <option key={pos} value={pos}>{pos}</option>
+            ))}
+          </select>
 
-          <div className="relative w-52 hidden md:block">
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+          <select
+            aria-label={lang === 'th' ? 'กรองตามกลุ่มสาระหรือฝ่ายงาน' : 'Filter by department'}
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="hidden md:block w-48 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+          >
+            <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระ/ฝ่ายงาน' : 'All Departments'}</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept.replace('กลุ่มสาระการเรียนรู้', '')}
+              </option>
+            ))}
+          </select>
+
+          {(searchTerm.trim() !== '' || positionFilter !== 'all' || departmentFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setPositionFilter('all');
+                setDepartmentFilter('all');
+              }}
+              className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
             >
-              <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระ/ฝ่ายงาน' : 'All Departments'}</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept.replace('กลุ่มสาระการเรียนรู้', '')}
-                </option>
-              ))}
-            </select>
-          </div>
+              {lang === 'th' ? 'ล้าง' : 'Clear'}
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="fn-divider" />
+
+        <div className="seg-tab-group shrink-0 self-end sm:self-center">
           <button
             type="button"
+            data-active={viewMode === 'cards'}
             onClick={() => setViewMode('cards')}
-            className={`p-2 rounded-xl text-xs font-semibold cursor-pointer transition ${
-              viewMode === 'cards'
-                ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
-            }`}
+            className="seg-tab-btn"
           >
             การ์ดโปรไฟล์
           </button>
           <button
             type="button"
+            data-active={viewMode === 'table'}
             onClick={() => setViewMode('table')}
-            className={`p-2 rounded-xl text-xs font-semibold cursor-pointer transition ${
-              viewMode === 'table'
-                ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
-            }`}
+            className="seg-tab-btn"
           >
             ตารางรายชื่อ
           </button>

@@ -1,5 +1,5 @@
-import { Course, Teacher } from '../types';
-import { normalizeTeacherName } from './timetableTeachers';
+import { AuthUser, Course, Teacher, TimetableSlot } from '../types';
+import { getSlotTeachers, normalizeTeacherName } from './timetableTeachers';
 
 export interface CourseTeacherOption {
   key: string;
@@ -181,4 +181,161 @@ export function courseMatchesTeacherFilter(
   if (!targetKey) return true;
   if (courseEmail && `email:${courseEmail}` === selectedTeacherKey) return true;
   return courseNameKeys.includes(targetKey);
+}
+
+/**
+ * Strips common Thai academic/salutation prefixes so "อ.ดร.สมชาย ใจดี" matches "สมชาย ใจดี".
+ */
+export function stripTeacherHonorifics(name: string): string {
+  let cleaned = normalizeTeacherName(name || '');
+  if (!cleaned) return '';
+  const prefixPattern = /^(?:(?:อ\.|ดร\.|ผศ\.|รศ\.|ศ\.|อาจารย์|คุณครู|ครู|นาย|นางสาว|นาง|น\.ส\.|mr\.?|mrs\.?|ms\.?|dr\.?)\s*)+/i;
+  cleaned = cleaned.replace(prefixPattern, '').trim();
+  return cleaned.replace(/\s+/g, ' ');
+}
+
+function namesMatchFlexibly(a: string, b: string): boolean {
+  const normA = normalizeTeacherName(a);
+  const normB = normalizeTeacherName(b);
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+  const strippedA = stripTeacherHonorifics(normA);
+  const strippedB = stripTeacherHonorifics(normB);
+  return Boolean(strippedA && strippedB && strippedA === strippedB);
+}
+
+/**
+ * Resolves the Teacher profile record linked to the currently logged-in user.
+ */
+export function resolveMatchedTeacherForUser(
+  currentUser: AuthUser | null | undefined,
+  teachers: readonly Teacher[] = []
+): Teacher | undefined {
+  if (!currentUser || teachers.length === 0) return undefined;
+
+  const byId = teachers.find((t) => t.id === currentUser.id);
+  if (byId) return byId;
+
+  if (currentUser.teacherIdNumber) {
+    const targetCode = currentUser.teacherIdNumber.trim().toLowerCase();
+    const byCode = teachers.find((t) => (t.teacherIdNumber || '').trim().toLowerCase() === targetCode);
+    if (byCode) return byCode;
+  }
+
+  if (currentUser.email) {
+    const targetEmail = currentUser.email.trim().toLowerCase();
+    const byEmail = teachers.find((t) => (t.email || '').trim().toLowerCase() === targetEmail);
+    if (byEmail) return byEmail;
+  }
+
+  const userNames = [currentUser.fullNameTh, currentUser.fullNameEn].filter(Boolean) as string[];
+  if (userNames.length > 0) {
+    const byName = teachers.find((t) =>
+      userNames.some(
+        (uName) =>
+          namesMatchFlexibly(uName, t.fullNameTh || '') ||
+          namesMatchFlexibly(uName, t.fullNameEn || '')
+      )
+    );
+    if (byName) return byName;
+  }
+
+  return undefined;
+}
+
+/**
+ * Finds the CourseTeacherOption key corresponding to the currently logged-in user (or null if none).
+ */
+export function resolveTeacherFilterKeyForUser(
+  currentUser: AuthUser | null | undefined,
+  teachers: readonly Teacher[],
+  options: readonly CourseTeacherOption[]
+): string | null {
+  if (!currentUser || options.length === 0) return null;
+  const matchedTeacher = resolveMatchedTeacherForUser(currentUser, teachers);
+
+  const candidateEmails = [currentUser.email, matchedTeacher?.email]
+    .map((em) => (em || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  if (candidateEmails.length > 0) {
+    const byEmail = options.find((opt) =>
+      opt.emails.some((em) => candidateEmails.includes(em.toLowerCase()))
+    );
+    if (byEmail) return byEmail.key;
+  }
+
+  const candidateNames = [
+    matchedTeacher?.fullNameTh,
+    matchedTeacher?.fullNameEn,
+    currentUser.fullNameTh,
+    currentUser.fullNameEn,
+  ].filter(Boolean) as string[];
+
+  for (const cand of candidateNames) {
+    const normCand = normalizeTeacherName(cand);
+    const exact = options.find(
+      (opt) => opt.key === normCand || opt.aliases.includes(normCand)
+    );
+    if (exact) return exact.key;
+  }
+
+  for (const cand of candidateNames) {
+    const fuzzy = options.find(
+      (opt) =>
+        namesMatchFlexibly(cand, opt.label) ||
+        opt.aliases.some((alias) => namesMatchFlexibly(cand, alias))
+    );
+    if (fuzzy) return fuzzy.key;
+  }
+
+  return null;
+}
+
+/**
+ * Returns true if the given TimetableSlot is taught by the logged-in teacher user
+ * (matching either slot teacher names or linked Course ownership).
+ */
+export function slotMatchesLoggedInTeacher(
+  slot: Pick<TimetableSlot, 'courseId' | 'courseCode' | 'teacherName' | 'coTeacherName'>,
+  currentUser: AuthUser | null | undefined,
+  matchedTeacher: Teacher | undefined,
+  courses: readonly Course[] = []
+): boolean {
+  if (!currentUser && !matchedTeacher) return false;
+
+  const candidateNames = [
+    matchedTeacher?.fullNameTh,
+    matchedTeacher?.fullNameEn,
+    currentUser?.fullNameTh,
+    currentUser?.fullNameEn,
+  ].filter(Boolean) as string[];
+
+  const slotTeachers = getSlotTeachers(slot);
+  if (
+    candidateNames.length > 0 &&
+    slotTeachers.some((st) => candidateNames.some((cn) => namesMatchFlexibly(st, cn)))
+  ) {
+    return true;
+  }
+
+  const candidateEmails = [currentUser?.email, matchedTeacher?.email]
+    .map((em) => (em || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  const linkedCourse = courses.find(
+    (c) =>
+      (slot.courseId && c.id === slot.courseId) ||
+      (slot.courseCode && c.code.trim().toLowerCase() === slot.courseCode.trim().toLowerCase())
+  );
+  if (!linkedCourse) return false;
+
+  if (matchedTeacher && teacherMatchesCourse(matchedTeacher, linkedCourse)) {
+    return true;
+  }
+  const cEmail = (linkedCourse.teacherEmail || '').trim().toLowerCase();
+  if (cEmail && candidateEmails.includes(cEmail)) return true;
+
+  const cNames = extractCourseTeacherNames(linkedCourse);
+  return candidateNames.some((cn) => cNames.some((courseTeacher) => namesMatchFlexibly(cn, courseTeacher)));
 }

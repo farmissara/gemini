@@ -34,7 +34,7 @@ import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { calculateStudentAcademicSummary, isPrimaryGradeLevel } from '../lib/moeGrading';
-import { getModuleTone } from '../lib/moduleTheme';
+import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
 interface CoursesViewProps {
@@ -437,20 +437,27 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     });
   };
 
+  const coursesGroup = getModuleGroupMeta('courses');
+
   return (
-    <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-3`}>
+    <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
       {/* Compact Single-Row Header */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <BookOpen className="w-4 h-4" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            หลักสูตรและรายวิชา (Curriculum)
-          </h1>
-          <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
-            · {courses.length} วิชา
-          </span>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              หมวด: {coursesGroup.labelTh}
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              หลักสูตรและรายวิชา (Curriculum)
+              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
+                · {courses.length} วิชา
+              </span>
+            </h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap self-start sm:self-auto">
@@ -557,16 +564,17 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           {courseDeleteError}
         </p>
       )}
-      <div className="shrink-0 p-2.5 toolbar-filter-zone flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="shrink-0 toolbar-filter-zone flex flex-col lg:flex-row lg:items-center justify-between gap-2 shadow-xs">
+        <div className="fn-group-tone w-full lg:w-auto">
+          <span className="fn-group-label">ค้นหา &amp; ผู้สอน</span>
+          <div className="relative flex-1 sm:w-64 min-w-[180px]">
+            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="ค้นหาตามรหัสวิชา, ชื่อวิชา หรืออาจารย์ผู้สอน..."
+              placeholder="ค้นหารหัสวิชา, ชื่อวิชา หรือครู..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
             />
           </div>
 
@@ -575,7 +583,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               aria-label="กรองวิชาตามรายชื่อครู"
               value={selectedTeacherFilter}
               onChange={(e) => setSelectedTeacherFilter(e.target.value)}
-              className="w-full sm:w-56 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+              className="w-full sm:w-52 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
             >
               <option value="all">ครูผู้สอนทุกคน ({teacherFilterOptions.length} ท่าน)</option>
               {teacherFilterOptions.map((opt) => (
@@ -589,7 +597,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 type="button"
                 onClick={() => setSelectedTeacherFilter('all')}
                 aria-label="ล้างตัวกรองครูผู้สอน"
-                className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
+                className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
               >
                 ล้าง
               </button>
@@ -597,15 +605,19 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           </div>
         </div>
 
-        <div className="seg-tab-group overflow-x-auto max-w-full no-scrollbar">
-          <button
-            type="button"
-            data-active={selectedCategory === 'all'}
-            onClick={() => setSelectedCategory('all')}
-            className="seg-tab-btn"
-          >
-            ทุกหมวดวิชา ({courses.filter((c) => courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)).length})
-          </button>
+        <div className="fn-divider" />
+
+        <div className="flex items-center gap-2 min-w-0 max-w-full">
+          <span className="fn-group-label text-[var(--color-text-muted)] hidden sm:inline-flex">หมวดวิชา</span>
+          <div className="seg-tab-group overflow-x-auto max-w-full no-scrollbar">
+            <button
+              type="button"
+              data-active={selectedCategory === 'all'}
+              onClick={() => setSelectedCategory('all')}
+              className="seg-tab-btn"
+            >
+              ทุกหมวดวิชา ({courses.filter((c) => courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)).length})
+            </button>
           {STANDARD_CATEGORIES.map((cat) => {
             const count = courses.filter(
               (c) => c.category === cat.key && courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)
@@ -622,6 +634,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               </button>
             );
           })}
+          </div>
         </div>
       </div>
 

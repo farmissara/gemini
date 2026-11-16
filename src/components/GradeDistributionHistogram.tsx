@@ -43,6 +43,8 @@ interface GradeDistributionHistogramProps {
   onChartModeChange?: (mode: ChartViewMode) => void;
   departmentFilter?: string;
   onDepartmentFilterChange?: (dept: string) => void;
+  teacherFilter?: string;
+  onTeacherFilterChange?: (teacherKey: string) => void;
   onDownloadPdf?: () => void;
 }
 
@@ -170,13 +172,15 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
   onChartModeChange,
   departmentFilter: controlledDeptFilter,
   onDepartmentFilterChange,
+  teacherFilter: controlledTeacherFilter,
+  onTeacherFilterChange,
   onDownloadPdf,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [internalScope, setInternalScope] = useState<HistogramScope>('course');
   const [internalChartMode, setInternalChartMode] = useState<ChartViewMode>('score_bins');
   const [internalDepartmentFilter, setInternalDepartmentFilter] = useState<string>('all');
-  const [teacherFilter, setTeacherFilter] = useState<string>('all');
+  const [internalTeacherFilter, setInternalTeacherFilter] = useState<string>('all');
 
   const scope = controlledScope ?? internalScope;
   const setScope = (next: HistogramScope) => {
@@ -194,6 +198,12 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
   const setDepartmentFilter = (next: string) => {
     setInternalDepartmentFilter(next);
     onDepartmentFilterChange?.(next);
+  };
+
+  const teacherFilter = controlledTeacherFilter ?? internalTeacherFilter;
+  const setTeacherFilter = (next: string) => {
+    setInternalTeacherFilter(next);
+    onTeacherFilterChange?.(next);
   };
 
   const courseById = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);

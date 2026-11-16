@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { getModuleTone } from '../lib/moduleTheme';
+import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -672,17 +672,24 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     return req.status === leaveFilter;
   });
 
+  const attendanceGroup = getModuleGroupMeta('attendance');
+
   return (
     <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-2`}>
       {/* Compact Top Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex items-center gap-2">
+        <div className="min-w-0 flex items-center gap-2.5">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <QrCode className="w-4 h-4 shrink-0" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            การเข้าเรียน &amp; สแกนประตู
-          </h1>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              {lang === 'th' ? `หมวด: ${attendanceGroup.labelTh}` : attendanceGroup.labelEn}
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              การเข้าเรียน &amp; สแกนประตู
+            </h1>
+          </div>
           <ModuleTourTrigger moduleId="attendance" lang={lang} />
         </div>
 
@@ -952,28 +959,22 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   </span>
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="text-[11px] text-[var(--color-text-muted)]">พบ {displayedFilteredLogs.length} รายการ</span>
+                  <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">พบ {displayedFilteredLogs.length} รายการ</span>
                   {!isRestrictedViewer && (
-                    <div className="flex items-center gap-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-[11px]">
+                    <div className="seg-tab-group text-[11px]">
                       <button
                         type="button"
+                        data-active={logScopeFilter === 'all'}
                         onClick={() => setLogScopeFilter('all')}
-                        className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
-                          logScopeFilter === 'all'
-                            ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                            : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                        }`}
+                        className="seg-tab-btn px-2 py-0.5 text-[11px]"
                       >
                         ทั้งหมด ({filteredLogs.length})
                       </button>
                       <button
                         type="button"
+                        data-active={logScopeFilter === 'mine'}
                         onClick={() => setLogScopeFilter('mine')}
-                        className={`px-2 py-0.5 rounded-md font-semibold transition cursor-pointer ${
-                          logScopeFilter === 'mine'
-                            ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                            : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                        }`}
+                        className="seg-tab-btn px-2 py-0.5 text-[11px]"
                       >
                         เฉพาะบัญชีฉัน ({filteredLogs.filter(a => a.studentId === loggedInProfile.targetId || a.userName === loggedInProfile.userName || (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))).length})
                       </button>
@@ -1050,84 +1051,68 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
             )}
 
-            {/* Filter Component: Date Range + Class/Room + Course */}
-            <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5 text-xs">
+            {/* Filter Component: Functional Groups (Date Range vs Room & Course/Teacher) */}
+            <div className="toolbar-filter-zone space-y-2 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5 text-[11px]">
-                  <Filter className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                  <span>ตัวกรองบันทึกการเข้าเรียน (ช่วงวันที่ • ห้องเรียน • รายวิชา)</span>
-                </span>
-                <div className="flex flex-wrap items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('today')}
-                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
-                  >
-                    วันนี้
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('7d')}
-                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
-                  >
-                    7 วันล่าสุด
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('month')}
-                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
-                  >
-                    เดือนนี้
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('all')}
-                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
-                  >
-                    ทั้งหมด
-                  </button>
-                  {(classFilter !== 'all' || teacherFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
+                <div className="fn-group-tone w-full lg:w-auto">
+                  <span className="fn-group-label">
+                    <Filter className="w-3 h-3" />
+                    <span>ช่วงวันที่</span>
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
                     <button
                       type="button"
-                      onClick={handleResetLogFilters}
-                      className="px-2 py-0.5 rounded text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                      onClick={() => applyQuickDatePreset('today')}
+                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
                     >
-                      รีเซ็ต
+                      วันนี้
                     </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                <label className="block">
-                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ตั้งแต่วันที่</span>
+                    <button
+                      type="button"
+                      onClick={() => applyQuickDatePreset('7d')}
+                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
+                    >
+                      7 วัน
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyQuickDatePreset('month')}
+                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
+                    >
+                      เดือนนี้
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyQuickDatePreset('all')}
+                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
+                    >
+                      ทั้งหมด
+                    </button>
+                  </div>
                   <input
                     type="date"
                     aria-label="ตั้งแต่วันที่"
                     value={startDateFilter}
                     onChange={(e) => setStartDateFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
+                    className="px-2 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
                   />
-                </label>
-
-                <label className="block">
-                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ถึงวันที่</span>
+                  <span className="text-[11px] text-[var(--color-text-muted)]">ถึง</span>
                   <input
                     type="date"
                     aria-label="ถึงวันที่"
                     value={endDateFilter}
                     onChange={(e) => setEndDateFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
+                    className="px-2 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
                   />
-                </label>
+                </div>
 
-                <label className="block">
-                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ชั้น / ห้องเรียน</span>
+                <div className="fn-group flex-1">
+                  <span className="fn-group-label text-[var(--color-text-muted)]">ห้องเรียน &amp; วิชา/ครู</span>
                   <select
                     aria-label="กรองตามห้องเรียน"
                     value={classFilter}
                     onChange={(e) => setClassFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
                   >
                     <option value="all">ทุกห้องเรียน ({availableClasses.length})</option>
                     {availableClasses.map((room) => (
@@ -1136,10 +1121,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       </option>
                     ))}
                   </select>
-                </label>
 
-                <label className="block">
-                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">กรองวิชาตามรายชื่อครู</span>
                   <select
                     aria-label="กรองวิชาตามรายชื่อครู"
                     value={teacherFilter}
@@ -1153,7 +1135,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         }
                       }
                     }}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[180px]"
                   >
                     <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
                     {courseTeacherOptions.map((opt) => (
@@ -1162,15 +1144,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       </option>
                     ))}
                   </select>
-                </label>
 
-                <label className="block">
-                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">รายวิชา / คอร์สเรียน</span>
                   <select
                     aria-label="กรองตามรายวิชา"
                     value={courseFilter}
                     onChange={(e) => setCourseFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[200px]"
                   >
                     <option value="all">
                       {teacherFilter === 'all'
@@ -1183,7 +1162,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       </option>
                     ))}
                   </select>
-                </label>
+
+                  {(classFilter !== 'all' || teacherFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
+                    <button
+                      type="button"
+                      onClick={handleResetLogFilters}
+                      className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                    >
+                      รีเซ็ต
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

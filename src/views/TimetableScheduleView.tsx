@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -8,6 +8,7 @@ import {
   CheckCircle2, 
   BookOpen, 
   User, 
+  UserCheck,
   MapPin, 
   Trash2, 
   Download, 
@@ -26,7 +27,7 @@ import {
   ChevronRight,
   FileSpreadsheet,
 } from 'lucide-react';
-import { Assignment, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
+import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
@@ -42,7 +43,7 @@ import {
 } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getTimetableDuplicateReasons } from '../lib/duplicateRecords';
-import { getModuleTone } from '../lib/moduleTheme';
+import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   formatSlotTeachersDisplay,
   getSlotTeachers,
@@ -52,7 +53,13 @@ import {
 } from '../lib/timetableTeachers';
 import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
 import { TimetableImportExportModal } from '../components/modals/TimetableImportExportModal';
-import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import {
+  buildCourseTeacherOptions,
+  courseMatchesTeacherFilter,
+  resolveMatchedTeacherForUser,
+  resolveTeacherFilterKeyForUser,
+  slotMatchesLoggedInTeacher,
+} from '../lib/courseTeacherFilter';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -68,6 +75,7 @@ interface TimetableScheduleViewProps {
   onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
   lang: AppLanguage;
   currentRole: UserRole;
+  currentUser?: AuthUser | null;
   schoolId?: string;
   schoolName: string;
   academicYear: string;
@@ -140,6 +148,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onSaveSchoolPeriods,
   lang,
   currentRole,
+  currentUser = null,
   schoolId = 'default-school',
   schoolName,
   academicYear,
@@ -251,8 +260,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       .map((name) => [normalizeTeacherName(name), name] as const)
   ).values()).sort((a, b) => a.localeCompare(b, 'th'));
   const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
+  const [myCoursesOnly, setMyCoursesOnly] = useState(false);
+  const autoScopedTimetableRef = useRef<string | null>(null);
   const handleViewModeChange = (mode: typeof viewMode) => {
-    if (mode === 'hours_criteria' && selectedClassRoom === ALL_CLASSROOMS) {
+    if (mode === 'hours_criteria' && selectedClassRoom === ALL_CLASSROOMS && !myCoursesOnly) {
       setSelectedClassRoom(uniqueClassRooms[0] || '');
     }
     setViewMode(mode);
@@ -288,6 +299,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     setSelectedAcademicPeriodKey(period.key);
     setActiveScheduleFilters(null);
     setShowAddRoomInput(false);
+    if (myCoursesOnly) {
+      setSelectedClassRoom(ALL_CLASSROOMS);
+      return;
+    }
     const periodSlots = allTimetableSlots.filter((slot) => (
       (slot.academicYear || academicYear) === period.academicYear &&
       (slot.semester || currentSemester) === period.semester
@@ -473,6 +488,50 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
   const courseCatalogTeacherOptions = buildCourseTeacherOptions(courses, teachers);
+  const matchedTeacher = resolveMatchedTeacherForUser(currentUser, teachers);
+  const loggedInCourseTeacherKey = resolveTeacherFilterKeyForUser(
+    currentUser,
+    teachers,
+    courseCatalogTeacherOptions
+  );
+  const hasTeacherTimetableMatch = Boolean(
+    loggedInCourseTeacherKey ||
+      (currentUser &&
+        allTimetableSlots.some((slot) =>
+          slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacher, courses)
+        ))
+  );
+  const hasLoadedTimetableContext =
+    courses.length > 0 || allTimetableSlots.length > 0 || teachers.length > 0;
+
+  useEffect(() => {
+    const sessionScopeKey = `${schoolId}::${currentUser?.id || ''}::${currentRole}`;
+    if (currentRole === 'teacher' && !hasLoadedTimetableContext) return;
+    if (autoScopedTimetableRef.current === sessionScopeKey) return;
+    autoScopedTimetableRef.current = sessionScopeKey;
+
+    if (currentRole === 'teacher' && hasTeacherTimetableMatch) {
+      setMyCoursesOnly(true);
+      setSelectedClassRoom(ALL_CLASSROOMS);
+      setActiveScheduleFilters(null);
+      if (loggedInCourseTeacherKey) {
+        setCatalogTeacherFilter(loggedInCourseTeacherKey);
+        setHoursTeacherFilter(loggedInCourseTeacherKey);
+      }
+    } else {
+      setMyCoursesOnly(false);
+      setCatalogTeacherFilter('all');
+      setHoursTeacherFilter('all');
+    }
+  }, [
+    schoolId,
+    currentUser?.id,
+    currentRole,
+    hasLoadedTimetableContext,
+    hasTeacherTimetableMatch,
+    loggedInCourseTeacherKey,
+  ]);
+
   const filteredCourseCatalog = courses.filter((course) => {
     if (!courseMatchesTeacherFilter(course, catalogTeacherFilter, courseCatalogTeacherOptions)) {
       return false;
@@ -499,11 +558,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     }
     return true;
   });
-  const activeSlots = activeScheduleFilters
+  const baseActiveSlots = activeScheduleFilters
     ? filterSlotsByScheduleSettings(activeScheduleFilters)
     : selectedClassRoom === ALL_CLASSROOMS
       ? slots
       : slots.filter((s) => s.classRoom === selectedClassRoom);
+  const activeSlots = myCoursesOnly
+    ? baseActiveSlots.filter((slot) =>
+        slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacher, courses)
+      )
+    : baseActiveSlots;
   const calendarWeekDays = DAYS.map((day, index) => ({
     ...day,
     date: addCalendarDays(calendarWeekStart, index),
@@ -950,9 +1014,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   // Compute academic hours breakdown per course in this classroom
-  const classroomSlots = selectedClassRoom === ALL_CLASSROOMS
+  const baseClassroomSlots = selectedClassRoom === ALL_CLASSROOMS
     ? slots
     : slots.filter((s) => s.classRoom === selectedClassRoom);
+  const classroomSlots = myCoursesOnly
+    ? baseClassroomSlots.filter((slot) =>
+        slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacher, courses)
+      )
+    : baseClassroomSlots;
   const classroomCourseMap: Record<string, { code: string; titleTh: string; titleEn: string; teacher: string; scheduledPeriods: number; course?: Course }> = {};
   
   classroomSlots.forEach((s) => {
@@ -976,28 +1045,62 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     teacherEmail: item.course?.teacherEmail || '',
   })) as Course[];
   const hoursTeacherOptions = buildCourseTeacherOptions(hoursCourseStubs, teachers);
+  const effectiveHoursTeacherFilter =
+    myCoursesOnly && hoursTeacherFilter !== 'all' && !hoursTeacherOptions.some((o) => o.key === hoursTeacherFilter)
+      ? 'all'
+      : hoursTeacherFilter;
   const classroomCoursesList = rawClassroomCoursesList.filter((item) =>
     courseMatchesTeacherFilter(
       {
         teacherName: item.course?.teacherName || item.teacher,
         teacherEmail: item.course?.teacherEmail || '',
       },
-      hoursTeacherFilter,
+      effectiveHoursTeacherFilter,
       hoursTeacherOptions
     )
   );
 
+  const timetableGroup = getModuleGroupMeta('timetable');
+
   const renderRoomAndTermControls = (showRoomFilter = true) => (
-    <div className="flex flex-wrap items-center gap-2 print:hidden">
+    <div className="fn-group-tone print:hidden">
+      <span className="fn-group-label">
+        {lang === 'th' ? 'ขอบเขตตาราง' : 'Scope'}
+      </span>
+      {hasTeacherTimetableMatch && (
+        <button
+          type="button"
+          aria-pressed={myCoursesOnly}
+          data-active={myCoursesOnly}
+          onClick={() => {
+            const next = !myCoursesOnly;
+            setMyCoursesOnly(next);
+            if (next) {
+              setActiveScheduleFilters(null);
+              setSelectedClassRoom(ALL_CLASSROOMS);
+              if (loggedInCourseTeacherKey) {
+                setHoursTeacherFilter(loggedInCourseTeacherKey);
+              }
+            } else {
+              setHoursTeacherFilter('all');
+            }
+          }}
+          className="btn-tool-neutral min-h-8 px-2.5 py-1 text-xs"
+          title={myCoursesOnly ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูทั้งโรงเรียน' : 'กรองเฉพาะวิชาที่ฉันสอน'}
+        >
+          <UserCheck className="h-3.5 w-3.5 tone-text" />
+          <span>เฉพาะวิชาที่ฉันสอน</span>
+        </button>
+      )}
       {showRoomFilter && (activeScheduleFilters ? (
-        <div className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs">
+        <div className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs">
           <span className="max-w-64 truncate font-semibold text-[var(--color-text-body)]">
             {activeScheduleFilters.gradeLevel || 'ทุกระดับชั้น'} · {activeScheduleFilters.classRoom || 'ทุกห้อง'} · {activeScheduleFilters.teacherName || 'ครูทุกคน'}
           </span>
           <button
             type="button"
             onClick={() => setActiveScheduleFilters(null)}
-            className="font-semibold text-[var(--color-primary-text)] hover:underline"
+            className="font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
           >
             ล้าง
           </button>
@@ -1012,9 +1115,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               setSelectedClassRoom(e.target.value);
               setActiveScheduleFilters(null);
             }}
-            className="min-h-9 max-w-56 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+            className="min-h-8 max-w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
           >
-            <option value={ALL_CLASSROOMS} disabled={viewMode === 'hours_criteria'}>
+            <option value={ALL_CLASSROOMS} disabled={viewMode === 'hours_criteria' && !myCoursesOnly}>
               ทุกห้อง ({uniqueClassRooms.length})
             </option>
             {uniqueClassRooms.map((room) => (
@@ -1130,15 +1233,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   return (
     <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Page heading and schedule controls */}
-      <div className="shrink-0 px-3 py-2 app-page-header">
+      <div className="shrink-0 px-3 py-2 app-page-header print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <span className="tone-chip w-7 h-7 rounded-lg">
               <Calendar className="w-4 h-4 shrink-0" />
             </span>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-              ตารางเรียนและตารางสอน
-            </h1>
+            <div className="min-w-0">
+              <div className="module-category-kicker">
+                {lang === 'th' ? `หมวด: ${timetableGroup.labelTh}` : timetableGroup.labelEn}
+              </div>
+              <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+                ตารางเรียนและตารางสอน
+              </h1>
+            </div>
             <ModuleTourTrigger moduleId="timetable" lang={lang} />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
@@ -1557,19 +1665,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {renderRoomAndTermControls()}
                 {hoursTeacherOptions.length > 0 && (
-                  <select
-                    aria-label="กรองวิชาตามรายชื่อครู"
-                    value={hoursTeacherFilter}
-                    onChange={(e) => setHoursTeacherFilter(e.target.value)}
-                    className="min-h-9 max-w-56 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)] print:hidden"
-                  >
-                    <option value="all">ครูผู้สอนทุกคน ({hoursTeacherOptions.length})</option>
-                    {hoursTeacherOptions.map((opt) => (
-                      <option key={opt.key} value={opt.key}>
-                        {opt.label} ({opt.count} วิชา)
-                      </option>
-                    ))}
-                  </select>
+                  <div className="fn-group">
+                    <span className="fn-group-label text-[var(--color-text-muted)]">ผู้สอน</span>
+                    <select
+                      aria-label="กรองวิชาตามรายชื่อครู"
+                      value={effectiveHoursTeacherFilter}
+                      onChange={(e) => setHoursTeacherFilter(e.target.value)}
+                      className="min-h-8 max-w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)] print:hidden"
+                    >
+                      <option value="all">ครูผู้สอนทุกคน ({hoursTeacherOptions.length})</option>
+                      {hoursTeacherOptions.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          {opt.label} ({opt.count} วิชา)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
@@ -1684,56 +1795,61 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   {calendarWeekRangeLabel} · {activeSlots.length} คาบ/สัปดาห์
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  aria-label="สัปดาห์ก่อนหน้า"
-                  onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, -7))}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]"
-                >
-                  <ChevronRight className="h-4 w-4 rotate-180" />
-                </button>
-                <label className="sr-only" htmlFor="timetable-calendar-week">เลือกสัปดาห์</label>
-                <input
-                  id="timetable-calendar-week"
-                  type="date"
-                  value={calendarWeekStart}
-                  onChange={(event) => {
-                    if (event.target.value) setCalendarWeekStart(getCalendarWeekStart(event.target.value));
-                  }}
-                  className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 text-xs text-[var(--color-text-title)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCalendarWeekStart(getCalendarWeekStart(getBangkokDateInputValue()))}
-                  className="h-9 rounded-lg border border-[var(--color-border)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-                >
-                  วันนี้
-                </button>
-                <button
-                  type="button"
-                  aria-label="สัปดาห์ถัดไป"
-                  onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, 7))}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowImportExportModal(true)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                  Export / Import
-                </button>
-                <button
-                  type="button"
-                  onClick={openGoogleCalendarModal}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-                >
-                  <Calendar className="h-3.5 w-3.5" />
-                  เชื่อมต่อ Google Calendar
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="fn-group">
+                  <span className="fn-group-label text-[var(--color-text-muted)]">สัปดาห์</span>
+                  <button
+                    type="button"
+                    aria-label="สัปดาห์ก่อนหน้า"
+                    onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, -7))}
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                  </button>
+                  <label className="sr-only" htmlFor="timetable-calendar-week">เลือกสัปดาห์</label>
+                  <input
+                    id="timetable-calendar-week"
+                    type="date"
+                    value={calendarWeekStart}
+                    onChange={(event) => {
+                      if (event.target.value) setCalendarWeekStart(getCalendarWeekStart(event.target.value));
+                    }}
+                    className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCalendarWeekStart(getCalendarWeekStart(getBangkokDateInputValue()))}
+                    className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    วันนี้
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="สัปดาห์ถัดไป"
+                    onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, 7))}
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="fn-group">
+                  <button
+                    type="button"
+                    onClick={() => setShowImportExportModal(true)}
+                    className="btn-tool-neutral px-2.5 py-1.5"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Export / Import</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openGoogleCalendarModal}
+                    className="btn-action-primary px-2.5 py-1.5"
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Google Calendar</span>
+                  </button>
+                </div>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1816,13 +1932,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       ) : (
         /* TAB: Timetable 5-Day Weekly Grid View */
         <div className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
-          <div className="shrink-0 p-3.5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
+          <div className="shrink-0 p-2.5 sm:px-3.5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <Layers className="h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />
                 {renderRoomAndTermControls()}
+                <span className="print:hidden text-xs text-[var(--color-text-muted)] tabular-nums">
+                  แสดง <strong className="tone-text">{activeSlots.length}</strong> คาบ/สัปดาห์
+                  {myCoursesOnly && (
+                    <span className="ml-1 text-[11px] font-semibold tone-text">· เฉพาะวิชาที่สอน</span>
+                  )}
+                </span>
               </div>
-              <p className="hidden print:block print:pl-6 print:text-xs print:font-bold">
+              <p className="hidden print:block print:text-xs print:font-bold">
                 {activeScheduleFilters
                   ? `ตารางสอน — ${activeScheduleFilters.gradeLevel || 'ทุกระดับชั้น'} · ${activeScheduleFilters.classRoom || 'ทุกห้อง'} · ${activeScheduleFilters.teacherName || 'ครูทุกคน'}`
                   : selectedClassRoom === ALL_CLASSROOMS
@@ -1830,26 +1951,34 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     : selectedClassRoom
                 } — {formatSemesterLabel(viewSemester)} ปีการศึกษา {viewAcademicYear}
               </p>
-              <p className="mt-1 pl-6 text-[10px] text-[var(--color-text-muted)]">
-                ในแต่ละคาบแสดง รหัสวิชา · ชั้น/ห้อง · ชื่อวิชา · ครูผู้สอน · ห้องสถานที่
-              </p>
             </div>
-            <div className="print:hidden flex flex-wrap items-center justify-end gap-2">
-              <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
-                รวม <strong className="text-[var(--color-primary-text)]">{activeSlots.length}</strong> คาบ/สัปดาห์
-              </span>
+            <div className="print:hidden flex flex-wrap items-center justify-end gap-1.5">
               {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
                 <button
                   type="button"
                   onClick={() => {
                     setCourseSearchInput('');
-                    setCatalogTeacherFilter('all');
+                    const initialTeacherFilter =
+                      myCoursesOnly && loggedInCourseTeacherKey ? loggedInCourseTeacherKey : 'all';
+                    setCatalogTeacherFilter(initialTeacherFilter);
                     setNewClassRoom(activeScheduleFilters
                       ? activeScheduleFilters.classRoom
                       : selectedClassRoom === ALL_CLASSROOMS
                         ? ''
                         : selectedClassRoom);
-                    if (courses.length > 0) {
+                    const matchingCourses =
+                      initialTeacherFilter === 'all'
+                        ? courses
+                        : courses.filter((c) =>
+                            courseMatchesTeacherFilter(
+                              c,
+                              initialTeacherFilter,
+                              courseCatalogTeacherOptions
+                            )
+                          );
+                    if (matchingCourses.length > 0) {
+                      handleSelectCourse(matchingCourses[0].id);
+                    } else if (courses.length > 0) {
                       handleSelectCourse(courses[0].id);
                     } else {
                       handleSelectCourse('custom');
@@ -1862,117 +1991,140 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     setSlotActionError(null);
                     setShowAddModal(true);
                   }}
-                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[var(--color-primary-hover)] cursor-pointer"
+                  className="btn-action-primary px-3 py-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>เพิ่มคาบ</span>
                 </button>
               )}
-              {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
-                    setPeriodSettingsError(null);
-                    setShowPeriodSettings(true);
-                  }}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>ตั้งเวลาคาบ</span>
-                </button>
-              )}
+
+              {/* Consolidated Secondary Schedule Tools Dropdown */}
               <details className="group relative">
-                <summary className="flex min-h-9 list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] [&::-webkit-details-marker]:hidden">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span>ทดสอบแจ้งเตือน</span>
-                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                <summary className="btn-tool-tone list-none px-2.5 py-1.5">
+                  <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
+                  <span>เครื่องมือ &amp; ส่งออก</span>
+                  <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)] transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-lg">
-                  <p className="px-2 py-1 text-[10px] text-[var(--color-text-muted)]">
-                    ส่งการแจ้งเตือนทดสอบไปยังอุปกรณ์นี้
-                  </p>
-                  <div className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        sendEduVerseNotification({
-                          title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                          body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็คชื่อเข้าเรียน (Check-in)`,
-                          category: 'attendance',
-                          priority: 'urgent',
-                        });
-                      }}
-                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-emerald-700 transition hover:bg-[var(--color-card-subtle)] dark:text-emerald-300"
-                    >
-                      ⏰ ทดสอบเริ่มคาบ &amp; เช็คอิน
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        sendEduVerseNotification({
-                          title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                          body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็คชื่อออก (Check-out)`,
-                          category: 'attendance',
-                          priority: 'normal',
-                        });
-                      }}
-                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-[var(--color-card-subtle)] dark:text-indigo-300"
-                    >
-                      🔔 ทดสอบหมดคาบ &amp; เช็คเอาท์
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        sendEduVerseNotification({
-                          title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็คชื่อ / มาสาย',
-                          body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็คชื่อเข้าเรียน กรุณาสแกนด่วน`,
-                          category: 'attendance',
-                          priority: 'urgent',
-                        });
-                      }}
-                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-amber-700 transition hover:bg-[var(--color-card-subtle)] dark:text-amber-300"
-                    >
-                      ⚠️ ทดสอบลืมเช็คชื่อ / มาสาย
-                    </button>
+                <div className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-xl space-y-1 text-xs">
+                  <div className="px-2 pt-1 text-[10px] font-bold text-[var(--color-text-muted)]">
+                    การแสดงผล &amp; ตั้งค่า
                   </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      openScheduleSettings();
+                    }}
+                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
+                    <span>กรองหลายเงื่อนไข / ตั้งค่าการแสดง</span>
+                  </button>
+                  {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
+                        setPeriodSettingsError(null);
+                        setShowPeriodSettings(true);
+                      }}
+                      className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <Clock className="h-3.5 w-3.5 tone-text" />
+                      <span>ตั้งเวลาคาบเรียนมาตรฐาน</span>
+                    </button>
+                  )}
+
+                  <div className="my-1 border-t border-[var(--color-border)]" />
+                  <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
+                    ส่งออก &amp; พิมพ์
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowImportExportModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Export / Import Excel &amp; CSV</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      openGoogleCalendarModal();
+                    }}
+                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Calendar className="h-3.5 w-3.5 tone-text" />
+                    <span>เชื่อมต่อ Google Calendar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      window.print();
+                    }}
+                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                    <span>พิมพ์ตารางสอน A4</span>
+                  </button>
+
+                  <div className="my-1 border-t border-[var(--color-border)]" />
+                  <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
+                    ทดสอบแจ้งเตือน
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      sendEduVerseNotification({
+                        title: '⏰ [ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
+                        body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'} • อย่าลืมสแกน Barcode/QR เช็คชื่อเข้าเรียน (Check-in)`,
+                        category: 'attendance',
+                        priority: 'urgent',
+                      });
+                    }}
+                    className="w-full rounded-lg px-2.5 py-1.5 text-left text-emerald-700 hover:bg-[var(--color-card-subtle)] dark:text-emerald-300 cursor-pointer"
+                  >
+                    ⏰ ทดสอบเริ่มคาบ &amp; เช็คอิน
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      sendEduVerseNotification({
+                        title: '🔔 [ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
+                        body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาสแกน Barcode/QR เช็คชื่อออก (Check-out)`,
+                        category: 'attendance',
+                        priority: 'normal',
+                      });
+                    }}
+                    className="w-full rounded-lg px-2.5 py-1.5 text-left text-indigo-700 hover:bg-[var(--color-card-subtle)] dark:text-indigo-300 cursor-pointer"
+                  >
+                    🔔 ทดสอบหมดคาบ &amp; เช็คเอาท์
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      sendEduVerseNotification({
+                        title: '⚠️ [ทดสอบตารางสอน] แจ้งเตือนลืมเช็คชื่อ / มาสาย',
+                        body: `คาบเรียน ${courses[0]?.code || 'ว21101'} เริ่มไปแล้ว 10 นาที ระบบยังไม่พบการเช็คชื่อเข้าเรียน กรุณาสแกนด่วน`,
+                        category: 'attendance',
+                        priority: 'urgent',
+                      });
+                    }}
+                    className="w-full rounded-lg px-2.5 py-1.5 text-left text-amber-700 hover:bg-[var(--color-card-subtle)] dark:text-amber-300 cursor-pointer"
+                  >
+                    ⚠️ ทดสอบลืมเช็คชื่อ / มาสาย
+                  </button>
                 </div>
               </details>
-              <button
-                type="button"
-                onClick={() => setShowImportExportModal(true)}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Export / Import</span>
-              </button>
-              <button
-                type="button"
-                onClick={openGoogleCalendarModal}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/80 px-2.5 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200 cursor-pointer"
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Google Calendar</span>
-              </button>
-              <button
-                type="button"
-                onClick={openScheduleSettings}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>ตั้งค่าการแสดง</span>
-              </button>
-              <button
-                type="button"
-                onClick={openScheduleSettings}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span>พิมพ์ A4</span>
-              </button>
             </div>
           </div>
 

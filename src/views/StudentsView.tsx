@@ -43,7 +43,7 @@ import {
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
-import { getModuleTone } from '../lib/moduleTheme';
+import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
@@ -977,8 +977,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     }
   };
 
+  const studentsGroup = getModuleGroupMeta('students');
+
   return (
-    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-3`}>
+    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
       {accountsError && (
         <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium">
           {accountsError}
@@ -991,16 +993,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       )}
       {/* Compact Single-Row Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <Users className="w-4 h-4" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            ทะเบียนนักเรียน (DMC / SIS)
-          </h1>
-          <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
-            · {filteredStudents.length} คน
-          </span>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              หมวด: {studentsGroup.labelTh}
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              ทะเบียนนักเรียน (DMC / SIS)
+              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
+                · {filteredStudents.length} คน
+              </span>
+            </h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
@@ -1219,63 +1226,77 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {activeTab === 'roster' && (
         <>
           {/* Compact Filter and Search Bar */}
-          <div data-guide-id="students-search-bar" className="shrink-0 toolbar-filter-zone flex flex-col md:flex-row items-center justify-between gap-2">
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ, รหัส, ปชช., หรือห้องเรียน..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-              />
+          <div data-guide-id="students-search-bar" className="shrink-0 toolbar-filter-zone flex flex-wrap items-center justify-between gap-2">
+            <div className="fn-group-tone w-full md:w-auto">
+              <span className="fn-group-label">ค้นหา</span>
+              <div className="relative flex-1 md:w-64 min-w-[180px]">
+                <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="ชื่อ, รหัสนักเรียน, ปชช. หรือห้อง..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-              {/* Grade Level Filter (อ.1 ถึง ม.6) */}
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-[var(--color-text-muted)] font-medium">ระดับชั้น:</span>
-                <select
-                  value={gradeFilter}
-                  onChange={(e) => setGradeFilter(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--color-primary)]"
-                >
-                  <option value="all">ทุกระดับชั้น (All)</option>
-                  <optgroup label="หมวดการศึกษา">
-                    <option value="cat_kindergarten">ชั้นปฐมวัย (อนุบาล 1–3)</option>
-                    <option value="cat_primary">ชั้นประถมศึกษา (ป.1–ป.6)</option>
-                    <option value="cat_lower_sec">ชั้นมัธยมศึกษาตอนต้น (ม.1–ม.3)</option>
-                    <option value="cat_upper_sec">ชั้นมัธยมศึกษาตอนปลาย (ม.4–ม.6)</option>
-                  </optgroup>
-                  <optgroup label="ระดับชั้นที่พบในโรงเรียน">
-                    {existingGradeLevels.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
+            <div className="fn-divider" />
 
-              {/* Status Filter (ย้ายเข้า, ย้ายออก, กำลังศึกษา ฯลฯ) */}
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-[var(--color-text-muted)] font-medium">สถานะ:</span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--color-primary)]"
-                >
-                  <option value="all">ทุกสถานะนักเรียน</option>
-                  {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
-                    <option key={st.value} value={st.value}>
-                      {st.labelTh} ({st.labelEn})
+            <div className="fn-group flex-1 justify-between md:justify-start">
+              <span className="fn-group-label text-[var(--color-text-muted)]">คัดกรอง</span>
+              <select
+                aria-label="กรองตามระดับชั้น"
+                value={gradeFilter}
+                onChange={(e) => setGradeFilter(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--tone)]"
+              >
+                <option value="all">ทุกระดับชั้น (All)</option>
+                <optgroup label="หมวดการศึกษา">
+                  <option value="cat_kindergarten">ชั้นปฐมวัย (อนุบาล 1–3)</option>
+                  <option value="cat_primary">ชั้นประถมศึกษา (ป.1–ป.6)</option>
+                  <option value="cat_lower_sec">ชั้นมัธยมศึกษาตอนต้น (ม.1–ม.3)</option>
+                  <option value="cat_upper_sec">ชั้นมัธยมศึกษาตอนปลาย (ม.4–ม.6)</option>
+                </optgroup>
+                <optgroup label="ระดับชั้นที่พบในโรงเรียน">
+                  {existingGradeLevels.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
                     </option>
                   ))}
-                </select>
-              </div>
+                </optgroup>
+              </select>
 
-              <span className="text-xs text-[var(--color-text-muted)] ml-auto font-mono">
-                พบ <strong className="text-[var(--color-text-title)]">{filteredStudents.length}</strong> คน
+              <select
+                aria-label="กรองตามสถานะนักเรียน"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--tone)]"
+              >
+                <option value="all">ทุกสถานะนักเรียน</option>
+                {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
+                  <option key={st.value} value={st.value}>
+                    {st.labelTh} ({st.labelEn})
+                  </option>
+                ))}
+              </select>
+
+              {(searchTerm.trim() !== '' || gradeFilter !== 'all' || statusFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setGradeFilter('all');
+                    setStatusFilter('all');
+                  }}
+                  className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                >
+                  ล้าง
+                </button>
+              )}
+
+              <span className="text-xs text-[var(--color-text-muted)] ml-auto font-mono tabular-nums pl-1">
+                พบ <strong className="tone-text">{filteredStudents.length}</strong> คน
               </span>
             </div>
           </div>
