@@ -335,6 +335,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
           {/* Utility Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            <PWAInstallButton lang={lang} variant="nav" className="h-9" />
+
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
@@ -765,7 +767,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </div>
 
                 </div>
-                <PWAInstallButton lang={lang} variant="mobile_card" />
               </div>
             </div>
           </div>

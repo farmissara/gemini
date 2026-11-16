@@ -262,6 +262,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
+          {/* Mobile Install Button (Android & iOS) near Language Switcher */}
+          <PWAInstallButton lang={lang} variant="nav" className="py-1 text-[11px]" />
+
           {/* Language Switcher */}
           <button
             type="button"
@@ -302,7 +305,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
                 </button>
               )}
-              <PWAInstallButton lang={lang} variant="sidebar" className="my-0.5" />
               {canAccessSchoolOperations && onOpenGuide && (
                 <>
                   <button

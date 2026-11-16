@@ -210,18 +210,21 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       );
     }
 
-    // Default 'nav' style
+    // Default 'nav' style — compact, crisp top-bar action placed alongside language switcher
     return (
       <button
         type="button"
         onClick={handleInstallClick}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer bg-[var(--color-primary-light)] border-[var(--color-border)] text-[var(--color-primary-text)] hover:opacity-90 shadow-2xs ${className}`}
-        title={lang === 'th' ? 'ติดตั้งแอป EduVerse บนมือถือ Android และ iOS' : 'Install EduVerse App for Android & iOS'}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer bg-[var(--color-primary-light)] border-[var(--color-primary)]/25 text-[var(--color-primary-text)] hover:border-[var(--color-primary)] hover:opacity-95 shadow-2xs whitespace-nowrap shrink-0 ${className}`}
+        title={lang === 'th' ? 'ติดตั้ง EduVerse ลงบนมือถือ Android & iOS' : 'Install EduVerse on Mobile (Android & iOS)'}
       >
-        <Smartphone className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-        <span>{lang === 'th' ? 'ติดตั้งแอป' : 'Install App'}</span>
-        <span className="hidden md:inline-flex items-center gap-0.5 text-[9px] px-1 py-0.2 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-muted)] font-mono">
-          Android/iOS
+        <Smartphone className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+        <span className="sm:hidden">{lang === 'th' ? 'ติดตั้งแอป' : 'Install'}</span>
+        <span className="hidden sm:inline">
+          {lang === 'th' ? 'ติดตั้งลงมือถือ' : 'Install App'}
+        </span>
+        <span className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-text-muted)] leading-none">
+          Android &amp; iOS
         </span>
       </button>
     );
