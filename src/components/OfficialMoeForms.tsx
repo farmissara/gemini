@@ -42,6 +42,7 @@ interface Pp5OfficialFormProps {
   currentPp5Page: number;
   pp5PageSize: number;
   setPp5Page: (page: number) => void;
+  searchQuery?: string;
   renderPageControls: (
     page: number,
     totalItems: number,
@@ -78,6 +79,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   currentPp5Page,
   pp5PageSize,
   setPp5Page,
+  searchQuery = '',
   renderPageControls,
 }) => {
   const [affiliationOffice, setAffiliationOffice] = useState('สำนักงานเขตพื้นที่การศึกษา (สพฐ.)');
@@ -162,6 +164,21 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     qualityOverrides,
   ]);
 
+  const filteredRows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(({ student }) =>
+      [
+        student.studentIdNumber,
+        student.nationalId,
+        `${student.firstNameTh} ${student.lastNameTh}`,
+        `${student.firstNameEn} ${student.lastNameEn}`,
+        student.room,
+        student.gradeLevel,
+      ].some((val) => (val || '').toLowerCase().includes(q))
+    );
+  }, [rows, searchQuery]);
+
   // Live statistics for Part 1
   const stats = useMemo(() => {
     const total = rows.length;
@@ -234,20 +251,20 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   }, [rows, systemConfig.gradingSystem, courseIsActivity]);
 
   return (
-    <div className="space-y-4">
-      {/* Screen-only Official Metadata Editor Bar */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3.5 print:hidden space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
-            <FileText className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span>ตั้งค่าข้อมูลหัวกระดาษและผู้ลงนามเอกสาร ปพ.๕ (ก่อนพิมพ์)</span>
+    <div className="space-y-3">
+      {/* Screen-only Collapsible Official Metadata Editor Bar */}
+      <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 print:hidden group">
+        <summary className="list-none flex flex-wrap items-center justify-between gap-2 cursor-pointer text-xs font-bold text-[var(--color-text-title)]">
+          <div className="flex items-center gap-2">
+            <FileText className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+            <span>ตั้งค่าข้อมูลหัวกระดาษและผู้ลงนาม ปพ.๕ (คลิกเพื่อแก้ไขก่อนพิมพ์)</span>
           </div>
-          <span className="text-[11px] text-[var(--color-text-muted)]">
-            แสดงแบบฟอร์มครบทั้ง ๔ ส่วน (หัวเอกสาร • สรุปผล • บัญชีคะแนน • ลงนามอนุมัติ)
+          <span className="text-[11px] font-normal text-[var(--color-text-muted)]">
+            {affiliationOffice} · ชุดที่ {docSetNo}
           </span>
-        </div>
+        </summary>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs pt-2.5 mt-2 border-t border-[var(--color-border)]">
           <div>
             <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">
               สังกัด / สำนักงานเขตพื้นที่
@@ -307,7 +324,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
             />
           </div>
         </div>
-      </div>
+      </details>
 
       {/* Official White A4-Ready Paper Sheet */}
       <div className="bg-white text-slate-900 rounded-2xl p-5 sm:p-8 shadow-sm border border-slate-300 space-y-6 print:m-0 print:p-0 print:border-none print:shadow-none">
@@ -538,14 +555,16 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {rows.length === 0 ? (
+                {filteredRows.length === 0 ? (
                   <tr>
                     <td colSpan={15} className="border border-slate-500 py-6 text-slate-500">
-                      ยังไม่มีนักเรียนลงทะเบียนหรือบันทึกคะแนนในรายวิชานี้
+                      {rows.length === 0
+                        ? 'ยังไม่มีนักเรียนลงทะเบียนหรือบันทึกคะแนนในรายวิชานี้'
+                        : 'ไม่พบนักเรียนที่ตรงกับคำค้นหา'}
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row, idx) => {
+                  filteredRows.map((row, idx) => {
                     const isVisible =
                       idx >= currentPp5Page * pp5PageSize &&
                       idx < (currentPp5Page + 1) * pp5PageSize;
@@ -649,7 +668,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
               </tbody>
             </table>
           </div>
-          {renderPageControls(currentPp5Page, rows.length, pp5PageSize, setPp5Page, 'PP5 pages', true)}
+          {renderPageControls(currentPp5Page, filteredRows.length, pp5PageSize, setPp5Page, 'PP5 pages', true)}
         </div>
 
         {/* Part 3: Official Grading Criteria Reference */}
@@ -804,10 +823,14 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
     const q = studentSearch.trim().toLowerCase();
     if (!q) return students;
     return students.filter((s) =>
-      s.studentIdNumber.toLowerCase().includes(q) ||
-      `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase().includes(q) ||
-      `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase().includes(q) ||
-      (s.room || '').toLowerCase().includes(q)
+      [
+        s.studentIdNumber,
+        s.nationalId,
+        `${s.firstNameTh} ${s.lastNameTh}`,
+        `${s.firstNameEn} ${s.lastNameEn}`,
+        s.room,
+        s.gradeLevel,
+      ].some((val) => (val || '').toLowerCase().includes(q))
     );
   }, [students, studentSearch]);
 
@@ -853,7 +876,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
       currentAcademicYear: systemConfig.academicYear,
       currentSemester: systemConfig.currentSemester,
     });
-    const fallbackGpa = Number(selectedStudent.gpa || 0).toFixed(2);
+    const emptyGpa = '0.00';
     return {
       isPrimary: summary.isPrimary,
       isEarlyPrimary: summary.isEarlyPrimary,
@@ -861,8 +884,8 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
       gradedSubjectCount: summary.gradedSubjectCount,
       registeredCredits: summary.registeredCredits,
       earnedCredits: summary.earnedCredits,
-      termGpa: summary.termGpa !== null ? summary.termGpa.toFixed(2) : fallbackGpa,
-      gpax: summary.gpax !== null ? summary.gpax.toFixed(2) : fallbackGpa,
+      termGpa: summary.hasRecordedGrades && summary.termGpa !== null ? summary.termGpa.toFixed(2) : emptyGpa,
+      gpax: summary.hasRecordedGrades && summary.gpax !== null ? summary.gpax.toFixed(2) : emptyGpa,
       averageRawScore: summary.averageRawScore,
       stageLabel: getEducationStageLabelTh(summary.stage),
     };
@@ -901,16 +924,16 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
   }, [attendance, selectedStudent]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Searchable Student Selector Bar */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 print:hidden flex flex-col sm:flex-row sm:items-center gap-2.5">
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 print:hidden flex flex-col sm:flex-row sm:items-center gap-2">
         <div className="relative flex-1 min-w-48">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={studentSearch}
             onChange={(e) => setStudentSearch(e.target.value)}
-            placeholder="ค้นหาชื่อ-สกุล รหัสนักเรียน หรือห้อง..."
+            placeholder="ค้นหาชื่อ-สกุล รหัสนักเรียน เลข ปชช. หรือห้อง..."
             className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]"
           />
           {studentSearch && (

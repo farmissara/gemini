@@ -123,16 +123,16 @@ export const BillingView: React.FC<BillingViewProps> = ({
     : [];
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Receipt className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
-            Tuition Fees &amp; Payment Invoicing
+          <Receipt className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
+            ค่าธรรมเนียมและใบแจ้งหนี้ (Billing)
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           {reminderToast && (
             <div className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-600 text-emerald-100 text-xs flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-emerald-300 fill-current" />
@@ -145,15 +145,41 @@ export const BillingView: React.FC<BillingViewProps> = ({
               <span>{reminderError}</span>
             </div>
           )}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowFeePresetModal(true)}
-              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
-            >
-              <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              <span>ตั้งค่าหมวดค่าธรรมเนียม</span>
-            </button>
+          {(isAdmin || (currentRole === 'super_admin' && onOpenExamPaymentSettings)) && (
+            <details className="relative">
+              <summary className="list-none px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap">
+                <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                <span>ตั้งค่า</span>
+              </summary>
+              <div className="absolute right-0 mt-1 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowFeePresetModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    <span>ตั้งค่าหมวดค่าธรรมเนียม</span>
+                  </button>
+                )}
+                {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      onOpenExamPaymentSettings();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    <span>ตั้งค่า QR ขายข้อสอบ</span>
+                  </button>
+                )}
+              </div>
+            </details>
           )}
           {isAdmin && onAddInvoice && (
             <button
@@ -162,27 +188,17 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 setAllowDupInvoiceConfirm(false);
                 setShowNewInvoiceModal(true);
               }}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+              className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>ออกใบแจ้งหนี้ใหม่</span>
-            </button>
-          )}
-          {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
-            <button
-              type="button"
-              onClick={onOpenExamPaymentSettings}
-              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
-            >
-              <CreditCard className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              <span>ตั้งค่า QR ขายข้อสอบ</span>
+              <span>ออกใบแจ้งหนี้</span>
             </button>
           )}
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-3 flex-wrap">
+      <div className="shrink-0 p-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           {['all', 'slip_pending', 'paid', 'pending', 'overdue'].map((st) => (
             <button

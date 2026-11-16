@@ -185,43 +185,43 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 app-page-header">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Header */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <FileCheck2 className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+          <FileCheck2 className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'การบ้าน & ติดตามการส่งงาน' : 'Homework & Submissions'}
           </h1>
+          <ModuleTourTrigger moduleId="homework" lang={lang} />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <ModuleTourTrigger moduleId="homework" lang={lang} />
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* Subtabs Navigation */}
-          <div data-guide-id="homework-subtabs" className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div data-guide-id="homework-subtabs" className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
             <button
               onClick={() => setHwTab('submissions')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                hwTab === 'submissions' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                hwTab === 'submissions' ? 'bg-amber-400 text-slate-950 font-bold shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              1. รายการส่งงาน ({submissions.length})
+              1. ส่งงาน ({submissions.length})
             </button>
             <button
               onClick={() => setHwTab('assignments')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                hwTab === 'assignments' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                hwTab === 'assignments' ? 'bg-amber-400 text-slate-950 font-bold shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              2. การบ้านที่สั่ง ({assignments.length})
+              2. งานที่สั่ง ({assignments.length})
             </button>
             <button
               onClick={() => setHwTab('pending')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                hwTab === 'pending' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                hwTab === 'pending' ? 'bg-amber-400 text-slate-950 font-bold shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              3. งานค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
+              3. ค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
             </button>
           </div>
 
@@ -229,10 +229,10 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             type="button"
             data-guide-id="homework-gcal-sync"
             onClick={() => setShowGoogleCalendarModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] transition cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
           >
             <Calendar className="w-3.5 h-3.5 text-sky-600" />
-            <span>{lang === 'th' ? 'ซิงค์กำหนดส่ง Google Calendar' : 'Sync to Google Calendar'}</span>
+            <span>{lang === 'th' ? 'ซิงค์ Calendar' : 'Calendar'}</span>
           </button>
 
           <button
@@ -241,9 +241,9 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
               setAllowDuplicateConfirm(false);
               setShowSubmitModal(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs transition cursor-pointer whitespace-nowrap"
           >
-            <UploadCloud className="w-4 h-4" />
+            <UploadCloud className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'ส่งการบ้านใหม่' : 'Submit'}</span>
           </button>
         </div>

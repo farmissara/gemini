@@ -72,8 +72,8 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   });
 
   const hideGpa = summary.hideGpaCalculations;
-  const termGPA = summary.termGpa !== null ? summary.termGpa.toFixed(2) : Number(student.gpa || 0).toFixed(2);
-  const cumulativeGPAX = summary.gpax !== null ? summary.gpax.toFixed(2) : Number(student.gpa || 0).toFixed(2);
+  const termGPA = summary.hasRecordedGrades && summary.termGpa !== null ? summary.termGpa.toFixed(2) : '0.00';
+  const cumulativeGPAX = summary.hasRecordedGrades && summary.gpax !== null ? summary.gpax.toFixed(2) : '0.00';
   const overallPrimaryFeedback = getRawScoreFeedback(summary.averageRawScore);
   const gradesPerPage = 8;
   const gradePageCount = Math.max(1, Math.ceil(cycleGradeEntries.length / gradesPerPage));

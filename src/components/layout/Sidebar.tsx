@@ -34,6 +34,8 @@ import {
   ChevronDown,
   ChevronRight,
   Pin,
+  PanelLeftClose,
+  PanelLeftOpen,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -92,6 +94,8 @@ interface SidebarProps {
   unclaimedCentralPacksCount?: number;
   featureFlags?: SchoolFeatureFlags;
   lang: AppLanguage;
+  desktopCollapsed?: boolean;
+  onToggleDesktopCollapse?: () => void;
 }
 
 export interface NavItemDef {
@@ -126,6 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   unclaimedCentralPacksCount = 0,
   featureFlags,
   lang,
+  desktopCollapsed = false,
+  onToggleDesktopCollapse,
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -516,26 +522,88 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
+  if (desktopCollapsed) {
+    const visibleItems = categories.flatMap((cat) =>
+      cat.items.filter((i) => i.roles.includes(currentRole) && isTabEnabledByFeatureFlags(i.id, featureFlags))
+    );
+    const dedupedItems = Array.from(new Map(visibleItems.map((i) => [i.id, i])).values());
+    return (
+      <aside className="w-14 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
+        {onToggleDesktopCollapse && (
+          <div className="shrink-0 p-2 border-b border-[var(--color-border)] flex justify-center">
+            <button
+              type="button"
+              onClick={onToggleDesktopCollapse}
+              title={lang === 'th' ? 'ขยายเมนูด้านข้าง' : 'Expand sidebar'}
+              aria-label={lang === 'th' ? 'ขยายเมนูด้านข้าง' : 'Expand sidebar'}
+              className="w-9 h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        <nav className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1 flex flex-col items-center">
+          {dedupedItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentTab === item.id;
+            const tone = toneOf(item.id);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-nav-tab={item.id}
+                onClick={() => setCurrentTab(item.id)}
+                title={lang === 'th' ? item.labelTh : item.labelEn}
+                aria-label={lang === 'th' ? item.labelTh : item.labelEn}
+                className={`${tone} relative w-10 h-10 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                  isActive
+                    ? 'tone-active ring-1 ring-[var(--color-primary)]/40'
+                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {item.badge && !/^\d+$/.test(String(item.badge)) && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-56 xl:w-60 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
-      <div className="shrink-0 p-3 border-b border-[var(--color-border)]" data-guide-id="sidebar-search">
-        <div className="relative">
+    <aside className="w-56 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden">
+      <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex items-center gap-1.5" data-guide-id="sidebar-search">
+        <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={lang === 'th' ? 'ค้นหาเมนู...' : 'Search menu...'}
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full pl-8 pr-7 py-2.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+            className="w-full pl-8 pr-6 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
           />
           {searchFilter && (
             <button type="button" onClick={() => setSearchFilter('')} aria-label="clear"
               className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer">✕</button>
           )}
         </div>
+        {onToggleDesktopCollapse && (
+          <button
+            type="button"
+            onClick={onToggleDesktopCollapse}
+            title={lang === 'th' ? 'ย่อแถบเมนูเพื่อเพิ่มพื้นที่ทำงาน' : 'Collapse sidebar for more workspace'}
+            aria-label={lang === 'th' ? 'ย่อแถบเมนู' : 'Collapse sidebar'}
+            className="shrink-0 w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2.5">
         {searchFilter.trim() ? (
           <div className="space-y-1">
             <div className="px-2 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
@@ -575,7 +643,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setCollapsed((previous) => ({ ...previous, [cat.id]: true }));
                       }
                     }}
-                    className="w-full flex min-h-10 items-center justify-between gap-2 rounded-lg border border-transparent px-2.5 py-2 text-[11px] font-semibold text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
+                    className="w-full flex min-h-9 items-center justify-between gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <CategoryIcon className="h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />

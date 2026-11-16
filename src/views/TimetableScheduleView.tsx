@@ -1105,29 +1105,24 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   );
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Page heading and compact schedule controls */}
-      <div className="shrink-0 space-y-3 p-3 app-page-header">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Page heading and schedule controls */}
+      <div className="shrink-0 px-3 py-2 app-page-header">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <Calendar className="w-5 h-5 shrink-0 text-[var(--color-primary-text)]" />
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
-                ตารางเรียนและตารางสอน
-              </h1>
-              <p className="text-[11px] text-[var(--color-text-muted)]">
-                จัดตารางตามห้อง พร้อมตรวจสอบภาระงานและชั่วโมงเรียน
-              </p>
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <Calendar className="w-4 h-4 shrink-0 text-[var(--color-primary-text)]" />
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
+              ตารางเรียนและตารางสอน
+            </h1>
             <ModuleTourTrigger moduleId="timetable" lang={lang} />
-            <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1">
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+            <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5">
               <button
                 type="button"
                 aria-pressed={viewMode === 'classroom'}
                 onClick={() => handleViewModeChange('classroom')}
-                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'classroom'
                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
                     : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
@@ -1140,7 +1135,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 type="button"
                 aria-pressed={viewMode === 'calendar'}
                 onClick={() => handleViewModeChange('calendar')}
-                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'calendar'
                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
                     : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
@@ -1153,7 +1148,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 type="button"
                 aria-pressed={viewMode === 'hours_criteria'}
                 onClick={() => handleViewModeChange('hours_criteria')}
-                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'hours_criteria'
                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
                     : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
@@ -1166,7 +1161,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 type="button"
                 aria-pressed={viewMode === 'workload'}
                 onClick={() => handleViewModeChange('workload')}
-                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
+                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'workload'
                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
                     : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
@@ -1183,7 +1178,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </nav>
           </div>
         </div>
-
       </div>
       {academicPeriodNotice && (
         <div className="shrink-0 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">

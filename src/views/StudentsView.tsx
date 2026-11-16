@@ -572,6 +572,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const handleOpenEdit = (student: Student) => {
     setStudentFormStep(1);
     setEditingStudent(student);
+    const editSummary = calculateStudentAcademicSummary({
+      student,
+      courses,
+      grades,
+      gradingSystem,
+      currentAcademicYear: activeSchool?.academicYear,
+      currentSemester: activeSchool?.currentSemester,
+    });
     setFormData({
       firstNameEn: student.firstNameEn,
       lastNameEn: student.lastNameEn,
@@ -587,7 +595,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       guardianName: student.guardianName,
       guardianPhone: student.guardianPhone,
       guardianEmail: student.guardianEmail,
-      gpa: student.gpa,
+      gpa: editSummary.hasRecordedGrades && editSummary.gpax !== null ? editSummary.gpax : 0,
       avatarUrl: student.avatarUrl,
     });
     if (student.guardians && student.guardians.length > 0) {
@@ -869,11 +877,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           {accountsSuccess}
         </div>
       )}
-      {/* Header controls */}
-      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
+      {/* Compact Single-Row Header */}
+      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Users className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+          <Users className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             ทะเบียนนักเรียน (DMC / SIS)
           </h1>
           <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
@@ -881,24 +889,47 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <ModuleTourTrigger moduleId="students" lang="th" />
           <details className="relative" data-guide-id="students-import-export">
-            <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
-              <span>จัดการข้อมูล</span>
+            <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+              <span>เครื่องมือ / นำเข้าชุด</span>
+              {selectedQrStudentIds.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded bg-[var(--color-primary)] text-white text-[10px] font-bold tabular-nums">
+                  {selectedQrStudentIds.length}
+                </span>
+              )}
               <ChevronDown className="h-3.5 w-3.5" />
             </summary>
-            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+              {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+                <button
+                  type="button"
+                  data-guide-id="students-add-bulk"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    handleOpenBulkModal();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5 shrink-0" />
+                  <span>เพิ่มนักเรียนทั้งห้อง (Batch)</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={(event) => {
                   event.currentTarget.closest('details')?.removeAttribute('open');
-                  setShowPromotionModal(true);
+                  setShowBatchQrModal(true);
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
+                <QrCode className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <span>
+                  พิมพ์ QR ชุด (PDF)
+                  {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
+                </span>
               </button>
 
               {onOpenImportExport && (
@@ -919,12 +950,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 type="button"
                 onClick={(event) => {
                   event.currentTarget.closest('details')?.removeAttribute('open');
-                  setShowBatchQrModal(true);
+                  setShowPromotionModal(true);
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <QrCode className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                <span>พิมพ์ QR ชุด (Batch Print QR)</span>
+                <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
               </button>
 
               {['admin', 'super_admin'].includes(currentRole) && (
@@ -959,36 +990,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowBatchQrModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
-          >
-            <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span>
-              พิมพ์ QR ชุด (PDF)
-              {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
-            </span>
-          </button>
-
-          {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
-            <button
-              type="button"
-              data-guide-id="students-add-bulk"
-              onClick={handleOpenBulkModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Users className="w-4 h-4" />
-              <span>เพิ่มนักเรียนทั้งห้อง</span>
-            </button>
-          )}
-
-          <button
-            type="button"
             data-guide-id="students-add-single"
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4" />
-            <span>เพิ่มนักเรียนใหม่</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>เพิ่มนักเรียน</span>
           </button>
         </div>
       </div>
@@ -1050,8 +1057,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {activeTab === 'roster' && (
         <>
-          {/* Filter and Search Bar */}
-          <div data-guide-id="students-search-bar" className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Compact Filter and Search Bar */}
+          <div data-guide-id="students-search-bar" className="shrink-0 px-3 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-2">
             <div className="relative w-full md:w-72">
               <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -1187,8 +1194,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     courses,
                     grades,
                     gradingSystem,
+                    currentAcademicYear: activeSchool?.academicYear,
+                    currentSemester: activeSchool?.currentSemester,
                   });
-                  const displayGpa = summary.gpax ?? Number(student.gpa || 0);
+                  const hasRealGrades = summary.hasRecordedGrades && summary.gpax !== null;
+                  const displayGpa = hasRealGrades ? summary.gpax! : 0;
                   const isQrSelected = selectedQrStudentSet.has(student.id);
                   return (
                     <tr key={student.id} className={`hover:bg-[var(--color-card-subtle)] transition-colors group ${isQrSelected ? 'bg-[var(--color-primary-light)]/40' : ''}`}>
@@ -1243,35 +1253,49 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4">
                         {summary.hideGpaCalculations ? (
                           summary.averageRawScore !== null ? (
                             <div className="space-y-0.5">
-                              <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700">
+                              <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 tabular-nums">
                                 {summary.averageRawScore}%
                               </span>
                               <div className="text-[10px] text-[var(--color-text-muted)] font-semibold">
-                                {getRawScoreFeedback(summary.averageRawScore).labelTh} (รายปี)
+                                {getRawScoreFeedback(summary.averageRawScore).labelTh} ({summary.gradedSubjectCount} วิชา)
                               </div>
                             </div>
                           ) : (
                             <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
-                              ประเมินรายปี (%)
+                              ยังไม่มีผล ปพ.5
                             </span>
                           )
+                        ) : hasRealGrades ? (
+                          <div className="space-y-0.5">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border tabular-nums ${
+                                displayGpa >= 3.5
+                                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                  : displayGpa >= 3.0
+                                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                              }`}
+                              title={`คำนวณจริงจากสมุดคะแนน/ปพ.5 (${summary.gradedSubjectCount} วิชา · ${summary.registeredCredits.toFixed(1)} หน่วยกิต)`}
+                            >
+                              {displayGpa.toFixed(2)}
+                            </span>
+                            <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
+                              ปพ.5 · {summary.gradedSubjectCount} วิชา ({summary.registeredCredits} นก.)
+                            </div>
+                          </div>
                         ) : (
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border ${
-                              displayGpa >= 3.5
-                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                                : displayGpa >= 3.0
-                                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                            }`}
-                            title={displayGpa === 0 && !summary.hasRecordedGrades ? 'ยังไม่ได้กรอก/นำเข้า GPAX' : undefined}
-                          >
-                            {displayGpa.toFixed(2)}
-                          </span>
+                          <div className="space-y-0.5" title="ยังไม่มีคะแนนรายวิชาในระบบวัดผล (ปพ.5) — ระบบจึงไม่แสดงค่า GPA สมมติ">
+                            <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border-[var(--color-border)] tabular-nums">
+                              —
+                            </span>
+                            <div className="text-[10px] text-[var(--color-text-muted)]">
+                              ยังไม่ตัดเกรด (ปพ.5)
+                            </div>
+                          </div>
                         )}
                       </td>
 
@@ -2419,52 +2443,71 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-[var(--color-text-title)] font-bold text-xs">
-                            เกรดเฉลี่ยสะสม (GPA / GPAX)
-                          </label>
-                          <span className="text-[11px] text-[var(--color-primary-text)] font-semibold">
-                            ค่าระหว่าง 0.00 - 4.00 (ค่าเริ่มต้น 0.00)
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <input
-                            type="number"
-                            min="0"
-                            max="4"
-                            step="0.01"
-                            value={formData.gpa}
-                            onChange={(e) => {
-                              const parsed = Number(e.target.value);
-                              const val = Number.isFinite(parsed) ? Math.min(4.00, Math.max(0, parsed)) : 0;
-                              setFormData({ ...formData, gpa: Number(val.toFixed(2)) });
-                            }}
-                            placeholder="0.00"
-                            className="w-36 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm"
-                          />
-                          {editingStudent && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const summary = calculateStudentAcademicSummary({
-                                  student: editingStudent,
-                                  courses,
-                                  grades,
-                                  gradingSystem,
-                                });
-                                if (summary.gpax !== null) {
-                                  setFormData({ ...formData, gpa: summary.gpax });
-                                }
-                              }}
-                              className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-bold cursor-pointer"
-                            >
-                              คำนวณจาก ปพ.5
-                            </button>
-                          )}
-                          <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1 min-w-[200px]">
-                            หากยังไม่ตัดเกรดให้คงค่า 0.00 (ม.1–ม.6 จะคำนวณ GPA/GPAX ถ่วงน้ำหนักหน่วยกิตจาก ปพ.5 รายภาคเรียน)
-                          </p>
-                        </div>
+                        {(() => {
+                          const liveSummary = editingStudent
+                            ? calculateStudentAcademicSummary({
+                                student: editingStudent,
+                                courses,
+                                grades,
+                                gradingSystem,
+                                currentAcademicYear: activeSchool?.academicYear,
+                                currentSemester: activeSchool?.currentSemester,
+                              })
+                            : null;
+                          const hasRecorded = Boolean(liveSummary?.hasRecordedGrades && liveSummary.gpax !== null);
+                          return (
+                            <>
+                              <div className="flex items-center justify-between gap-2">
+                                <label className="block text-[var(--color-text-title)] font-bold text-xs">
+                                  เกรดเฉลี่ยสะสม (GPAX จาก ปพ.5)
+                                </label>
+                                <span className="text-[11px] text-[var(--color-primary-text)] font-semibold tabular-nums">
+                                  {hasRecorded
+                                    ? `คำนวณจริง ${liveSummary!.gradedSubjectCount} วิชา · ${liveSummary!.registeredCredits.toFixed(1)} นก.`
+                                    : 'ยังไม่มีคะแนนใน ปพ.5 (ตั้งต้น 0.00)'}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="4"
+                                  step="0.01"
+                                  readOnly={hasRecorded}
+                                  value={hasRecorded ? liveSummary!.gpax! : formData.gpa}
+                                  onChange={(e) => {
+                                    if (hasRecorded) return;
+                                    const parsed = Number(e.target.value);
+                                    const val = Number.isFinite(parsed) ? Math.min(4.00, Math.max(0, parsed)) : 0;
+                                    setFormData({ ...formData, gpa: Number(val.toFixed(2)) });
+                                  }}
+                                  placeholder="0.00"
+                                  className="w-36 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm tabular-nums"
+                                />
+                                {editingStudent && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (liveSummary?.gpax !== null && liveSummary?.gpax !== undefined) {
+                                        setFormData({ ...formData, gpa: liveSummary.gpax });
+                                      } else {
+                                        setFormData({ ...formData, gpa: 0 });
+                                      }
+                                    }}
+                                    className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-bold cursor-pointer"
+                                  >
+                                    ซิงค์จาก ปพ.5
+                                  </button>
+                                )}
+                                <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1 min-w-[200px]">
+                                  {hasRecorded
+                                    ? 'ระบบคำนวณ GPAX อัตโนมัติแบบถ่วงน้ำหนักหน่วยกิตจากคะแนนในสมุดวัดผล ปพ.5 ไม่ใช่ค่าสมมติ'
+                                    : 'เมื่อยังไม่มีคะแนนในสมุดวัดผล ค่าเริ่มต้นจะเป็น 0.00 และจะอัปเดตอัตโนมัติทันทีเมื่อครูบันทึกคะแนนใน Gradebook'}
+                                </p>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </>
                     )}
                   </div>

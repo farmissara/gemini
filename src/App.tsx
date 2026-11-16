@@ -18,6 +18,7 @@ import {
   AppLanguage,
   AppTheme,
   ThemePalette,
+  GradingSystem,
   Lesson,
   Assignment,
   QuizQuestion,
@@ -278,6 +279,22 @@ export const App: React.FC = () => {
   const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('eduverse_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('eduverse_sidebar_collapsed', String(isSidebarCollapsed));
+    } catch {
+      // ignore
+    }
+  }, [isSidebarCollapsed]);
   const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
   const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
@@ -675,18 +692,21 @@ export const App: React.FC = () => {
       }
       if (!isDemoMode) await updateSchoolSettingsInSupabase(activeSchool.id, updates);
       if (updates.gradingSystem && updates.gradingSystem !== systemConfig.gradingSystem) {
-        setGrades((current) => current.map((grade) => {
+        const targetMode = updates.gradingSystem;
+        const recalculatedGrades = grades.map((grade) => {
           if (grade.schoolId && grade.schoolId !== activeSchool.id) return grade;
           if (isSpecialMoeGrade(grade.letterGrade)) {
             return { ...grade, gradePoint: 0 };
           }
-          const nextGrade = calculateGrade(grade.totalScore, updates.gradingSystem || 'thai');
+          const nextGrade = calculateGrade(grade.totalScore, targetMode);
           return {
             ...grade,
             letterGrade: nextGrade.letter,
             gradePoint: nextGrade.point,
           };
-        }));
+        });
+        setGrades(recalculatedGrades);
+        syncStudentGpaFromGrades(recalculatedGrades, undefined, schoolCourses, targetMode);
       }
       setActiveSchool((prev) => {
         const next = { ...prev, ...updates };
@@ -917,10 +937,7 @@ export const App: React.FC = () => {
           (grade) => studentRefs.has(grade.studentId.trim().toLowerCase())
         );
         setOrphanedGrades(invalidGradeRows);
-        setStudents(resolvedStudents);
-        setTeachers(resolvedTeachers);
-        setCourses(resolvedCourses);
-        setGrades(resolvedGrades.map((grade) => {
+        const normalizedGrades = resolvedGrades.map((grade) => {
           if (isSpecialMoeGrade(grade.letterGrade)) {
             return {
               ...grade,
@@ -933,7 +950,26 @@ export const App: React.FC = () => {
             letterGrade: currentGrade.letter,
             gradePoint: currentGrade.point,
           };
-        }));
+        });
+        const syncedStudents = resolvedStudents.map((stu) => {
+          const summary = calculateStudentAcademicSummary({
+            student: stu,
+            courses: resolvedCourses,
+            grades: normalizedGrades,
+            gradingSystem: systemConfig.gradingSystem,
+            currentAcademicYear: activeSchool.academicYear || systemConfig.academicYear,
+            currentSemester: activeSchool.currentSemester || systemConfig.currentSemester,
+          });
+          if (summary.hideGpaCalculations) return stu;
+          if (!summary.hasRecordedGrades || summary.gpax === null) {
+            return { ...stu, gpa: 0 };
+          }
+          return { ...stu, gpa: summary.gpax };
+        });
+        setStudents(syncedStudents);
+        setTeachers(resolvedTeachers);
+        setCourses(resolvedCourses);
+        setGrades(normalizedGrades);
         setAttendance(resolvedAttendance);
         if (typeof window !== 'undefined') {
           try {
@@ -1344,6 +1380,7 @@ export const App: React.FC = () => {
       }
       return next;
     });
+    const remainingCourses = courses.filter((course) => !ids.has(course.id));
     setGrades((prev) => {
       const next = prev.filter((grade) => !ids.has(grade.courseId));
       if (typeof window !== 'undefined') {
@@ -1353,6 +1390,7 @@ export const App: React.FC = () => {
           // ignore storage errors
         }
       }
+      syncStudentGpaFromGrades(next, undefined, remainingCourses);
       return next;
     });
     setTimetableSlots((prev) => {
@@ -1499,6 +1537,7 @@ export const App: React.FC = () => {
             // ignore storage errors
           }
         }
+        syncStudentGpaFromGrades(next, removeSet);
         return next;
       });
 
@@ -1556,20 +1595,28 @@ export const App: React.FC = () => {
     );
   };
 
-  const syncStudentGpaFromGrades = (nextGrades: GradeRecord[], targetStudentIds?: Set<string>) => {
+  const syncStudentGpaFromGrades = (
+    nextGrades: GradeRecord[],
+    targetStudentIds?: Set<string>,
+    coursesOverride?: Course[],
+    gradingSystemOverride?: GradingSystem
+  ) => {
     setStudents((prevStudents) =>
       prevStudents.map((stu) => {
         if (stu.schoolId && stu.schoolId !== activeSchool.id) return stu;
         if (targetStudentIds && !targetStudentIds.has(stu.id)) return stu;
         const summary = calculateStudentAcademicSummary({
           student: stu,
-          courses: schoolCourses,
+          courses: coursesOverride ?? schoolCourses,
           grades: nextGrades,
-          gradingSystem: systemConfig.gradingSystem,
+          gradingSystem: gradingSystemOverride ?? systemConfig.gradingSystem,
           currentAcademicYear: systemConfig.academicYear,
           currentSemester: systemConfig.currentSemester,
         });
-        if (summary.hideGpaCalculations || summary.gpax === null) return stu;
+        if (summary.hideGpaCalculations) return stu;
+        if (!summary.hasRecordedGrades || summary.gpax === null) {
+          return { ...stu, gpa: 0 };
+        }
         return { ...stu, gpa: summary.gpax };
       })
     );
@@ -3281,13 +3328,15 @@ export const App: React.FC = () => {
               unclaimedCentralPacksCount={unclaimedCentralPacks.length}
               lang={lang}
               featureFlags={activeFeatureFlags}
+              desktopCollapsed={isSidebarCollapsed}
+              onToggleDesktopCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
             />
           </div>
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-2.5 overflow-visible' : 'app-workspace p-2.5 sm:p-3.5 overflow-y-auto')}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1600px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-2 overflow-visible' : 'app-workspace p-2 sm:p-2.5 overflow-y-auto')}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1680px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-2.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5">
                 <div className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate">
@@ -3511,6 +3560,8 @@ export const App: React.FC = () => {
                   <CoursesView
                     courses={schoolCourses}
                     students={schoolStudents}
+                    grades={schoolGrades}
+                    gradingSystem={systemConfig.gradingSystem}
                     currentRole={currentRole}
                     schoolId={activeSchool.id}
                     onAddCourse={handleAddCourse}

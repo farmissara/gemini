@@ -177,7 +177,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const studentGrades = grades.filter((g) => g.studentId === student.id);
   const stageLabelTh = getEducationStageLabelTh(academicSummary.stage);
   const primaryFeedback = getRawScoreFeedback(academicSummary.averageRawScore);
-  const effectiveGpax = academicSummary.gpax ?? Number(student.gpa || 0);
+  const hasRecordedGpa = academicSummary.hasRecordedGrades && academicSummary.gpax !== null;
+  const effectiveGpax = hasRecordedGpa && academicSummary.gpax !== null ? academicSummary.gpax : 0;
 
   const handlePhotoUpdated = (newUrl: string) => {
     if (onUpdateStudent) {
@@ -409,15 +410,21 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     )
                   ) : (
                     <>
-                      <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300">
-                        {effectiveGpax.toFixed(2)}
-                      </span>
+                      {hasRecordedGpa ? (
+                        <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300 tabular-nums">
+                          {effectiveGpax.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-bold text-[var(--color-text-muted)]">
+                          — (ยังไม่ตัดเกรด ปพ.5)
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => setIsEditingClass(true)}
                         className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
                       >
-                        [ปรับแก้เกรดเฉลี่ย]
+                        [ปรับแก้ข้อมูล]
                       </button>
                     </>
                   )}

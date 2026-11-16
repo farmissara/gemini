@@ -43,6 +43,7 @@ import {
 } from '../types';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
+import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 
 interface ExecutiveMonitorViewProps {
   activeSchool: School;
@@ -150,15 +151,32 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
 
     const pendingLeaves = leaveRequests.filter((l) => l.status === 'pending').length;
 
-    // Academic & Homework
-    const avgGpa = totalStudents > 0
-      ? Number((students.reduce((sum, s) => sum + (Number(s.gpa) || 0), 0) / totalStudents).toFixed(2))
+    // Academic & Homework (computed strictly from real recorded grades + courses)
+    const studentGpaxList = students
+      .map((student) => {
+        const sum = calculateStudentAcademicSummary({
+          student,
+          courses,
+          grades,
+          gradingSystem: activeSchool.gradingSystem || 'thai',
+          currentAcademicYear: activeSchool.academicYear,
+          currentSemester: activeSchool.currentSemester,
+        });
+        return {
+          student,
+          hasGrades: sum.hasRecordedGrades && sum.gpax !== null && !sum.hideGpaCalculations,
+          realGpa: sum.hasRecordedGrades && sum.gpax !== null ? sum.gpax : null,
+        };
+      });
+    const gradedGpaStudents = studentGpaxList.filter((item) => item.realGpa !== null);
+    const avgGpa = gradedGpaStudents.length > 0
+      ? Number((gradedGpaStudents.reduce((sum, item) => sum + (item.realGpa || 0), 0) / gradedGpaStudents.length).toFixed(2))
       : 0;
     const gpaBands = [
-      { label: '3.50 – 4.00 (ดีเยี่ยม)', count: students.filter((s) => s.gpa >= 3.5).length, color: 'bg-emerald-500' },
-      { label: '3.00 – 3.49 (ดี)', count: students.filter((s) => s.gpa >= 3.0 && s.gpa < 3.5).length, color: 'bg-blue-500' },
-      { label: '2.00 – 2.99 (ปานกลาง)', count: students.filter((s) => s.gpa >= 2.0 && s.gpa < 3.0).length, color: 'bg-amber-500' },
-      { label: 'ต่ำกว่า 2.00 (ต้องดูแล)', count: students.filter((s) => s.gpa < 2.0).length, color: 'bg-rose-500' },
+      { label: '3.50 – 4.00 (ดีเยี่ยม)', count: gradedGpaStudents.filter((s) => (s.realGpa ?? 0) >= 3.5).length, color: 'bg-emerald-500' },
+      { label: '3.00 – 3.49 (ดี)', count: gradedGpaStudents.filter((s) => (s.realGpa ?? 0) >= 3.0 && (s.realGpa ?? 0) < 3.5).length, color: 'bg-blue-500' },
+      { label: '2.00 – 2.99 (ปานกลาง)', count: gradedGpaStudents.filter((s) => (s.realGpa ?? 0) >= 2.0 && (s.realGpa ?? 0) < 3.0).length, color: 'bg-amber-500' },
+      { label: 'ต่ำกว่า 2.00 (ต้องดูแล)', count: gradedGpaStudents.filter((s) => (s.realGpa ?? 0) < 2.0).length, color: 'bg-rose-500' },
     ];
     const hwTotal = homeworkSubmissions.length;
     const hwCompleted = homeworkSubmissions.filter((h) => h.status === 'submitted' || h.status === 'graded').length;
@@ -172,7 +190,10 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     const sdqNormal = sdqAssessments.filter((s) => s.overallStatus === 'normal').length;
     const sdqRisk = sdqAssessments.filter((s) => s.overallStatus === 'risk').length;
     const sdqProblem = sdqAssessments.filter((s) => s.overallStatus === 'problem').length;
-    const lowGpaWatchlist = students.filter((s) => s.gpa < 2.25).slice(0, 5);
+    const lowGpaWatchlist = gradedGpaStudents
+      .filter((s) => (s.realGpa ?? 0) < 2.25)
+      .slice(0, 5)
+      .map((s) => ({ ...s.student, gpa: s.realGpa ?? 0 }));
 
     // Finance & Tuition
     const totalBilled = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);

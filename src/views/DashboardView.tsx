@@ -275,8 +275,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .sort((a, b) => {
       const sumA = calculateStudentAcademicSummary({ student: a, courses, grades, gradingSystem: systemConfig.gradingSystem });
       const sumB = calculateStudentAcademicSummary({ student: b, courses, grades, gradingSystem: systemConfig.gradingSystem });
-      const scoreA = sumA.hideGpaCalculations ? (sumA.averageRawScore ?? 0) / 25 : (sumA.gpax ?? a.gpa);
-      const scoreB = sumB.hideGpaCalculations ? (sumB.averageRawScore ?? 0) / 25 : (sumB.gpax ?? b.gpa);
+      const scoreA = sumA.hideGpaCalculations ? (sumA.averageRawScore ?? 0) / 25 : (sumA.hasRecordedGrades && sumA.gpax !== null ? sumA.gpax : 0);
+      const scoreB = sumB.hideGpaCalculations ? (sumB.averageRawScore ?? 0) / 25 : (sumB.hasRecordedGrades && sumB.gpax !== null ? sumB.gpax : 0);
       return scoreB - scoreA;
     })
     .slice(0, 4);
@@ -1593,13 +1593,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               </>
                             );
                           }
-                          const effectiveGpa = summary.gpax ?? st.gpa;
+                          const hasRealGpa = summary.hasRecordedGrades && summary.gpax !== null;
+                          const effectiveGpa = hasRealGpa && summary.gpax !== null ? summary.gpax : 0;
                           return (
                             <>
-                              <div className="font-bold text-[var(--color-primary-text)] font-mono text-sm">
-                                {effectiveGpa.toFixed(2)}
+                              <div className="font-bold text-[var(--color-primary-text)] font-mono text-sm tabular-nums">
+                                {hasRealGpa ? effectiveGpa.toFixed(2) : '—'}
                               </div>
-                              <div className="text-[10px] text-[var(--color-text-muted)] font-medium">GPA</div>
+                              <div className="text-[10px] text-[var(--color-text-muted)] font-medium">
+                                {hasRealGpa ? 'GPAX ปพ.5' : 'ยังไม่ตัดเกรด'}
+                              </div>
                             </>
                           );
                         })()}

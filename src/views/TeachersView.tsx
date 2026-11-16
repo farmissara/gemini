@@ -560,26 +560,54 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Header and Controls */}
-      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Header and Controls */}
+      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
           </h1>
           <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
             · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
           </span>
+
+          <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 ml-1">
+            <button
+              type="button"
+              aria-pressed={staffPage === 'directory'}
+              onClick={() => setStaffPage('directory')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
+                staffPage === 'directory'
+                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <span>ทำเนียบบุคลากร</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={staffPage === 'organization'}
+              onClick={() => setStaffPage('organization')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
+                staffPage === 'organization'
+                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <Building2 className="h-3 w-3" />
+              <span>ผังองค์กร</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <details className="relative">
-            <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]">
-              <span>{lang === 'th' ? 'จัดการข้อมูล' : 'Data actions'}</span>
+            <summary className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+              <span>{lang === 'th' ? 'เครื่องมือข้อมูล' : 'Data actions'}</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </summary>
-            <div className="absolute right-0 top-full z-30 mt-2 min-w-48 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+            <div className="absolute right-0 top-full z-30 mt-1 min-w-48 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
               {onOpenImportExport && (
                 <button
                   type="button"
@@ -587,7 +615,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     event.currentTarget.closest('details')?.removeAttribute('open');
                     onOpenImportExport();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
                   <span>{lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel'}</span>
@@ -599,7 +627,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   event.currentTarget.closest('details')?.removeAttribute('open');
                   handleExportCSV();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
               >
                 <Download className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
                 <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
@@ -611,7 +639,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     event.currentTarget.closest('details')?.removeAttribute('open');
                     onPurgeSampleTeachers();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
                   title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -624,12 +652,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           {canManage && (
             <>
               <details className="relative">
-                <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]">
+                <summary className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
                   <Briefcase className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
                   <span>{lang === 'th' ? 'ตั้งค่าและบัญชี' : 'Settings & Accounts'}</span>
                   <ChevronDown className="h-3.5 w-3.5" />
                 </summary>
-                <div className="absolute right-0 top-full z-30 mt-2 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+                <div className="absolute right-0 top-full z-30 mt-1 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
                   <button
                     type="button"
                     onClick={(event) => {
@@ -637,7 +665,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       setShowAccountsPanel((prev) => !prev);
                       void refreshTeacherAccounts();
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
                   >
                     <Mail className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
                     <span>{lang === 'th' ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})` : `Teacher accounts (${teacherAccounts.length})`}</span>
@@ -649,7 +677,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       setShowPositionConfigPanel((prev) => !prev);
                     }}
                     aria-expanded={showPositionConfigPanel}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
                   >
                     <Briefcase className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
                     <span>{lang === 'th' ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})` : `Staff positions (${configuredPositionOptions.length})`}</span>
@@ -660,7 +688,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       event.currentTarget.closest('details')?.removeAttribute('open');
                       setShowStaffMetaModal(true);
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
                   >
                     <Tag className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
                     <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings'}</span>
@@ -670,53 +698,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-xs flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
-                <span>{lang === 'th' ? 'เพิ่มครู/บุคลากร' : 'Add Teacher'}</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
               </button>
             </>
           )}
-        </div>
-      </div>
-
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
-        <div>
-          <h2 className="text-xs font-bold text-[var(--color-text-title)]">ข้อมูลบุคลากร</h2>
-          <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">
-            เลือกดูรายชื่อหรือสายบังคับบัญชาได้จากหน้านี้
-          </p>
-        </div>
-        <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="inline-flex flex-wrap gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1">
-          <button
-            type="button"
-            aria-pressed={staffPage === 'directory'}
-            onClick={() => setStaffPage('directory')}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-              staffPage === 'directory'
-                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <GraduationCap className="h-3.5 w-3.5" />
-            <span>ทำเนียบบุคลากร</span>
-            <span className="rounded-full bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[10px] tabular-nums">
-              {teachers.length}
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={staffPage === 'organization'}
-            onClick={() => setStaffPage('organization')}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-              staffPage === 'organization'
-                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <Building2 className="h-3.5 w-3.5" />
-            <span>ผังองค์กร</span>
-          </button>
         </div>
       </div>
 

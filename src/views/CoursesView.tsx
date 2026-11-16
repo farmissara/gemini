@@ -20,9 +20,10 @@ import {
   CalendarCheck,
   UserMinus,
   UserPlus,
+  ChevronDown,
   X
 } from 'lucide-react';
-import { Course, Student, UserRole } from '../types';
+import { Course, GradeRecord, GradingSystem, Student, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
@@ -32,11 +33,13 @@ import {
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
-import { isPrimaryGradeLevel } from '../lib/moeGrading';
+import { calculateStudentAcademicSummary, isPrimaryGradeLevel } from '../lib/moeGrading';
 
 interface CoursesViewProps {
   courses: Course[];
   students: Student[];
+  grades?: GradeRecord[];
+  gradingSystem?: GradingSystem;
   currentRole?: UserRole;
   schoolId?: string;
   onAddCourse: (newCourse: Course) => void;
@@ -80,6 +83,8 @@ const DEPARTMENTS = [
 export const CoursesView: React.FC<CoursesViewProps> = ({
   courses,
   students,
+  grades = [],
+  gradingSystem = 'thai',
   currentRole = 'admin',
   schoolId = 'default-school',
   onAddCourse,
@@ -416,11 +421,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Top Header */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-3 app-page-header">
+      {/* Compact Single-Row Header */}
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <BookOpen className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+          <BookOpen className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             หลักสูตรและรายวิชา (Curriculum)
           </h1>
           <span className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums whitespace-nowrap">
@@ -428,71 +433,93 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 flex-wrap self-start sm:self-auto">
           <ModuleTourTrigger moduleId="courses" lang="th" />
           {canManageCourses && (
-            <div data-guide-id="courses-header-actions" className="flex items-center gap-2 flex-wrap">
-            {/* Quick Academic Import / Export Button */}
-            {onOpenImportExport && (
-              <button
-                type="button"
-                onClick={() => onOpenImportExport('courses')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>นำเข้า/ส่งออกวิชาการ</span>
-              </button>
-            )}
+            <div data-guide-id="courses-header-actions" className="flex items-center gap-1.5 flex-wrap">
+              {selectedCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteSelectedCourses()}
+                  disabled={isDeletingCourses}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/60 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-bold hover:bg-rose-100 cursor-pointer whitespace-nowrap"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
+                </button>
+              )}
 
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setShowDeptPresetModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition cursor-pointer"
-              >
-                <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>จัดการกลุ่มสาระ</span>
-              </button>
-            )}
+              <details className="relative">
+                <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+                  <span>เครื่องมือจัดการ</span>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </summary>
+                <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+                  {onOpenImportExport && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        onOpenImportExport('courses');
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>นำเข้า/ส่งออกวิชาการ</span>
+                    </button>
+                  )}
 
-            {filteredCourses.length > 0 && (onDeleteCourses || onDeleteCourse) && (
-              <button
-                type="button"
-                onClick={() => {
-                  const visibleIds = filteredCourses.map((c) => c.id);
-                  const allVisibleSelected = visibleIds.every((id) => selectedCourseIds.includes(id));
-                  setSelectedCourseIds(allVisibleSelected ? [] : visibleIds);
-                }}
-                className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold hover:bg-[var(--color-primary-light)] cursor-pointer"
-              >
-                {filteredCourses.every((c) => selectedCourseIds.includes(c.id)) ? 'ล้างที่เลือก' : `เลือกทั้งหมด (${filteredCourses.length})`}
-              </button>
-            )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        setShowDeptPresetModal(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                      <span>จัดการกลุ่มสาระ</span>
+                    </button>
+                  )}
 
-            {selectedCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
-              <button
-                type="button"
-                onClick={() => void handleDeleteSelectedCourses()}
-                disabled={isDeletingCourses}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold hover:bg-rose-100 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
-              </button>
-            )}
+                  {filteredCourses.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        const visibleIds = filteredCourses.map((c) => c.id);
+                        const allVisibleSelected = visibleIds.every((id) => selectedCourseIds.includes(id));
+                        setSelectedCourseIds(allVisibleSelected ? [] : visibleIds);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                      <span>
+                        {filteredCourses.every((c) => selectedCourseIds.includes(c.id))
+                          ? 'ล้างที่เลือก'
+                          : `เลือกทุกรายวิชา (${filteredCourses.length})`}
+                      </span>
+                    </button>
+                  )}
 
-            {duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
-              <button
-                type="button"
-                onClick={() => setSelectedCourseIds(duplicateExtraCourseIds)}
-                className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 cursor-pointer"
-                title="เลือกเฉพาะรายการซ้ำโดยเก็บต้นฉบับไว้ 1 รายการต่อรหัสวิชา"
-              >
-                เลือกเฉพาะวิชาซ้ำ ({duplicateExtraCourseIds.length})
-              </button>
-            )}
+                  {duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        setSelectedCourseIds(duplicateExtraCourseIds);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-amber-800 dark:text-amber-300 transition hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>เลือกเฉพาะวิชาซ้ำ ({duplicateExtraCourseIds.length})</span>
+                    </button>
+                  )}
+                </div>
+              </details>
 
-            <button
+              <button
               type="button"
               onClick={handleOpenAddCourse}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition cursor-pointer"
@@ -1087,9 +1114,25 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-[11px] font-mono tabular-nums text-[var(--color-primary-text)] font-bold">
-                                    {isPrimaryGradeLevel(student.gradeLevel) ? 'ประเมินรายปี' : `GPA ${student.gpa}`}
-                                  </span>
+                                  {(() => {
+                                    const studentSummary = calculateStudentAcademicSummary({
+                                      student,
+                                      courses,
+                                      grades,
+                                      gradingSystem,
+                                      currentAcademicYear: academicYear,
+                                      currentSemester,
+                                    });
+                                    return (
+                                      <span className="text-[11px] font-mono tabular-nums text-[var(--color-primary-text)] font-bold">
+                                        {isPrimaryGradeLevel(student.gradeLevel)
+                                          ? 'ประเมินรายปี'
+                                          : studentSummary.hasRecordedGrades && studentSummary.gpax !== null
+                                          ? `GPA ${studentSummary.gpax.toFixed(2)}`
+                                          : 'ยังไม่ตัดเกรด'}
+                                      </span>
+                                    );
+                                  })()}
                                   {canManageCourses && (
                                     <button
                                       type="button"

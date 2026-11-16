@@ -169,7 +169,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
   onDepartmentFilterChange,
   onDownloadPdf,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [internalScope, setInternalScope] = useState<HistogramScope>('course');
   const [internalChartMode, setInternalChartMode] = useState<ChartViewMode>('score_bins');
   const [internalDepartmentFilter, setInternalDepartmentFilter] = useState<string>('all');
@@ -480,143 +480,144 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs overflow-hidden print:hidden">
       {/* Header Bar */}
-      <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0">
-          <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-            <BarChart3 className="w-4 h-4" />
+      <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="flex items-center gap-2 min-w-0 text-left cursor-pointer group"
+        >
+          <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+            <BarChart3 className="w-3.5 h-3.5" />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                {lang === 'th'
-                  ? 'ฮิสโตแกรมการกระจายเกรดและคะแนนผลสัมฤทธิ์'
-                  : 'Grade & Score Distribution Histogram'}
-              </h3>
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800">
-                {scope === 'course' && selectedCourse
-                  ? `${selectedCourse.code} (${scopedGrades.length})`
-                  : scope === 'by_subject'
-                  ? lang === 'th'
-                    ? `เปรียบเทียบ ${subjectComparisonData.length} รายวิชา`
-                    : `${subjectComparisonData.length} Subjects`
-                  : lang === 'th'
-                  ? `รวมทุกวิชา (${scopedGrades.length})`
-                  : `All Subjects (${scopedGrades.length})`}
-              </span>
-            </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h3 className="text-xs font-bold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition">
+              {lang === 'th' ? 'สถิติ & ฮิสโตแกรมเกรด' : 'Grade Distribution'}
+            </h3>
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 font-mono tabular-nums">
+              {scope === 'course' && selectedCourse
+                ? `${selectedCourse.code} · ${scopedGrades.length}`
+                : scope === 'by_subject'
+                ? `${subjectComparisonData.length} ${lang === 'th' ? 'วิชา' : 'subj'}`
+                : `${scopedGrades.length}`}
+            </span>
+            <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums hidden sm:inline">
               {lang === 'th'
-                ? 'ชี้เมาส์ที่แท่งกราฟเพื่อดูจำนวนนักเรียนที่แน่นอนในแต่ละช่วงคะแนน/เกรด พร้อมส่งออก PDF รายงานฝ่ายวิชาการ'
-                : 'Hover any bar to view exact student counts per grade range and export an A4 administrative PDF report.'}
-            </p>
+                ? `เฉลี่ย ${summaryStats.meanScore}% · ผ่าน ${summaryStats.passRate}% · เสี่ยง ${summaryStats.atRiskCount} คน`
+                : `Mean ${summaryStats.meanScore}% · Pass ${summaryStats.passRate}% · Risk ${summaryStats.atRiskCount}`}
+            </span>
           </div>
-        </div>
+        </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Scope Selector */}
-          <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px] font-semibold">
-            <button
-              type="button"
-              onClick={() => setScope('course')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                scope === 'course'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {lang === 'th' ? 'วิชาที่เลือก' : 'Selected Course'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setScope('all_courses')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                scope === 'all_courses'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {lang === 'th' ? 'ทุกวิชารวม' : 'All Subjects'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setScope('by_subject')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                scope === 'by_subject'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {lang === 'th' ? 'เทียบรายวิชา' : 'By Subject'}
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {isExpanded && (
+            <>
+              {/* Scope Selector */}
+              <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setScope('course')}
+                  className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                    scope === 'course'
+                      ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'วิชาที่เลือก' : 'Selected'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope('all_courses')}
+                  className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                    scope === 'all_courses'
+                      ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'ทุกวิชารวม' : 'All'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScope('by_subject')}
+                  className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                    scope === 'by_subject'
+                      ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'เทียบรายวิชา' : 'By Subject'}
+                </button>
+              </div>
 
-          {/* Mode Toggle for Score Bins vs Grade Tiers */}
-          {scope !== 'by_subject' && (
-            <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px] font-semibold">
-              <button
-                type="button"
-                onClick={() => setChartMode('score_bins')}
-                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                  chartMode === 'score_bins'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                {lang === 'th' ? 'ช่วงคะแนน' : 'Score Bins'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartMode('grade_tiers')}
-                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
-                  chartMode === 'grade_tiers'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                {lang === 'th' ? 'ระดับเกรด' : 'Grade Tiers'}
-              </button>
-            </div>
-          )}
+              {/* Mode Toggle for Score Bins vs Grade Tiers */}
+              {scope !== 'by_subject' && (
+                <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setChartMode('score_bins')}
+                    className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                      chartMode === 'score_bins'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'ช่วงคะแนน' : 'Score Bins'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartMode('grade_tiers')}
+                    className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                      chartMode === 'grade_tiers'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'ระดับเกรด' : 'Grade Tiers'}
+                  </button>
+                </div>
+              )}
 
-          {/* Department Filter when viewing All Subjects / By Subject */}
-          {scope !== 'course' && departmentOptions.length > 1 && (
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-title)]"
-            >
-              <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระฯ' : 'All Departments'}</option>
-              {departmentOptions.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
+              {/* Department Filter when viewing All Subjects / By Subject */}
+              {scope !== 'course' && departmentOptions.length > 1 && (
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-title)]"
+                >
+                  <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระฯ' : 'All Departments'}</option>
+                  {departmentOptions.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
           )}
 
           {onDownloadPdf && (
             <button
               type="button"
               onClick={onDownloadPdf}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold shadow-2xs transition cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold shadow-2xs transition cursor-pointer whitespace-nowrap"
               title={
                 lang === 'th'
                   ? 'ดาวน์โหลดรายงานสรุปการกระจายเกรดเป็น PDF สำหรับงานทะเบียน/ฝ่ายวิชาการ'
                   : 'Download current grade distribution report as A4 PDF'
               }
             >
-              <FileDown className="w-3.5 h-3.5" />
-              <span>Download PDF</span>
+              <FileDown className="w-3 h-3" />
+              <span>PDF</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
             aria-label={isExpanded ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
           >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded ? (lang === 'th' ? 'ย่อกราฟ' : 'Hide') : (lang === 'th' ? 'ดูกราฟ' : 'Chart')}</span>
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>

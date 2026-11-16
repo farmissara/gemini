@@ -44,6 +44,7 @@ import {
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { calculateGrade } from '../lib/schoolSettings';
+import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { addSchoolIntervention, getSchoolInterventions, updateSchoolInterventionStatus } from '../lib/campusDataStore';
 
 export interface EnrichedStudentRiskProfile {
@@ -246,6 +247,15 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
       const stuInfirmaryVisits = infirmaryVisits.filter(v => v.studentId === stu.id).length;
 
+      const academicSummary = calculateStudentAcademicSummary({
+        student: stu,
+        courses,
+        grades,
+        gradingSystem,
+      });
+      const realGpa = academicSummary.hasRecordedGrades && academicSummary.gpax !== null ? academicSummary.gpax : null;
+      const effectiveGpa = realGpa ?? 0;
+
       // 5. Evaluate 4D Multi-Factor Risks + Unified 0-100 Score
       const riskFactors: ('attendance' | 'academic' | 'behavior' | 'sdq' | 'infirmary')[] = [];
       let riskScore = 0;
@@ -253,7 +263,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         riskFactors.push('attendance');
         riskScore += Math.min(35, Math.max(15, (attendanceMinRate - attendanceRate) * 2 + 15));
       }
-      if (stu.gpa < gpaThreshold || (avgScore !== null && avgScore < 50) || (failingCoursesCount !== null && failingCoursesCount > 0)) {
+      if ((realGpa !== null && realGpa < gpaThreshold) || (avgScore !== null && avgScore < 50) || (failingCoursesCount !== null && failingCoursesCount > 0)) {
         riskFactors.push('academic');
         riskScore += Math.min(30, 12 + (failingCoursesCount || 1) * 8);
       }
@@ -291,11 +301,11 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         outcome = 'เสี่ยงหมดสิทธิ์สอบ (มส. เวลาเรียนไม่พอ)';
         primaryReasonTh = `อัตราการมาเรียนจากรายการที่บันทึก ${attendanceRate}% ต่ำกว่าเกณฑ์ขั้นต่ำ ${attendanceMinRate}%`;
         primaryReasonEn = `Recorded attendance rate ${attendanceRate}% is below the configured ${attendanceMinRate}% threshold`;
-      } else if (stu.gpa < 1.8 || (failingCoursesCount !== null && failingCoursesCount >= 2)) {
+      } else if ((realGpa !== null && realGpa < 1.8) || (failingCoursesCount !== null && failingCoursesCount >= 2)) {
         riskLevel = 'high';
         outcome = 'ผลการเรียนต่ำกว่าเกณฑ์';
-        primaryReasonTh = `เกรดเฉลี่ย ${stu.gpa.toFixed(2)} หรือผลคะแนนรายวิชาต่ำกว่าเกณฑ์`;
-        primaryReasonEn = `GPA ${stu.gpa.toFixed(2)} or course scores are below the configured threshold`;
+        primaryReasonTh = `เกรดเฉลี่ย ${effectiveGpa.toFixed(2)} หรือผลคะแนนรายวิชาต่ำกว่าเกณฑ์`;
+        primaryReasonEn = `GPA ${effectiveGpa.toFixed(2)} or course scores are below the configured threshold`;
       } else if (riskFactors.length > 0) {
         riskLevel = 'moderate';
         outcome = 'กลุ่มเฝ้าระวัง (ต้องการการดูแลเชิงรุก)';
@@ -303,7 +313,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
           ? `ถูกตัดคะแนนพฤติกรรมสะสม ${demeritPoints} คะแนน`
           : sdqRiskStatus !== null && sdqRiskStatus !== 'normal'
           ? `ผลคัดกรองสุขภาพจิต SDQ บ่งชี้ความเครียด/ความยากลำบาก`
-          : `เกรดเฉลี่ย ${stu.gpa.toFixed(2)} มีแนวโน้มลดลง`;
+          : `เกรดเฉลี่ย ${effectiveGpa.toFixed(2)} มีแนวโน้มลดลง`;
         primaryReasonEn = 'Moderate risk requiring advisor and parental follow-up';
       } else if (attendanceRate === null || failingCoursesCount === null) {
         riskLevel = 'unknown';
@@ -318,7 +328,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         studentRoom: stu.room,
         studentNumber: stu.studentIdNumber || stu.id.replace('stu-', ''),
         avatarUrl: stu.avatarUrl || null,
-        gpa: stu.gpa,
+        gpa: effectiveGpa,
         attendanceRate,
         absenceCount,
         lateCount,
@@ -590,11 +600,11 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       {/* ======================================================== */}
       {/* 1. TOP HEADER & THRESHOLD CONFIGURATION BAR               */}
       {/* ======================================================== */}
-      <div className="shrink-0 app-page-header p-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+      <div className="shrink-0 app-page-header px-3 py-2 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+          <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
               {lang === 'th' ? 'ศูนย์เฝ้าระวังนักเรียนกลุ่มเสี่ยง (มส./ร./0)' : 'Executive Early Warning Radar'}
             </h1>
           </div>

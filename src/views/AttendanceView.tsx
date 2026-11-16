@@ -641,43 +641,43 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   });
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3.5">
-      {/* Top Header */}
-      <div className="shrink-0 p-3 app-page-header flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex flex-wrap items-center gap-2">
-          <QrCode className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
-            การเข้าเรียน &amp; สแกนประตูโรงเรียน
+    <div className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-2">
+      {/* Compact Top Header */}
+      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
+        <div className="min-w-0 flex items-center gap-2">
+          <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
+            การเข้าเรียน &amp; สแกนประตู
           </h1>
           <ModuleTourTrigger moduleId="attendance" lang={lang} />
         </div>
 
-        {/* Subtabs Navigation - Clean Compact Underlined Text Links (Never overflows) */}
-        <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 shrink-0 border-t lg:border-t-0 border-[var(--color-border)] pt-2 lg:pt-0">
+        {/* Subtabs Navigation */}
+        <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-x-3 gap-y-1 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('gate_scanner')}
-            className={`px-1 py-1 text-xs font-bold transition cursor-pointer border-b-2 ${
+            className={`px-1 py-1 text-xs font-bold transition cursor-pointer border-b-2 whitespace-nowrap ${
               activeTab === 'gate_scanner'
                 ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            1. สแกนประตู &amp; บันทึกสด
+            1. สแกนประตู
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('leave_approval')}
-            className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 ${
+            className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap ${
               activeTab === 'leave_approval'
                 ? 'border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <FileText className="w-3.5 h-3.5 shrink-0" />
-            <span>{isRestrictedViewer ? '2. ประวัติใบลาของฉัน' : '2. อนุมัติใบลา'}</span>
+            <span>{isRestrictedViewer ? '2. ใบลาของฉัน' : '2. อนุมัติใบลา'}</span>
             {scopedLeaveRequests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px]">
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px]">
                 {scopedLeaveRequests.filter(r => r.status === 'pending').length}
               </span>
             )}
@@ -685,41 +685,41 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('export_reports')}
-            className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 ${
+            className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap ${
               activeTab === 'export_reports'
                 ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-            <span>3. ส่งออก Excel/PDF</span>
+            <span>3. ส่งออก</span>
           </button>
           {isAdminUser && (
             <button
               type="button"
               onClick={() => setActiveTab('period_qr')}
-              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
+              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
                 activeTab === 'period_qr'
                   ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <QrCode className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? '4. QR รายคาบ (ชั่วคราว)' : '4. Period QR'}</span>
+              <span>{lang === 'th' ? '4. QR รายคาบ' : '4. Period QR'}</span>
             </button>
           )}
           {!isRestrictedViewer && (
             <button
               type="button"
               onClick={() => setActiveTab('school_gps')}
-              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
+              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
                 activeTab === 'school_gps'
                   ? 'border-amber-600 dark:border-amber-400 text-amber-800 dark:text-amber-300'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline underline-offset-4'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'พิกัด GPS' : 'GPS'}</span>
+              <span>{lang === 'th' ? 'GPS' : 'GPS'}</span>
             </button>
           )}
 
@@ -728,10 +728,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             type="button"
             data-guide-id="attendance-rapid-scanner"
             onClick={() => setShowRapidScannerModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] text-white font-semibold text-xs shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white font-semibold text-xs shadow-xs transition cursor-pointer whitespace-nowrap"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>📷 สแกนรัวต่อเนื่อง 1วิ/คน</span>
+            <span>สแกนรัว 1วิ/คน</span>
           </button>
         </nav>
       </div>

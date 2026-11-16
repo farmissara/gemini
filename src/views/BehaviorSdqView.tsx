@@ -252,58 +252,58 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 app-page-header">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Top Header */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <HeartHandshake className="w-5 h-5 text-purple-700 dark:text-purple-300 shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+          <HeartHandshake className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & SDQ' : 'Student Care & Behavior (SDQ)'}
           </h1>
         </div>
 
         {/* Tab switchers & action */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)] overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)] overflow-x-auto">
             <button
               onClick={() => setActiveTab('merit')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'merit'
-                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
                   : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              {lang === 'th' ? '1. คะแนนความประพฤติ' : 'Merit & Demerit'}
+              {lang === 'th' ? '1. ความประพฤติ' : 'Merit & Demerit'}
             </button>
             <button
               onClick={() => setActiveTab('sdq')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'sdq'
-                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
                   : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              {lang === 'th' ? '2. คัดกรอง SDQ (5 ด้าน)' : 'SDQ Screening'}
+              {lang === 'th' ? '2. SDQ (5 ด้าน)' : 'SDQ Screening'}
             </button>
             <button
               onClick={() => setActiveTab('cct_poverty')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'cct_poverty'
-                  ? 'bg-amber-600 text-white shadow-sm'
+                  ? 'bg-amber-600 text-white shadow-xs'
                   : 'text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
               }`}
             >
-              {lang === 'th' ? '3. ทุนยากจนพิเศษ (CCT)' : 'CCT Poverty'}
+              {lang === 'th' ? '3. ทุน CCT' : 'CCT Poverty'}
             </button>
             <button
               onClick={() => setActiveTab('obec_care_steps')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'obec_care_steps'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
               }`}
             >
-              {lang === 'th' ? '4. ระบบดูแล 5 ขั้น (OBEC Care)' : 'OBEC 5 Steps'}
+              {lang === 'th' ? '4. ดูแล 5 ขั้น' : 'OBEC 5 Steps'}
             </button>
           </div>
 
@@ -313,10 +313,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowPresetModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer shrink-0"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                  <span>{lang === 'th' ? 'จัดการเกณฑ์คะแนน' : 'Presets'}</span>
+                  <span>{lang === 'th' ? 'เกณฑ์คะแนน' : 'Presets'}</span>
                 </button>
               )}
               <button
@@ -324,9 +324,9 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   setAllowDuplicateConfirm(false);
                   setShowAddRecordModal(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer shrink-0"
+                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer shrink-0 whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
               </button>
             </>
@@ -339,10 +339,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 setSdqFormStep(1);
                 setShowSdqModal(true);
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-sm transition cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white shadow-xs transition cursor-pointer shrink-0 whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
-              <span>{lang === 'th' ? 'ทำแบบคัดกรอง SDQ' : 'New SDQ Assessment'}</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'คัดกรอง SDQ' : 'New SDQ Assessment'}</span>
             </button>
           )}
         </div>

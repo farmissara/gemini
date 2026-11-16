@@ -190,42 +190,42 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      {/* Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-3 app-page-header">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Top Header */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <HeartPulse className="w-5 h-5 text-rose-700 dark:text-rose-300 shrink-0" />
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+          <HeartPulse className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'ห้องพยาบาล & สุขภาพนักเรียน' : 'School Infirmary & Health'}
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* Subtabs switcher */}
-          <div className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
             <button
               onClick={() => setInfirmaryTab('visits')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                infirmaryTab === 'visits' ? 'bg-rose-700 text-white shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                infirmaryTab === 'visits' ? 'bg-rose-700 text-white shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              1. บันทึกการรักษา ({visits.length})
+              1. รักษา ({visits.length})
             </button>
             <button
               onClick={() => setInfirmaryTab('beds')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                infirmaryTab === 'beds' ? 'bg-rose-700 text-white shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                infirmaryTab === 'beds' ? 'bg-rose-700 text-white shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
               2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/{bedOptions.length})
             </button>
             <button
               onClick={() => setInfirmaryTab('allergies')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                infirmaryTab === 'allergies' ? 'bg-rose-700 text-white shadow-sm' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                infirmaryTab === 'allergies' ? 'bg-rose-700 text-white shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
-              3. เฝ้าระวังแพ้ยา ({studentsWithAllergies.length})
+              3. แพ้ยา ({studentsWithAllergies.length})
             </button>
           </div>
 
@@ -233,10 +233,10 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             <button
               type="button"
               onClick={() => setShowPresetModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
             >
               <Sliders className="w-3.5 h-3.5 text-rose-700 dark:text-rose-300" />
-              <span>ตั้งค่าเตียง/ยา/การรักษา</span>
+              <span>ตั้งค่าเตียง/ยา</span>
             </button>
           )}
 
@@ -246,9 +246,9 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
               setVisitFormStep(1);
               setShowAddModal(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-700 hover:bg-rose-800 text-white shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-rose-700 hover:bg-rose-800 text-white shadow-xs transition cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'บันทึกการรักษา' : 'New Visit'}</span>
           </button>
         </div>

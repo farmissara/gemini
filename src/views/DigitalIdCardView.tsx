@@ -56,34 +56,27 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   });
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 sm:p-4 app-page-header text-[var(--color-text-title)]">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-            <CreditCard className="w-5 h-5" />
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Header */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header text-[var(--color-text-title)]">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="p-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] shrink-0">
+            <CreditCard className="w-4 h-4" />
           </span>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2 flex-wrap">
-              {lang === 'th' ? 'บัตรนักเรียนและบัตรประจำตัวดิจิทัล' : 'Virtual Student & Staff ID Card'}
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-                Smart NFC &amp; QR
-              </span>
-            </h1>
-            <p className="text-xs text-[var(--color-text-body)]">
-              {lang === 'th'
-                ? 'บัตรประจำตัวอัจฉริยะเสมือนจริง พร้อม QR Code สแกนเข้าเรียน ยืมหนังสือห้องสมุด และพิมพ์ขนาดมาตรฐาน'
-                : 'Interactive digital ID card with barcodes, NFC simulation, and printable card formats.'}
-            </p>
-          </div>
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] flex items-center gap-2 truncate">
+            <span className="truncate">{lang === 'th' ? 'บัตรประจำตัวดิจิทัล' : 'Virtual ID Card'}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] shrink-0">
+              Smart NFC &amp; QR
+            </span>
+          </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {/* Card Type Toggle */}
           <div className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
             <button
               onClick={() => setCardType('student')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 cardType === 'student'
                   ? 'bg-[var(--color-primary)] text-white shadow-xs'
                   : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
@@ -93,7 +86,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
             </button>
             <button
               onClick={() => setCardType('staff')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                 cardType === 'staff'
                   ? 'bg-[var(--color-primary)] text-white shadow-xs'
                   : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
@@ -105,7 +98,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
 
           <button
             onClick={() => setShowPrintModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition cursor-pointer whitespace-nowrap"
           >
             <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
             <span>{lang === 'th' ? 'พิมพ์บัตร (A4)' : 'Print Sheet'}</span>

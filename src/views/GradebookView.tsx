@@ -38,6 +38,7 @@ import {
   Upload,
   FileDown,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -105,9 +106,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [gradeStatusFilter, setGradeStatusFilter] = useState<'all' | 'excellent' | 'pass' | 'at_risk'>('all');
   const [selectedStudentIdForPp6, setSelectedStudentIdForPp6] = useState<string>(students[0]?.id || '');
   const [pp3LevelFilter, setPp3LevelFilter] = useState<'all' | 'p6' | 'm3' | 'm6'>('all');
+  const [pp3RoomFilter, setPp3RoomFilter] = useState<string>('all');
   const [onetLevelFilter, setOnetLevelFilter] = useState<'p6' | 'm3' | 'm6'>('m3');
+  const [onetRoomFilter, setOnetRoomFilter] = useState<string>('all');
+  const [addStudentSearchTerm, setAddStudentSearchTerm] = useState('');
   const [gradePage, setGradePage] = useState(0);
   const [pp5Page, setPp5Page] = useState(0);
   const [pp6CoursePage, setPp6CoursePage] = useState(0);
@@ -151,9 +157,21 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         'th'
       )
     );
+  const filteredAddCandidates = studentsWithoutGradeInCourse.filter((s) => {
+    const q = addStudentSearchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return [
+      s.studentIdNumber,
+      s.nationalId,
+      `${s.firstNameTh} ${s.lastNameTh}`,
+      `${s.firstNameEn} ${s.lastNameEn}`,
+      s.room,
+      s.gradeLevel,
+    ].some((v) => (v || '').toLowerCase().includes(q));
+  });
   const filteredCourses = courses.filter((course) => {
     const search = courseSearchTerm.trim().toLocaleLowerCase();
-    return !search || [course.code, course.titleTh, course.titleEn, course.teacherName]
+    return !search || [course.code, course.titleTh, course.titleEn, course.teacherName, course.department, course.room]
       .some((value) => value?.toLocaleLowerCase().includes(search));
   });
   const courseSelectOptions = selectedCourse && !filteredCourses.some((course) => course.id === selectedCourse.id)
@@ -179,22 +197,80 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     .sort((a, b) => a.localeCompare(b, 'th'));
   const gradeLevelOptions = Array.from(new Set(gradebookRows.map(({ student }) => student.gradeLevel).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b, 'th'));
-  const filteredGradebookRows = gradebookRows.filter(({ student, eligibility }) => (
-    (gradeRoomFilter === 'all' || student.room === gradeRoomFilter)
-    && (gradeLevelFilter === 'all' || student.gradeLevel === gradeLevelFilter)
-    && (
-      gradeEligibilityFilter === 'all'
-      || (gradeEligibilityFilter === 'at_risk' ? eligibility.isAtRiskMs : !eligibility.isAtRiskMs)
-    )
-  ));
-  const selectedStudentForPp6 = students.find((s) => s.id === selectedStudentIdForPp6) || students[0];
+  const normalizedStudentSearch = studentSearchTerm.trim().toLowerCase();
+  const filteredGradebookRows = gradebookRows.filter(({ grade, student, eligibility }) => {
+    if (gradeRoomFilter !== 'all' && student.room !== gradeRoomFilter) return false;
+    if (gradeLevelFilter !== 'all' && student.gradeLevel !== gradeLevelFilter) return false;
+    if (gradeEligibilityFilter === 'at_risk' && !eligibility.isAtRiskMs) return false;
+    if (gradeEligibilityFilter === 'eligible' && eligibility.isAtRiskMs) return false;
+
+    if (gradeStatusFilter !== 'all') {
+      const disp = resolveEffectiveGrade(grade, selectedCourse, systemConfig.gradingSystem, eligibility.isAtRiskMs);
+      const isRisk =
+        disp.letter === '0' ||
+        disp.letter === 'F' ||
+        disp.letter === 'ร' ||
+        disp.letter === 'มส.' ||
+        disp.letter === 'มผ' ||
+        grade.totalScore < 50;
+      const isExcellent = !isRisk && (disp.point >= 3.5 || grade.totalScore >= 75 || disp.letter === 'ผ');
+      if (gradeStatusFilter === 'excellent' && !isExcellent) return false;
+      if (gradeStatusFilter === 'pass' && isRisk) return false;
+      if (gradeStatusFilter === 'at_risk' && !isRisk) return false;
+    }
+
+    if (normalizedStudentSearch) {
+      const matched = [
+        student.studentIdNumber,
+        student.nationalId,
+        `${student.firstNameTh} ${student.lastNameTh}`,
+        `${student.firstNameEn} ${student.lastNameEn}`,
+        student.room,
+        student.gradeLevel,
+      ].some((value) => (value || '').toLowerCase().includes(normalizedStudentSearch));
+      if (!matched) return false;
+    }
+
+    return true;
+  });
   const courseStudents = gradebookRows.map(({ student }) => student);
   const courseStage = detectCourseEducationStage(selectedCourse, courseStudents);
   const isPrimaryCourse = isPrimaryStage(courseStage);
   const isEarlyPrimaryCourse = courseStage === 'primary_early';
   const courseIsActivity = isActivityCourse(selectedCourse);
-  const pp3EligibleStudents = students.filter((student) => matchesEducationLevelFilter(student.gradeLevel, pp3LevelFilter));
-  const onetEligibleStudents = students.filter((student) => matchesEducationLevelFilter(student.gradeLevel, onetLevelFilter));
+
+  const pp3LevelStudents = students.filter((student) => matchesEducationLevelFilter(student.gradeLevel, pp3LevelFilter));
+  const pp3RoomOptions = Array.from(new Set(pp3LevelStudents.map((s) => s.room).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'th'));
+  const pp3EligibleStudents = pp3LevelStudents.filter((student) => {
+    if (pp3RoomFilter !== 'all' && student.room !== pp3RoomFilter) return false;
+    if (!normalizedStudentSearch) return true;
+    return [
+      student.studentIdNumber,
+      student.nationalId,
+      `${student.firstNameTh} ${student.lastNameTh}`,
+      `${student.firstNameEn} ${student.lastNameEn}`,
+      student.room,
+      student.gradeLevel,
+    ].some((value) => (value || '').toLowerCase().includes(normalizedStudentSearch));
+  });
+
+  const onetLevelStudents = students.filter((student) => matchesEducationLevelFilter(student.gradeLevel, onetLevelFilter));
+  const onetRoomOptions = Array.from(new Set(onetLevelStudents.map((s) => s.room).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'th'));
+  const onetEligibleStudents = onetLevelStudents.filter((student) => {
+    if (onetRoomFilter !== 'all' && student.room !== onetRoomFilter) return false;
+    if (!normalizedStudentSearch) return true;
+    return [
+      student.studentIdNumber,
+      student.nationalId,
+      `${student.firstNameTh} ${student.lastNameTh}`,
+      `${student.firstNameEn} ${student.lastNameEn}`,
+      student.room,
+      student.gradeLevel,
+    ].some((value) => (value || '').toLowerCase().includes(normalizedStudentSearch));
+  });
+
   const onetRows = onetEligibleStudents.map((stu, idx) => {
     const summary = calculateStudentAcademicSummary({
       student: stu,
@@ -202,7 +278,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       grades,
       gradingSystem: systemConfig.gradingSystem,
     });
-    const effectiveGpa = summary.gpax ?? summary.annualGradeAverage ?? Number(stu.gpa || 0);
+    const effectiveGpa = summary.hasRecordedGrades ? (summary.gpax ?? summary.annualGradeAverage ?? 0) : 0;
     const stuGrades = grades.filter((g) => g.studentId === stu.id);
     const findSubjectScore = (keywords: string[], fallback: number) => {
       const matched = stuGrades.find((g) => {
@@ -608,7 +684,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         ? (summary.averageRawScore !== null
             ? `${summary.averageRawScore}% (${getRawScoreFeedback(summary.averageRawScore).labelTh})`
             : 'รอประเมิน (รายปี)')
-        : (summary.gpax ?? s.gpa).toFixed(2);
+        : (summary.hasRecordedGrades && summary.gpax !== null ? summary.gpax : 0).toFixed(2);
       return [
         idx + 1,
         `"${s.studentIdNumber}"`,
@@ -709,7 +785,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         grades,
         gradingSystem: systemConfig.gradingSystem,
       });
-      const effectiveGpax = summary.gpax ?? summary.annualGradeAverage ?? Number(s.gpa || 0);
+      const effectiveGpax = summary.hasRecordedGrades ? (summary.gpax ?? summary.annualGradeAverage ?? 0) : 0;
       return [
         `"${s.schoolId || ''}"`,
         `"${s.nationalId || `1100${idx.toString().padStart(9, '0')}`}"`,
@@ -804,18 +880,25 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     window.print();
   };
 
+  const hasActiveGradeFilters =
+    gradeRoomFilter !== 'all' ||
+    gradeLevelFilter !== 'all' ||
+    gradeEligibilityFilter !== 'all' ||
+    gradeStatusFilter !== 'all' ||
+    studentSearchTerm.trim().length > 0 ||
+    courseSearchTerm.trim().length > 0;
+
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
-      {/* Header */}
-      <div className="shrink-0 p-3 app-page-header flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
-            <Award className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      {/* Compact Header Bar */}
+      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+            <Award className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
             <span>วัดผลและประเมินผล (Gradebook &amp; ปพ.)</span>
           </h1>
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
             <div data-guide-id="gradebook-grading-mode" className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-[11px] font-bold">
-              <span className="px-2 text-[var(--color-text-muted)]">เกรด:</span>
               <button
                 type="button"
                 disabled={isUpdatingGradingMode}
@@ -824,13 +907,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   setIsUpdatingGradingMode(true);
                   try { await onChangeGradingSystem('thai'); } finally { setIsUpdatingGradingMode(false); }
                 }}
-                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded-md transition cursor-pointer whitespace-nowrap ${
                   systemConfig.gradingSystem !== 'international'
                     ? 'bg-[var(--color-primary)] text-white shadow-xs'
                     : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                 }`}
               >
-                ระบบไทย (0–4)
+                0–4
               </button>
               <button
                 type="button"
@@ -840,41 +923,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   setIsUpdatingGradingMode(true);
                   try { await onChangeGradingSystem('international'); } finally { setIsUpdatingGradingMode(false); }
                 }}
-                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                className={`px-2 py-0.5 rounded-md transition cursor-pointer whitespace-nowrap ${
                   systemConfig.gradingSystem === 'international'
                     ? 'bg-[var(--color-primary)] text-white shadow-xs'
                     : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                 }`}
               >
-                สากล (A–F)
+                A–F
               </button>
             </div>
           ) : (
             <span className="px-2 py-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold text-[var(--color-text-muted)]">
-              {systemConfig.gradingSystem === 'international' ? 'เกณฑ์สากล (A–F)' : 'เกณฑ์ไทย (0–4)'}
+              {systemConfig.gradingSystem === 'international' ? 'A–F' : '0–4'}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           <ModuleTourTrigger moduleId="gradebook" lang={lang} />
-          {activeTab === 'gradebook' && (
-            <button
-              type="button"
-              data-guide-id="gradebook-autonotify"
-              onClick={() => setAutoNotifyEnabled((prev) => !prev)}
-              aria-pressed={autoNotifyEnabled}
-              title="เปิด/ปิดการส่งแจ้งเตือนผลการเรียนอัตโนมัติถึงนักเรียนและผู้ปกครองเมื่อบันทึกหรือแก้ไขคะแนน"
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                autoNotifyEnabled
-                  ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-200'
-                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)]'
-              }`}
-            >
-              {autoNotifyEnabled ? <BellRing className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
-              <span>{autoNotifyEnabled ? 'แจ้งเตือนอัตโนมัติ: เปิด' : 'แจ้งเตือนอัตโนมัติ: ปิด'}</span>
-            </button>
-          )}
 
           {activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
             <button
@@ -885,78 +951,21 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   setNewGradeStudentId(studentsWithoutGradeInCourse[0].id);
                 }
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>บันทึกคะแนนนักเรียน</span>
+              <span>บันทึกคะแนน</span>
             </button>
-          )}
-
-          {activeTab === 'gradebook' && onOpenImportExport && (
-            <button
-              type="button"
-              data-guide-id="gradebook-import-csv"
-              onClick={onOpenImportExport}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 text-xs font-semibold transition cursor-pointer whitespace-nowrap"
-              title="นำเข้า/แมปคอลัมน์คะแนนผลการเรียนจาก CSV หรือ Excel"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>นำเข้าคะแนน CSV/Excel</span>
-            </button>
-          )}
-
-          {activeTab === 'gradebook' && (
-            <button
-              type="button"
-              data-guide-id="gradebook-pdf-export"
-              onClick={handleDownloadGradeDistributionPdf}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap"
-              title="ส่งออกรายงานสถิติการกระจายผลการเรียนและฮิสโตแกรมเป็น PDF สำหรับงานทะเบียน/ฝ่ายวิชาการ"
-            >
-              <FileDown className="w-3.5 h-3.5" />
-              <span>Download PDF</span>
-            </button>
-          )}
-
-          {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-            <>
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
-              >
-                <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                <span>ส่งออก ปพ.5</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportDmcCsv}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
-                title="ส่งออกข้อมูลนักเรียนรูปแบบ DMC สพฐ."
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                <span>DMC</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportSchoolMisCsv}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
-                title="ส่งออกผลสัมฤทธิ์รายวิชารูปแบบ SchoolMIS"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>SchoolMIS</span>
-              </button>
-            </>
           )}
 
           {activeTab === 'pp3_online' && (
             <button
               type="button"
               onClick={handleExportPp3CSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>ส่งออก ปพ.3 (CSV)</span>
+              <span>ส่งออก ปพ.3</span>
             </button>
           )}
 
@@ -964,10 +973,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handleExportOnetCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>ส่งออก สทศ. (CSV)</span>
+              <span>ส่งออก สทศ.</span>
             </button>
           )}
 
@@ -975,18 +984,90 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>พิมพ์เอกสาร</span>
+              <span>พิมพ์</span>
             </button>
           )}
-          {activeTab === 'gradebook' && renderPageControls(currentGradePage, filteredGradebookRows.length, gradePageSize, setGradePage, 'Gradebook pages')}
+
+          {/* Consolidated Export, Import & Notification Tools Dropdown */}
+          <details className="relative group">
+            <summary className="list-none flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition cursor-pointer whitespace-nowrap">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              <span>ส่งออก &amp; เครื่องมือ</span>
+              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
+            </summary>
+            <div className="absolute right-0 mt-1 w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
+              {activeTab === 'gradebook' && (
+                <button
+                  type="button"
+                  data-guide-id="gradebook-autonotify"
+                  onClick={() => setAutoNotifyEnabled((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    {autoNotifyEnabled ? <BellRing className="w-3.5 h-3.5 text-indigo-600" /> : <BellOff className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
+                    <span>แจ้งเตือนคะแนนอัตโนมัติ</span>
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${autoNotifyEnabled ? 'bg-indigo-100 text-indigo-700' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'}`}>
+                    {autoNotifyEnabled ? 'เปิด' : 'ปิด'}
+                  </span>
+                </button>
+              )}
+              {activeTab === 'gradebook' && onOpenImportExport && (
+                <button
+                  type="button"
+                  data-guide-id="gradebook-import-csv"
+                  onClick={onOpenImportExport}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+                >
+                  <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>นำเข้าคะแนน CSV / Excel</span>
+                </button>
+              )}
+              {activeTab === 'gradebook' && (
+                <button
+                  type="button"
+                  data-guide-id="gradebook-pdf-export"
+                  onClick={handleDownloadGradeDistributionPdf}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-rose-700 dark:text-rose-300 font-semibold cursor-pointer text-left"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>Download PDF (สรุปผลเกรด)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                <span>ส่งออก ปพ.5 (CSV)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportDmcCsv}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600" />
+                <span>ส่งออก DMC สพฐ.</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportSchoolMisCsv}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+                <span>ส่งออก SchoolMIS</span>
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 
-      {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 / ปพ.3 ออนไลน์ / สทศ. O-NET */}
-      <div data-guide-id="gradebook-tabs" className="shrink-0 flex rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 shadow-xs overflow-x-auto no-scrollbar">
+      {/* Compact Main Tab Switcher */}
+      <div data-guide-id="gradebook-tabs" className="shrink-0 flex rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] p-0.5 gap-1 shadow-xs overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('gradebook')}
@@ -1032,7 +1113,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
           }`}
         >
-          ปพ.3 ออนไลน์ (จบ ป.6/ม.3/ม.6)
+          ปพ.3 จบชั้น (ป.6/ม.3/ม.6)
         </button>
 
         <button
@@ -1048,74 +1129,184 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         </button>
       </div>
 
-      {/* Course selector tabs (shown in Gradebook and ปพ.5) */}
+      {/* Unified Compact Course & Student Search / Filter Toolbar (Gradebook & ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div data-guide-id="gradebook-course-bar" className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 print:hidden">
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,1.3fr)]">
-            <label className="min-w-0">
-              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">
-                ค้นหารายวิชา ({courses.length})
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                <input
-                  type="search"
-                  value={courseSearchTerm}
-                  onChange={(event) => setCourseSearchTerm(event.target.value)}
-                  placeholder="ค้นหาจากรหัส ชื่อวิชา หรือครูผู้สอน"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">เลือกรายวิชา</span>
-              <select
-                value={selectedCourseId}
+        <div data-guide-id="gradebook-course-bar" className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 print:hidden space-y-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Course Search */}
+            <div className="relative w-full sm:w-44 shrink-0">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <input
+                type="text"
+                value={courseSearchTerm}
+                onChange={(event) => setCourseSearchTerm(event.target.value)}
+                placeholder={`กรองวิชา (${courses.length})...`}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              />
+              {courseSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setCourseSearchTerm('')}
+                  aria-label="ล้างคำค้นหารายวิชา"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Course Select */}
+            <select
+              value={selectedCourseId}
+              onChange={(event) => {
+                setSelectedCourseId(event.target.value);
+                setGradePage(0);
+                setPp5Page(0);
+                setGradeRoomFilter('all');
+                setGradeLevelFilter('all');
+                setGradeEligibilityFilter('all');
+                setGradeStatusFilter('all');
+              }}
+              disabled={courseSelectOptions.length === 0}
+              className="flex-1 min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] disabled:opacity-60"
+            >
+              {courseSelectOptions.length === 0 ? (
+                <option value="">ไม่พบรายวิชาที่ตรงกับคำค้นหา</option>
+              ) : (
+                courseSelectOptions.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {[course.code, course.titleTh || course.titleEn, course.teacherName]
+                      .filter(Boolean)
+                      .join(' — ')}
+                  </option>
+                ))
+              )}
+            </select>
+
+            {/* Student Live Search */}
+            <div className="relative w-full sm:w-52 shrink-0">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-primary-text)]" />
+              <input
+                type="text"
+                value={studentSearchTerm}
                 onChange={(event) => {
-                  setSelectedCourseId(event.target.value);
+                  setStudentSearchTerm(event.target.value);
                   setGradePage(0);
                   setPp5Page(0);
+                }}
+                placeholder="ค้นหาชื่อ รหัสนักเรียน ปชช. ห้อง..."
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              />
+              {studentSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStudentSearchTerm('');
+                    setGradePage(0);
+                    setPp5Page(0);
+                  }}
+                  aria-label="ล้างคำค้นหานักเรียน"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {activeTab === 'gradebook' && (
+              <>
+                <select
+                  aria-label="กรองระดับชั้น"
+                  value={gradeLevelFilter}
+                  onChange={(event) => {
+                    setGradeLevelFilter(event.target.value);
+                    setGradePage(0);
+                  }}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                >
+                  <option value="all">ทุกชั้น</option>
+                  {gradeLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
+                </select>
+
+                <select
+                  aria-label="กรองห้องเรียน"
+                  value={gradeRoomFilter}
+                  onChange={(event) => {
+                    setGradeRoomFilter(event.target.value);
+                    setGradePage(0);
+                  }}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                >
+                  <option value="all">ทุกห้อง</option>
+                  {gradeRoomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
+                </select>
+
+                <select
+                  aria-label="กรองกลุ่มผลการเรียน"
+                  value={gradeStatusFilter}
+                  onChange={(event) => {
+                    const v = event.target.value;
+                    if (v === 'all' || v === 'excellent' || v === 'pass' || v === 'at_risk') {
+                      setGradeStatusFilter(v);
+                    }
+                    setGradePage(0);
+                  }}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                >
+                  <option value="all">ทุกเกรด</option>
+                  <option value="excellent">ดีเยี่ยม (3.5–4)</option>
+                  <option value="pass">ผ่านเกณฑ์</option>
+                  <option value="at_risk">กลุ่มเสี่ยง (0, ร, มส.)</option>
+                </select>
+
+                <select
+                  aria-label="กรองสิทธิ์สอบเวลาเรียน"
+                  value={gradeEligibilityFilter}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === 'all' || value === 'eligible' || value === 'at_risk') {
+                      setGradeEligibilityFilter(value);
+                    }
+                    setGradePage(0);
+                  }}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+                >
+                  <option value="all">เวลาเรียนทั้งหมด</option>
+                  <option value="eligible">มีสิทธิ์สอบ (≥80%)</option>
+                  <option value="at_risk">เสี่ยง มส. (&lt;80%)</option>
+                </select>
+              </>
+            )}
+
+            <span className="px-2 py-1 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+              {activeTab === 'gradebook' ? `${filteredGradebookRows.length}/${gradebookRows.length}` : `${courseGrades.length} คน`}
+            </span>
+
+            {hasActiveGradeFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCourseSearchTerm('');
+                  setStudentSearchTerm('');
                   setGradeRoomFilter('all');
                   setGradeLevelFilter('all');
                   setGradeEligibilityFilter('all');
-                  setCourseSearchTerm('');
+                  setGradeStatusFilter('all');
+                  setGradePage(0);
+                  setPp5Page(0);
                 }}
-                disabled={courseSelectOptions.length === 0}
-                className="w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] disabled:opacity-60"
+                className="px-2 py-1 rounded-md text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer whitespace-nowrap"
               >
-                {courseSelectOptions.length === 0 ? (
-                  <option value="">ไม่พบรายวิชาที่ตรงกับคำค้นหา</option>
-                ) : (
-                  courseSelectOptions.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {[course.code, course.titleTh || course.titleEn, course.titleEn && course.titleEn !== course.titleTh ? course.titleEn : '']
-                        .filter(Boolean)
-                        .join(' — ')}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+                ล้างตัวกรอง
+              </button>
+            )}
           </div>
-          {courseSearchTerm.trim() && filteredCourses.length === 0 && (
-            <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
-              ไม่พบรายวิชาที่ตรงกับคำค้นหา
-            </p>
-          )}
-          {selectedCourse && (
-            <p className="mt-2 truncate text-[11px] text-[var(--color-text-muted)]">
-              วิชาที่เลือก: <strong className="font-mono text-[var(--color-primary-text)]">{selectedCourse.code}</strong>
-              {' · '}
-              <strong className="text-[var(--color-text-title)]">{selectedCourse.titleTh || selectedCourse.titleEn}</strong>
-              {selectedCourse.teacherName ? ` · ${selectedCourse.teacherName}` : ''}
-            </p>
-          )}
         </div>
       )}
 
       {/* Tab Panels Scroll Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 print:overflow-visible">
-        {/* Visual Grade Distribution Histogram across selected course & all subjects */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-2 print:overflow-visible">
+        {/* Visual Grade Distribution Histogram across selected course & all subjects (Collapsed by default) */}
         {activeTab === 'gradebook' && (
           <div data-guide-id="gradebook-histogram">
             <GradeDistributionHistogram
@@ -1141,24 +1332,36 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             TAB 1: Gradebook Score Entry Table
             ======================================================== */}
         {activeTab === 'gradebook' && selectedCourse && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible space-y-3 p-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2 text-xs">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible">
+          {/* Single slim Course + MOE Stage Bar */}
+          <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
-              <span className="text-[var(--color-text-title)] font-bold text-sm">{selectedCourse.titleEn}</span>
-              <span className="text-[var(--color-text-muted)] font-thai">({selectedCourse.titleTh})</span>
-              <span className="text-[var(--color-text-muted)]">
-                · {selectedCourse.teacherName} · {isPrimaryCourse ? `ประเมินรายปี ปีการศึกษา ${systemConfig.academicYear}` : `${formatSemesterLabel(systemConfig.currentSemester)} / ${systemConfig.academicYear}`} · {selectedCourse.credits} {isPrimaryCourse ? 'น้ำหนักวิชา' : 'หน่วยกิต'}
+              <span className="text-[var(--color-text-title)] font-bold truncate">{selectedCourse.titleTh || selectedCourse.titleEn}</span>
+              <span className="text-[11px] text-[var(--color-text-muted)] truncate">
+                · {selectedCourse.teacherName || '—'} · {isPrimaryCourse ? `รายปี ${systemConfig.academicYear}` : `${formatSemesterLabel(systemConfig.currentSemester)}/${systemConfig.academicYear}`} · {selectedCourse.credits} นก.
+              </span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                courseIsActivity
+                  ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200'
+                  : isPrimaryCourse
+                  ? 'border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200'
+                  : 'border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
+              }`}>
+                {courseIsActivity
+                  ? 'กิจกรรม ผ/มผ'
+                  : `${getEducationStageLabelTh(courseStage)} · ${isPrimaryCourse ? 'รายปี' : 'รายภาค'}`}
               </span>
             </div>
 
-            <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
+            <div className="text-[11px] text-[var(--color-text-muted)] hidden lg:block">
               {isPrimaryCourse
-                ? 'ประเมินรายปี • 80–100% ดีเยี่ยม · 70–79% ดีมาก · 60–69% ดี · 50–59% ผ่านเกณฑ์ (ไม่คิด GPA)'
+                ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
                 : getGradingScaleLegend(systemConfig.gradingSystem)}
             </div>
           </div>
 
+          <div className="p-2.5 space-y-2.5">
           {/* Automated Grade Notification Confirmation Toast */}
           {gradeAlertBanner && (
             <div
@@ -1190,24 +1393,35 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {showAddGradeForm && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
             <form
               onSubmit={handleCreateGradeRecord}
-              className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-card-subtle)] p-3 space-y-2.5 print:hidden"
+              className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-card-subtle)] p-2.5 space-y-2 print:hidden"
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                   <span>เพิ่มและบันทึกคะแนนนักเรียนใหม่ในรายวิชา {selectedCourse.code}</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAddGradeForm(false)}
-                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={addStudentSearchTerm}
+                    onChange={(e) => setAddStudentSearchTerm(e.target.value)}
+                    placeholder="ค้นหานักเรียนที่จะเพิ่ม..."
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAddGradeForm(false)}
+                    className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
                 <label className="sm:col-span-2">
-                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">นักเรียน</span>
+                  <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">
+                    นักเรียน ({filteredAddCandidates.length} คน)
+                  </span>
                   <select
                     required
                     value={newGradeStudentId}
@@ -1215,7 +1429,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)]"
                   >
                     <option value="">-- เลือกนักเรียน --</option>
-                    {studentsWithoutGradeInCourse.map((stu) => (
+                    {filteredAddCandidates.map((stu) => (
                       <option key={stu.id} value={stu.id}>
                         {stu.studentIdNumber} · {stu.firstNameTh} {stu.lastNameTh} ({stu.gradeLevel} {stu.room})
                       </option>
@@ -1285,97 +1499,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </div>
             </form>
           )}
-
-          {/* MOE Assessment Standard Banner */}
-          <div className={`rounded-xl border px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 ${
-            courseIsActivity
-              ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200'
-              : isPrimaryCourse
-              ? 'border-sky-300 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200'
-              : 'border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200'
-          }`}>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded font-bold bg-white/80 dark:bg-slate-900/70 border border-current/20">
-                {courseIsActivity
-                  ? 'กิจกรรมพัฒนาผู้เรียน (ผ / มผ)'
-                  : `${getEducationStageLabelTh(courseStage)} • ${isPrimaryCourse ? 'ตัดเกรดรายปี' : 'ตัดเกรดรายภาคเรียน'}`}
-              </span>
-              <span>
-                {courseIsActivity
-                  ? 'ตัดสินผลเป็น ผ่าน (ผ) / ไม่ผ่าน (มผ) และไม่นำไปคิดรวมในเกรดเฉลี่ย (GPA / GPAX)'
-                  : isPrimaryCourse
-                  ? isEarlyPrimaryCourse
-                    ? 'ประถมต้น (ป.1–ป.3): ตัดสินผลรายปี เกรด 0–4 โดยสื่อสารกับผู้ปกครองด้วยคะแนนดิบ (เต็ม 100) และเปอร์เซ็นต์ (%) พัฒนาการเป็นหลัก'
-                    : 'ระดับประถมศึกษา (ป.1–ป.6): ตัดสินผลการเรียน "รายปี" ใช้เกรด 0–4 ควบคู่คะแนนดิบ (เต็ม 100) / เปอร์เซ็นต์ (%)'
-                  : 'ระดับมัธยมศึกษา (ม.1–ม.6): ตัดสินผล "รายภาคเรียน" (เกรด 0–4) และคำนวณ GPA / GPAX ถ่วงน้ำหนักหน่วยกิตสำหรับยื่นศึกษาต่อ/TCAS'}
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 sm:grid-cols-3 print:hidden">
-            <label className="min-w-0">
-              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">ห้องเรียน</span>
-              <select
-                value={gradeRoomFilter}
-                onChange={(event) => {
-                  setGradeRoomFilter(event.target.value);
-                  setGradePage(0);
-                }}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
-              >
-                <option value="all">ทุกห้อง</option>
-                {gradeRoomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
-              </select>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">ระดับชั้น</span>
-              <select
-                value={gradeLevelFilter}
-                onChange={(event) => {
-                  setGradeLevelFilter(event.target.value);
-                  setGradePage(0);
-                }}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
-              >
-                <option value="all">ทุกระดับชั้น</option>
-                {gradeLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
-              </select>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">สถานะเวลาเรียน</span>
-              <select
-                value={gradeEligibilityFilter}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value === 'all' || value === 'eligible' || value === 'at_risk') {
-                    setGradeEligibilityFilter(value);
-                  }
-                  setGradePage(0);
-                }}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
-              >
-                <option value="all">ทุกสถานะ</option>
-                <option value="eligible">มีสิทธิ์สอบ (เวลาเรียนถึงเกณฑ์)</option>
-                <option value="at_risk">เสี่ยง มส. (เวลาเรียนไม่ถึง 80%)</option>
-              </select>
-            </label>
-            <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] sm:col-span-3">
-              <span>แสดง {filteredGradebookRows.length} / {gradebookRows.length} คน</span>
-              {(gradeRoomFilter !== 'all' || gradeLevelFilter !== 'all' || gradeEligibilityFilter !== 'all') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGradeRoomFilter('all');
-                    setGradeLevelFilter('all');
-                    setGradeEligibilityFilter('all');
-                    setGradePage(0);
-                  }}
-                  className="font-semibold text-[var(--color-primary-text)] hover:underline"
-                >
-                  ล้างตัวกรอง
-                </button>
-              )}
-            </div>
-          </div>
 
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">
@@ -1643,11 +1766,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </table>
           </div>
 
-          {/* MOBILE VIEW (< 768px): Card List View for Easy Touch Interaction */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-2.5">
             {filteredGradebookRows.length === 0 ? (
               <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">
-                {gradebookRows.length === 0 ? 'ไม่มีข้อมูลผลการเรียนในรายวิชานี้' : 'ไม่พบรายการที่ตรงกับตัวกรองที่เลือก'}
+                {gradebookRows.length === 0 ? 'ไม่มีข้อมูลผลการเรียนในรายวิชานี้' : 'ไม่พบรายการที่ตรงกับคำค้นหาหรือตัวกรองที่เลือก'}
               </p>
             ) : (
               filteredGradebookRows.map(({ grade, student }, index) => {
@@ -1655,7 +1777,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 if (!isVisible) return null;
 
                 return (
-                  <div key={grade.id} className="p-3.5 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-3">
+                  <div key={grade.id} className="p-3 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shadow-sm space-y-2.5">
                     {/* Student Info Top */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -1797,6 +1919,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               })
             )}
           </div>
+          {renderPageControls(currentGradePage, filteredGradebookRows.length, gradePageSize, setGradePage, 'Gradebook pages')}
+          </div>
         </div>
       )}
 
@@ -1815,6 +1939,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           currentPp5Page={currentPp5Page}
           pp5PageSize={pp5PageSize}
           setPp5Page={setPp5Page}
+          searchQuery={studentSearchTerm}
           renderPageControls={renderPageControls}
         />
       )}
@@ -1842,7 +1967,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           ปพ.3 ออนไลน์: แบบรายงานผู้สำเร็จการศึกษา (ป.6, ม.3, ม.6)
          ======================================================== */}
       {activeTab === 'pp3_online' && (
-        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4 print:bg-white print:text-slate-900 print:border-none print:shadow-none print:overflow-visible">
+        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-3 sm:p-4 shadow-xs overflow-y-auto space-y-3 print:bg-white print:text-slate-900 print:border-none print:shadow-none print:overflow-visible">
           {/* Official Print Header (also serves as formal MOE document header) */}
           <div className="hidden print:block text-center border-b-2 border-slate-900 pb-3 mb-2">
             <div className="flex items-center justify-center gap-3">
@@ -1856,91 +1981,71 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <p className="text-[10px]">เอกสารเตรียมตรวจ ไม่ใช่แบบ ปพ.๓ ทางราชการที่รับรองแล้ว</p>
           </div>
 
-          {/* Header & Filter Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4 print:hidden">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                  ทะเบียนเตรียมข้อมูล • ตรวจทานก่อนยื่น
-                </span>
-                <h2 className="text-base font-bold text-[var(--color-text-title)]">
-                  เตรียมข้อมูลแบบรายงานผู้สำเร็จการศึกษา (ปพ.3)
-                </h2>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                แสดงข้อมูลจากทะเบียนของโรงเรียนที่เลือก; ตรวจสอบข้อมูลและใช้แบบฟอร์มทางการของหน่วยงานก่อนลงนามหรือยื่น
-              </p>
+          {/* Compact Header, Search & Level Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2.5 print:hidden">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 shrink-0">
+                ปพ.3 เตรียมข้อมูล
+              </span>
+              <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                แบบรายงานผู้สำเร็จการศึกษา ({pp3EligibleStudents.length} คน)
+              </h2>
             </div>
 
-            {/* Level Filter Chips */}
-            <div className="flex items-center gap-1.5 bg-[var(--color-card-subtle)] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
-              <span className="text-[11px] font-bold px-2 text-[var(--color-text-muted)]">ระดับชั้นจบ:</span>
-              <button
-                type="button"
-                onClick={() => setPp3LevelFilter('all')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  pp3LevelFilter === 'all'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ทั้งหมด
-              </button>
-              <button
-                type="button"
-                onClick={() => setPp3LevelFilter('p6')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  pp3LevelFilter === 'p6'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ป.6 (ประถมศึกษา)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPp3LevelFilter('m3')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  pp3LevelFilter === 'm3'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ม.3 (มัธยมศึกษาตอนต้น)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPp3LevelFilter('m6')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  pp3LevelFilter === 'm6'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ม.6 (มัธยมศึกษาตอนปลาย)
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20">
-              <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">นักเรียนในระดับชั้นที่เลือก</div>
-              <div className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mt-0.5">
-                {pp3EligibleStudents.length} คน
+            <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-end">
+              <div className="relative w-full sm:w-52">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                <input
+                  type="text"
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                  placeholder="ค้นหาชื่อ รหัส ปชช. ห้อง..."
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                />
+                {studentSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการอนุมัติ</div>
-              <div className="text-sm font-bold text-amber-700 mt-1">ต้องตรวจสอบก่อนอนุมัติ</div>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">วันที่อนุมัติจบการศึกษา</div>
-              <div className="text-sm font-bold text-[var(--color-text-title)] mt-1">แสดงเมื่อมีการบันทึกข้อมูลจริง</div>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">ปีการศึกษาจากค่าตั้งโรงเรียน</div>
-              <div className="text-sm font-mono font-bold text-[var(--color-primary-text)] mt-1">ปีการศึกษา {systemConfig.academicYear}</div>
+
+              <select
+                value={pp3RoomFilter}
+                onChange={(e) => setPp3RoomFilter(e.target.value)}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+              >
+                <option value="all">ทุกห้อง</option>
+                {pp3RoomOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+
+              <div className="flex items-center gap-1 bg-[var(--color-card-subtle)] p-0.5 rounded-lg border border-[var(--color-border)] shrink-0">
+                {([
+                  { id: 'all', label: 'ทั้งหมด' },
+                  { id: 'p6', label: 'ป.6' },
+                  { id: 'm3', label: 'ม.3' },
+                  { id: 'm6', label: 'ม.6' },
+                ] as const).map((lv) => (
+                  <button
+                    key={lv.id}
+                    type="button"
+                    onClick={() => {
+                      setPp3LevelFilter(lv.id);
+                      setPp3RoomFilter('all');
+                    }}
+                    className={`px-2 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                      pp3LevelFilter === lv.id
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                    }`}
+                  >
+                    {lv.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -1949,15 +2054,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <table className="table-comfortable w-full text-xs text-left">
               <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                 <tr>
-                  <th className="py-2.5 px-3 w-12 text-center">ลำดับ</th>
-                  <th className="py-2.5 px-3">เลขประจำตัวนักเรียน</th>
-                  <th className="py-2.5 px-3">เลขประจำตัวประชาชน (13 หลัก DMC)</th>
-                  <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
-                  <th className="py-2.5 px-3">ระดับชั้น</th>
-                  <th className="py-2.5 px-3 text-center">GPAX / ร้อยละสะสม</th>
-                  <th className="py-2.5 px-3">เลขที่ชุด / เล่มที่ ปพ.3</th>
-                  <th className="py-2.5 px-3 text-center">สถานะอนุมัติ</th>
-                  <th className="py-2.5 px-3 text-right">รายงาน ปพ.1</th>
+                  <th className="py-2 px-3 w-12 text-center">ลำดับ</th>
+                  <th className="py-2 px-3">เลขประจำตัวนักเรียน</th>
+                  <th className="py-2 px-3">เลขประจำตัวประชาชน (13 หลัก DMC)</th>
+                  <th className="py-2 px-3">ชื่อ-นามสกุล</th>
+                  <th className="py-2 px-3">ระดับชั้น</th>
+                  <th className="py-2 px-3 text-center">GPAX / ร้อยละสะสม</th>
+                  <th className="py-2 px-3">เลขที่ชุด / เล่มที่ ปพ.3</th>
+                  <th className="py-2 px-3 text-center">สถานะอนุมัติ</th>
+                  <th className="py-2 px-3 text-right">รายงาน ปพ.1</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -1968,23 +2073,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     grades,
                     gradingSystem: systemConfig.gradingSystem,
                   });
-                  const effectiveGpax = summary.gpax ?? Number(stu.gpa || 0);
+                  const hasRealGpa = summary.hasRecordedGrades && summary.gpax !== null;
+                  const effectiveGpax = hasRealGpa && summary.gpax !== null ? summary.gpax : 0;
                   const primaryFeedback = getRawScoreFeedback(summary.averageRawScore);
                   return (
                     <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
-                      <td className="py-2.5 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{stu.nationalId || '—'}</td>
-                      <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
+                      <td className="py-2 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
+                      <td className="py-2 px-3 font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</td>
+                      <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{stu.nationalId || '—'}</td>
+                      <td className="py-2 px-3 font-semibold text-[var(--color-text-title)]">
                         {getStudentShortPrefixTh(stu)} {stu.firstNameTh} {stu.lastNameTh}
                         <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-2 px-3">
                         <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-medium">
                           {stu.gradeLevel} ({stu.room})
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                      <td className="py-2 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">
                         {summary.hideGpaCalculations ? (
                           summary.averageRawScore !== null ? (
                             <div>
@@ -1996,21 +2102,23 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           ) : (
                             <span className="text-xs text-[var(--color-text-muted)]">รอประเมิน (รายปี)</span>
                           )
-                        ) : (
+                        ) : hasRealGpa ? (
                           effectiveGpax.toFixed(2)
+                        ) : (
+                          <span className="text-[var(--color-text-muted)] font-normal">—</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-xs">
+                      <td className="py-2 px-3 font-mono text-xs">
                         <span className="font-semibold text-slate-800 dark:text-slate-200">ยังไม่กำหนด</span>
                         <span className="text-[10px] text-[var(--color-text-muted)] block">กรอกหลังออกเลขทะเบียนจริง</span>
                       </td>
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-2 px-3 text-center">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                           รอตรวจสอบข้อมูล
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-2 px-3 text-right">
                         <button
                           type="button"
                           onClick={() => onOpenReportCard(stu)}
@@ -2028,21 +2136,21 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* Official Pp.3 Certification Signature Footer */}
           <div className="grid grid-cols-1 sm:grid-cols-3 border border-[var(--color-border)] rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)] text-xs text-center bg-[var(--color-card-subtle)] print:bg-white print:border-slate-700 print:divide-slate-700">
-            <div className="p-4 space-y-8">
+            <div className="p-3 space-y-6">
               <p className="font-bold text-[var(--color-text-title)] print:text-slate-900">นายทะเบียนโรงเรียน</p>
               <div>
                 <div className="border-b border-dotted border-slate-400 w-40 mx-auto mb-1"></div>
                 <p className="text-[11px] text-[var(--color-text-muted)] print:text-slate-700">วันที่ ....... / ............ / ...........</p>
               </div>
             </div>
-            <div className="p-4 space-y-8">
+            <div className="p-3 space-y-6">
               <p className="font-bold text-[var(--color-text-title)] print:text-slate-900">หัวหน้าฝ่ายวิชาการ / วัดผล</p>
               <div>
                 <div className="border-b border-dotted border-slate-400 w-40 mx-auto mb-1"></div>
                 <p className="text-[11px] text-[var(--color-text-muted)] print:text-slate-700">วันที่ ....... / ............ / ...........</p>
               </div>
             </div>
-            <div className="p-4 space-y-8">
+            <div className="p-3 space-y-6">
               <p className="font-bold text-[var(--color-text-title)] print:text-slate-900">ผู้อำนวยการสถานศึกษา (ผู้อนุมัติจบ)</p>
               <div>
                 <div className="border-b border-dotted border-slate-400 w-40 mx-auto mb-1"></div>
@@ -2057,85 +2165,66 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           สทศ. O-NET: ระบบส่งข้อมูลสอบระดับชาติและการประเมินผล
          ======================================================== */}
       {activeTab === 'onet_niets' && (
-        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs overflow-y-auto space-y-4">
-          {/* Header & Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">
-                  สทศ. (NIETS)
-                </span>
-                <h2 className="text-base font-bold text-[var(--color-text-title)]">
-                  ระบบจัดส่งข้อมูลการสอบและผลคะแนน O-NET (สถาบันทดสอบทางการศึกษาแห่งชาติ)
-                </h2>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                นำเข้า-ส่งออกรายชื่อผู้มีสิทธิ์สอบ O-NET ระดับชั้น ป.6, ม.3, ม.6 พร้อมบันทึกคะแนน 4 กลุ่มสาระวิชาหลัก
-              </p>
+        <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-3 sm:p-4 shadow-xs overflow-y-auto space-y-3">
+          {/* Header, Search & Level Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
+                สทศ. O-NET
+              </span>
+              <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                ข้อมูลสอบระดับชาติ ({onetRows.length} คน · เฉลี่ย {onetOverallAverage ? `${onetOverallAverage}%` : '—'})
+              </h2>
             </div>
 
-            {/* Level Selector */}
-            <div className="flex items-center gap-1.5 bg-[var(--color-card-subtle)] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
-              <span className="text-[11px] font-bold px-2 text-[var(--color-text-muted)]">ระดับชั้นสอบ:</span>
-              <button
-                type="button"
-                onClick={() => setOnetLevelFilter('p6')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  onetLevelFilter === 'p6'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ป.6
-              </button>
-              <button
-                type="button"
-                onClick={() => setOnetLevelFilter('m3')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  onetLevelFilter === 'm3'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ม.3
-              </button>
-              <button
-                type="button"
-                onClick={() => setOnetLevelFilter('m6')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  onetLevelFilter === 'm6'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                ม.6
-              </button>
-            </div>
-          </div>
+            <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-end">
+              <div className="relative w-full sm:w-52">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                <input
+                  type="text"
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                  placeholder="ค้นหาชื่อ รหัส ปชช. ห้อง..."
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                />
+                {studentSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
 
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)]">
-              <div className="text-[11px] font-bold text-[var(--color-primary-text)]">ผู้มีสิทธิ์สอบ {onetLevelFilter.toUpperCase()}</div>
-              <div className="text-xl font-bold text-[var(--color-primary-text)] dark:text-blue-100 mt-0.5">
-                {onetRows.length} คน
-              </div>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">รหัสสนามสอบ สทศ.</div>
-              <div className="text-sm font-mono font-bold text-[var(--color-text-title)] mt-1">1001-01 (ศูนย์สอบหลัก)</div>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">คะแนนเฉลี่ยรวมทุกวิชา</div>
-              <div className="text-xl font-bold text-[var(--color-primary-text)] mt-0.5">
-                {onetOverallAverage ? `${onetOverallAverage}%` : '—'}
-              </div>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการส่งข้อมูล สทศ.</div>
-              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>ยืนยันข้อมูลเรียบร้อย</span>
+              <select
+                value={onetRoomFilter}
+                onChange={(e) => setOnetRoomFilter(e.target.value)}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
+              >
+                <option value="all">ทุกห้อง</option>
+                {onetRoomOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+
+              <div className="flex items-center gap-1 bg-[var(--color-card-subtle)] p-0.5 rounded-lg border border-[var(--color-border)] shrink-0">
+                {(['p6', 'm3', 'm6'] as const).map((lv) => (
+                  <button
+                    key={lv}
+                    type="button"
+                    onClick={() => {
+                      setOnetLevelFilter(lv);
+                      setOnetRoomFilter('all');
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                      onetLevelFilter === lv
+                        ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                    }`}
+                  >
+                    {lv === 'p6' ? 'ป.6' : lv === 'm3' ? 'ม.3' : 'ม.6'}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

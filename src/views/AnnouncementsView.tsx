@@ -107,53 +107,67 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   });
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-3 app-page-header">
-        <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
-          <BellRing className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-          <span>School Announcements &amp; Broadcast</span>
+    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
+        <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+          <BellRing className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <span>ประกาศและข่าวสารโรงเรียน</span>
         </h1>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setShowCategoryModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
-          >
-            <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-            <span>จัดการหมวดประกาศ</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowConsentModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>สร้างหนังสือขออนุญาตผู้ปกครอง</span>
-          </button>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <details className="relative">
+            <summary className="list-none flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap">
+              <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              <span>เครื่องมือ</span>
+            </summary>
+            <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                  setShowCategoryModal(true);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+              >
+                <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                <span>จัดการหมวดประกาศ</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                  setShowConsentModal(true);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>สร้างหนังสือขออนุญาตผู้ปกครอง</span>
+              </button>
+            </div>
+          </details>
           <button
             type="button"
             onClick={() => {
               setAllowDuplicateConfirm(false);
               setShowComposeModal(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Publish Broadcast</span>
           </button>
         </div>
       </div>
 
       {broadcastToast && (
-        <div className="shrink-0 p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2 font-medium">
+        <div className="shrink-0 p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2 font-medium">
           <MessageSquare className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
           <span>{broadcastToast}</span>
         </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3">
+      <div className="shrink-0 p-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           {['all', 'students', 'parents', 'teachers'].map((aud) => (
             <button

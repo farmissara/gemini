@@ -515,8 +515,8 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     ) : (
                       <div>
                         <span className="text-[11px] text-[var(--color-text-muted)] block">เกรดเฉลี่ยสะสม (GPAX)</span>
-                        <span className="text-xl font-bold font-mono text-[var(--color-primary-text)]">
-                          {(summary?.gpax ?? Number(student?.gpa || 0)).toFixed(2)}
+                        <span className="text-xl font-bold font-mono text-[var(--color-primary-text)] tabular-nums">
+                          {summary?.hasRecordedGrades && summary?.gpax !== null ? summary.gpax.toFixed(2) : '—'}
                         </span>
                       </div>
                     )}
