@@ -36,7 +36,9 @@ import {
   BookOpen,
   GraduationCap,
   ClipboardList,
-  Printer
+  Printer,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -105,6 +107,8 @@ interface DashboardViewProps {
   periodAttendance?: PeriodAttendanceRecord[];
   schoolPeriods?: SchoolPeriodTime[];
   onSelectStudent?: (student: Student) => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -131,7 +135,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   periodAttendance = [],
   schoolPeriods = [],
   onSelectStudent,
+  focusMode: controlledFocusMode,
+  onToggleFocusMode,
 }) => {
+  const [localFocusMode, setLocalFocusMode] = useState(false);
+  const isFocusMode = typeof controlledFocusMode === 'boolean' ? controlledFocusMode : localFocusMode;
+  const handleToggleFocus = () => {
+    if (onToggleFocusMode) {
+      onToggleFocusMode();
+    } else {
+      setLocalFocusMode((prev) => !prev);
+    }
+  };
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
   const twoDaysAgoStr = getLocalDateString(new Date(Date.now() - 2 * 86400000));
@@ -504,43 +519,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              emitMascotDashboardEvent({
-                type: 'success',
-                titleTh: 'เตรียมพิมพ์แดชบอร์ดพร้อมแล้ว',
-                titleEn: 'Dashboard Print Ready',
-                messageTh: 'จัดหน้าสำหรับพิมพ์รายงาน PDF เรียบร้อย — ชาร์โคล & หมีเอาใจช่วย!',
-                messageEn: 'Print layout prepared for administrative PDF export.',
-              });
-              window.print();
-            }}
-            className="btn-tool-tone"
-            title={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
+            data-guide-id="dashboard-focus-toggle"
+            aria-pressed={isFocusMode}
+            onClick={handleToggleFocus}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+              isFocusMode
+                ? 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 shadow-xs'
+                : 'border-[var(--color-border)] bg-white/85 dark:bg-slate-800/80 text-[var(--color-text-title)] hover:bg-sky-50 dark:hover:bg-slate-700'
+            }`}
+            title={
+              isFocusMode
+                ? lang === 'th'
+                  ? 'ออกจากโหมดโฟกัส (แสดงเมนูข้างและการแจ้งเตือนทั้งหมด)'
+                  : 'Exit Focus Mode'
+                : lang === 'th'
+                ? 'เปิดโหมดโฟกัส: พับเมนูข้างและการแจ้งเตือนเพื่อขยายพื้นที่จัดการงาน'
+                : 'Focus Mode: collapse sidebars & notification panels'
+            }
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'พิมพ์แดชบอร์ด' : 'Print Dashboard'}</span>
+            {isFocusMode ? (
+              <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <Maximize2 className="w-3.5 h-3.5 shrink-0 text-sky-700 dark:text-sky-300" />
+            )}
+            <span>
+              {isFocusMode
+                ? lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'
+                : lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}
+            </span>
           </button>
 
-          {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
-            <button
-              type="button"
-              onClick={() => onNavigate('executive_monitor')}
-              className="hidden md:inline-flex btn-tool-tone"
-              title={lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}
-            >
-              <Monitor className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'จอทีวี' : 'TV'}</span>
-            </button>
+          {!isFocusMode && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  emitMascotDashboardEvent({
+                    type: 'success',
+                    titleTh: 'เตรียมพิมพ์แดชบอร์ดพร้อมแล้ว',
+                    titleEn: 'Dashboard Print Ready',
+                    messageTh: 'จัดหน้าสำหรับพิมพ์รายงาน PDF เรียบร้อย — ชาร์โคล & หมีเอาใจช่วย!',
+                    messageEn: 'Print layout prepared for administrative PDF export.',
+                  });
+                  window.print();
+                }}
+                className="btn-tool-tone"
+                title={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'พิมพ์แดชบอร์ด' : 'Print Dashboard'}</span>
+              </button>
+
+              {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('executive_monitor')}
+                  className="hidden md:inline-flex btn-tool-tone"
+                  title={lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}
+                >
+                  <Monitor className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'จอทีวี' : 'TV'}</span>
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
 
       {/* Main Tab Panels Container */}
-      <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto pr-1 dash-scroll-stack">
+      <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto pr-1 pb-16 dash-scroll-stack">
         {/* TAB 1: CLEAN 2-COLUMN (50% / 50%) FROSTED ARCHITECTURE */}
         {dashboardTab === 'overview' && (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
-            {unclaimedCentralPacksCount > 0 &&
+            {!isFocusMode && unclaimedCentralPacksCount > 0 &&
               (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
                 <div className="no-print frosted-card frosted-amber px-3.5 py-2.5 rounded-[var(--dash-card-radius)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
                   <div className="flex items-center gap-2.5 text-[#1e293b] dark:text-amber-100 font-semibold">
@@ -570,8 +621,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               )}
 
-            {/* 3-Step Onboarding Checklist (Visible for Admins when incomplete) */}
-            {showOnboardingCard && (
+            {/* 3-Step Onboarding Checklist (Collapsed in Focus Mode) */}
+            {!isFocusMode && showOnboardingCard && (
               <div className="no-print frosted-card dash-card dash-card-stack">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -645,8 +696,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             )}
 
+            {/* Focus Mode Banner: Maximized Task Management Indicator */}
+            {isFocusMode && (
+              <div className="no-print frosted-card frosted-blue px-3.5 py-2 rounded-[var(--dash-card-radius)] flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 text-[#0f172a] dark:text-slate-100 font-semibold min-w-0">
+                  <Maximize2 className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <span className="truncate">
+                    {lang === 'th'
+                      ? 'โหมดโฟกัสเปิดอยู่ — พับแถบเมนูข้างและการแจ้งเตือนรองเพื่อขยายพื้นที่จัดการงานหลัก'
+                      : 'Focus Mode Active — secondary sidebars & notification panels collapsed for active task management'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleFocus}
+                  className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {lang === 'th' ? 'แสดงแถบข้าง & ทั้งหมด' : 'Restore Full View'}
+                </button>
+              </div>
+            )}
+
             {/* Morning 3-Minute Digest + Compact BaanPakKru Playyard Side-by-Side */}
-            <div className={`no-print grid grid-cols-1 ${isStaffUser && !playyardCollapsed ? 'xl:grid-cols-[1.08fr_0.92fr]' : ''} gap-2.5 items-stretch`}>
+            <div className={`no-print grid grid-cols-1 ${isStaffUser && !playyardCollapsed && !isFocusMode ? 'xl:grid-cols-[1.08fr_0.92fr]' : ''} gap-2.5 items-stretch`}>
               {isStaffUser && (
                 <section
                   aria-label={lang === 'th' ? 'สรุปงานเช้า 3 นาทีสำหรับครู' : 'Morning 3-Minute Teacher Digest'}
@@ -673,21 +745,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = !playyardCollapsed;
-                        setPlayyardCollapsed(next);
-                        if (typeof window !== 'undefined') {
-                          window.localStorage.setItem('baanpakkru_playyard_collapsed', next ? '1' : '0');
-                        }
-                      }}
-                      className="shrink-0 px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-800 bg-white/80 dark:bg-slate-800/80 text-[10px] font-bold text-sky-800 dark:text-sky-200 hover:bg-sky-50 cursor-pointer whitespace-nowrap"
-                    >
-                      {playyardCollapsed
-                        ? lang === 'th' ? 'เปิดมุมพักใจ' : 'Show Playyard'
-                        : lang === 'th' ? 'พับมุมพักใจ' : 'Hide Playyard'}
-                    </button>
+                    {!isFocusMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !playyardCollapsed;
+                          setPlayyardCollapsed(next);
+                          if (typeof window !== 'undefined') {
+                            window.localStorage.setItem('baanpakkru_playyard_collapsed', next ? '1' : '0');
+                          }
+                        }}
+                        className="shrink-0 px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-800 bg-white/80 dark:bg-slate-800/80 text-[10px] font-bold text-sky-800 dark:text-sky-200 hover:bg-sky-50 cursor-pointer whitespace-nowrap"
+                      >
+                        {playyardCollapsed
+                          ? lang === 'th' ? 'เปิดมุมพักใจ' : 'Show Playyard'
+                          : lang === 'th' ? 'พับมุมพักใจ' : 'Hide Playyard'}
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -721,8 +795,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </section>
               )}
 
-              {/* BaanPakKru Interactive Playyard: Charcoal, Mee & JidRid Chicks */}
-              {!playyardCollapsed && (
+              {/* BaanPakKru Interactive Playyard: Hidden in Focus Mode */}
+              {!isFocusMode && !playyardCollapsed && (
                 <BaanPakKruPlayyard
                   variant="dashboard"
                   compact
@@ -744,10 +818,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* ==============================================================
-                MAIN 2-COLUMN WORKSPACE (50% / 50%)
+                MAIN 2-COLUMN WORKSPACE (Maximized Task Focus when Focus Mode ON)
                ============================================================== */}
-            <div className="dashboard-print-grid relative dash-grid grid-cols-1 lg:grid-cols-2 items-start">
-              <DashboardAmbientMascots lang={lang} />
+            <div className={`dashboard-print-grid relative dash-grid grid-cols-1 ${isFocusMode ? 'lg:grid-cols-[0.88fr_1.12fr]' : 'lg:grid-cols-2'} items-start`}>
+              {!isFocusMode && <DashboardAmbientMascots lang={lang} />}
               {/* ──────────────────────────────────────────────────────────
                   LEFT COLUMN (50%): School Overview (Blue) + Attendance & Parent Link (Green)
                  ────────────────────────────────────────────────────────── */}
@@ -1021,7 +1095,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Hairline Separator */}
+                  {/* Hairline Separator + Guardian LINE Sync Status (collapsed in Focus Mode) */}
+                  {!isFocusMode && (
                   <div className="dash-footer-divider border-t border-emerald-200/75 dark:border-emerald-800/50 space-y-2.5">
                     {/* Part B: Guardian LINE Sync Status */}
                     <div className="flex items-center justify-between gap-3">
@@ -1069,6 +1144,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </button>
                     </div>
                   </div>
+                  )}
                 </section>
               </div>
 
@@ -1245,7 +1321,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </section>
 
-                    {/* Sub-card 2: Soft Orange — Priority Actions */}
+                    {/* Sub-card 2: Soft Orange — Priority Actions (Expanded in Focus Mode) */}
                     {isStaffUser && (
                       <PriorityActionWidget
                         students={students}
@@ -1259,79 +1335,83 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         lang={lang}
                         onNavigate={onNavigate}
                         onSelectStudent={onSelectStudent}
-                        compact
+                        compact={!isFocusMode}
                       />
                     )}
                   </div>
                 </div>
 
-                {/* 4. RIGHT BOTTOM — YELLOW/GOLD GROUP: COMPARISON CHARTS */}
-                <div className="dash-substack">
-                  <GradeLevelAnalyticsChart
-                    students={students}
-                    attendance={scopedAttendance}
-                    courses={courses}
-                    grades={grades}
-                    systemConfig={systemConfig}
-                    lang={lang}
-                  />
-
-                  <D3DailyAttendanceLineChart
-                    students={students}
-                    attendance={scopedAttendance}
-                    lang={lang}
-                  />
-                </div>
-
-                {/* Optional Secondary Collapsible Analytics (Monthly Trend & Milestones) */}
-                <details
-                  data-guide-id="dashboard-charts"
-                  className="no-print group frosted-card rounded-[var(--dash-card-radius)] overflow-hidden"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-white/60 dark:hover:bg-slate-800/40">
-                    <div>
-                      <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
-                        {lang === 'th'
-                          ? 'แนวโน้มรายเดือน & ความสำเร็จผู้เรียนเพิ่มเติม'
-                          : 'Monthly Attendance Trends & Student Milestones'}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-[#475569] dark:text-slate-300">
-                        {lang === 'th'
-                          ? 'เปิดดูกราฟสถิติรายเดือนและข้อมูลเชิงลึกเมื่อต้องการ'
-                          : 'Expand monthly chart and student milestone progress'}
-                      </span>
-                    </div>
-                    <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
-                      <span>{lang === 'th' ? 'ดูเพิ่มเติม' : 'Expand'}</span>
-                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                    </span>
-                  </summary>
-                  <div className="border-t border-slate-200/80 dark:border-slate-700/60 p-3.5 dash-substack">
-                    <MonthlyAttendanceChart
-                      attendance={scopedAttendance}
-                      students={students}
-                      lang={lang}
-                      selectedDate={selectedDate}
-                      onSelectDate={(date) => setSelectedDate(date)}
-                    />
-                    {playerScores.length > 0 && (
-                      <MilestoneAchievementsPanel
-                        playerScores={playerScores}
+                {/* 4. RIGHT BOTTOM — YELLOW/GOLD GROUP: COMPARISON CHARTS (Collapsed in Focus Mode) */}
+                {!isFocusMode && (
+                  <>
+                    <div className="dash-substack">
+                      <GradeLevelAnalyticsChart
                         students={students}
                         attendance={scopedAttendance}
+                        courses={courses}
                         grades={grades}
-                        currentUser={currentUser}
+                        systemConfig={systemConfig}
                         lang={lang}
-                        onLogLibraryVisit={(userId) =>
-                          onRecordMilestoneActivity?.(userId, 'library_visit')
-                        }
-                        onQuickAttendanceForMilestone={(studentId, userId) =>
-                          onRecordMilestoneActivity?.(userId, 'attendance', studentId)
-                        }
                       />
-                    )}
-                  </div>
-                </details>
+
+                      <D3DailyAttendanceLineChart
+                        students={students}
+                        attendance={scopedAttendance}
+                        lang={lang}
+                      />
+                    </div>
+
+                    {/* Optional Secondary Collapsible Analytics (Monthly Trend & Milestones) */}
+                    <details
+                      data-guide-id="dashboard-charts"
+                      className="no-print group frosted-card rounded-[var(--dash-card-radius)] overflow-hidden"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-white/60 dark:hover:bg-slate-800/40">
+                        <div>
+                          <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                            {lang === 'th'
+                              ? 'แนวโน้มรายเดือน & ความสำเร็จผู้เรียนเพิ่มเติม'
+                              : 'Monthly Attendance Trends & Student Milestones'}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-[#475569] dark:text-slate-300">
+                            {lang === 'th'
+                              ? 'เปิดดูกราฟสถิติรายเดือนและข้อมูลเชิงลึกเมื่อต้องการ'
+                              : 'Expand monthly chart and student milestone progress'}
+                          </span>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                          <span>{lang === 'th' ? 'ดูเพิ่มเติม' : 'Expand'}</span>
+                          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                        </span>
+                      </summary>
+                      <div className="border-t border-slate-200/80 dark:border-slate-700/60 p-3.5 dash-substack">
+                        <MonthlyAttendanceChart
+                          attendance={scopedAttendance}
+                          students={students}
+                          lang={lang}
+                          selectedDate={selectedDate}
+                          onSelectDate={(date) => setSelectedDate(date)}
+                        />
+                        {playerScores.length > 0 && (
+                          <MilestoneAchievementsPanel
+                            playerScores={playerScores}
+                            students={students}
+                            attendance={scopedAttendance}
+                            grades={grades}
+                            currentUser={currentUser}
+                            lang={lang}
+                            onLogLibraryVisit={(userId) =>
+                              onRecordMilestoneActivity?.(userId, 'library_visit')
+                            }
+                            onQuickAttendanceForMilestone={(studentId, userId) =>
+                              onRecordMilestoneActivity?.(userId, 'attendance', studentId)
+                            }
+                          />
+                        )}
+                      </div>
+                    </details>
+                  </>
+                )}
               </div>
             </div>
 

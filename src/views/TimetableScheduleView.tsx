@@ -33,6 +33,7 @@ import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, 
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -295,6 +296,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     .sort((a, b) => a.localeCompare(b, 'th'));
 
   const [showAddModal, setShowAddModal] = useState(false);
+
+  useQuickActionListener('timetable', (action) => {
+    if (action === 'open_add_slot' && canEditTimetableSlots) {
+      setShowAddModal(true);
+    } else if (action === 'mode_classroom') {
+      handleViewModeChange('classroom');
+    } else if (action === 'mode_workload') {
+      handleViewModeChange('workload');
+    } else if (action === 'mode_substitute') {
+      handleViewModeChange('substitute');
+    } else if (action === 'mode_hours_criteria') {
+      handleViewModeChange('hours_criteria');
+    } else if (action === 'open_import_export') {
+      setShowImportExportModal(true);
+    }
+  });
   const [showScheduleSettingsModal, setShowScheduleSettingsModal] = useState(false);
   const [scheduleFilterDraft, setScheduleFilterDraft] = useState<TimetableScheduleFilters>({
     gradeLevel: '',

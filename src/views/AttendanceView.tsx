@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
@@ -165,6 +166,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [importSuccessNotice, setImportSuccessNotice] = useState<string | null>(null);
+
+  useQuickActionListener('attendance', (action) => {
+    if (action === 'open_rapid_scanner') {
+      setActiveTab('gate_scanner');
+      setShowRapidScannerModal(true);
+    } else if (action === 'tab_leave_approval') {
+      setActiveTab('leave_approval');
+    } else if (action === 'tab_period_qr') {
+      setActiveTab('period_qr');
+    } else if (action === 'tab_export_reports') {
+      setActiveTab('export_reports');
+    }
+  });
 
   // Scanner state (Staff must enter Student ID before check-in; Students only see themselves)
   const [scannerStudentIdInput, setScannerStudentIdInput] = useState<string>('');

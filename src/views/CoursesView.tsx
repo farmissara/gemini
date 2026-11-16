@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 import { 
   BookOpen, 
   Plus, 
@@ -233,6 +234,12 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     });
     setShowAddModal(true);
   };
+
+  useQuickActionListener('courses', (action) => {
+    if (action === 'open_add_course' && canManageCourses) {
+      handleOpenAddCourse();
+    }
+  });
 
   // Open modal for editing an existing course
   const handleOpenEditCourse = (course: Course) => {

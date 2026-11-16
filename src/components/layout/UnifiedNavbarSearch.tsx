@@ -32,6 +32,7 @@ import {
   courseMatchesTeacherFilter,
   teacherMatchesCourse,
 } from '../../lib/courseTeacherFilter';
+import { OPEN_GLOBAL_SEARCH_EVENT } from '../../lib/quickActionEvents';
 
 export type UnifiedSearchScope = 'all' | 'students' | 'teachers' | 'courses';
 
@@ -194,11 +195,17 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
         inputRef.current?.blur();
       }
     };
+    const handleOpenSearchEvent = () => {
+      setIsOpen(true);
+      window.setTimeout(() => inputRef.current?.focus(), 40);
+    };
     document.addEventListener('mousedown', handleOutside);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener(OPEN_GLOBAL_SEARCH_EVENT, handleOpenSearchEvent);
     return () => {
       document.removeEventListener('mousedown', handleOutside);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener(OPEN_GLOBAL_SEARCH_EVENT, handleOpenSearchEvent);
     };
   }, [isOpen]);
 
@@ -295,8 +302,8 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
       {/* Unified Cross-Module Search & Filter Popover */}
       {isOpen && (
         <div className="fixed lg:absolute left-2 right-2 lg:left-auto lg:right-0 top-12 lg:top-full mt-1.5 z-50 lg:w-[520px] max-w-[96vw] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden flex flex-col max-h-[78vh]">
-          {/* Mobile input bar inside popover */}
-          <div className="lg:hidden p-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center gap-2">
+          {/* Popover input bar when inline xl bar is hidden */}
+          <div className="xl:hidden p-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center gap-2">
             <Search className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
             <input
               type="text"

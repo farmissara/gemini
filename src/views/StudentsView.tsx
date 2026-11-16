@@ -43,6 +43,7 @@ import {
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
@@ -680,6 +681,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     ]);
     setShowAddModal(true);
   };
+
+  useQuickActionListener('students', (action) => {
+    if (action === 'open_add_student') {
+      handleOpenAdd();
+    } else if (action === 'open_bulk_add') {
+      setBulkAddError(null);
+      setShowBulkAddModal(true);
+    } else if (action === 'open_batch_qr') {
+      setShowBatchQrModal(true);
+    } else if (action === 'open_approvals' && canManageApprovals) {
+      setActiveTab('approvals');
+    }
+  });
 
   const handleOpenEdit = (student: Student) => {
     setStudentFormStep(1);

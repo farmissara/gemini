@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Teacher, AppLanguage, UserRole, TeacherPortfolioWork } from '../types';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 import { 
   GraduationCap, 
   Search, 
@@ -294,6 +295,17 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     setEditingTeacher(null);
     setShowAddModal(true);
   };
+
+  useQuickActionListener('teachers', (action) => {
+    if (action === 'open_add_teacher') {
+      handleOpenAdd();
+    } else if (action === 'toggle_view_mode') {
+      setStaffPage('directory');
+      setViewMode((prev) => (prev === 'cards' ? 'table' : 'cards'));
+    } else if (action === 'open_org_chart') {
+      setStaffPage('organization');
+    }
+  });
 
   const handleOpenEdit = (teacher: Teacher) => {
     setTeacherFormStep(1);

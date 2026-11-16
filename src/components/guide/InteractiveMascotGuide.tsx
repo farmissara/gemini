@@ -108,6 +108,7 @@ interface InteractiveMascotGuideProps {
     roleTab?: 'all' | 'teacher' | 'student';
   }) => void;
   dashboardEvent?: MascotDashboardEvent | null;
+  focusMode?: boolean;
 }
 
 interface ActiveHoverTarget {
@@ -141,6 +142,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   onNavigateTab,
   onOpenFullGuide,
   dashboardEvent = null,
+  focusMode = false,
 }) => {
   const tourCtx = useGuideTour();
 
@@ -1963,7 +1965,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
             )}
 
             {/* Live Cartoon Speech Bubble (Event reaction OR Low-GPA Concern OR Hover/Context guide) */}
-            {bubbleMounted && renderedBubble && (
+            {!focusMode && bubbleMounted && renderedBubble && (
               <div
                 data-mascot-no-chase="true"
                 className={`${

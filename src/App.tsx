@@ -98,6 +98,7 @@ import {
 import type { DuplicateRecordReport, DuplicateRecordTarget } from './lib/duplicateRecords';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
+import { QuickActionDock } from './components/layout/QuickActionDock';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
 import { DashboardView } from './views/DashboardView';
@@ -298,6 +299,33 @@ export const App: React.FC = () => {
       // ignore
     }
   }, [isSidebarCollapsed]);
+
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('baanpakkru_focus_mode') === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('baanpakkru_focus_mode', focusMode ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }, [focusMode]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        setFocusMode((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
   const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
@@ -3196,6 +3224,8 @@ export const App: React.FC = () => {
           setProgramMode('school_erp');
           navigateToAppTab(tab);
         }}
+        focusMode={focusMode}
+        onToggleFocusMode={() => setFocusMode((prev) => !prev)}
       />}
       {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
@@ -3209,7 +3239,7 @@ export const App: React.FC = () => {
           <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
         </div>
       )}
-      {!useImmersiveGameLayout && orphanedGrades.length > 0 && (
+      {!useImmersiveGameLayout && !focusMode && orphanedGrades.length > 0 && (
         <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-2 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-900 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
           <span>
             พักการซิงก์ผลการเรียน {orphanedGrades.length} รายการ เพราะไม่พบนักเรียนในทะเบียน
@@ -3227,7 +3257,7 @@ export const App: React.FC = () => {
           )}
         </div>
       )}
-      {!useImmersiveGameLayout && dataSyncWarnings.length > 0 && (
+      {!useImmersiveGameLayout && !focusMode && dataSyncWarnings.length > 0 && (
         <div role="status" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/50 text-[11px] text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -3268,7 +3298,7 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
-      {!useImmersiveGameLayout && isDataReady && !isDemoMode && !dismissedDuplicateWarning &&
+      {!useImmersiveGameLayout && !focusMode && isDataReady && !isDemoMode && !dismissedDuplicateWarning &&
         ['admin', 'super_admin'].includes(currentRole) && duplicateRecordGroupCount > 0 && (
         <section className="shrink-0 mx-3 mt-1 overflow-hidden rounded-xl border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
           <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -3403,8 +3433,8 @@ export const App: React.FC = () => {
         className={`flex-1 flex min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950 overflow-hidden' : (isMobileInDesktopView ? 'overflow-visible' : 'overflow-hidden')}`}
         style={isMobileInDesktopView ? { minWidth: '1120px' } : undefined}
       >
-        {/* Desktop Left Sidebar only shown in School ERP mode */}
-        {!useImmersiveGameLayout && programMode === 'school_erp' && (
+        {/* Desktop Left Sidebar only shown in School ERP mode (collapsed completely in Focus Mode) */}
+        {!useImmersiveGameLayout && !focusMode && programMode === 'school_erp' && (
           <div className={`${isMobileInDesktopView ? 'flex shrink-0' : 'hidden lg:flex shrink-0'}`}>
             <Sidebar
               currentTab={currentTab}
@@ -3425,8 +3455,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-1.5 overflow-visible' : 'app-workspace p-1.5 sm:p-2 overflow-y-auto')}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1680px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-1.5 pb-16 overflow-visible' : 'app-workspace p-1.5 sm:p-2 pb-28 md:pb-16 overflow-y-auto')}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : focusMode ? 'max-w-none mx-auto' : 'max-w-[1680px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1">
                 <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-100 truncate">
@@ -3595,6 +3625,8 @@ export const App: React.FC = () => {
                     periodAttendance={schoolPeriodAttendance}
                     schoolPeriods={schoolPeriods}
                     onSelectStudent={setSelectedStudentForProfile}
+                    focusMode={focusMode}
+                    onToggleFocusMode={() => setFocusMode((prev) => !prev)}
                   />
                 )}
 
@@ -4384,7 +4416,7 @@ export const App: React.FC = () => {
 
       {/* Auto Pop-up Notification for School Admin when New Central Exam Packs (8 Strands) are Published */}
       <CentralExamNotificationPopup
-        isOpen={showCentralExamPopup && currentRole === 'admin' && programMode === 'school_erp'}
+        isOpen={!focusMode && showCentralExamPopup && currentRole === 'admin' && programMode === 'school_erp'}
         schoolName={activeSchool.nameTh}
         unclaimedPacks={unclaimedCentralPacks}
         onClaimFreePack={handleClaimFreeCentralPack}
@@ -4399,6 +4431,43 @@ export const App: React.FC = () => {
           setShowCentralExamPopup(false);
         }}
       />
+
+      {/* Persistent Contextual Quick Action Floating Dock */}
+      {!useImmersiveGameLayout && (
+        <QuickActionDock
+          programMode={programMode}
+          currentTab={currentTab}
+          currentRole={currentRole}
+          isSuperAdminSchoolView={isSuperAdminSchoolView}
+          lang={lang}
+          focusMode={focusMode}
+          onToggleFocusMode={() => setFocusMode((prev) => !prev)}
+          onNavigateTab={(tab) => {
+            setProgramMode('school_erp');
+            navigateToAppTab(tab);
+          }}
+          onSetProgramMode={setProgramMode}
+          onOpenImportExport={
+            currentRole !== 'super_admin' || isSuperAdminSchoolView
+              ? (initialTab) => {
+                  if (initialTab) setImportExportInitialTab(initialTab);
+                  setShowImportExportModal(true);
+                }
+              : undefined
+          }
+          onOpenNotifications={
+            currentRole !== 'super_admin' || isSuperAdminSchoolView
+              ? () => setShowNotificationModal(true)
+              : undefined
+          }
+          pendingLeaveCount={schoolLeaveRequests.filter((l) => l.status === 'pending').length}
+          ungradedHomeworkCount={
+            schoolHomeworkSubmissions.filter((h) => h.status === 'submitted' || h.status === 'late').length
+          }
+          unreadNotifCount={unreadNotifCount}
+          showMobileBottomNav={currentRole !== 'super_admin' || isSuperAdminSchoolView}
+        />
+      )}
 
       {/* Interactive Cartoon Mascot Hover Navigator & In-Module Guide */}
       {!useImmersiveGameLayout && (
@@ -4424,6 +4493,7 @@ export const App: React.FC = () => {
             setGuideModalInitialRoleView(opts?.roleTab);
             setShowGuideModal(true);
           }}
+          focusMode={focusMode}
         />
       )}
 

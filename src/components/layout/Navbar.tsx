@@ -16,7 +16,9 @@ import {
   Sparkles,
   Bell,
   SlidersHorizontal,
-  Compass
+  Compass,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
@@ -63,6 +65,8 @@ interface NavbarProps {
   onOpenStudentProfile?: (student: Student) => void;
   onOpenReportCard?: (student: Student) => void;
   onNavigateTab?: (tab: 'students' | 'teachers' | 'courses' | 'gradebook') => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -99,6 +103,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenStudentProfile,
   onOpenReportCard,
   onNavigateTab,
+  focusMode = false,
+  onToggleFocusMode,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
@@ -163,49 +169,51 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Center: Inline Program Mode Switcher (Desktop) & Quick Search */}
         {canAccessSchoolOperations && (
           <div className="hidden md:flex flex-1 items-center justify-center gap-1.5 min-w-0 px-1">
-            <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
-              <button
-                type="button"
-                data-guide-id="nav-program-school_erp"
-                onClick={() => setProgramMode('school_erp')}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                  programMode === 'school_erp'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                <Building2 className="w-3 h-3 shrink-0" />
-                <span>{lang === 'th' ? 'บริหารโรงเรียน' : 'School SIS'}</span>
-              </button>
+            {!focusMode && (
+              <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
+                <button
+                  type="button"
+                  data-guide-id="nav-program-school_erp"
+                  onClick={() => setProgramMode('school_erp')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
+                    programMode === 'school_erp'
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <Building2 className="w-3 h-3 shrink-0" />
+                  <span>{lang === 'th' ? 'บริหารโรงเรียน' : 'School SIS'}</span>
+                </button>
 
-              <button
-                type="button"
-                data-guide-id="nav-program-lms_classroom"
-                onClick={() => setProgramMode('lms_classroom')}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                  programMode === 'lms_classroom'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                <Laptop className="w-3 h-3 shrink-0" />
-                <span>{lang === 'th' ? 'ห้องเรียน LMS' : 'Virtual LMS'}</span>
-              </button>
+                <button
+                  type="button"
+                  data-guide-id="nav-program-lms_classroom"
+                  onClick={() => setProgramMode('lms_classroom')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
+                    programMode === 'lms_classroom'
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <Laptop className="w-3 h-3 shrink-0" />
+                  <span>{lang === 'th' ? 'ห้องเรียน LMS' : 'Virtual LMS'}</span>
+                </button>
 
-              <button
-                type="button"
-                data-guide-id="nav-program-parent_portal"
-                onClick={() => setProgramMode('parent_portal')}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                  programMode === 'parent_portal'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                <Smartphone className="w-3 h-3 shrink-0" />
-                <span>{lang === 'th' ? 'ผู้ปกครอง' : 'Parent Portal'}</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  data-guide-id="nav-program-parent_portal"
+                  onClick={() => setProgramMode('parent_portal')}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
+                    programMode === 'parent_portal'
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <Smartphone className="w-3 h-3 shrink-0" />
+                  <span>{lang === 'th' ? 'ผู้ปกครอง' : 'Parent Portal'}</span>
+                </button>
+              </div>
+            )}
 
             <UnifiedNavbarSearch
               searchQuery={searchQuery}
@@ -226,30 +234,38 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right Controls: Mascot Guide Toggle, Theme, Lang, Tools, Notifications, Profile, Logout */}
+        {/* Right Controls: Focus Mode, Theme, Lang, Tools, Notifications (hidden in Focus Mode), Profile, Logout */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {onToggleMascotGuide && (
+          {onToggleFocusMode && (
             <button
               type="button"
-              data-guide-id="nav-guide-toggle"
-              aria-pressed={Boolean(isMascotGuideEnabled)}
-              onClick={onToggleMascotGuide}
+              data-guide-id="nav-focus-toggle"
+              aria-pressed={focusMode}
+              onClick={onToggleFocusMode}
               className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                isMascotGuideEnabled
-                  ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100'
-                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                focusMode
+                  ? 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 shadow-xs'
+                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-text-title)]'
               }`}
               title={
-                isMascotGuideEnabled
-                  ? lang === 'th' ? 'ตัวการ์ตูนนำทาง: เปิด (คลิกเพื่อปิด)' : 'Hover Mascot Guide: ON (click to disable)'
-                  : lang === 'th' ? 'ตัวการ์ตูนนำทาง: ปิด (คลิกเพื่อเปิด)' : 'Hover Mascot Guide: OFF (click to enable)'
+                focusMode
+                  ? lang === 'th'
+                    ? 'ออกจากโหมดโฟกัส (แสดงเมนูข้างและการแจ้งเตือน)'
+                    : 'Exit Focus Mode (Ctrl+Shift+F)'
+                  : lang === 'th'
+                  ? 'เปิดโหมดโฟกัส: พับเมนูข้างและการแจ้งเตือนรอง (Ctrl+Shift+F)'
+                  : 'Enable Focus Mode: collapse sidebar & secondary panels (Ctrl+Shift+F)'
               }
             >
-              <Compass className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden xl:inline">
-                {isMascotGuideEnabled
-                  ? lang === 'th' ? 'นำทาง: เปิด' : 'Guide: ON'
-                  : lang === 'th' ? 'นำทาง: ปิด' : 'Guide: OFF'}
+              {focusMode ? (
+                <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5 shrink-0 text-[var(--color-primary-text)]" />
+              )}
+              <span className="hidden sm:inline">
+                {focusMode
+                  ? lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'
+                  : lang === 'th' ? 'โหมดโฟกัส' : 'Focus'}
               </span>
             </button>
           )}
@@ -278,8 +294,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Mobile Install Button (Android & iOS) near Language Switcher */}
-          <PWAInstallButton lang={lang} variant="nav" className="py-1 text-[11px]" />
+          {/* Mobile Install Button (compact, hidden in Focus Mode to keep header calm) */}
+          {!focusMode && (
+            <PWAInstallButton lang={lang} variant="nav" className="hidden 2xl:inline-flex py-1 text-[11px]" />
+          )}
 
           {/* Language Switcher */}
           <button
@@ -311,6 +329,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
             </summary>
             <div className="absolute right-0 top-full z-50 mt-1.5 max-h-[75vh] w-60 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+              {onToggleMascotGuide && (
+                <button
+                  type="button"
+                  data-guide-id="nav-guide-toggle"
+                  onClick={onToggleMascotGuide}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Compass className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+                    <span>{lang === 'th' ? 'ตัวการ์ตูนนำทาง' : 'Mascot Guide'}</span>
+                  </span>
+                  <span className={`text-[10px] font-bold ${isMascotGuideEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+                    {isMascotGuideEnabled ? (lang === 'th' ? 'เปิด' : 'ON') : (lang === 'th' ? 'ปิด' : 'OFF')}
+                  </span>
+                </button>
+              )}
               {onSwitchToMobileMode && (
                 <button
                   type="button"
@@ -367,8 +401,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </details>
 
-          {/* Notification Center Trigger */}
-          {onOpenNotifications && (
+          {/* Notification Center Trigger (collapsed in Focus Mode) */}
+          {!focusMode && onOpenNotifications && (
             <button
               type="button"
               data-guide-id="nav-notifications"
@@ -422,8 +456,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Compact Program Mode Switcher on Small Screens Only */}
-      {canAccessSchoolOperations && (
+      {/* Compact Program Mode Switcher on Small Screens Only (hidden during Focus Mode) */}
+      {canAccessSchoolOperations && !focusMode && (
         <div className="md:hidden mt-1.5 pt-1.5 border-t border-[var(--color-border)] flex items-center justify-center overflow-x-auto no-scrollbar w-full">
           <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
             <button

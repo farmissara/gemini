@@ -19,6 +19,7 @@ import {
 } from '../types';
 import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 import {
   Award,
   FileText,
@@ -144,6 +145,19 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [autoNotifyEnabled, setAutoNotifyEnabled] = useState(true);
   const [gradeAlertBanner, setGradeAlertBanner] = useState<{ message: string; detail?: string } | null>(null);
   const [showAddGradeForm, setShowAddGradeForm] = useState(false);
+
+  useQuickActionListener('gradebook', (action) => {
+    if (action === 'toggle_add_grade') {
+      setActiveTab('gradebook');
+      setShowAddGradeForm((prev) => !prev);
+    } else if (action === 'tab_gradebook') {
+      setActiveTab('gradebook');
+    } else if (action === 'tab_pp5') {
+      setActiveTab('pp5');
+    } else if (action === 'tab_pp6') {
+      setActiveTab('pp6');
+    }
+  });
   const [showBatchPastePanel, setShowBatchPastePanel] = useState(false);
   const [batchPasteField, setBatchPasteField] = useState<'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore'>('midtermScore');
   const [batchPasteText, setBatchPasteText] = useState('');

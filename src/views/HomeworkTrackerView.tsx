@@ -35,6 +35,7 @@ import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import { useQuickActionListener } from '../lib/quickActionEvents';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -105,6 +106,16 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [selectedSubForGrading, setSelectedSubForGrading] = useState<HomeworkSubmission | null>(null);
+
+  useQuickActionListener('homework', (action) => {
+    if (action === 'tab_pending') {
+      setHwTab('pending');
+    } else if (action === 'open_submit_modal') {
+      setShowSubmitModal(true);
+    } else if (action === 'open_calendar') {
+      setShowGoogleCalendarModal(true);
+    }
+  });
   const calendarWeekStart = getCalendarWeekStart(getBangkokDateInputValue());
 
   // Submit modal form
