@@ -276,17 +276,14 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
             <BarChart3 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 tracking-wide">
-              Comparison Charts · มาตรฐาน ศธ.
-            </p>
             <h3 className="text-base font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
               {lang === 'th'
-                ? 'เปรียบเทียบการมาเรียนและผลสัมฤทธิ์รายระดับชั้น'
+                ? 'เปรียบเทียบการมาเรียนและผลสัมฤทธิ์'
                 : 'Attendance & Academic Comparison'}
             </h3>
             <p className="text-xs text-[#475569] dark:text-slate-300 mt-0.5">
               {lang === 'th'
-                ? 'ป.1–ป.6 ประเมินคะแนนดิบรายปี · ม.1–ม.6 ประเมินผลการเรียนรายภาค'
+                ? 'ป.1–ป.6 คะแนนดิบรายปี · ม.1–ม.6 เกรดรายภาค (มาตรฐาน ศธ.)'
                 : 'Primary yearly raw scores · Secondary semester grades'}
             </p>
           </div>
@@ -469,7 +466,7 @@ const GradeLevelTooltip: React.FC<GradeLevelTooltipProps> = ({ active, payload, 
   const row = payload[0].payload;
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-lg text-xs space-y-2 min-w-56">
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-lg text-xs space-y-2 min-w-[175px] max-w-[85vw]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-1.5">
         <div>
           <p className="font-bold text-[var(--color-text-title)] text-sm">{row.gradeLevel}</p>

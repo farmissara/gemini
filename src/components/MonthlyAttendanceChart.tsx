@@ -288,9 +288,9 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
         </div>
 
         {/* Month Navigator & Chart Type Selector */}
-        <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto max-w-full">
+        <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto w-full lg:w-auto max-w-full">
           {/* Month Switcher */}
-          <div className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 shadow-2xs max-w-full">
+          <div className="flex flex-wrap items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 shadow-2xs max-w-full">
             <button
               type="button"
               onClick={handlePrevMonth}
@@ -322,7 +322,7 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
           </div>
 
           {/* Day Filter */}
-          <div className="inline-flex flex-wrap max-w-full items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium">
+          <div className="flex flex-wrap max-w-full items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium">
             <button
               type="button"
               onClick={() => setDayFilter('month_to_date')}
@@ -359,7 +359,7 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
           </div>
 
           {/* Chart Display Mode */}
-          <div className="inline-flex flex-wrap max-w-full items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium">
+          <div className="flex flex-wrap max-w-full items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium">
             <button
               type="button"
               onClick={() => setChartType('composed')}
@@ -404,11 +404,12 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Metric 1: Average Rate */}
         <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-          <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'อัตราเข้าเรียนเฉลี่ย' : 'Avg. Attendance Rate'}
+          <p className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>{lang === 'th' ? 'อัตราเข้าเรียนเฉลี่ย' : 'Avg. Attendance Rate'}</span>
           </p>
           <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xl font-black text-blue-700 dark:text-blue-300">
+            <span className="text-xl font-black text-blue-700 dark:text-blue-300 tabular-nums">
               {stats.avgRate}%
             </span>
             <span className="text-[10px] text-[var(--color-text-muted)] font-medium">
@@ -419,12 +420,12 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
 
         {/* Metric 2: Present Count */}
         <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60">
-          <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            {lang === 'th' ? 'ตรงเวลาสะสม' : 'Total On-Time'}
+          <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>{lang === 'th' ? 'ตรงเวลาสะสม' : 'Total On-Time'}</span>
           </p>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-emerald-900 dark:text-emerald-100">
+            <span className="text-xl font-black text-emerald-900 dark:text-emerald-100 tabular-nums">
               {stats.totalMonthPresent.toLocaleString()}
             </span>
             <span className="text-[10px] text-emerald-700 dark:text-emerald-300">
@@ -435,12 +436,12 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
 
         {/* Metric 3: Late Count */}
         <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60">
-          <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-            {lang === 'th' ? 'มาสายสะสม' : 'Total Late'}
+          <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>{lang === 'th' ? 'มาสายสะสม' : 'Total Late'}</span>
           </p>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-amber-900 dark:text-amber-100">
+            <span className="text-xl font-black text-amber-900 dark:text-amber-100 tabular-nums">
               {stats.totalMonthLate.toLocaleString()}
             </span>
             <span className="text-[10px] text-amber-700 dark:text-amber-300">
@@ -451,12 +452,12 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
 
         {/* Metric 4: Leave Count */}
         <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60">
-          <p className="text-[11px] font-bold text-purple-800 dark:text-purple-300 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
-            {lang === 'th' ? 'การลาสะสม' : 'Total Leaves'}
+          <p className="text-[11px] font-bold text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span>{lang === 'th' ? 'การลาสะสม' : 'Total Leaves'}</span>
           </p>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-purple-900 dark:text-purple-100">
+            <span className="text-xl font-black text-purple-900 dark:text-purple-100 tabular-nums">
               {stats.totalMonthLeave.toLocaleString()}
             </span>
             <span className="text-[10px] text-purple-700 dark:text-purple-300">
@@ -467,8 +468,9 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
 
         {/* Metric 5: Peak Day */}
         <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] sm:col-span-2 lg:col-span-1">
-          <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'วันที่เข้าเรียนสูงสุด' : 'Peak Attendance Day'}
+          <p className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+            <span>{lang === 'th' ? 'วันที่เข้าเรียนสูงสุด' : 'Peak Attendance Day'}</span>
           </p>
           <div className="flex items-baseline gap-1 mt-1">
             {stats.peakDay ? (
@@ -759,7 +761,7 @@ const CustomTooltip = ({ active, payload, lang = 'th', onSelectDate }: any) => {
   const isPresentZero = data.present === 0 && data.late === 0 && data.leave === 0;
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-lg text-xs space-y-2 min-w-48">
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-lg text-xs space-y-2 min-w-[160px] max-w-[85vw]">
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-1.5">
         <div>
           <p className="font-bold text-[var(--color-text-title)]">{data.fullDateLabel}</p>

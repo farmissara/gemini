@@ -38,7 +38,12 @@ import {
   ClipboardList,
   Printer,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ListChecks,
+  TrendingUp,
+  Activity,
+  LayoutGrid,
+  Briefcase
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -468,14 +473,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 flex-wrap">
-          <div data-guide-id="dashboard-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
+          <div data-guide-id="dashboard-subtabs" className="seg-tab-group w-full sm:w-auto max-w-full flex! flex-wrap! sm:inline-flex! gap-1">
             <button
               type="button"
               data-active={dashboardTab === 'overview'}
               onClick={() => setDashboardTab('overview')}
-              className="seg-tab-btn"
+              className="seg-tab-btn inline-flex items-center gap-1.5"
             >
-              <BarChart3 className="w-3.5 h-3.5" />
+              <BarChart3 className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'ภาพรวม' : 'Overview'}</span>
             </button>
 
@@ -483,9 +488,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-active={dashboardTab === 'live_attendance'}
               onClick={() => setDashboardTab('live_attendance')}
-              className="seg-tab-btn"
+              className="seg-tab-btn inline-flex items-center gap-1.5"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'เช็คชื่อ & GPS สด' : 'Live GPS'}</span>
               <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
                 dashboardTab === 'live_attendance'
@@ -500,9 +505,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-active={dashboardTab === 'innovative_hub'}
               onClick={() => setDashboardTab('innovative_hub')}
-              className="seg-tab-btn"
+              className="seg-tab-btn inline-flex items-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'นวัตกรรม & เควสต์' : 'Innovations'}</span>
             </button>
 
@@ -510,9 +515,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-active={dashboardTab === 'announcements'}
               onClick={() => setDashboardTab('announcements')}
-              className="seg-tab-btn"
+              className="seg-tab-btn inline-flex items-center gap-1.5"
             >
-              <BellRing className="w-3.5 h-3.5" />
+              <BellRing className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'ประกาศ' : 'News'}</span>
             </button>
           </div>
@@ -624,14 +629,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* 3-Step Onboarding Checklist (Collapsed in Focus Mode) */}
             {!isFocusMode && showOnboardingCard && (
               <div className="no-print frosted-card dash-card dash-card-stack">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
-                      {lang === 'th' ? 'เริ่มต้นใช้งานโรงเรียนใน 3 ขั้นตอน' : '3-Step School Setup Checklist'}
-                    </h2>
-                    <p className="text-xs text-[#475569] dark:text-slate-300 tabular-nums">
-                      ตั้งค่าระบบหลักให้พร้อมเปิดภาคเรียน ({completedOnboardingCount}/3 สำเร็จ)
-                    </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+                      <ListChecks className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                        {lang === 'th' ? 'เริ่มต้นใช้งานโรงเรียนใน 3 ขั้นตอน' : '3-Step School Setup Checklist'}
+                      </h2>
+                      <p className="text-xs text-[#475569] dark:text-slate-300 tabular-nums">
+                        ตั้งค่าระบบหลักให้พร้อมเปิดภาคเรียน ({completedOnboardingCount}/3 สำเร็จ)
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -650,45 +660,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigate('students')}
-                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
                   >
-                    <div>
-                      <div className="font-bold text-[#1e293b] dark:text-slate-100">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
-                      <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
-                        {students.length} นักเรียน · {courses.length} วิชา
+                    <div className="flex items-start gap-2 min-w-0">
+                      <Users className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="font-bold text-[#1e293b] dark:text-slate-100">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
+                        <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                          {students.length} นักเรียน · {courses.length} วิชา
+                        </div>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold whitespace-nowrap ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    <span className={`text-[11px] font-bold whitespace-nowrap shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step1Done ? 'พร้อมแล้ว' : 'ดำเนินการ'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('system_settings')}
-                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
                   >
-                    <div>
-                      <div className="font-bold text-[#1e293b] dark:text-slate-100">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
-                      <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
-                        {school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : 'ยังไม่ได้ปักหมุด'}
+                    <div className="flex items-start gap-2 min-w-0">
+                      <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="font-bold text-[#1e293b] dark:text-slate-100">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
+                        <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                          {school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : 'ยังไม่ได้ปักหมุด'}
+                        </div>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold whitespace-nowrap ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    <span className={`text-[11px] font-bold whitespace-nowrap shrink-0 ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step2Done ? 'พร้อมแล้ว' : 'ตั้งค่า'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('timetable')}
-                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
                   >
-                    <div>
-                      <div className="font-bold text-[#1e293b] dark:text-slate-100">3. จัดตารางเรียน &amp; ภาคเรียน</div>
-                      <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
-                        {timetableSlots.length} คาบในระบบ
+                    <div className="flex items-start gap-2 min-w-0">
+                      <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <div className="font-bold text-[#1e293b] dark:text-slate-100">3. จัดตารางเรียน &amp; ภาคเรียน</div>
+                        <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                          {timetableSlots.length} คาบในระบบ
+                        </div>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold whitespace-nowrap ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    <span className={`text-[11px] font-bold whitespace-nowrap shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step3Done ? 'พร้อมแล้ว' : 'จัดตาราง'}
                     </span>
                   </button>
@@ -724,7 +743,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   aria-label={lang === 'th' ? 'สรุปงานเช้า 3 นาทีสำหรับครู' : 'Morning 3-Minute Teacher Digest'}
                   className="frosted-card frosted-blue px-3.5 py-2.5 rounded-[var(--dash-card-radius)] flex flex-col justify-between gap-2"
                 >
-                  <div className="flex items-start justify-between gap-2.5 min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2.5 min-w-0">
                     <div className="flex items-start gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950/70 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
                         <Sparkles className="w-4 h-4" />
@@ -838,11 +857,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <GraduationCap className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-sky-700 dark:text-sky-300 tracking-wide">
-                          School Overview
-                        </p>
                         <h2 className="text-base font-bold text-[#0f172a] dark:text-slate-100">
-                          {lang === 'th' ? 'ภาพรวมสถิติโรงเรียน' : 'School Overview Statistics'}
+                          {lang === 'th' ? 'ภาพรวมสถิติโรงเรียน' : 'School Overview'}
                         </h2>
                       </div>
                     </div>
@@ -881,9 +897,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-0 sm:divide-x sm:divide-sky-200/75 dark:sm:divide-sky-800/50">
                     {/* Metric 1: Total Students */}
                     <div className="sm:pr-6 flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300">
-                          {lang === 'th' ? 'จำนวนนักเรียนทั้งหมด' : 'Total Students'}
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                          <span>{lang === 'th' ? 'นักเรียนทั้งหมด' : 'Total Students'}</span>
                         </p>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-3xl font-extrabold text-[#0f172a] dark:text-white tabular-nums tracking-tight">
@@ -909,9 +926,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* Metric 2: On-time Attendance Today */}
                     <div className="sm:pl-6 flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300">
-                          {lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span>{lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})</span>
                         </p>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-3xl font-extrabold text-[#0f172a] dark:text-white tabular-nums tracking-tight">
@@ -974,11 +992,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <UserCheck className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 tracking-wide">
-                          Attendance &amp; Parent Link
-                        </p>
                         <h2 className="text-base font-bold text-[#0f172a] dark:text-slate-100">
-                          {lang === 'th' ? 'สถานะการเช็กชื่อ & ผูก LINE ผู้ปกครอง' : 'Check-in Status & Guardian LINE'}
+                          {lang === 'th' ? 'สถานะเช็กชื่อ & ผูก LINE ผู้ปกครอง' : 'Check-in & Guardian LINE'}
                         </h2>
                       </div>
                     </div>
@@ -997,11 +1012,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="space-y-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums">
-                        <span className="font-semibold text-emerald-800 dark:text-emerald-300">
-                          {lang === 'th' ? `มาตรงเวลา ${presentCount} คน (${onTimePercent}%)` : `On-time ${presentCount} (${onTimePercent}%)`}
+                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>{lang === 'th' ? `มาตรงเวลา ${presentCount} คน (${onTimePercent}%)` : `On-time ${presentCount} (${onTimePercent}%)`}</span>
                         </span>
-                        <span className="font-semibold text-amber-700 dark:text-amber-300">
-                          {lang === 'th' ? `มาสาย ${lateCount} คน (${latePercent}%)` : `Late ${lateCount} (${latePercent}%)`}
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300">
+                          <Clock className="w-3.5 h-3.5 shrink-0" />
+                          <span>{lang === 'th' ? `มาสาย ${lateCount} คน (${latePercent}%)` : `Late ${lateCount} (${latePercent}%)`}</span>
                         </span>
                       </div>
                       <span className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
@@ -1099,7 +1116,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {!isFocusMode && (
                   <div className="dash-footer-divider border-t border-emerald-200/75 dark:border-emerald-800/50 space-y-2.5">
                     {/* Part B: Guardian LINE Sync Status */}
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-emerald-100/90 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
                           <MessageSquare className="w-4 h-4" />
@@ -1154,15 +1171,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="dash-col-stack min-w-0">
                 {/* 3. RIGHT TOP — PURPLE & ORANGE GROUP: TODAY'S ACADEMIC DESK */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between px-0.5">
-                    <div>
-                      <p className="text-[11px] font-semibold text-[#475569] dark:text-slate-300">
-                        Today’s Academic Desk · <span className="tabular-nums">{todayStr}</span>
-                      </p>
-                      <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
-                        {lang === 'th' ? 'งานวิชาการวันนี้ & รายการเร่งด่วน' : 'Today’s Teaching Desk & Priority Actions'}
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Briefcase className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
+                      <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 truncate">
+                        {lang === 'th' ? 'งานวิชาการวันนี้ & รายการเร่งด่วน' : 'Today’s Teaching Desk & Actions'}
                       </h2>
                     </div>
+                    <span className="text-[11px] font-semibold text-[#475569] dark:text-slate-300 tabular-nums inline-flex items-center gap-1 shrink-0">
+                      <Calendar className="w-3 h-3" />
+                      <span>{todayStr}</span>
+                    </span>
                   </div>
 
                   <div className={`dash-subgrid grid-cols-1 ${isStaffUser ? 'md:grid-cols-2' : ''} items-stretch`}>
@@ -1182,14 +1201,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <h3 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
                                 {isStaffUser
                                   ? lang === 'th'
-                                    ? "Teacher's Desk"
+                                    ? 'โต๊ะงานครู'
                                     : "Teacher's Desk"
                                   : lang === 'th'
                                     ? 'ตารางเรียน & งานวันนี้'
                                     : 'My Academic Desk'}
                               </h3>
                               <p className="text-xs text-[#475569] dark:text-slate-300 mt-0.5">
-                                {lang === 'th' ? 'ตารางสอน, ใบลา, การบ้านรอตรวจ' : 'Schedule, leaves & grading'}
+                                {lang === 'th' ? 'ตารางสอน · ใบลา · การบ้านรอตรวจ' : 'Schedule · Leaves · Grading'}
                               </p>
                             </div>
                           </div>
@@ -1302,7 +1321,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="no-print dash-footer-divider mt-2.5 border-t border-purple-200/70 dark:border-purple-800/50 flex items-center justify-between text-[11px]">
+                      <div className="no-print dash-footer-divider mt-2.5 border-t border-purple-200/70 dark:border-purple-800/50 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                         <button
                           type="button"
                           onClick={() => onNavigate('timetable')}
@@ -1366,20 +1385,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       data-guide-id="dashboard-charts"
                       className="no-print group frosted-card rounded-[var(--dash-card-radius)] overflow-hidden"
                     >
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-white/60 dark:hover:bg-slate-800/40">
-                        <div className="min-w-0">
-                          <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
-                            {lang === 'th'
-                              ? 'แนวโน้มรายเดือน & ความสำเร็จผู้เรียนเพิ่มเติม'
-                              : 'Monthly Attendance Trends & Student Milestones'}
-                          </span>
-                          <span className="mt-0.5 block text-xs text-[#475569] dark:text-slate-300">
-                            {lang === 'th'
-                              ? 'เปิดดูกราฟสถิติรายเดือนและข้อมูลเชิงลึกเมื่อต้องการ'
-                              : 'Expand monthly chart and student milestone progress'}
-                          </span>
+                      <summary className="flex flex-wrap sm:flex-nowrap cursor-pointer list-none items-center justify-between gap-2.5 px-4 py-3 hover:bg-white/60 dark:hover:bg-slate-800/40">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-sky-100/90 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800/60 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+                            <TrendingUp className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                              {lang === 'th'
+                                ? 'แนวโน้มรายเดือน & ความสำเร็จผู้เรียน'
+                                : 'Monthly Trends & Student Milestones'}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-[#475569] dark:text-slate-300">
+                              {lang === 'th'
+                                ? 'สถิติรายเดือนและเหรียญรางวัลความสำเร็จ'
+                                : 'Monthly chart & milestone progress'}
+                            </span>
+                          </div>
                         </div>
-                        <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                        <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
                           <span>{lang === 'th' ? 'ดูเพิ่มเติม' : 'Expand'}</span>
                           <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                         </span>
@@ -1516,17 +1540,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
 
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-[var(--color-border)] bg-[var(--color-card)]">
-          <button type="button" onClick={() => setAttendanceStep('summary')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'summary' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            {lang === 'th' ? 'สรุปสถิติ' : 'Summary'}
+          <button type="button" onClick={() => setAttendanceStep('summary')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'summary' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
+            <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'สรุปสถิติ' : 'Summary'}</span>
           </button>
-          <button type="button" onClick={() => setAttendanceStep('analytics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'analytics' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            {lang === 'th' ? 'กราฟ' : 'Charts'}
+          <button type="button" onClick={() => setAttendanceStep('analytics')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'analytics' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
+            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'กราฟ' : 'Charts'}</span>
           </button>
-          <button type="button" onClick={() => setAttendanceStep('records')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'records' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            {lang === 'th' ? `รายการภาพถ่าย (${displayRecords.length})` : `Photo Records (${displayRecords.length})`}
+          <button type="button" onClick={() => setAttendanceStep('records')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'records' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
+            <Camera className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? `ภาพถ่าย (${displayRecords.length})` : `Photos (${displayRecords.length})`}</span>
           </button>
-          <button type="button" onClick={() => setAttendanceStep('live_feed')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'live_feed' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            {lang === 'th' ? 'รายการสด' : 'Live Feed'}
+          <button type="button" onClick={() => setAttendanceStep('live_feed')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'live_feed' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
+            <Activity className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'รายการสด' : 'Live Feed'}</span>
           </button>
         </div>
 
@@ -1537,7 +1565,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {attendanceStep === 'summary' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-[var(--color-text-muted)] font-bold">{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] font-bold flex items-center justify-center gap-1">
+                <ClipboardList className="w-3 h-3 shrink-0" />
+                <span>{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</span>
+              </p>
               <p className="text-xl font-bold text-[var(--color-text-title)] mt-0.5">{totalForDate}</p>
               <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{lang === 'th' ? 'รายการ' : 'records'}</p>
             </div>
@@ -1574,7 +1605,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-0.5">{lang === 'th' ? 'มีหลักฐานภาพถ่าย' : 'With photo proof'}</p>
             </div>
             <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-[var(--color-text-muted)] font-bold">{lang === 'th' ? 'สัดส่วน นร./ครู' : 'Students / Teachers'}</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] font-bold flex items-center justify-center gap-1">
+                <Users className="w-3 h-3 shrink-0" />
+                <span>{lang === 'th' ? 'สัดส่วน นร./ครู' : 'Students / Teachers'}</span>
+              </p>
               <p className="text-xl font-bold text-[var(--color-text-title)] mt-0.5">{studentCheckIns}/{teacherCheckIns}</p>
               <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} • ครู ${teacherCheckIns}` : `S: ${studentCheckIns} • T: ${teacherCheckIns}`}</p>
             </div>
@@ -1712,17 +1746,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Gallery / Cards of Recent Selfie Check-ins with Click-to-View Modal */}
         <div className="p-3.5 sm:p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <span>{lang === 'th' ? `ภาพถ่ายเช็คชื่อล่าสุดในวันที่เลือก (${selectedDate})` : `Selfie Verification Logs (${selectedDate})`}</span>
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex flex-wrap items-center gap-2">
+                <Camera className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
+                <span>{lang === 'th' ? `ภาพถ่ายเช็คชื่อ (${selectedDate})` : `Selfie Logs (${selectedDate})`}</span>
                 <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold text-xs">
                   {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
                 </span>
               </h3>
-              <p className="text-xs text-[var(--color-text-muted)]">
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 {lang === 'th'
-                  ? 'คลิกที่รูปภาพหรือการ์ดเพื่อเปิดดูรูปถ่ายขนาดใหญ่พร้อมรายละเอียดวัน-เวลาและพิกัดย้อนหลัง'
-                  : 'Click on any record card to inspect high-resolution selfie proof and metadata.'}
+                  ? 'คลิกที่การ์ดเพื่อดูภาพถ่ายและพิกัดย้อนหลัง'
+                  : 'Click any card to inspect selfie proof & GPS coordinates.'}
               </p>
             </div>
 
@@ -1772,7 +1807,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="group relative rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 shadow-2xs hover:shadow-md hover:border-[var(--color-primary)] transition-all cursor-pointer flex flex-col justify-between gap-3"
                   >
                     {/* Top Row: Type & Timestamp */}
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
                       <div className="flex items-center gap-1.5">
                         {isCheckOut ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 text-[11px] font-bold border border-purple-300 dark:border-purple-700">
@@ -1846,7 +1881,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Bottom Metadata: GPS & Action Prompt */}
-                    <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                    <div className="pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-[var(--color-text-muted)]">
                       <div className="flex items-center gap-1 truncate font-medium">
                         <MapPin className="w-3 h-3 text-[var(--color-primary)] shrink-0" />
                         <span className="truncate">
@@ -1953,7 +1988,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {lang === 'th' ? 'นวัตกรรมการเรียนรู้ดิจิทัล & เกมมิฟิเคชัน' : 'Digital Learning & Gamification Hub'}
                 </h2>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {[0, 1, 2].map((page) => (
                   <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer ${innovationPage === page ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
                     {page + 1} / 3
@@ -2234,16 +2269,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
             {/* Modal Header */}
-            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-card-subtle)]">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
+            <div className="p-4 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card-subtle)]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 shrink-0">
                   <Camera className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'รูปถ่ายเช็คชื่อยืนยันตัวตน' : 'Selfie Verification Proof'}
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
                     {lang === 'th' ? `วันที่ ${selectedPhotoRecord.date} • เวลา ${selectedPhotoRecord.time} น.` : `${selectedPhotoRecord.date} at ${selectedPhotoRecord.time}`}
                   </p>
                 </div>
@@ -2251,7 +2286,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPhotoRecord(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2270,16 +2305,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 {/* Live Watermark on Photo */}
                 <div className="absolute bottom-2.5 left-2.5 right-2.5 p-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-[10px] space-y-0.5 border border-white/25">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1 text-cyan-300">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>{systemConfig.schoolNameTh} • VERIFIED CHECK</span>
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <span className="font-bold flex items-center gap-1 text-cyan-300 truncate">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{systemConfig.schoolNameTh} • VERIFIED CHECK</span>
                     </span>
-                    <span className="font-mono">{selectedPhotoRecord.time} {lang === 'th' ? 'น.' : ''}</span>
+                    <span className="font-mono shrink-0">{selectedPhotoRecord.time} {lang === 'th' ? 'น.' : ''}</span>
                   </div>
-                  <div className="flex items-center justify-between text-white">
-                    <span>{selectedPhotoRecord.userName} ({selectedPhotoRecord.userDepartmentOrRoom || selectedPhotoRecord.userRole})</span>
-                    <span>{selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'ออกโรงเรียน' : 'Exit') : (lang === 'th' ? 'เข้าโรงเรียน' : 'Entry')}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-white">
+                    <span className="truncate">{selectedPhotoRecord.userName} ({selectedPhotoRecord.userDepartmentOrRoom || selectedPhotoRecord.userRole})</span>
+                    <span className="shrink-0">{selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'ออกโรงเรียน' : 'Exit') : (lang === 'th' ? 'เข้าโรงเรียน' : 'Entry')}</span>
                   </div>
                   <div className="text-[9px] text-slate-200 font-mono truncate">
                     GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} • {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม.` : `${selectedPhotoRecord.location?.distanceMeters || 18}m away`}
@@ -2287,7 +2322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>}
 
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-[var(--color-text-muted)] font-semibold">{photoModalStep + 1} / 2</span>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setPhotoModalStep(0)} disabled={photoModalStep === 0} className="px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-bold disabled:opacity-40 cursor-pointer">

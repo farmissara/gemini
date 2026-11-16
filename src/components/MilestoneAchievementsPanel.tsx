@@ -364,8 +364,9 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
       {/* PlayerScores Live Threshold Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-0.5">
-          <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'เข้าเรียนสะสม' : 'Attendance'}
+          <div className="text-[11px] font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>{lang === 'th' ? 'เข้าเรียนสะสม' : 'Attendance'}</span>
           </div>
           <div className="text-base font-bold text-[var(--color-text-title)] font-mono tabular-nums">
             {metrics.attendanceDays} {lang === 'th' ? 'วัน' : 'days'}
@@ -378,8 +379,9 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
         </div>
 
         <div className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-0.5">
-          <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'ห้องสมุดดิจิทัล' : 'Library Usage'}
+          <div className="text-[11px] font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+            <span>{lang === 'th' ? 'ห้องสมุดดิจิทัล' : 'Library Usage'}</span>
           </div>
           <div className="text-base font-bold text-[var(--color-text-title)] font-mono tabular-nums">
             {metrics.libraryVisits} {lang === 'th' ? 'ครั้ง' : 'visits'}
@@ -390,8 +392,9 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
         </div>
 
         <div className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-0.5">
-          <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'ผลการเรียน (GPA)' : 'Academic GPA'}
+          <div className="text-[11px] font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>{lang === 'th' ? 'ผลการเรียน (GPA)' : 'Academic GPA'}</span>
           </div>
           <div className="text-base font-bold text-[var(--color-text-title)] font-mono tabular-nums">
             {metrics.academicGpa.toFixed(2)}
@@ -404,8 +407,9 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
         </div>
 
         <div className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-0.5">
-          <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'คะแนน PlayerScores' : 'PlayerScores EXP'}
+          <div className="text-[11px] font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>{lang === 'th' ? 'คะแนนสะสม' : 'PlayerScores EXP'}</span>
           </div>
           <div className="text-base font-bold text-[var(--color-text-title)] font-mono tabular-nums">
             {metrics.exp.toLocaleString()} EXP
@@ -417,7 +421,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
       </div>
 
       {/* Category Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+      <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
         {(
           [
             { id: 'all', labelTh: `ทั้งหมด (${totalCount})`, labelEn: `All (${totalCount})` },
@@ -537,7 +541,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
 
               {/* Threshold Progress Footer */}
               <div className="space-y-1.5 pt-2 border-t border-[var(--color-border)]">
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
                   <span className="text-[var(--color-text-muted)]">
                     {lang === 'th' ? item.def.metricLabelTh : item.def.metricLabelEn}
                   </span>
@@ -556,7 +560,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
                   <span>
                     {item.def.expThreshold
                       ? `${item.currentExp.toLocaleString()}/${item.def.expThreshold.toLocaleString()} EXP`

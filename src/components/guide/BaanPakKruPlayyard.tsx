@@ -160,11 +160,12 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
       {/* Top Row: Title + Play Mode Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="text-xs sm:text-sm font-extrabold text-[#0f172a] dark:text-slate-100">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Heart className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <h3 className="text-xs sm:text-sm font-extrabold text-[#0f172a] dark:text-slate-100 truncate">
               {lang === 'th'
-                ? 'มุมพักใจบ้านพักครู · ชาร์โคล, หมี และฝูงลูกไก่จิ๊ดริ๊ด'
-                : 'BaanPakKru Corner · Charcoal, Mee & JidRid Chicks'}
+                ? 'มุมพักใจบ้านพักครู · ชาร์โคล, หมี & จิ๊ดริ๊ด'
+                : 'BaanPakKru Corner · Charcoal, Mee & JidRid'}
             </h3>
           </div>
           <p className="text-[11px] text-[#475569] dark:text-slate-300 truncate mt-0.5">

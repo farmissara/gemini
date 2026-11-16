@@ -394,11 +394,11 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
-                {lang === 'th' ? 'Priority Actions' : 'Priority Actions'}
+                {lang === 'th' ? 'รายการเร่งด่วน' : 'Priority Actions'}
               </h3>
               <p className="text-xs text-[#475569] dark:text-slate-300 tabular-nums mt-0.5">
                 {lang === 'th'
-                  ? `รายการเร่งด่วน ${counts.all} · ติดตามแล้ว ${counts.followed}`
+                  ? `เร่งด่วน ${counts.all} · ติดตามแล้ว ${counts.followed}`
                   : `${counts.all} urgent · ${counts.followed} contacted`}
               </p>
             </div>
@@ -437,46 +437,48 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               role="tab"
               aria-selected={filterMode === 'all'}
               onClick={() => setFilterMode('all')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums ${
+              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums inline-flex items-center gap-1 ${
                 filterMode === 'all'
                   ? 'bg-orange-600 text-white shadow-2xs'
                   : 'text-[#1e293b] dark:text-slate-200 hover:bg-orange-50/80 dark:hover:bg-orange-950/40'
               }`}
             >
-              {lang === 'th' ? `ทั้งหมด (${counts.all})` : `All (${counts.all})`}
+              <span>{lang === 'th' ? `ทั้งหมด (${counts.all})` : `All (${counts.all})`}</span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={filterMode === 'absence'}
               onClick={() => setFilterMode('absence')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums ${
+              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums inline-flex items-center gap-1 ${
                 filterMode === 'absence'
                   ? 'bg-orange-600 text-white shadow-2xs'
                   : 'text-[#1e293b] dark:text-slate-200 hover:bg-orange-50/80 dark:hover:bg-orange-950/40'
               }`}
             >
-              {lang === 'th' ? `ขาดเรียน (${counts.absence})` : `Absent (${counts.absence})`}
+              <CalendarX2 className="w-3 h-3 shrink-0" />
+              <span>{lang === 'th' ? `ขาดเรียน (${counts.absence})` : `Absent (${counts.absence})`}</span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={filterMode === 'homework'}
               onClick={() => setFilterMode('homework')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums ${
+              className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums inline-flex items-center gap-1 ${
                 filterMode === 'homework'
                   ? 'bg-orange-600 text-white shadow-2xs'
                   : 'text-[#1e293b] dark:text-slate-200 hover:bg-orange-50/80 dark:hover:bg-orange-950/40'
               }`}
             >
-              {lang === 'th' ? `ค้างงาน (${counts.homework})` : `Work (${counts.homework})`}
+              <BookOpen className="w-3 h-3 shrink-0" />
+              <span>{lang === 'th' ? `ค้างงาน (${counts.homework})` : `Work (${counts.homework})`}</span>
             </button>
           </div>
         </div>
 
         {/* Search & Hide Followed */}
         <div className="no-print flex flex-wrap items-center gap-2 text-xs">
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[140px]">
             <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -544,8 +546,8 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                     followedTime ? 'opacity-65' : ''
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2.5">
-                    <div className="flex items-start gap-2.5 min-w-0">
+                  <div className="flex flex-wrap sm:flex-nowrap items-start justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
                       {student.avatarUrl ? (
                         <img
                           src={student.avatarUrl}

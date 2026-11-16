@@ -421,7 +421,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <>
             {/* Welcome & Persona Card */}
             <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-800 to-indigo-950 text-white shadow-xl shadow-blue-950/20">
-              <div className="relative z-10 flex items-center justify-between">
+              <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span className="text-[11px] text-blue-100 font-semibold flex items-center gap-1.5">
                     <Calendar className="w-3 h-3 text-amber-300" />
@@ -459,7 +459,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <Monitor className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">แดชบอร์ดผู้บริหาร (Executive Monitor)</h2>
                       <span className="px-1.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-[9px] font-bold">ผอ. / บริหาร</span>
                     </div>
@@ -551,21 +551,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <>
             {/* Today's Daily Status Strip */}
             <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] flex items-center justify-between">
-                <span>สรุปสถานะประจำวัน</span>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] flex flex-wrap items-center justify-between gap-1.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span>สรุปสถานะประจำวัน</span>
+                </span>
                 <span className="text-[var(--color-text-muted)] font-mono text-[10px]">{todayStr}</span>
               </h2>
 
               <div className="space-y-2 text-xs">
                 {/* Attendance Status */}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     {todayCheckin ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     ) : (
                       <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                     )}
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bold text-[var(--color-text-title)]">การเช็คชื่อเข้าโรงเรียน</p>
                       <p className="text-[11px] text-[var(--color-text-muted)]">
                         {todayCheckin 
@@ -577,17 +580,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab('checkin')}
-                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
                   >
                     {todayCheckin ? 'ดูรายละเอียด' : 'เช็คอินเลย'}
                   </button>
                 </div>
 
                 {/* Homework Count */}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bold text-[var(--color-text-title)]">การบ้านและงานค้าง</p>
                       <p className="text-[11px] text-[var(--color-text-muted)]">
                         {pendingHomeworkCount > 0 
@@ -672,7 +675,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <div className="flex flex-col gap-3 py-1 animate-in fade-in duration-200">
             {/* Header Card */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-lg space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold">
                     <Monitor className="w-4 h-4" />
@@ -774,21 +777,33 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
             {/* School Composition Summary */}
             <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5">
-              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center justify-between">
-                <span>อัตราส่วนทรัพยากรโรงเรียน</span>
+              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex flex-wrap items-center justify-between gap-1.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <BarChart3 className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span>อัตราส่วนทรัพยากรโรงเรียน</span>
+                </span>
                 <span className="text-[10px] text-[var(--color-text-muted)]">MIS ข้อมูลล่าสุด</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="text-xs text-[var(--color-text-muted)]">นักเรียน</div>
+                <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>นักเรียน</span>
+                  </div>
                   <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalStudents} คน</div>
                 </div>
-                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="text-xs text-[var(--color-text-muted)]">ครู &amp; บุคลากร</div>
+                <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1">
+                    <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>ครู &amp; บุคลากร</span>
+                  </div>
                   <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalTeachers} ท่าน</div>
                 </div>
-                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="text-xs text-[var(--color-text-muted)]">รายวิชา</div>
+                <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1">
+                    <BookOpen className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                    <span>รายวิชา</span>
+                  </div>
                   <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalCourses} วิชา</div>
                 </div>
               </div>
@@ -796,7 +811,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
             {/* Director Quick Links */}
             <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-              <h3 className="text-xs font-bold text-[var(--color-text-title)]">ทางลัดการบริหาร</h3>
+              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <span>ทางลัดการบริหาร</span>
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"

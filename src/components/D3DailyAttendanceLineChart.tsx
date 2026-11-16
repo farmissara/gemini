@@ -515,18 +515,15 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
             <TrendingUp className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 tracking-wide">
-              Daily Attendance Trends · {monthLabel}
-            </p>
             <h3 className="text-base font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
               {lang === 'th'
-                ? 'แนวโน้มการมาเรียนรายวันตลอดเดือน (D3 Line Chart)'
+                ? 'แนวโน้มการมาเรียนรายวันตลอดเดือน'
                 : 'Daily Student Attendance Trends'}
             </h3>
             <p className="text-xs text-[#475569] dark:text-slate-300 mt-0.5">
               {lang === 'th'
-                ? 'ติดตามอัตราการมาเรียนและความตรงเวลาของนักเรียนรายวันแยกตามระดับชั้น'
-                : 'Track daily attendance and punctuality rates across the selected month'}
+                ? `มาเรียน & ความตรงเวลาแยกตามระดับชั้น · ${monthLabel}`
+                : `Daily attendance & punctuality · ${monthLabel}`}
             </p>
           </div>
         </div>
@@ -589,7 +586,7 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
             </select>
           </div>
 
-          <div className="inline-flex items-center rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-0.5 text-xs">
+          <div className="flex flex-wrap max-w-full items-center rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-0.5 text-xs">
             <button
               type="button"
               onClick={handlePrevMonth}
@@ -721,7 +718,7 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
         {/* Interactive D3 Tooltip */}
         {hoveredPoint && (
           <div
-            className="no-print pointer-events-none absolute z-20 rounded-xl border border-amber-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 p-3 shadow-lg text-xs space-y-1.5 min-w-48"
+            className="no-print pointer-events-none absolute z-20 rounded-xl border border-amber-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 p-3 shadow-lg text-xs space-y-1.5 min-w-[165px] max-w-[calc(100%-16px)]"
             style={{
               left: Math.min(Math.max(hoveredPoint.x + 12, 8), Math.max(8, containerWidth - 205)),
               top: Math.max(8, hoveredPoint.y - 84),
