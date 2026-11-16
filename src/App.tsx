@@ -3425,17 +3425,17 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-2 overflow-visible' : 'app-workspace p-2 sm:p-2.5 overflow-y-auto')}`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : (isMobileInDesktopView ? 'app-workspace p-1.5 overflow-visible' : 'app-workspace p-1.5 sm:p-2 overflow-y-auto')}`}>
           <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1680px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
-              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5">
-                <div className="text-xs font-semibold text-blue-900 dark:text-blue-100 truncate">
+              <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1">
+                <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-100 truncate">
                   โหมดตรวจสอบรายโรงเรียน: <strong>{activeSchool.nameTh}</strong>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigateToAppTab('super_admin_console')}
-                  className="shrink-0 rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap"
+                  className="shrink-0 rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-[11px] font-bold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap"
                 >
                   กลับศูนย์ควบคุม
                 </button>

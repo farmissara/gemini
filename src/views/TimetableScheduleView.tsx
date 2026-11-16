@@ -1410,21 +1410,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   );
 
   return (
-    <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
-      {/* Compact Page heading and schedule controls */}
-      <div className="shrink-0 px-3 py-2 app-page-header print:hidden">
+    <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
+      {/* Ultra-Compact Single-Row Page Heading and Schedule Controls */}
+      <div className="shrink-0 px-3 py-1.5 app-page-header print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="tone-chip w-7 h-7 rounded-lg">
-              <Calendar className="w-4 h-4 shrink-0" />
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="tone-chip w-6 h-6 rounded-lg">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
             </span>
-            <div className="min-w-0">
-              <div className="module-category-kicker">
-                {lang === 'th' ? `หมวด: ${timetableGroup.labelTh}` : timetableGroup.labelEn}
-              </div>
-              <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+            <div className="min-w-0 flex items-baseline gap-2">
+              <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
                 ตารางเรียนและตารางสอน
               </h1>
+              <span className="hidden xl:inline module-category-kicker">
+                {lang === 'th' ? timetableGroup.labelTh : timetableGroup.labelEn}
+              </span>
             </div>
             <ModuleTourTrigger moduleId="timetable" lang={lang} />
           </div>
@@ -1504,13 +1504,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
-      {/* Conflict Warning Banner (if any) */}
+      {/* Slim Conflict Warning Strip (if any) */}
       {conflicts.length > 0 && (
         <details className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
-          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-[11px] font-semibold">
+          <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 px-2.5 py-1 text-[11px] font-semibold">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
-            <span>พบข้อขัดแย้งตารางเรียน {conflicts.length} คู่ในภาคเรียนที่เลือก · คาบที่เกี่ยวข้องมีกรอบสีส้ม</span>
-            <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+            <span className="truncate">พบข้อขัดแย้งตารางเรียน {conflicts.length} คู่ในภาคเรียนที่เลือก · คาบที่เกี่ยวข้องมีกรอบสีส้ม</span>
+            <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0" />
           </summary>
           <div className="max-h-80 space-y-2 overflow-y-auto border-t border-amber-200 px-3 py-2 dark:border-amber-800">
             <p className="text-[10px]">
@@ -1560,16 +1560,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       {/* MAIN VIEW CONTENT: Grid Table, Substitute Finder, Workload, or Hours Criteria */}
       {viewMode === 'substitute' ? (
         <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-          <header className="shrink-0 border-b border-[var(--color-border)] p-4 space-y-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text-title)]">
-                  <RefreshCw className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>ระบบจัดหาครูสอนแทนอัตโนมัติ (1-Click Substitute Finder)</span>
+          <header className="shrink-0 border-b border-[var(--color-border)] p-2.5 sm:px-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
+                  <RefreshCw className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>จัดหาครูสอนแทนอัตโนมัติ</span>
+                  <span className="hidden xl:inline text-[11px] font-normal text-[var(--color-text-muted)]">
+                    · เรียงจากกลุ่มสาระเดียวกันและภาระสอนน้อยที่สุดก่อน
+                  </span>
                 </h2>
-                <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
-                  คัดกรองเพื่อนครูที่ไม่มีคาบสอนซ้อนในเวลาเดียวกัน เรียงลำดับจากกลุ่มสาระเดียวกันและภาระคาบสอนน้อยที่สุดก่อน
-                </p>
               </div>
               {renderRoomAndTermControls(false)}
             </div>
@@ -1789,141 +1789,146 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </section>
       ) : viewMode === 'workload' ? (
         <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-          <header className="shrink-0 border-b border-[var(--color-border)] p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text-title)]">
-                  <Users className="h-4 w-4 text-[var(--color-primary-text)]" />
-                  ภาระงานสอนรายบุคคล
+          <header className="shrink-0 border-b border-[var(--color-border)] px-3 py-2 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
+                  <Users className="h-4 w-4 text-[var(--color-primary-text)] shrink-0" />
+                  <span>ภาระงานสอนรายบุคคล</span>
                 </h2>
-                <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                  คำนวณคาบและชั่วโมงต่อสัปดาห์จากตารางสอนจริง แสดงจำนวนวิชาไม่ซ้ำต่อคน
-                </p>
+                <span className="text-[11px] text-[var(--color-text-muted)]">
+                  เกณฑ์คัดกรองเบื้องต้น {workloadMinPeriods}–{workloadMaxPeriods} คาบ/สัปดาห์ · คำนวณจากตารางสอนจริง
+                </span>
               </div>
-              <div className="flex max-w-full flex-col items-start gap-2 sm:items-end">
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                 {renderRoomAndTermControls(false)}
-                <div className="w-full max-w-xl space-y-2">
-                  <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
-                    เกณฑ์ {workloadMinPeriods}–{workloadMaxPeriods} คาบ/สัปดาห์เป็นตัวช่วยคัดกรองเบื้องต้น ไม่ใช่เกณฑ์ตามตำแหน่งงาน
-                  </p>
-                  {isAdmin && onUpdateTeachingLoadThresholds && (
-                    <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-left">
-                      <summary
-                        className="cursor-pointer text-[10px] font-semibold text-[var(--color-primary-text)]"
-                        onClick={() => {
-                          setWorkloadMinDraft(String(workloadMinPeriods));
-                          setWorkloadMaxDraft(String(workloadMaxPeriods));
-                          setWorkloadSettingsError(null);
-                        }}
+                {isAdmin && onUpdateTeachingLoadThresholds && (
+                  <details className="relative">
+                    <summary
+                      className="btn-tool-neutral list-none px-2.5 py-1.5 text-[11px]"
+                      onClick={() => {
+                        setWorkloadMinDraft(String(workloadMinPeriods));
+                        setWorkloadMaxDraft(String(workloadMaxPeriods));
+                        setWorkloadSettingsError(null);
+                      }}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                      <span>ตั้งค่าเกณฑ์</span>
+                      <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
+                    </summary>
+                    <form
+                      onSubmit={handleSaveTeachingLoadThresholds}
+                      className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-xl space-y-2.5 text-left"
+                    >
+                      <div className="text-[11px] font-bold text-[var(--color-text-title)]">
+                        เกณฑ์ภาระงานสอนครู (ไม่ใช่เกณฑ์ตำแหน่ง)
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
+                          ขั้นต่ำ (คาบ/สัปดาห์)
+                          <input
+                            type="number"
+                            min={0}
+                            max={60}
+                            step={1}
+                            value={workloadMinDraft}
+                            onChange={(event) => setWorkloadMinDraft(event.target.value)}
+                            aria-label="จำนวนคาบขั้นต่ำต่อสัปดาห์"
+                            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-xs text-[var(--color-text-title)]"
+                          />
+                        </label>
+                        <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
+                          สูงสุด (คาบ/สัปดาห์)
+                          <input
+                            type="number"
+                            min={0}
+                            max={60}
+                            step={1}
+                            value={workloadMaxDraft}
+                            onChange={(event) => setWorkloadMaxDraft(event.target.value)}
+                            aria-label="จำนวนคาบสูงสุดต่อสัปดาห์"
+                            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-xs text-[var(--color-text-title)]"
+                          />
+                        </label>
+                      </div>
+                      {workloadSettingsError && (
+                        <p role="alert" className="text-[10px] text-rose-700 dark:text-rose-300">
+                          {workloadSettingsError}
+                        </p>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={isSavingWorkloadSettings}
+                        className="w-full rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60 cursor-pointer"
                       >
-                        ตั้งค่าเกณฑ์ภาระงานครู
-                      </summary>
-                      <form onSubmit={handleSaveTeachingLoadThresholds} className="mt-2 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                            ขั้นต่ำ (คาบ/สัปดาห์)
-                            <input
-                              type="number"
-                              min={0}
-                              max={60}
-                              step={1}
-                              value={workloadMinDraft}
-                              onChange={(event) => setWorkloadMinDraft(event.target.value)}
-                              aria-label="จำนวนคาบขั้นต่ำต่อสัปดาห์"
-                              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
-                            />
-                          </label>
-                          <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                            สูงสุด (คาบ/สัปดาห์)
-                            <input
-                              type="number"
-                              min={0}
-                              max={60}
-                              step={1}
-                              value={workloadMaxDraft}
-                              onChange={(event) => setWorkloadMaxDraft(event.target.value)}
-                              aria-label="จำนวนคาบสูงสุดต่อสัปดาห์"
-                              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-title)]"
-                            />
-                          </label>
-                        </div>
-                        {workloadSettingsError && (
-                          <p role="alert" className="text-[10px] text-rose-700 dark:text-rose-300">
-                            {workloadSettingsError}
-                          </p>
-                        )}
-                        <button
-                          type="submit"
-                          disabled={isSavingWorkloadSettings}
-                          className="rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-60"
-                        >
-                          {isSavingWorkloadSettings ? 'กำลังบันทึก…' : 'บันทึกเกณฑ์'}
-                        </button>
-                      </form>
-                    </details>
-                  )}
-                </div>
+                        {isSavingWorkloadSettings ? 'กำลังบันทึก…' : 'บันทึกเกณฑ์'}
+                      </button>
+                    </form>
+                  </details>
+                )}
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+
+            {/* Compact Single-Row 5-Filter Stat Strip */}
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
               <button
                 type="button"
                 aria-pressed={workloadStatusFilter === 'all'}
                 onClick={() => setWorkloadStatusFilter('all')}
-                className={`rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 text-left transition hover:border-[var(--color-primary)] ${workloadStatusFilter === 'all' ? 'ring-2 ring-[var(--color-primary)]' : ''}`}
+                className={`flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-left transition hover:border-[var(--color-primary)] cursor-pointer ${workloadStatusFilter === 'all' ? 'ring-2 ring-[var(--color-primary)]' : ''}`}
               >
-                <div className="text-[10px] text-[var(--color-text-muted)]">ครูทั้งหมด</div>
-                <div className="mt-1 text-lg font-bold tabular-nums text-[var(--color-text-title)]">{teacherWorkloadRows.length} คน</div>
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">ครูทั้งหมด</span>
+                <span className="text-xs font-extrabold tabular-nums text-[var(--color-text-title)] shrink-0">{teacherWorkloadRows.length} คน</span>
               </button>
               <button
                 type="button"
                 aria-pressed={workloadStatusFilter === 'unassigned'}
                 onClick={() => setWorkloadStatusFilter('unassigned')}
-                className={`rounded-xl border border-slate-300 bg-slate-50 p-3 text-left transition hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900/40 ${workloadStatusFilter === 'unassigned' ? 'ring-2 ring-slate-400' : ''}`}
+                className={`flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-left transition hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900/40 cursor-pointer ${workloadStatusFilter === 'unassigned' ? 'ring-2 ring-slate-400' : ''}`}
               >
-                <div className="text-[10px] text-slate-700 dark:text-slate-300">ยังไม่มีคาบ</div>
-                <div className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{unassignedWorkloadCount} คน</div>
+                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">ยังไม่มีคาบ</span>
+                <span className="text-xs font-extrabold tabular-nums text-slate-900 dark:text-slate-100 shrink-0">{unassignedWorkloadCount} คน</span>
               </button>
               <button
                 type="button"
                 aria-pressed={workloadStatusFilter === 'low'}
                 onClick={() => setWorkloadStatusFilter('low')}
-                className={`rounded-xl border border-amber-300 bg-amber-50 p-3 text-left transition hover:border-amber-500 dark:border-amber-800 dark:bg-amber-950/40 ${workloadStatusFilter === 'low' ? 'ring-2 ring-amber-400' : ''}`}
+                className={`flex items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-left transition hover:border-amber-500 dark:border-amber-800 dark:bg-amber-950/40 cursor-pointer ${workloadStatusFilter === 'low' ? 'ring-2 ring-amber-400' : ''}`}
               >
-                <div className="text-[10px] text-amber-800 dark:text-amber-200">ต่ำกว่า {workloadMinPeriods} คาบ</div>
-                <div className="mt-1 text-lg font-bold tabular-nums text-amber-900 dark:text-amber-100">{lowWorkloadCount} คน</div>
+                <span className="text-[11px] font-medium text-amber-800 dark:text-amber-200 truncate">ต่ำกว่า {workloadMinPeriods} คาบ</span>
+                <span className="text-xs font-extrabold tabular-nums text-amber-900 dark:text-amber-100 shrink-0">{lowWorkloadCount} คน</span>
               </button>
               <button
                 type="button"
                 aria-pressed={workloadStatusFilter === 'within'}
                 onClick={() => setWorkloadStatusFilter('within')}
-                className={`rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-left transition hover:border-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 ${workloadStatusFilter === 'within' ? 'ring-2 ring-emerald-400' : ''}`}
+                className={`flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-left transition hover:border-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 cursor-pointer ${workloadStatusFilter === 'within' ? 'ring-2 ring-emerald-400' : ''}`}
               >
-                <div className="text-[10px] text-emerald-800 dark:text-emerald-200">{workloadMinPeriods}–{workloadMaxPeriods} คาบ</div>
-                <div className="mt-1 text-lg font-bold tabular-nums text-emerald-900 dark:text-emerald-100">{withinWorkloadCount} คน</div>
+                <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-200 truncate">{workloadMinPeriods}–{workloadMaxPeriods} คาบ</span>
+                <span className="text-xs font-extrabold tabular-nums text-emerald-900 dark:text-emerald-100 shrink-0">{withinWorkloadCount} คน</span>
               </button>
               <button
                 type="button"
                 aria-pressed={workloadStatusFilter === 'high'}
                 onClick={() => setWorkloadStatusFilter('high')}
-                className={`rounded-xl border border-rose-300 bg-rose-50 p-3 text-left transition hover:border-rose-500 dark:border-rose-800 dark:bg-rose-950/40 ${workloadStatusFilter === 'high' ? 'ring-2 ring-rose-400' : ''}`}
+                className={`flex items-center justify-between gap-2 rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-left transition hover:border-rose-500 dark:border-rose-800 dark:bg-rose-950/40 cursor-pointer ${workloadStatusFilter === 'high' ? 'ring-2 ring-rose-400' : ''}`}
               >
-                <div className="text-[10px] text-rose-800 dark:text-rose-200">มากกว่า {workloadMaxPeriods} คาบ</div>
-                <div className="mt-1 text-lg font-bold tabular-nums text-rose-900 dark:text-rose-100">{highWorkloadCount} คน</div>
+                <span className="text-[11px] font-medium text-rose-800 dark:text-rose-200 truncate">มากกว่า {workloadMaxPeriods} คาบ</span>
+                <span className="text-xs font-extrabold tabular-nums text-rose-900 dark:text-rose-100 shrink-0">{highWorkloadCount} คน</span>
               </button>
             </div>
           </header>
 
-          <div className="shrink-0 grid gap-2 border-b border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(13rem,0.55fr)_auto]">
+          <div className="shrink-0 grid gap-2 border-b border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_auto]">
             <label className="relative block min-w-0">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 type="search"
                 value={workloadSearchTerm}
                 onChange={(event) => setWorkloadSearchTerm(event.target.value)}
                 placeholder="ค้นหาชื่อครู วิชา รหัสวิชา หรือห้อง"
                 aria-label="ค้นหาภาระงานครู"
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
               />
             </label>
             <select
@@ -1935,7 +1940,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 }
               }}
               aria-label="กรองตามสถานะภาระงาน"
-              className="w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+              className="w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)]"
             >
               <option value="all">ทุกสถานะ</option>
               <option value="scheduled">มีคาบสอนแล้ว</option>
@@ -1944,12 +1949,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <option value="within">{workloadMinPeriods}–{workloadMaxPeriods} คาบ</option>
               <option value="high">มากกว่า {workloadMaxPeriods} คาบ</option>
             </select>
-            <span className="self-center text-[10px] text-[var(--color-text-muted)] sm:text-right">
+            <span className="self-center text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)] sm:text-right">
               พบ {filteredTeacherWorkloadRows.length} / {teacherWorkloadRows.length} คน
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-2 sm:p-3">
+          <div className="min-h-0 flex-1 overflow-auto p-1.5 sm:p-2">
             {filteredTeacherWorkloadRows.length === 0 ? (
               <p className="p-8 text-center text-xs text-[var(--color-text-muted)]">
                 {teacherWorkloadRows.length === 0
@@ -1957,13 +1962,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   : 'ไม่พบรายชื่อที่ตรงกับคำค้นหาหรือตัวกรอง'}
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {filteredTeacherWorkloadRows.map((teacher) => (
                   <details
                     key={normalizeTeacherName(teacher.name)}
                     className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] transition hover:border-[var(--color-primary)]"
                   >
-                    <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-xl p-3 hover:bg-[var(--color-card-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:grid-cols-[minmax(0,1fr)_minmax(8rem,1fr)_auto_auto] [&::-webkit-details-marker]:hidden">
+                    <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-xl px-3 py-2 hover:bg-[var(--color-card-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:grid-cols-[minmax(0,1fr)_minmax(8rem,1fr)_auto_auto] [&::-webkit-details-marker]:hidden">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${
                           teacher.status === 'high'
@@ -2078,14 +2083,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </section>
       ) : viewMode === 'hours_criteria' ? (
         /* TAB: Academic Hours Criteria & 80% Attendance Table */
-        <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col p-4 space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] pb-3">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>เกณฑ์การคำนวณชั่วโมงเรียน และสิทธิ์เข้าสอบปลายภาค (เกณฑ์ 80% ปพ.5)</span>
-              </h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col p-2.5 sm:p-3 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>เกณฑ์ชั่วโมงเรียน 80% ปพ.5</span>
+                  <span className="hidden xl:inline text-[11px] font-normal text-[var(--color-text-muted)]">
+                    · คำนวณจากภาคเรียน 20 สัปดาห์
+                  </span>
+                </h2>
+                <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 font-semibold">
+                  ขาดเรียนได้ไม่เกิน 20%
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
                 {renderRoomAndTermControls()}
                 {hoursTeacherOptions.length > 0 && (
                   <div className="fn-group">
@@ -2106,13 +2119,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   </div>
                 )}
               </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                คำนวณจากภาคเรียน 20 สัปดาห์ตามหลักสูตร สพฐ.
-              </p>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 font-semibold">
-              นักเรียนขาดเรียนได้ไม่เกิน 20% ของเวลาเรียนทั้งหมด
-            </span>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto">
@@ -2210,13 +2217,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       ) : viewMode === 'calendar' ? (
         <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-          <header className="shrink-0 space-y-3 border-b border-[var(--color-border)] p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+          <header className="shrink-0 space-y-2 border-b border-[var(--color-border)] p-2.5 sm:px-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-baseline gap-2">
                 <h2 className="text-sm font-bold text-[var(--color-text-title)]">ปฏิทินตารางสอนรายสัปดาห์</h2>
-                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+                <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
                   {calendarWeekRangeLabel} · {activeSlots.length} คาบ/สัปดาห์
-                </p>
+                </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="fn-group">
@@ -2355,7 +2362,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       ) : (
         /* TAB: Timetable 5-Day Weekly Grid View */
         <div className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
-          <div className="shrink-0 p-2.5 sm:px-3.5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
+          <div className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 {renderRoomAndTermControls()}

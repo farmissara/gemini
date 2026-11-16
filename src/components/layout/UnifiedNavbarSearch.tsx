@@ -220,7 +220,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="relative flex items-center" data-guide-id="nav-quick-search">
+    <div ref={containerRef} className="relative flex items-center min-w-0 max-w-full" data-guide-id="nav-quick-search">
       {/* Compact Trigger Button on Small-Medium Viewports */}
       <button
         type="button"
@@ -228,15 +228,15 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
           setIsOpen((prev) => !prev);
           setTimeout(() => inputRef.current?.focus(), 40);
         }}
-        className="lg:hidden inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold cursor-pointer"
+        className="xl:hidden inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold cursor-pointer shrink-0"
         title={lang === 'th' ? 'ค้นหาข้ามโมดูล (นักเรียน, ครู, รายวิชา)' : 'Search students, teachers, courses'}
       >
         <Search className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-        <span className="hidden sm:inline">{lang === 'th' ? 'ค้นหา' : 'Search'}</span>
+        <span className="hidden lg:inline">{lang === 'th' ? 'ค้นหา' : 'Search'}</span>
       </button>
 
-      {/* Inline Search Input on Desktop (lg+) */}
-      <div className="hidden lg:flex items-center relative">
+      {/* Inline Search Input on Wide Desktop (xl+) */}
+      <div className="hidden xl:flex items-center relative min-w-0">
         <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 pointer-events-none" />
         <input
           ref={inputRef}
@@ -252,7 +252,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
               ? 'ค้นหานักเรียน / ครู / รายวิชา...'
               : 'Search students, teachers, courses...'
           }
-          className="w-52 xl:w-64 pl-8 pr-16 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:bg-[var(--color-card)] transition-all"
+          className="w-44 2xl:w-60 pl-8 pr-14 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:bg-[var(--color-card)] transition-all"
         />
         <div className="absolute right-1.5 flex items-center gap-1">
           {hasActiveFilter ? (

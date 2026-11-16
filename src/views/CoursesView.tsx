@@ -442,21 +442,21 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   return (
     <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
       {/* Compact Single-Row Header */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <BookOpen className="w-4 h-4" />
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 app-page-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="tone-chip w-6 h-6 rounded-lg">
+            <BookOpen className="w-3.5 h-3.5" />
           </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">
-              หมวด: {coursesGroup.labelTh}
-            </div>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+          <div className="min-w-0 flex items-baseline gap-2">
+            <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
               หลักสูตรและรายวิชา (Curriculum)
-              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
+              <span className="ml-1.5 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
                 · {courses.length} วิชา
               </span>
             </h1>
+            <span className="hidden xl:inline module-category-kicker">
+              {coursesGroup.labelTh}
+            </span>
           </div>
         </div>
 

@@ -2,29 +2,38 @@
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1e3a8a" />
-      <stop offset="50%" stop-color="#1d4ed8" />
-      <stop offset="100%" stop-color="#0284c7" />
+      <stop offset="52%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+    <linearGradient id="winGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25" />
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-opacity="0.22" />
     </filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
-  <g filter="url(#shadow)" transform="translate(0, 10)">
-    <!-- Graduation Cap Diamond -->
-    <polygon points="256,120 420,185 256,250 92,185" fill="#ffffff" />
-    <!-- Cap Underneath Base -->
-    <path d="M176,218 L176,270 C176,306 336,306 336,270 L336,218 Z" fill="#e0e7ff" />
-    <!-- Golden Tassel -->
-    <path d="M386,198 C386,198 406,230 404,290" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none" />
-    <circle cx="404" cy="298" r="12" fill="#eab308" />
-    <!-- Open Book -->
-    <path d="M120,330 C180,315 240,335 256,345 C272,335 332,315 392,330 L392,400 C332,385 272,405 256,415 C240,405 180,385 120,400 Z" fill="#ffffff" />
-    <path d="M256,345 L256,415" stroke="#94a3b8" stroke-width="4" />
-    <!-- Book lines -->
-    <line x1="150" y1="352" x2="228" y2="352" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
-    <line x1="150" y1="370" x2="216" y2="370" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
-    <line x1="284" y1="352" x2="362" y2="352" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
-    <line x1="284" y1="370" x2="350" y2="370" stroke="#60a5fa" stroke-width="5" stroke-linecap="round" />
+  <rect width="512" height="512" rx="116" fill="url(#bgGrad)" />
+  <g filter="url(#shadow)">
+    <!-- Cozy chimney + warm rising sparks -->
+    <rect x="336" y="130" width="38" height="68" rx="6" fill="#fde68a" stroke="#ffffff" stroke-width="8" />
+    <circle cx="356" cy="96" r="16" fill="#fde047" />
+    <circle cx="378" cy="68" r="10" fill="#fef08a" opacity="0.85" />
+
+    <!-- House cottage body -->
+    <path d="M144 244 L256 150 L368 244 V366 C368 375 361 382 352 382 H160 C151 382 144 375 144 366 Z" fill="#eff6ff" />
+
+    <!-- Warm sunlit 4-pane window -->
+    <rect x="210" y="238" width="92" height="86" rx="16" fill="url(#winGrad)" stroke="#1e40af" stroke-width="10" />
+    <line x1="256" y1="238" x2="256" y2="324" stroke="#1e40af" stroke-width="9" />
+    <line x1="210" y1="281" x2="302" y2="281" stroke="#1e40af" stroke-width="9" />
+
+    <!-- Welcoming sloped roof -->
+    <path d="M88 260 L256 112 L424 260" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M116 260 L256 134 L396 260" stroke="#fbbf24" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" />
+
+    <!-- Open Teacher Book Porch at base -->
+    <path d="M100 374 C156 356 220 370 256 394 C292 370 356 356 412 374 V424 C356 406 292 420 256 442 C220 420 156 406 100 424 Z" fill="#ffffff" />
+    <line x1="256" y1="394" x2="256" y2="442" stroke="#2563eb" stroke-width="10" stroke-linecap="round" />
   </g>
 </svg>

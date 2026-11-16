@@ -1045,10 +1045,10 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
               </span>
             </div>
 
-            {/* Mirrored running pack facing current random segment direction */}
+            {/* Mirrored running pack facing current random segment direction with subtle lean */}
             <div
               style={{
-                transform: screenChase.facingRight ? 'scaleX(-1)' : 'scaleX(1)',
+                transform: `${screenChase.facingRight ? 'scaleX(-1)' : 'scaleX(1)'} rotate(-2.5deg)`,
               }}
               className="transition-transform duration-200"
             >
@@ -1066,9 +1066,10 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   </linearGradient>
                 </defs>
 
-                {/* Dust puffs behind Charcoal & Mee */}
+                {/* Staggered dust puffs behind Charcoal & Mee */}
                 <circle cx="250" cy="84" r="5" fill="#FFFFFF" fillOpacity="0.7" className="mascot-dust-puff" />
-                <circle cx="176" cy="85" r="4.2" fill="#FFFFFF" fillOpacity="0.6" className="mascot-dust-puff" />
+                <circle cx="238" cy="80" r="3.4" fill="#FFFFFF" fillOpacity="0.55" className="mascot-dust-puff" style={{ animationDelay: '0.24s' }} />
+                <circle cx="176" cy="85" r="4.2" fill="#FFFFFF" fillOpacity="0.6" className="mascot-dust-puff" style={{ animationDelay: '0.12s' }} />
 
                 {/* 3 JidRid Chicks leading the sprint (leftmost in base left-facing frame) */}
                 <g className="mascot-chick-hop">
@@ -2144,7 +2145,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   </button>
                 )}
                 <div
-                  className={`group relative flex items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 shadow-lg transition ${
+                  className={`group relative flex items-center gap-1 rounded-2xl border px-2 py-1 shadow-lg transition ${
                     activeDashboardEvent?.type === 'success'
                       ? 'border-emerald-400 bg-emerald-50/90 dark:bg-emerald-950/80'
                       : activeDashboardEvent?.type === 'warning'
@@ -2178,9 +2179,13 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                     <MascotAvatar
                       mood={dockMascotMood}
                       sleeping={dockMascotSleeping}
-                      running={!dockMascotSleeping && !isGradebookGpaConcernActive}
+                      running={
+                        !dockMascotSleeping &&
+                        (isMascotHovered || Boolean(activeDashboardEvent)) &&
+                        !isGradebookGpaConcernActive
+                      }
                       character={mascotCharacter}
-                      size={54}
+                      size={46}
                     />
                   </button>
                   <button

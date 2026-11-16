@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
+import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { Course, GradeRecord, Student, Teacher } from '../../types';
 
 interface NavbarProps {
@@ -111,11 +112,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-4 py-1.5 shadow-xs transition-colors w-full max-w-full">
+    <header className="border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-2.5 sm:px-3.5 py-1 shadow-xs transition-colors w-full max-w-full">
       {/* Single-Row Top Bar: Brand, Program Mode, Search, and User Controls */}
-      <div className="flex items-center justify-between gap-2 w-full">
-        {/* Left: Mobile Menu Trigger + Logo + School Switcher */}
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center justify-between gap-2 w-full min-w-0">
+        {/* Left: Mobile Menu Trigger + BaanPakKru Logo + School Switcher */}
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
           {onToggleMobileMenu && (
             <button
               type="button"
@@ -127,44 +128,41 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          <div className="h-7 w-7 rounded-lg bg-[var(--color-primary)] text-white flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
-            {activeSchool.logoUrl ? (
-              <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain bg-white" />
-            ) : (
-              <GraduationCap className="h-4 w-4" />
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0" title="BaanPakKru · บ้านพักครู">
+            <BaanPakKruLogo size={26} />
             <span className="font-extrabold text-sm tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
               BaanPakKru
-              <span className="hidden sm:inline font-semibold text-xs text-[var(--color-text-muted)] ml-1">
+              <span className="hidden 2xl:inline font-semibold text-xs text-[var(--color-text-muted)] ml-1">
                 · บ้านพักครู
               </span>
             </span>
-
-            {/* School Switcher */}
-            {canAccessSchoolOperations && (
-              <button
-                type="button"
-                data-guide-id="nav-school-switcher"
-                onClick={onOpenSchoolSwitcher}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-[11px] font-medium transition min-w-0 max-w-[120px] sm:max-w-[170px] cursor-pointer"
-                title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
-              >
-                <Building2 className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
-                <span className="truncate">
-                  {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-                </span>
-                <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)] shrink-0" />
-              </button>
-            )}
           </div>
+
+          {/* School Switcher */}
+          {canAccessSchoolOperations && (
+            <button
+              type="button"
+              data-guide-id="nav-school-switcher"
+              onClick={onOpenSchoolSwitcher}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-[11px] font-medium transition min-w-0 max-w-[115px] sm:max-w-[155px] cursor-pointer"
+              title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
+            >
+              {activeSchool.logoUrl ? (
+                <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-3.5 h-3.5 rounded-xs object-contain bg-white shrink-0" />
+              ) : (
+                <Building2 className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
+              )}
+              <span className="truncate">
+                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
+              </span>
+              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)] shrink-0" />
+            </button>
+          )}
         </div>
 
         {/* Center: Inline Program Mode Switcher (Desktop) & Quick Search */}
         {canAccessSchoolOperations && (
-          <div className="hidden md:flex items-center gap-2 min-w-0">
+          <div className="hidden md:flex flex-1 items-center justify-center gap-1.5 min-w-0 px-1">
             <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
               <button
                 type="button"
@@ -248,7 +246,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             >
               <Compass className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">
+              <span className="hidden xl:inline">
                 {isMascotGuideEnabled
                   ? lang === 'th' ? 'นำทาง: เปิด' : 'Guide: ON'
                   : lang === 'th' ? 'นำทาง: ปิด' : 'Guide: OFF'}

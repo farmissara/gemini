@@ -22,6 +22,7 @@ interface BaanPakKruPlayyardProps {
   initialMode?: PlayyardMode;
   statusNote?: string;
   onStartTour?: () => void;
+  compact?: boolean;
   className?: string;
 }
 
@@ -79,6 +80,7 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
   initialMode = 'chase',
   statusNote,
   onStartTour,
+  compact = false,
   className = '',
 }) => {
   const rawId = useId();
@@ -138,7 +140,13 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
         : 'Click Charcoal, Mee, or the JidRid chicks to play and take a quick break.');
 
   const sceneHeightClass =
-    variant === 'drawer' ? 'h-32' : variant === 'welcome' ? 'h-36 sm:h-40' : 'h-36 sm:h-44';
+    compact
+      ? 'h-24 sm:h-28'
+      : variant === 'drawer'
+      ? 'h-28'
+      : variant === 'welcome'
+      ? 'h-36 sm:h-40'
+      : 'h-28 sm:h-32';
 
   return (
     <section
@@ -147,7 +155,7 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
           ? 'สนามวิ่งเล่นบ้านพักครู ชาร์โคล หมี และลูกไก่จิ๊ดริ๊ด'
           : 'BaanPakKru Playyard with Charcoal, Mee, and JidRid Chicks'
       }
-      className={`no-print rounded-2xl border border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-b from-sky-50/90 via-white to-emerald-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/30 p-3 sm:p-3.5 shadow-2xs space-y-2.5 ${className}`}
+      className={`no-print rounded-2xl border border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-b from-sky-50/90 via-white to-emerald-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/30 ${compact ? 'p-2.5 space-y-1.5' : 'p-3 space-y-2'} shadow-2xs ${className}`}
     >
       {/* Top Row: Title + Play Mode Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -310,8 +318,8 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
             {isChase && (
               <g>
                 <circle cx="545" cy="140" r="5.5" fill="#FFFFFF" fillOpacity="0.7" className="mascot-dust-puff" />
-                <circle cx="562" cy="136" r="4" fill="#FFFFFF" fillOpacity="0.55" className="mascot-dust-puff" />
-                <circle cx="385" cy="142" r="5" fill="#FFFFFF" fillOpacity="0.65" className="mascot-dust-puff" />
+                <circle cx="562" cy="136" r="4" fill="#FFFFFF" fillOpacity="0.55" className="mascot-dust-puff" style={{ animationDelay: '0.24s' }} />
+                <circle cx="385" cy="142" r="5" fill="#FFFFFF" fillOpacity="0.65" className="mascot-dust-puff" style={{ animationDelay: '0.12s' }} />
               </g>
             )}
 
@@ -329,9 +337,20 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
                 }
               }}
             >
-              <g className={isChase ? 'mascot-run-bounce-slow' : isCheer ? 'mascot-react-success' : 'mascot-float'}>
+              <g
+                key={lastPet?.target === 'charcoal' ? `c-${lastPet.seq}` : 'c-base'}
+                className={
+                  lastPet?.target === 'charcoal'
+                    ? 'mascot-react-success'
+                    : isChase
+                    ? 'mascot-run-bounce-slow'
+                    : isCheer
+                    ? 'mascot-react-success'
+                    : 'mascot-float'
+                }
+              >
                 <CharcoalSvgGroup
-                  mood={isCheer ? 'success' : 'happy'}
+                  mood={isCheer || lastPet?.target === 'charcoal' ? 'success' : 'happy'}
                   sleeping={isCozy}
                   running={isChase}
                   gradId={charcoalGradId}
@@ -364,9 +383,20 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
                 }
               }}
             >
-              <g className={isChase ? 'mascot-run-bounce' : isCheer ? 'mascot-react-success' : 'mascot-float'}>
+              <g
+                key={lastPet?.target === 'mee' ? `m-${lastPet.seq}` : 'm-base'}
+                className={
+                  lastPet?.target === 'mee'
+                    ? 'mascot-react-success'
+                    : isChase
+                    ? 'mascot-run-bounce'
+                    : isCheer
+                    ? 'mascot-react-success'
+                    : 'mascot-float'
+                }
+              >
                 <MeeSvgGroup
-                  mood={isCheer ? 'celebrate' : 'pointing'}
+                  mood={isCheer || lastPet?.target === 'mee' ? 'celebrate' : 'pointing'}
                   sleeping={isCozy}
                   running={isChase}
                   gradId={meeGradId}

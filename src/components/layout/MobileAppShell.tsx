@@ -80,6 +80,7 @@ import { HallOfFame3DView } from '../../views/HallOfFame3DView';
 import { DigitalIdCardView } from '../../views/DigitalIdCardView';
 import { PagedList } from '../PagedList';
 import { PWAInstallButton } from '../PWAInstallButton';
+import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 
 export type MobileTab = 'home' | 'executive' | 'checkin' | 'leave' | 'games' | 'profile' | 'homework' | 'announcements';
 
@@ -307,13 +308,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         {/* Tier 2: App Wordmark, Mode Switchers & Language Switcher */}
         <div className="px-3.5 py-1.5 border-b border-[var(--color-border)]/70 bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shadow-2xs shrink-0 overflow-hidden">
-              {activeSchool.logoUrl ? (
-                <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain bg-white" />
-              ) : (
-                <GraduationCap className="w-3.5 h-3.5" />
-              )}
-            </div>
+            <BaanPakKruLogo size={24} />
             <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">BaanPakKru · บ้านพักครู</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
               {lang === 'th' ? 'มือถือ' : 'Mobile'}

@@ -1082,20 +1082,20 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   );
 
   return (
-    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
+    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
       {/* Compact Header Bar */}
-      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <Award className="w-4 h-4" />
+      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <span className="tone-chip w-6 h-6 rounded-lg">
+            <Award className="w-3.5 h-3.5" />
           </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">
-              {lang === 'th' ? `หมวด: ${moduleGroup.labelTh}` : moduleGroup.labelEn}
-            </div>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+          <div className="min-w-0 flex items-baseline gap-2">
+            <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
               วัดผลและประเมินผล (Gradebook &amp; ปพ.)
             </h1>
+            <span className="hidden xl:inline module-category-kicker">
+              {lang === 'th' ? moduleGroup.labelTh : moduleGroup.labelEn}
+            </span>
           </div>
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
             <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-[11px]">

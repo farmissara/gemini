@@ -307,6 +307,13 @@ export const DashboardAmbientMascots: React.FC<DashboardAmbientMascotsProps> = (
                 </linearGradient>
               </defs>
 
+              {isRoaming && (
+                <g>
+                  <circle cx="166" cy="84" r="3.8" fill="#FFFFFF" fillOpacity="0.6" className="mascot-dust-puff" />
+                  <circle cx="88" cy="85" r="3.2" fill="#FFFFFF" fillOpacity="0.5" className="mascot-dust-puff" style={{ animationDelay: '0.2s' }} />
+                </g>
+              )}
+
               <MeeSvgGroup
                 mood={isChickInteract ? 'celebrate' : isRoaming ? 'pointing' : 'happy'}
                 running={isRoaming}

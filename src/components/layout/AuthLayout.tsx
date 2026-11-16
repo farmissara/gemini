@@ -36,6 +36,7 @@ import {
   type SchoolLoginPortalInfo,
 } from '../../lib/authDb';
 import { PWAInstallButton } from '../PWAInstallButton';
+import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { BaanPakKruPlayyard } from '../guide/BaanPakKruPlayyard';
 import heroImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
@@ -328,9 +329,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-4 sm:px-6 lg:px-8">
           {/* Zone 1: Brand Wordmark */}
           <a href="#portal-auth" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-white shrink-0">
-              <GraduationCap className="h-4.5 w-4.5" />
-            </span>
+            <BaanPakKruLogo size={32} />
             <span>BaanPakKru</span>
             <span className="text-xs font-semibold text-[var(--color-text-muted)]">· บ้านพักครู</span>
           </a>
@@ -499,9 +498,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     )}
 
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
-                        {mode === 'login' ? <SchoolIcon className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
-                      </div>
+                      {mode === 'login' ? (
+                        <BaanPakKruLogo size={40} />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
+                          <Building2 className="h-5 w-5" />
+                        </div>
+                      )}
                       <div>
                         <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight">
                           {mode === 'login'

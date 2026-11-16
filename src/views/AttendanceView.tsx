@@ -752,18 +752,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   return (
     <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-2`}>
       {/* Compact Top Header */}
-      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex items-center gap-2.5">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <QrCode className="w-4 h-4 shrink-0" />
+      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
+        <div className="min-w-0 flex items-center gap-2">
+          <span className="tone-chip w-6 h-6 rounded-lg">
+            <QrCode className="w-3.5 h-3.5 shrink-0" />
           </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">
-              {lang === 'th' ? `หมวด: ${attendanceGroup.labelTh}` : attendanceGroup.labelEn}
-            </div>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+          <div className="min-w-0 flex items-baseline gap-2">
+            <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
               การเข้าเรียน &amp; สแกนประตู
             </h1>
+            <span className="hidden xl:inline module-category-kicker">
+              {lang === 'th' ? attendanceGroup.labelTh : attendanceGroup.labelEn}
+            </span>
           </div>
           <ModuleTourTrigger moduleId="attendance" lang={lang} />
         </div>
