@@ -46,6 +46,7 @@ export const CharcoalSvgGroup: React.FC<
   const isSuccess = (mood === 'celebrate' || mood === 'success') && !sleeping;
   const isWarning = mood === 'warning' && !sleeping;
   const isError = mood === 'error' && !sleeping;
+  const isConcerned = mood === 'concerned' && !sleeping;
   const isThinking = mood === 'thinking' && !sleeping;
 
   return (
@@ -54,11 +55,13 @@ export const CharcoalSvgGroup: React.FC<
       <ellipse cx="50" cy="89" rx="33" ry="5" fill="#09090B" fillOpacity="0.2" />
 
       {/* Tiny wagging / droopy / tense black tail */}
-      <g className={!sleeping && !isError ? 'mascot-tail-wag' : ''}>
+      <g className={!sleeping && !isError && !isConcerned ? 'mascot-tail-wag' : ''}>
         <path
           d={
             isError
               ? 'M79 71 Q87 76 84 82'
+              : isConcerned
+              ? 'M79 70 Q87 73 86 78'
               : isWarning
               ? 'M79 66 Q90 58 90 50'
               : isSuccess || isPointing || running
@@ -73,6 +76,8 @@ export const CharcoalSvgGroup: React.FC<
           d={
             isError
               ? 'M79 71 Q87 76 84 82'
+              : isConcerned
+              ? 'M79 70 Q87 73 86 78'
               : isWarning
               ? 'M79 66 Q90 58 90 50'
               : isSuccess || isPointing || running
@@ -142,6 +147,8 @@ export const CharcoalSvgGroup: React.FC<
         d={
           isError
             ? 'M25 35 Q10 40 15 54 Q20 57 26 46 Z'
+            : isConcerned
+            ? 'M25 34 Q11 38 15 51 Q20 55 26 45 Z'
             : isWarning
             ? 'M25 27 Q10 16 13 33 Q17 41 25 39 Z'
             : isSuccess || isPointing || running
@@ -156,6 +163,8 @@ export const CharcoalSvgGroup: React.FC<
         d={
           isError
             ? 'M75 35 Q90 40 85 54 Q80 57 74 46 Z'
+            : isConcerned
+            ? 'M75 34 Q89 38 85 51 Q80 55 74 45 Z'
             : isWarning
             ? 'M75 27 Q90 16 87 33 Q83 41 75 39 Z'
             : isSuccess || isPointing || running
@@ -206,6 +215,22 @@ export const CharcoalSvgGroup: React.FC<
           <path d="M66 31 L57 34.5 L66 38" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M72 21 Q75.5 27 72 30 Q68.5 27 72 21 Z" fill="#38BDF8" stroke="#E0F2FE" strokeWidth="0.7" />
         </>
+      ) : isConcerned ? (
+        <>
+          {/* Worried upturned inner brows */}
+          <path d="M33 28.5 L44 25" stroke="#FBBF24" strokeWidth="2.1" strokeLinecap="round" />
+          <path d="M67 28.5 L56 25" stroke="#FBBF24" strokeWidth="2.1" strokeLinecap="round" />
+          <circle cx="39.5" cy="34.5" r="5.3" fill="#FFFFFF" />
+          <circle cx="60.5" cy="34.5" r="5.3" fill="#FFFFFF" />
+          <circle cx="39.5" cy="35.3" r="3" fill="#09090B" />
+          <circle cx="60.5" cy="35.3" r="3" fill="#09090B" />
+          <circle cx="38.2" cy="33.4" r="1.4" fill="#FFFFFF" />
+          <circle cx="59.2" cy="33.4" r="1.4" fill="#FFFFFF" />
+          <circle cx="41" cy="36.2" r="0.8" fill="#FFFFFF" />
+          <circle cx="62" cy="36.2" r="0.8" fill="#FFFFFF" />
+          {/* Gentle caring sweat bead */}
+          <path d="M72 22 Q75 27 72 29.8 Q69 27 72 22 Z" fill="#7DD3FC" stroke="#E0F2FE" strokeWidth="0.6" />
+        </>
       ) : isWarning ? (
         <>
           <path d="M33 27 Q39.5 23 45 26" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" />
@@ -239,8 +264,8 @@ export const CharcoalSvgGroup: React.FC<
       )}
 
       {/* Rosy cheeks */}
-      <ellipse cx="29.5" cy="41.5" rx="4.2" ry="2.4" fill="#FB7185" fillOpacity={isError ? 0.35 : 0.56} />
-      <ellipse cx="70.5" cy="41.5" rx="4.2" ry="2.4" fill="#FB7185" fillOpacity={isError ? 0.35 : 0.56} />
+      <ellipse cx="29.5" cy="41.5" rx="4.2" ry="2.4" fill="#FB7185" fillOpacity={isError || isConcerned ? 0.35 : 0.56} />
+      <ellipse cx="70.5" cy="41.5" rx="4.2" ry="2.4" fill="#FB7185" fillOpacity={isError || isConcerned ? 0.35 : 0.56} />
 
       {/* Rounded muzzle */}
       <ellipse cx="50" cy="44" rx="12.2" ry="8.2" fill="#27272A" stroke="#52525B" strokeWidth="1.1" />
@@ -252,6 +277,13 @@ export const CharcoalSvgGroup: React.FC<
       {isError ? (
         <path
           d="M43.5 48.2 Q47 45.2 50 48 Q53 45.2 56.5 48.2"
+          stroke="#E4E4E7"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+        />
+      ) : isConcerned ? (
+        <path
+          d="M44.2 48.2 Q50 44.6 55.8 48.2"
           stroke="#E4E4E7"
           strokeWidth="1.9"
           strokeLinecap="round"
@@ -292,6 +324,7 @@ export const MeeSvgGroup: React.FC<
   const isSuccess = (mood === 'celebrate' || mood === 'success') && !sleeping;
   const isWarning = mood === 'warning' && !sleeping;
   const isError = mood === 'error' && !sleeping;
+  const isConcerned = mood === 'concerned' && !sleeping;
   const isThinking = mood === 'thinking' && !sleeping;
 
   return (
@@ -300,11 +333,13 @@ export const MeeSvgGroup: React.FC<
       <ellipse cx="66" cy="89" rx="46" ry="5" fill="#09090B" fillOpacity="0.2" />
 
       {/* Wagging dachshund tail */}
-      <g className={!sleeping && !isError ? 'mascot-tail-wag' : ''}>
+      <g className={!sleeping && !isError && !isConcerned ? 'mascot-tail-wag' : ''}>
         <path
           d={
             isError
               ? 'M105 62 Q115 70 112 79'
+              : isConcerned
+              ? 'M105 61 Q115 66 113 73'
               : isWarning
               ? 'M105 55 Q122 41 120 27'
               : isSuccess || isPointing || running
@@ -319,6 +354,8 @@ export const MeeSvgGroup: React.FC<
           d={
             isError
               ? 'M106 64 Q113 71 111 77'
+              : isConcerned
+              ? 'M106 63 Q114 67 112 72'
               : isWarning
               ? 'M106 57 Q119 46 118 33'
               : isSuccess || isPointing || running
@@ -414,6 +451,8 @@ export const MeeSvgGroup: React.FC<
         d={
           isError
             ? 'M43 26 Q55 37 52 55 Q46 57 41 44 Z'
+            : isConcerned
+            ? 'M43 26 Q54 35 51 52 Q46 55 41 43 Z'
             : isWarning || isPointing || running
             ? 'M43 21 Q60 24 58 43 Q53 49 45 43 Z'
             : 'M43 24 Q56 31 54 49 Q48 53 42 42 Z'
@@ -427,12 +466,14 @@ export const MeeSvgGroup: React.FC<
       {/* Iconic Signature Bright Brown Eyebrow Dots ("หมา 4 ตา") */}
       <ellipse
         cx="23.5"
-        cy={isWarning ? 21.2 : isError ? 24 : 23}
+        cy={isWarning ? 21.2 : isError ? 24 : isConcerned ? 22.2 : 23}
         rx="4"
         ry="2.5"
         transform={
           isWarning
             ? 'rotate(-10 23.5 21.2)'
+            : isConcerned
+            ? 'rotate(-18 23.5 22.2)'
             : isError
             ? 'rotate(22 23.5 24)'
             : 'rotate(14 23.5 23)'
@@ -443,12 +484,14 @@ export const MeeSvgGroup: React.FC<
       />
       <ellipse
         cx="36.5"
-        cy={isWarning ? 21.2 : isError ? 24 : 23}
+        cy={isWarning ? 21.2 : isError ? 24 : isConcerned ? 22.2 : 23}
         rx="4"
         ry="2.5"
         transform={
           isWarning
             ? 'rotate(10 36.5 21.2)'
+            : isConcerned
+            ? 'rotate(18 36.5 22.2)'
             : isError
             ? 'rotate(-22 36.5 24)'
             : 'rotate(-14 36.5 23)'
@@ -475,6 +518,18 @@ export const MeeSvgGroup: React.FC<
           <path d="M40 27.5 L34 30.5 L40 33.5" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M47 17 Q50 22 47 24.5 Q44 22 47 17 Z" fill="#38BDF8" stroke="#E0F2FE" strokeWidth="0.6" />
         </>
+      ) : isConcerned ? (
+        <>
+          <circle cx="23.5" cy="30.4" r="4.5" fill="#FFFFFF" />
+          <circle cx="36.5" cy="30.4" r="4.5" fill="#FFFFFF" />
+          <circle cx="23.2" cy="31.1" r="2.5" fill="#09090B" />
+          <circle cx="36.2" cy="31.1" r="2.5" fill="#09090B" />
+          <circle cx="22.3" cy="29.4" r="1.2" fill="#FFFFFF" />
+          <circle cx="35.3" cy="29.4" r="1.2" fill="#FFFFFF" />
+          <circle cx="24.3" cy="31.8" r="0.65" fill="#FFFFFF" />
+          <circle cx="37.3" cy="31.8" r="0.65" fill="#FFFFFF" />
+          <path d="M47 18 Q49.8 22.5 47 25 Q44.2 22.5 47 18 Z" fill="#7DD3FC" stroke="#E0F2FE" strokeWidth="0.6" />
+        </>
       ) : isWarning ? (
         <>
           <circle cx="23.5" cy="30" r="4.5" fill="#FFFFFF" />
@@ -498,6 +553,8 @@ export const MeeSvgGroup: React.FC<
       {/* Mouth / Blep */}
       {isError ? (
         <path d="M15.5 41.5 Q20.5 38.2 26 41.2" stroke="#FDE68A" strokeWidth="1.6" strokeLinecap="round" />
+      ) : isConcerned ? (
+        <path d="M16.2 41.5 Q21 38.5 25.8 41.5" stroke="#FDE68A" strokeWidth="1.6" strokeLinecap="round" />
       ) : isWarning ? (
         <circle cx="20.5" cy="41.2" r="2.2" fill="#09090B" stroke="#FDE68A" strokeWidth="1.2" />
       ) : (
@@ -672,6 +729,7 @@ export const MascotAvatar: React.FC<MascotAvatarProps> = ({
   const isSuccess = (mood === 'celebrate' || mood === 'success') && !sleeping;
   const isWarning = mood === 'warning' && !sleeping;
   const isError = mood === 'error' && !sleeping;
+  const isConcerned = mood === 'concerned' && !sleeping;
 
   const reactionClass =
     mood === 'success' && !sleeping
@@ -831,6 +889,15 @@ export const MascotAvatar: React.FC<MascotAvatarProps> = ({
         {isWarning && (
           <g transform={`translate(${badgeX}, 14)`}>
             <circle cx="0" cy="0" r="8.5" fill="#F59E0B" stroke="#FFFBEB" strokeWidth="1.5" />
+            <path d="M0 -4.2 V0.8" stroke="#FFFFFF" strokeWidth="2.1" strokeLinecap="round" />
+            <circle cx="0" cy="4" r="1.2" fill="#FFFFFF" />
+          </g>
+        )}
+
+        {/* Concerned caring indicator */}
+        {isConcerned && (
+          <g transform={`translate(${badgeX}, 14)`}>
+            <circle cx="0" cy="0" r="8.5" fill="#EA580C" stroke="#FFF7ED" strokeWidth="1.5" />
             <path d="M0 -4.2 V0.8" stroke="#FFFFFF" strokeWidth="2.1" strokeLinecap="round" />
             <circle cx="0" cy="4" r="1.2" fill="#FFFFFF" />
           </g>

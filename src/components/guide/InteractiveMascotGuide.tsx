@@ -5,11 +5,14 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  CalendarCheck,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Compass,
   EyeOff,
   GraduationCap,
+  HeartHandshake,
   HelpCircle,
   Lightbulb,
   MousePointerClick,
@@ -17,9 +20,20 @@ import {
   Power,
   Sparkles,
   UserCheck,
+  Users,
   X,
 } from 'lucide-react';
-import { AppLanguage, AppProgramMode, UserRole } from '../../types';
+import {
+  AppLanguage,
+  AppProgramMode,
+  AttendanceRecord,
+  AuthUser,
+  Course,
+  GradeRecord,
+  GradingSystem,
+  Student,
+  UserRole,
+} from '../../types';
 import { NavTab } from '../layout/Sidebar';
 import {
   INTERACTIVE_GUIDE_TOPICS,
@@ -40,8 +54,11 @@ import {
 import { BaanPakKruPlayyard } from './BaanPakKruPlayyard';
 import { useGuideTour } from './GuideTourContext';
 import { GuideModuleId } from '../modals/ModuleGuideModal';
+import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
+import { filterAttendanceForUser } from '../../lib/attendanceScope';
+import { getLocalDateString } from '../../lib/date';
 
-export type MascotDashboardEventType = 'success' | 'warning' | 'error';
+export type MascotDashboardEventType = 'success' | 'warning' | 'error' | 'concerned';
 
 export interface MascotDashboardEvent {
   id?: string;
@@ -76,6 +93,15 @@ interface InteractiveMascotGuideProps {
   currentTab: NavTab;
   programMode: AppProgramMode;
   lang: AppLanguage;
+  students?: Student[];
+  courses?: Course[];
+  grades?: GradeRecord[];
+  attendance?: AttendanceRecord[];
+  currentUser?: AuthUser | null;
+  gradingSystem?: GradingSystem;
+  academicYear?: string;
+  currentSemester?: string;
+  onOpenStudentProfile?: (student: Student) => void;
   onNavigateTab: (tab: NavTab) => void;
   onOpenFullGuide: (options?: {
     moduleId?: GuideModuleId;
@@ -103,6 +129,15 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   currentTab,
   programMode,
   lang,
+  students = [],
+  courses = [],
+  grades = [],
+  attendance = [],
+  currentUser = null,
+  gradingSystem = 'thai',
+  academicYear,
+  currentSemester,
+  onOpenStudentProfile,
   onNavigateTab,
   onOpenFullGuide,
   dashboardEvent = null,
@@ -159,9 +194,139 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   const dockExitTimerRef = useRef<number | null>(null);
   const hoverExitTimerRef = useRef<number | null>(null);
   const bubbleExitTimerRef = useRef<number | null>(null);
+  const mascotHoverCloseTimerRef = useRef<number | null>(null);
   const dockLauncherRef = useRef<HTMLDivElement | null>(null);
   const chaseTimersRef = useRef<number[]>([]);
   const lastChaseTriggerAtRef = useRef<number>(0);
+
+  const [isMascotHovered, setIsMascotHovered] = useState(false);
+  const [lowGpaAlertDismissed, setLowGpaAlertDismissed] = useState(false);
+
+  const openMascotAttendanceHover = useCallback(() => {
+    if (mascotHoverCloseTimerRef.current !== null) {
+      window.clearTimeout(mascotHoverCloseTimerRef.current);
+      mascotHoverCloseTimerRef.current = null;
+    }
+    setIsMascotHovered(true);
+  }, []);
+
+  const scheduleCloseMascotAttendanceHover = useCallback(() => {
+    if (mascotHoverCloseTimerRef.current !== null) {
+      window.clearTimeout(mascotHoverCloseTimerRef.current);
+    }
+    mascotHoverCloseTimerRef.current = window.setTimeout(() => {
+      setIsMascotHovered(false);
+      mascotHoverCloseTimerRef.current = null;
+    }, 160);
+  }, []);
+
+  // Detect students with GPA below 1.50 for Gradebook concerned mascot state
+  const lowGpaStudents = useMemo(() => {
+    if (!students || students.length === 0) return [];
+    const activePool = students.filter(
+      (s) =>
+        s.status !== 'transferred_out' &&
+        s.status !== 'transferred' &&
+        s.status !== 'graduated' &&
+        s.status !== 'resigned' &&
+        s.status !== 'dropped'
+    );
+    const results: { student: Student; gpaValue: number }[] = [];
+    for (const student of activePool) {
+      const summary = calculateStudentAcademicSummary({
+        student,
+        courses,
+        grades,
+        gradingSystem,
+        currentAcademicYear: academicYear,
+        currentSemester,
+      });
+      let gpaVal: number | null = null;
+      if (!summary.hideGpaCalculations && summary.hasRecordedGrades && summary.gpax !== null) {
+        gpaVal = summary.gpax;
+      } else if (summary.hasRecordedGrades && summary.annualGradeAverage !== null) {
+        gpaVal = summary.annualGradeAverage;
+      } else if (typeof student.gpa === 'number' && student.gpa > 0) {
+        gpaVal = student.gpa;
+      }
+      if (gpaVal !== null && gpaVal < 1.5) {
+        results.push({ student, gpaValue: gpaVal });
+      }
+    }
+    return results.sort((a, b) => a.gpaValue - b.gpaValue);
+  }, [students, courses, grades, gradingSystem, academicYear, currentSemester]);
+
+  const isInGradebook = programMode === 'school_erp' && currentTab === 'gradebook';
+  const isGradebookGpaConcernActive =
+    isInGradebook && lowGpaStudents.length > 0 && !lowGpaAlertDismissed;
+
+  // Reset dismissal when navigating back into GradebookView
+  useEffect(() => {
+    if (isInGradebook) {
+      setLowGpaAlertDismissed(false);
+      if (lowGpaStudents.length > 0) {
+        setBubbleMinimized(false);
+        setDockMinimizedWhenOff(false);
+        setDockMascotExiting(false);
+      }
+    }
+  }, [isInGradebook, lowGpaStudents.length]);
+
+  const handleHelpLowGpaStudent = useCallback(
+    (student: Student) => {
+      setIsMascotHovered(false);
+      if (['teacher', 'admin', 'super_admin'].includes(currentRole)) {
+        onNavigateTab('students');
+      }
+      onOpenStudentProfile?.(student);
+    },
+    [currentRole, onNavigateTab, onOpenStudentProfile]
+  );
+
+  // Today's attendance summary shown when hovering over Charcoal or Mee
+  const todayAttendanceSummary = useMemo(() => {
+    const todayStr = getLocalDateString();
+    const scoped = filterAttendanceForUser(attendance, currentUser, students);
+    const todayAll = scoped.filter((rec) => rec.date === todayStr);
+    const studentRecordsToday = todayAll.filter((rec) => rec.userType !== 'teacher');
+    const checkInRecords = studentRecordsToday.filter((rec) => rec.recordType !== 'check_out');
+
+    const checkedInIds = new Set<string>();
+    checkInRecords.forEach((rec) => {
+      if (rec.studentId) checkedInIds.add(rec.studentId);
+    });
+
+    const activeStudents = students.filter((s) => s.status === 'active' || !s.status);
+    const totalActiveStudents = activeStudents.length > 0 ? activeStudents.length : students.length;
+    const presentCount = checkInRecords.filter((rec) => rec.status === 'present').length;
+    const lateCount = checkInRecords.filter((rec) => rec.status === 'late').length;
+    const leaveOrAbsentCount = checkInRecords.filter(
+      (rec) => rec.status === 'absent' || rec.status === 'leave' || rec.status === 'sick'
+    ).length;
+    const checkedInCount = checkedInIds.size > 0 ? checkedInIds.size : checkInRecords.length;
+    const uncheckedCount = Math.max(0, totalActiveStudents - checkedInIds.size);
+    const attendanceRate =
+      totalActiveStudents > 0
+        ? Math.min(100, Math.round((checkedInIds.size / totalActiveStudents) * 100))
+        : 0;
+
+    const recentRecords = [...todayAll]
+      .sort((a, b) => (b.time || '').localeCompare(a.time || ''))
+      .slice(0, 3);
+
+    return {
+      todayStr,
+      totalActiveStudents,
+      checkedInCount,
+      presentCount,
+      lateCount,
+      leaveOrAbsentCount,
+      uncheckedCount,
+      attendanceRate,
+      totalRecordsToday: todayAll.length,
+      recentRecords,
+    };
+  }, [attendance, currentUser, students]);
 
   const rawChaseId = useId();
   const safeChaseId = rawChaseId.replace(/:/g, '');
@@ -219,7 +384,13 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     if (typeof window === 'undefined') return;
     const handleEvent = (event: Event) => {
       const detail = (event as CustomEvent<MascotDashboardEvent>).detail;
-      if (detail && (detail.type === 'success' || detail.type === 'warning' || detail.type === 'error')) {
+      if (
+        detail &&
+        (detail.type === 'success' ||
+          detail.type === 'warning' ||
+          detail.type === 'error' ||
+          detail.type === 'concerned')
+      ) {
         triggerDashboardEvent(detail);
       }
     };
@@ -351,7 +522,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       const dockEl = dockLauncherRef.current;
       if (!dockEl) return;
       const target = event.target;
-      if (target instanceof Element && target.closest('[data-mascot-dismiss="true"]')) {
+      if (target instanceof Element && target.closest('[data-mascot-dismiss="true"], [data-mascot-no-chase="true"]')) {
         return;
       }
       const rect = dockEl.getBoundingClientRect();
@@ -419,6 +590,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       if (dockExitTimerRef.current !== null) window.clearTimeout(dockExitTimerRef.current);
       if (hoverExitTimerRef.current !== null) window.clearTimeout(hoverExitTimerRef.current);
       if (bubbleExitTimerRef.current !== null) window.clearTimeout(bubbleExitTimerRef.current);
+      if (mascotHoverCloseTimerRef.current !== null) window.clearTimeout(mascotHoverCloseTimerRef.current);
     };
   }, []);
 
@@ -720,7 +892,9 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   // Manage CSS enter/exit transition state for the Dock Speech / Event Bubble
   const shouldShowBubble = Boolean(
     !drawerMounted &&
-      (activeDashboardEvent || (enabled && !bubbleMinimized && activeContextTopic))
+      (activeDashboardEvent ||
+        isGradebookGpaConcernActive ||
+        (enabled && !bubbleMinimized && activeContextTopic))
   );
   const [bubbleMounted, setBubbleMounted] = useState(shouldShowBubble);
   const [bubbleExiting, setBubbleExiting] = useState(false);
@@ -730,6 +904,12 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       return {
         kind: 'event' as const,
         event: activeDashboardEvent,
+      };
+    }
+    if (isGradebookGpaConcernActive) {
+      return {
+        kind: 'concerned_gpa' as const,
+        students: lowGpaStudents,
       };
     }
     if (resolvedHover || activeContextTopic) {
@@ -746,6 +926,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     return null;
   }, [
     activeDashboardEvent,
+    isGradebookGpaConcernActive,
+    lowGpaStudents,
     resolvedHover,
     activeContextTopic,
     lang,
@@ -782,10 +964,13 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
 
   const dockMascotMood: MascotMood = activeDashboardEvent
     ? activeDashboardEvent.type
+    : isGradebookGpaConcernActive
+    ? 'concerned'
     : resolvedHover
     ? resolvedHover.topic.mood
     : 'happy';
-  const dockMascotSleeping = !enabled && !activeDashboardEvent;
+  const dockMascotSleeping =
+    !enabled && !activeDashboardEvent && !isGradebookGpaConcernActive;
 
   const roleWorkflowSteps = useMemo(() => {
     const targetRole = drawerRoleTab === 'student' ? 'student' : 'teacher';
@@ -1217,9 +1402,17 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
             <div className="p-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <MascotAvatar
-                  mood={activeDashboardEvent ? activeDashboardEvent.type : enabled ? 'celebrate' : 'happy'}
-                  sleeping={!enabled && !activeDashboardEvent}
-                  running={enabled && !activeDashboardEvent}
+                  mood={
+                    activeDashboardEvent
+                      ? activeDashboardEvent.type
+                      : isGradebookGpaConcernActive
+                      ? 'concerned'
+                      : enabled
+                      ? 'celebrate'
+                      : 'happy'
+                  }
+                  sleeping={!enabled && !activeDashboardEvent && !isGradebookGpaConcernActive}
+                  running={enabled && !activeDashboardEvent && !isGradebookGpaConcernActive}
                   character={mascotCharacter}
                   size={56}
                 />
@@ -1358,6 +1551,49 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   </button>
                 </div>
               </div>
+
+              {isGradebookGpaConcernActive && (
+                <div className="rounded-xl border border-orange-300 dark:border-orange-700 bg-orange-50/95 dark:bg-orange-950/50 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-orange-800 dark:text-orange-200">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        {lang === 'th'
+                          ? `พบนักเรียน GPA ต่ำกว่า 1.50 (${lowGpaStudents.length} คน)`
+                          : `${lowGpaStudents.length} student(s) with GPA below 1.50`}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                    {lowGpaStudents.map(({ student, gpaValue }) => (
+                      <button
+                        key={student.id}
+                        type="button"
+                        onClick={() => {
+                          closeDrawer(() => handleHelpLowGpaStudent(student));
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-orange-200 dark:border-orange-800 bg-white/90 dark:bg-slate-900/70 px-2 py-0.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 hover:border-orange-500 cursor-pointer"
+                      >
+                        <span>{student.firstNameTh} {student.lastNameTh}</span>
+                        <span className="text-rose-600 dark:text-rose-400 tabular-nums">
+                          {gpaValue.toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = lowGpaStudents[0]?.student;
+                      if (target) closeDrawer(() => handleHelpLowGpaStudent(target));
+                    }}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold shadow-xs transition cursor-pointer"
+                  >
+                    <HeartHandshake className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ช่วยเหลือนักเรียน (Help Them)' : 'Help Them'}</span>
+                  </button>
+                </div>
+              )}
 
               <BaanPakKruPlayyard variant="drawer" lang={lang} />
 
@@ -1569,23 +1805,249 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
           </div>
         )}
 
-        {/* Speech Bubble + Mascot Trigger Pill */}
+        {/* Speech Bubble + Mascot Trigger Pill + Hover Attendance Summary */}
         {!drawerMounted && (
-          <div className="flex items-end gap-2">
-            {/* Live Cartoon Speech Bubble (Event reaction OR Hover/Context guide) */}
+          <div className="relative flex items-end gap-2">
+            {/* Quick-Glance Today's Attendance Summary on Hovering Charcoal or Hmee */}
+            {isMascotHovered && (
+              <div
+                data-mascot-no-chase="true"
+                role="region"
+                aria-label={lang === 'th' ? 'สรุปสถานะการเช็คชื่อวันนี้' : "Today's Attendance Status Summary"}
+                onMouseEnter={openMascotAttendanceHover}
+                onMouseLeave={scheduleCloseMascotAttendanceHover}
+                className="absolute bottom-full right-0 mb-2.5 w-[min(320px,calc(100vw-2rem))] z-50 rounded-2xl border border-[var(--color-primary)]/35 bg-[var(--color-card)]/98 backdrop-blur-md shadow-2xl p-3.5 text-[var(--color-text-body)] space-y-2.5 mascot-bubble-enter"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                      <CalendarCheck className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-extrabold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'สรุปการเช็คชื่อวันนี้' : "Today's Attendance"}
+                      </div>
+                      <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums truncate">
+                        {todayAttendanceSummary.todayStr} · {todayAttendanceSummary.checkedInCount}/{todayAttendanceSummary.totalActiveStudents}{' '}
+                        {lang === 'th' ? 'คน' : 'students'}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-[11px] font-extrabold text-emerald-800 dark:text-emerald-200 tabular-nums shrink-0">
+                    {todayAttendanceSummary.attendanceRate}%
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-1.5 rounded-full bg-[var(--color-card-subtle)] overflow-hidden border border-[var(--color-border)]/60">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${todayAttendanceSummary.attendanceRate}%` }}
+                  />
+                </div>
+
+                {/* 4-status compact counts */}
+                <div className="grid grid-cols-4 gap-1.5 text-center">
+                  <div className="rounded-xl bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 px-1.5 py-1.5">
+                    <div className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                      {todayAttendanceSummary.presentCount}
+                    </div>
+                    <div className="text-[9px] font-bold text-emerald-800/80 dark:text-emerald-200/80 truncate">
+                      {lang === 'th' ? 'ตรงเวลา' : 'On Time'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-amber-50/90 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 px-1.5 py-1.5">
+                    <div className="text-xs font-extrabold text-amber-700 dark:text-amber-300 tabular-nums">
+                      {todayAttendanceSummary.lateCount}
+                    </div>
+                    <div className="text-[9px] font-bold text-amber-800/80 dark:text-amber-200/80 truncate">
+                      {lang === 'th' ? 'มาสาย' : 'Late'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/80 px-1.5 py-1.5">
+                    <div className="text-xs font-extrabold text-rose-700 dark:text-rose-300 tabular-nums">
+                      {todayAttendanceSummary.leaveOrAbsentCount}
+                    </div>
+                    <div className="text-[9px] font-bold text-rose-800/80 dark:text-rose-200/80 truncate">
+                      {lang === 'th' ? 'ลา/ขาด' : 'Absent'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-slate-100/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 px-1.5 py-1.5">
+                    <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200 tabular-nums">
+                      {todayAttendanceSummary.uncheckedCount}
+                    </div>
+                    <div className="text-[9px] font-bold text-slate-600 dark:text-slate-300 truncate">
+                      {lang === 'th' ? 'ยังไม่เช็ค' : 'Pending'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent check-ins feed */}
+                <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-muted)]">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[var(--color-primary-text)]" />
+                      <span>{lang === 'th' ? 'บันทึกล่าสุดวันนี้' : 'Recent Check-ins'}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 tabular-nums">
+                      <Users className="w-3 h-3" />
+                      <span>
+                        {todayAttendanceSummary.totalRecordsToday}{' '}
+                        {lang === 'th' ? 'รายการ' : 'logs'}
+                      </span>
+                    </span>
+                  </div>
+
+                  {todayAttendanceSummary.recentRecords.length > 0 ? (
+                    <div className="space-y-1">
+                      {todayAttendanceSummary.recentRecords.map((rec) => {
+                        const statusLabel =
+                          rec.status === 'present'
+                            ? lang === 'th'
+                              ? 'ตรงเวลา'
+                              : 'Present'
+                            : rec.status === 'late'
+                            ? lang === 'th'
+                              ? 'สาย'
+                              : 'Late'
+                            : rec.status === 'leave' || rec.status === 'sick'
+                            ? lang === 'th'
+                              ? 'ลา'
+                              : 'Leave'
+                            : lang === 'th'
+                            ? 'ขาด'
+                            : 'Absent';
+                        const statusTone =
+                          rec.status === 'present'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-200'
+                            : rec.status === 'late'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-200'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200';
+                        return (
+                          <div
+                            key={rec.id}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-card-subtle)] px-2 py-1 text-[10px]"
+                          >
+                            <div className="min-w-0 flex-1 truncate">
+                              <span className="font-bold text-[var(--color-text-title)]">
+                                {rec.userName || rec.studentId}
+                              </span>
+                              {rec.userDepartmentOrRoom && (
+                                <span className="text-[var(--color-text-muted)] ml-1">
+                                  ({rec.userDepartmentOrRoom})
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="font-mono text-[var(--color-text-muted)] tabular-nums">
+                                {(rec.time || '').slice(0, 5)}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${statusTone}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-[var(--color-card-subtle)] px-2.5 py-2 text-[10px] text-[var(--color-text-muted)] text-center">
+                      {lang === 'th'
+                        ? 'ยังไม่มีบันทึกเช็คชื่อในวันนี้ (ข้อมูลอัปเดตอัตโนมัติ)'
+                        : 'No attendance logs recorded today yet'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Live Cartoon Speech Bubble (Event reaction OR Low-GPA Concern OR Hover/Context guide) */}
             {bubbleMounted && renderedBubble && (
               <div
-                className={`hidden sm:flex flex-col max-w-[280px] rounded-2xl border backdrop-blur-sm shadow-lg px-3 py-2 text-[var(--color-text-body)] ${
-                  renderedBubble.kind === 'event'
+                data-mascot-no-chase="true"
+                className={`${
+                  renderedBubble.kind === 'concerned_gpa' ? 'flex' : 'hidden sm:flex'
+                } flex-col max-w-[300px] rounded-2xl border backdrop-blur-sm shadow-lg px-3 py-2 text-[var(--color-text-body)] ${
+                  renderedBubble.kind === 'concerned_gpa'
+                    ? 'border-orange-300 dark:border-orange-700 bg-orange-50/95 dark:bg-orange-950/95'
+                    : renderedBubble.kind === 'event'
                     ? renderedBubble.event.type === 'success'
                       ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/95 dark:bg-emerald-950/90'
                       : renderedBubble.event.type === 'warning'
                       ? 'border-amber-300 dark:border-amber-700 bg-amber-50/95 dark:bg-amber-950/90'
+                      : renderedBubble.event.type === 'concerned'
+                      ? 'border-orange-300 dark:border-orange-700 bg-orange-50/95 dark:bg-orange-950/95'
                       : 'border-rose-300 dark:border-rose-700 bg-rose-50/95 dark:bg-rose-950/90'
                     : 'border-[var(--color-border)] bg-[var(--color-card)]/95'
                 } ${bubbleExiting ? 'mascot-bubble-exit' : 'mascot-bubble-enter'}`}
               >
-                {renderedBubble.kind === 'event' ? (
+                {renderedBubble.kind === 'concerned_gpa' ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-orange-800 dark:text-orange-200 truncate">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-orange-600 dark:text-orange-300" />
+                        <span className="truncate">
+                          {lang === 'th'
+                            ? `ชาร์โคล & หมีเป็นห่วง! (${renderedBubble.students.length} คน)`
+                            : `Concerned! ${renderedBubble.students.length} Low GPA`}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        data-mascot-dismiss="true"
+                        onClick={() => setLowGpaAlertDismissed(true)}
+                        aria-label={lang === 'th' ? 'ซ่อนการแจ้งเตือนนี้ชั่วคราว' : 'Dismiss GPA alert'}
+                        className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-[10px] cursor-pointer shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-body)] leading-snug">
+                      {lang === 'th'
+                        ? `พบนักเรียน GPA ต่ำกว่า 1.50 จำนวน ${renderedBubble.students.length} คน รีบเข้าไปดูและช่วยเหลือน้องๆ กันครับ`
+                        : `${renderedBubble.students.length} student(s) currently have a GPA below 1.50 and need support.`}
+                    </p>
+                    <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                      {renderedBubble.students.slice(0, 4).map(({ student, gpaValue }) => (
+                        <button
+                          key={student.id}
+                          type="button"
+                          onClick={() => handleHelpLowGpaStudent(student)}
+                          title={
+                            lang === 'th'
+                              ? `เปิดโปรไฟล์ของ ${student.firstNameTh} ${student.lastNameTh}`
+                              : `Open profile for ${student.firstNameEn} ${student.lastNameEn}`
+                          }
+                          className="inline-flex items-center gap-1 rounded-lg border border-orange-200 dark:border-orange-800 bg-white/90 dark:bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-bold text-slate-800 dark:text-slate-100 hover:border-orange-500 cursor-pointer"
+                        >
+                          <span className="truncate max-w-[110px]">
+                            {lang === 'th' ? student.firstNameTh : student.firstNameEn}
+                          </span>
+                          <span className="text-rose-600 dark:text-rose-400 tabular-nums">
+                            {gpaValue.toFixed(2)}
+                          </span>
+                        </button>
+                      ))}
+                      {renderedBubble.students.length > 4 && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold text-orange-800 dark:text-orange-200">
+                          +{renderedBubble.students.length - 4}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = renderedBubble.students[0]?.student;
+                        if (target) handleHelpLowGpaStudent(target);
+                      }}
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white px-2.5 py-1.5 text-[11px] font-extrabold shadow-xs transition cursor-pointer"
+                    >
+                      <HeartHandshake className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'ช่วยเหลือนักเรียน (Help Them)' : 'Help Them'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                    </button>
+                  </div>
+                ) : renderedBubble.kind === 'event' ? (
                   <>
                     <div className="flex items-center justify-between gap-2">
                       <span
@@ -1594,12 +2056,15 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                             ? 'text-emerald-700 dark:text-emerald-300'
                             : renderedBubble.event.type === 'warning'
                             ? 'text-amber-700 dark:text-amber-300'
+                            : renderedBubble.event.type === 'concerned'
+                            ? 'text-orange-700 dark:text-orange-300'
                             : 'text-rose-700 dark:text-rose-300'
                         }`}
                       >
                         {renderedBubble.event.type === 'success' ? (
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        ) : renderedBubble.event.type === 'warning' ? (
+                        ) : renderedBubble.event.type === 'warning' ||
+                          renderedBubble.event.type === 'concerned' ? (
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                         ) : (
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -1610,6 +2075,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                       </span>
                       <button
                         type="button"
+                        data-mascot-dismiss="true"
                         onClick={dismissDashboardEvent}
                         aria-label={lang === 'th' ? 'ปิดการแจ้งเตือนจากน้องหมา' : 'Dismiss status message'}
                         className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-[10px] cursor-pointer shrink-0"
@@ -1629,6 +2095,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                       </span>
                       <button
                         type="button"
+                        data-mascot-dismiss="true"
                         onClick={() => setBubbleMinimized(true)}
                         aria-label={lang === 'th' ? 'ซ่อนกล่องข้อความ' : 'Hide speech bubble'}
                         className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-[10px] cursor-pointer shrink-0"
@@ -1645,7 +2112,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
             )}
 
             {/* Compact Floating Cartoon Mascot Launcher */}
-            {!enabled && dockMinimizedWhenOff && !activeDashboardEvent ? (
+            {!enabled && dockMinimizedWhenOff && !activeDashboardEvent && !isGradebookGpaConcernActive ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1665,7 +2132,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   dockMascotExiting ? 'mascot-exit' : 'mascot-enter'
                 }`}
               >
-                {!enabled && !activeDashboardEvent && (
+                {!enabled && !activeDashboardEvent && !isGradebookGpaConcernActive && (
                   <button
                     type="button"
                     data-mascot-dismiss="true"
@@ -1682,6 +2149,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                       ? 'border-emerald-400 bg-emerald-50/90 dark:bg-emerald-950/80'
                       : activeDashboardEvent?.type === 'warning'
                       ? 'border-amber-400 bg-amber-50/90 dark:bg-amber-950/80'
+                      : activeDashboardEvent?.type === 'concerned' || isGradebookGpaConcernActive
+                      ? 'border-orange-400 bg-orange-50/95 dark:bg-orange-950/85'
                       : activeDashboardEvent?.type === 'error'
                       ? 'border-rose-400 bg-rose-50/90 dark:bg-rose-950/80'
                       : enabled
@@ -1691,21 +2160,25 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 >
                   <button
                     type="button"
+                    onMouseEnter={openMascotAttendanceHover}
+                    onMouseLeave={scheduleCloseMascotAttendanceHover}
+                    onFocus={openMascotAttendanceHover}
+                    onBlur={scheduleCloseMascotAttendanceHover}
                     onClick={(e) => {
                       e.stopPropagation();
                       startScreenWideChase(true);
                     }}
                     title={
                       lang === 'th'
-                        ? 'คลิกที่ชาร์โคล & หมี เพื่อวิ่งไล่ลูกไก่จิ๊ดริ๊ดทั่วหน้าจอ!'
-                        : 'Click Charcoal & Mee to chase JidRid chicks across the screen!'
+                        ? 'ชี้เมาส์เพื่อดูสรุปเช็คชื่อวันนี้ · คลิกที่ชาร์โคล & หมี เพื่อวิ่งไล่ลูกไก่จิ๊ดริ๊ด!'
+                        : "Hover for today's attendance summary · Click Charcoal & Mee to chase JidRid!"
                     }
                     className="cursor-pointer rounded-xl p-0.5 hover:scale-105 transition-transform focus:outline-none"
                   >
                     <MascotAvatar
                       mood={dockMascotMood}
                       sleeping={dockMascotSleeping}
-                      running={!dockMascotSleeping}
+                      running={!dockMascotSleeping && !isGradebookGpaConcernActive}
                       character={mascotCharacter}
                       size={54}
                     />
@@ -1733,6 +2206,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                           ? 'text-emerald-700 dark:text-emerald-300'
                           : activeDashboardEvent?.type === 'warning'
                           ? 'text-amber-700 dark:text-amber-300'
+                          : activeDashboardEvent?.type === 'concerned' || isGradebookGpaConcernActive
+                          ? 'text-orange-700 dark:text-orange-300'
                           : activeDashboardEvent?.type === 'error'
                           ? 'text-rose-700 dark:text-rose-300'
                           : enabled
@@ -1749,9 +2224,17 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                           ? lang === 'th'
                             ? 'แจ้งเตือน'
                             : 'Warning'
+                          : activeDashboardEvent.type === 'concerned'
+                          ? lang === 'th'
+                            ? 'เป็นห่วง!'
+                            : 'Concerned'
                           : lang === 'th'
                           ? 'พบปัญหา'
                           : 'Error'
+                        : isGradebookGpaConcernActive
+                        ? lang === 'th'
+                          ? 'เป็นห่วง GPA < 1.50'
+                          : 'GPA < 1.50 Alert'
                         : enabled
                         ? lang === 'th'
                           ? 'เปิดอยู่ · ดูคู่มือ'

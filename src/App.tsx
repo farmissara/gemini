@@ -4409,6 +4409,15 @@ export const App: React.FC = () => {
           currentTab={currentTab}
           programMode={programMode}
           lang={lang}
+          students={schoolStudents}
+          courses={schoolCourses}
+          grades={schoolGrades}
+          attendance={schoolAttendance}
+          currentUser={currentUser}
+          gradingSystem={systemConfig.gradingSystem}
+          academicYear={timetableAcademicYear}
+          currentSemester={timetableSemester}
+          onOpenStudentProfile={(student) => setSelectedStudentForProfile(student)}
           onNavigateTab={(tab) => navigateToAppTab(tab)}
           onOpenFullGuide={(opts) => {
             if (opts?.moduleId) setGuideModalInitialModule(opts.moduleId);

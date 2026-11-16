@@ -12,7 +12,8 @@ export type MascotMood =
   | 'celebrate'
   | 'success'
   | 'warning'
-  | 'error';
+  | 'error'
+  | 'concerned';
 
 export interface RoleOverrideText {
   summaryTh?: string;
