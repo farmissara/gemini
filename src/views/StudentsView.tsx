@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Student, StudentStatus, GuardianInfo, School, UserRole, Course, GradeRecord, GradingSystem } from '../types';
 import { 
   Users, 
@@ -21,6 +21,8 @@ import {
   GraduationCap,
   Sparkles,
   ArrowRight,
+  ArrowUpDown,
+  Check,
   RefreshCw,
   ShieldCheck,
   ChevronDown,
@@ -145,6 +147,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'default' | 'id_asc' | 'id_desc' | 'last_name_asc' | 'grade_level'>('default');
+  const [showQuickSortMenu, setShowQuickSortMenu] = useState(false);
+  const quickSortMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'approvals'>('roster');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
@@ -227,6 +232,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   useEffect(() => {
     void refreshAccountLinks();
   }, [refreshAccountLinks]);
+
+  useEffect(() => {
+    if (!showQuickSortMenu) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (quickSortMenuRef.current && !quickSortMenuRef.current.contains(event.target as Node)) {
+        setShowQuickSortMenu(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowQuickSortMenu(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showQuickSortMenu]);
 
   const pendingAccountsCount = useMemo(
     () => accountLinks.filter((a) => a.status === 'pending').length,
@@ -451,8 +474,50 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     }
   ]);
 
+  const getGradeLevelRank = useCallback((gradeLevel: string): number => {
+    const normalized = (gradeLevel || '').trim();
+    const knownIdx = ALL_GRADE_LEVELS.findIndex(
+      (opt) => opt.value === normalized || normalized.includes(opt.value)
+    );
+    if (knownIdx >= 0) return knownIdx;
+    if (/อนุบาล\s*1|อ\.?\s*1|K\.?\s*1/i.test(normalized)) return 0;
+    if (/อนุบาล\s*2|อ\.?\s*2|K\.?\s*2/i.test(normalized)) return 1;
+    if (/อนุบาล\s*3|อ\.?\s*3|K\.?\s*3/i.test(normalized)) return 2;
+    if (/ประถมศึกษาปีที่\s*1|ป\.?\s*1|P\.?\s*1|Grade\s*1\b/i.test(normalized)) return 3;
+    if (/ประถมศึกษาปีที่\s*2|ป\.?\s*2|P\.?\s*2|Grade\s*2\b/i.test(normalized)) return 4;
+    if (/ประถมศึกษาปีที่\s*3|ป\.?\s*3|P\.?\s*3|Grade\s*3\b/i.test(normalized)) return 5;
+    if (/ประถมศึกษาปีที่\s*4|ป\.?\s*4|P\.?\s*4|Grade\s*4\b/i.test(normalized)) return 6;
+    if (/ประถมศึกษาปีที่\s*5|ป\.?\s*5|P\.?\s*5|Grade\s*5\b/i.test(normalized)) return 7;
+    if (/ประถมศึกษาปีที่\s*6|ป\.?\s*6|P\.?\s*6|Grade\s*6\b/i.test(normalized)) return 8;
+    if (/มัธยมศึกษาปีที่\s*1|ม\.?\s*1|M\.?\s*1|Grade\s*7\b/i.test(normalized)) return 9;
+    if (/มัธยมศึกษาปีที่\s*2|ม\.?\s*2|M\.?\s*2|Grade\s*8\b/i.test(normalized)) return 10;
+    if (/มัธยมศึกษาปีที่\s*3|ม\.?\s*3|M\.?\s*3|Grade\s*9\b/i.test(normalized)) return 11;
+    if (/มัธยมศึกษาปีที่\s*4|ม\.?\s*4|M\.?\s*4|Grade\s*10\b/i.test(normalized)) return 12;
+    if (/มัธยมศึกษาปีที่\s*5|ม\.?\s*5|M\.?\s*5|Grade\s*11\b/i.test(normalized)) return 13;
+    if (/มัธยมศึกษาปีที่\s*6|ม\.?\s*6|M\.?\s*6|Grade\s*12\b/i.test(normalized)) return 14;
+    if (/ปวช\.?\s*1|Vocational\s*1/i.test(normalized)) return 15;
+    if (/ปวช\.?\s*2|Vocational\s*2/i.test(normalized)) return 16;
+    if (/ปวช\.?\s*3|Vocational\s*3/i.test(normalized)) return 17;
+    return 999;
+  }, []);
+
+  const quickSortOptions: ReadonlyArray<{
+    key: 'default' | 'id_asc' | 'id_desc' | 'last_name_asc' | 'grade_level';
+    label: string;
+    subtitle: string;
+  }> = [
+    { key: 'default', label: 'Default', subtitle: 'ลำดับตามค่าเริ่มต้นในระบบ' },
+    { key: 'id_asc', label: 'ID ASC', subtitle: 'รหัสนักเรียน น้อย → มาก' },
+    { key: 'id_desc', label: 'ID DESC', subtitle: 'รหัสนักเรียน มาก → น้อย' },
+    { key: 'last_name_asc', label: 'Last Name A-Z', subtitle: 'นามสกุล A → Z / ก → ฮ' },
+    { key: 'grade_level', label: 'Grade Level', subtitle: 'ระดับชั้น & ห้องเรียน' },
+  ];
+
+  const activeQuickSortLabel =
+    quickSortOptions.find((opt) => opt.key === sortBy)?.label || 'Default';
+
   const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
+    const filtered = students.filter((s) => {
       // 1. Search filter
       const matchesSearch =
         s.firstNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -513,7 +578,52 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       return matchesSearch && matchesGrade && matchesStatus;
     });
-  }, [students, searchTerm, gradeFilter, statusFilter]);
+
+    if (sortBy === 'default') return filtered;
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'id_asc') {
+        return (a.studentIdNumber || '').localeCompare(b.studentIdNumber || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      }
+      if (sortBy === 'id_desc') {
+        return (b.studentIdNumber || '').localeCompare(a.studentIdNumber || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      }
+      if (sortBy === 'last_name_asc') {
+        const aLast = (a.lastNameEn || a.lastNameTh || '').trim();
+        const bLast = (b.lastNameEn || b.lastNameTh || '').trim();
+        const lastCmp = aLast.localeCompare(bLast, undefined, { sensitivity: 'base' });
+        if (lastCmp !== 0) return lastCmp;
+        const aFirst = (a.firstNameEn || a.firstNameTh || '').trim();
+        const bFirst = (b.firstNameEn || b.firstNameTh || '').trim();
+        return aFirst.localeCompare(bFirst, undefined, { sensitivity: 'base' });
+      }
+      if (sortBy === 'grade_level') {
+        const rankDiff = getGradeLevelRank(a.gradeLevel) - getGradeLevelRank(b.gradeLevel);
+        if (rankDiff !== 0) return rankDiff;
+        const gradeTextCmp = (a.gradeLevel || '').localeCompare(b.gradeLevel || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        if (gradeTextCmp !== 0) return gradeTextCmp;
+        const roomCmp = (a.room || '').localeCompare(b.room || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        if (roomCmp !== 0) return roomCmp;
+        return (a.studentIdNumber || '').localeCompare(b.studentIdNumber || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      }
+      return 0;
+    });
+  }, [students, searchTerm, gradeFilter, statusFilter, sortBy, getGradeLevelRank]);
 
   const selectedQrStudentSet = useMemo(() => new Set(selectedQrStudentIds), [selectedQrStudentIds]);
   const allFilteredSelected =
@@ -892,6 +1002,63 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <ModuleTourTrigger moduleId="students" lang="th" />
+          <div ref={quickSortMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowQuickSortMenu((prev) => !prev)}
+              aria-haspopup="menu"
+              aria-expanded={showQuickSortMenu}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                sortBy !== 'default'
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+              }`}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
+              <span>Quick Sort{sortBy !== 'default' ? `: ${activeQuickSortLabel}` : ''}</span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+            </button>
+            {showQuickSortMenu && (
+              <div
+                role="menu"
+                aria-label="Quick Sort Students"
+                className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5"
+              >
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  จัดเรียงข้อมูลนักเรียน (Quick Sort)
+                </div>
+                {quickSortOptions.map((opt) => {
+                  const isActive = sortBy === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={isActive}
+                      onClick={() => {
+                        setSortBy((prev) => (prev === opt.key && opt.key !== 'default' ? 'default' : opt.key));
+                        if (activeTab !== 'roster') setActiveTab('roster');
+                        setShowQuickSortMenu(false);
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition cursor-pointer ${
+                        isActive
+                          ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate">{opt.label}</div>
+                        <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate">
+                          {opt.subtitle}
+                        </div>
+                      </div>
+                      {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <details className="relative" data-guide-id="students-import-export">
             <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
               <span>เครื่องมือ / นำเข้าชุด</span>
@@ -1527,103 +1694,117 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             ) : accountLinks.length === 0 ? (
               <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">ยังไม่มีคำขอสมัครสมาชิกนักเรียนในโรงเรียนนี้</p>
             ) : (
-              <div className="divide-y divide-[var(--color-border)]">
-                {accountLinks.map((acc) => {
-                  const linkedStudent = students.find((s) => s.id === acc.student_id);
-                  const draftStudentId = linkDrafts[acc.id] ?? acc.student_id ?? '';
-                  const isBusy = processingAccountId === acc.id;
-                  return (
-                    <div key={acc.id} className="py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-[var(--color-text-title)]">
-                            {acc.full_name_th || acc.full_name_en || 'ไม่ระบุชื่อ'}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              acc.status === 'active'
-                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                : acc.status === 'suspended'
-                                ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                                : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                            }`}
-                          >
-                            {acc.status === 'active' ? 'อนุมัติแล้ว (ใช้งานได้)' : acc.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติเข้าโรงเรียน'}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-2 flex-wrap">
-                          {acc.email && <span className="font-mono">{acc.email}</span>}
-                          {acc.phone && <span>· โทร {acc.phone}</span>}
-                          <span>·</span>
-                          <span className={linkedStudent ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-amber-700 dark:text-amber-300'}>
-                            {linkedStudent
-                              ? `ผูกกับ ${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
-                              : 'ยังไม่ผูกกับระเบียนนักเรียน DMC'}
-                          </span>
-                        </div>
-                      </div>
+              <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+                <table className="table-comfortable w-full text-left text-xs">
+                  <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                    <tr>
+                      <th className="py-2.5 px-3">ผู้สมัคร / อีเมล</th>
+                      <th className="py-2.5 px-3 text-center">สถานะบัญชี</th>
+                      <th className="py-2.5 px-3">ผูกระเบียนนักเรียน DMC</th>
+                      <th className="py-2.5 px-3 text-right w-16">จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-border)]">
+                    {accountLinks.map((acc) => {
+                      const linkedStudent = students.find((s) => s.id === acc.student_id);
+                      const draftStudentId = linkDrafts[acc.id] ?? acc.student_id ?? '';
+                      const isBusy = processingAccountId === acc.id;
+                      const actionItems: TableActionItem[] = [
+                        ...(acc.status !== 'active'
+                          ? [
+                              {
+                                id: 'approve',
+                                label: isBusy ? 'กำลังอนุมัติ...' : 'อนุมัติเข้าโรงเรียน',
+                                icon: <CheckCircle className="w-3.5 h-3.5" />,
+                                variant: 'success' as const,
+                                disabled: isBusy,
+                                onClick: () => void handleApproveStudentAccount(acc),
+                              },
+                            ]
+                          : [
+                              {
+                                id: 'save_link',
+                                label: 'บันทึกการผูกระเบียน DMC',
+                                icon: <UserCheck className="w-3.5 h-3.5" />,
+                                variant: 'primary' as const,
+                                disabled: isBusy || !draftStudentId,
+                                onClick: () => void handleApproveStudentAccount(acc),
+                              },
+                              {
+                                id: 'suspend',
+                                label: 'ระงับสิทธิ์ชั่วคราว',
+                                icon: <XCircle className="w-3.5 h-3.5" />,
+                                variant: 'warning' as const,
+                                disabled: isBusy,
+                                onClick: () => void handleUpdateStudentStatus(acc, 'suspended'),
+                              },
+                            ]),
+                        {
+                          id: 'delete_request',
+                          label: 'ยกเลิก / ลบคำขอสมัคร',
+                          icon: <Trash2 className="w-3.5 h-3.5" />,
+                          variant: 'danger',
+                          dividerBefore: true,
+                          disabled: isBusy,
+                          onClick: () => handleRequestDeleteStudentAccount(acc),
+                        },
+                      ];
 
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <select
-                          value={draftStudentId}
-                          onChange={(e) => setLinkDrafts((prev) => ({ ...prev, [acc.id]: e.target.value }))}
-                          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] max-w-[230px]"
-                        >
-                          <option value="">-- ผูกระเบียนนักเรียน (ไม่บังคับ) --</option>
-                          {students.map((st) => (
-                            <option key={st.id} value={st.id}>
-                              {st.studentIdNumber} · {st.firstNameTh} {st.lastNameTh} ({st.room})
-                            </option>
-                          ))}
-                        </select>
-
-                        {acc.status !== 'active' ? (
-                          <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => void handleApproveStudentAccount(acc)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>{isBusy ? 'กำลังอนุมัติ...' : 'อนุมัติเข้าโรงเรียน'}</span>
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              disabled={isBusy || !draftStudentId}
-                              onClick={() => void handleApproveStudentAccount(acc)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                      return (
+                        <tr key={acc.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                          <td className="py-3 px-3 min-w-[200px]">
+                            <p className="text-xs font-bold text-[var(--color-text-title)]">
+                              {acc.full_name_th || acc.full_name_en || 'ไม่ระบุชื่อ'}
+                            </p>
+                            <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5 flex-wrap">
+                              {acc.email && <span className="font-mono">{acc.email}</span>}
+                              {acc.phone && <span>· โทร {acc.phone}</span>}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                acc.status === 'active'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                  : acc.status === 'suspended'
+                                  ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                              }`}
                             >
-                              <UserCheck className="w-3.5 h-3.5" />
-                              <span>บันทึกการผูกระเบียน</span>
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isBusy}
-                              onClick={() => void handleUpdateStudentStatus(acc, 'suspended')}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-xs font-bold cursor-pointer disabled:opacity-50"
+                              {acc.status === 'active' ? 'อนุมัติแล้ว (ใช้งานได้)' : acc.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติเข้าโรงเรียน'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <select
+                              value={draftStudentId}
+                              onChange={(e) => setLinkDrafts((prev) => ({ ...prev, [acc.id]: e.target.value }))}
+                              aria-label={`เลือกระเบียนนักเรียนสำหรับ ${acc.full_name_th || acc.full_name_en || acc.email || 'ผู้สมัคร'}`}
+                              className="w-full max-w-[240px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)]"
                             >
-                              <XCircle className="w-3.5 h-3.5" />
-                              <span>ระงับสิทธิ์</span>
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleRequestDeleteStudentAccount(acc)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 text-xs font-bold cursor-pointer disabled:opacity-50"
-                          title="ยกเลิกและลบคำขอสมัครนี้"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>ยกเลิก/ลบคำขอ</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                              <option value="">-- ผูกระเบียนนักเรียน (ไม่บังคับ) --</option>
+                              {students.map((st) => (
+                                <option key={st.id} value={st.id}>
+                                  {st.studentIdNumber} · {st.firstNameTh} {st.lastNameTh} ({st.room})
+                                </option>
+                              ))}
+                            </select>
+                            <div className={`mt-1 text-[10px] ${linkedStudent ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-amber-700 dark:text-amber-300'}`}>
+                              {linkedStudent
+                                ? `ผูกปัจจุบัน: ${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
+                                : 'ยังไม่ผูกกับระเบียนนักเรียน DMC'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <TableActionMenu
+                              items={actionItems}
+                              ariaLabel={`จัดการคำขอสมัคร ${acc.full_name_th || acc.full_name_en || acc.email || 'นักเรียน'}`}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

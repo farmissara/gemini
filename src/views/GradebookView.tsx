@@ -1910,23 +1910,54 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     </div>
 
                     {/* Bottom Action */}
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => void triggerGradeAlertNow(grade, false, true)}
-                        className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                      >
-                        <BellRing className="w-3.5 h-3.5" />
-                        <span>แจ้งเตือน</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenReportCard(student)}
-                        className="px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>เปิด ปพ.1 / ปพ.6</span>
-                      </button>
+                    <div className="flex items-center justify-end pt-1">
+                      <TableActionMenu
+                        triggerLabel="จัดการ"
+                        ariaLabel={`จัดการผลการเรียน ${student.firstNameTh} ${student.lastNameTh}`}
+                        items={[
+                          {
+                            id: 'transcript',
+                            label: 'ดูใบรายงานผล (Transcript / ปพ.6)',
+                            icon: <FileText className="w-3.5 h-3.5" />,
+                            variant: 'primary',
+                            onClick: () => onOpenReportCard(student),
+                          },
+                          {
+                            id: 'pp6_tab',
+                            label: 'เปิดในแท็บ ปพ.6 ประจำตัว',
+                            icon: <Award className="w-3.5 h-3.5" />,
+                            onClick: () => {
+                              setSelectedStudentIdForPp6(student.id);
+                              setActiveTab('pp6');
+                            },
+                          },
+                          {
+                            id: 'notify_grade',
+                            label: 'ส่งแจ้งเตือนผลการเรียน LINE/แอป',
+                            icon: <BellRing className="w-3.5 h-3.5" />,
+                            onClick: () => void triggerGradeAlertNow(grade, false, true),
+                          },
+                          ...(onPracticeInAi && grade.totalScore < 65
+                            ? [
+                                {
+                                  id: 'ai_remedial',
+                                  label: 'ส่งฝึกซ่อมเสริม AI Socratic',
+                                  icon: <Sparkles className="w-3.5 h-3.5" />,
+                                  variant: 'warning' as const,
+                                  dividerBefore: true,
+                                  onClick: () =>
+                                    onPracticeInAi({
+                                      subject: selectedCourse.titleTh,
+                                      topicTh: `${selectedCourse.code} ${selectedCourse.titleTh}`,
+                                      studentName: `${student.firstNameTh} ${student.lastNameTh}`,
+                                      score: grade.totalScore,
+                                      targetTab: 'socratic_tutor',
+                                    }),
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
                     </div>
                   </div>
                 );

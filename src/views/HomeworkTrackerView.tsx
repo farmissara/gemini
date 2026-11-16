@@ -297,7 +297,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                   <th className="p-2.5">{lang === 'th' ? 'ไฟล์งานที่แนบ' : 'Attached File'}</th>
                   <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนน' : 'Score'}</th>
                   <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                  <th className="p-2.5 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
+                  <th className="p-2.5 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">

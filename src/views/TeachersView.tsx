@@ -938,36 +938,46 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
 
                   {canManage && (
-                    <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenTeacherInviteModal(teacher)}
-                        className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary-text)] text-[var(--color-text-muted)] transition cursor-pointer"
-                        title="เชิญครูเข้าสู่ระบบทางอีเมล"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(teacher)}
-                        className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary-text)] text-[var(--color-text-muted)] transition cursor-pointer"
-                        title="แก้ไขข้อมูลครู"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`คุณต้องการลบข้อมูลอาจารย์ "${teacher.fullNameTh}" หรือไม่?`)) {
-                            onDeleteTeacher(teacher.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-rose-100 dark:hover:bg-rose-950 hover:text-rose-800 dark:hover:text-rose-200 text-[var(--color-text-muted)] transition cursor-pointer"
-                        title="ลบข้อมูลครู"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <TableActionMenu
+                      ariaLabel={`จัดการข้อมูล ${teacher.fullNameTh}`}
+                      items={[
+                        {
+                          id: 'detail',
+                          label: 'ดูรายละเอียด & แฟ้ม ว.PA',
+                          icon: <FileText className="w-3.5 h-3.5" />,
+                          variant: 'primary',
+                          onClick: () => {
+                            setSelectedTeacherForDetail(teacher);
+                            setDetailTab('profile');
+                          },
+                        },
+                        {
+                          id: 'edit',
+                          label: 'แก้ไขข้อมูลครู',
+                          icon: <Edit3 className="w-3.5 h-3.5" />,
+                          onClick: () => handleOpenEdit(teacher),
+                        },
+                        {
+                          id: 'invite',
+                          label: 'เชิญครูเข้าสู่ระบบทางอีเมล',
+                          icon: <Send className="w-3.5 h-3.5" />,
+                          variant: 'success',
+                          onClick: () => handleOpenTeacherInviteModal(teacher),
+                        },
+                        {
+                          id: 'delete',
+                          label: 'ลบข้อมูลครู',
+                          icon: <Trash2 className="w-3.5 h-3.5" />,
+                          variant: 'danger',
+                          dividerBefore: true,
+                          onClick: () => {
+                            if (confirm(`คุณต้องการลบข้อมูลอาจารย์ "${teacher.fullNameTh}" หรือไม่?`)) {
+                              onDeleteTeacher(teacher.id);
+                            }
+                          },
+                        },
+                      ]}
+                    />
                   )}
                 </div>
 

@@ -430,7 +430,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                       <th className="p-2.5">{lang === 'th' ? 'ห้องเรียน' : 'Room'}</th>
                       <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนนคงเหลือ' : 'Score'}</th>
                       <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                      <th className="p-2.5 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
+                      <th className="p-2.5 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">

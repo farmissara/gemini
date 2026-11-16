@@ -52,6 +52,7 @@ import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib
 import { getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -2025,70 +2026,105 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               ) : studentAccounts.length === 0 ? (
                 <p className="text-xs text-[var(--color-text-muted)]">ไม่พบบัญชีนักเรียนของโรงเรียนนี้</p>
               ) : (
-                <div className="divide-y divide-[var(--color-border)]">
-                  {studentAccounts.map((account) => {
-                    const linkedStudent = students.find((student) => student.id === account.student_id);
-                    return (
-                      <div key={account.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-xs">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-[var(--color-text-title)]">
-                              {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'}
-                            </p>
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                account.status === 'active'
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                  : account.status === 'suspended'
-                                  ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                              }`}
-                            >
-                              {account.status === 'active' ? 'ใช้งานได้' : account.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติ'}
-                            </span>
-                          </div>
-                          <p className="font-mono text-[10px] text-[var(--color-text-muted)]">
-                            {account.email || account.id.slice(0, 8)} ·{' '}
-                            {linkedStudent
-                              ? `${linkedStudent.firstNameTh} ${linkedStudent.lastNameTh} (${linkedStudent.studentIdNumber})`
-                              : 'ยังไม่ผูกกับรายชื่อนักเรียน'}
-                          </p>
-                        </div>
+                <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+                  <table className="table-comfortable w-full text-left text-xs">
+                    <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                      <tr>
+                        <th className="py-2.5 px-3">บัญชีผู้สมัคร / อีเมล</th>
+                        <th className="py-2.5 px-3">ระเบียนนักเรียน DMC</th>
+                        <th className="py-2.5 px-3 text-center">สถานะ</th>
+                        <th className="py-2.5 px-3 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)]">
+                      {studentAccounts.map((account) => {
+                        const linkedStudent = students.find((student) => student.id === account.student_id);
+                        const actionItems: TableActionItem[] = [
+                          {
+                            id: 'select_for_link',
+                            label: 'เลือกเพื่อจับคู่ระเบียน DMC',
+                            icon: <Users className="w-3.5 h-3.5" />,
+                            variant: 'primary',
+                            disabled: studentAccountSaving,
+                            onClick: () => {
+                              setSelectedAccountId(account.id);
+                              setSelectedStudentId(account.student_id || '');
+                              setStudentAccountError(null);
+                              setStudentAccountSuccess(null);
+                            },
+                          },
+                          account.status !== 'active'
+                            ? {
+                                id: 'activate',
+                                label: 'อนุมัติเปิดใช้งานบัญชี',
+                                icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                                variant: 'success',
+                                disabled: studentAccountSaving,
+                                onClick: () => void handleApproveOrToggleStatus(account, 'active'),
+                              }
+                            : {
+                                id: 'suspend',
+                                label: 'ระงับสิทธิ์ชั่วคราว',
+                                icon: <ShieldAlert className="w-3.5 h-3.5" />,
+                                variant: 'warning',
+                                disabled: studentAccountSaving,
+                                onClick: () => void handleApproveOrToggleStatus(account, 'suspended'),
+                              },
+                          {
+                            id: 'delete_request',
+                            label: 'ยกเลิก / ลบคำขอสมัคร',
+                            icon: <Trash2 className="w-3.5 h-3.5" />,
+                            variant: 'danger',
+                            dividerBefore: true,
+                            disabled: studentAccountSaving,
+                            onClick: () => setPendingStudentAccountConfirm(account),
+                          },
+                        ];
 
-                        <div className="flex items-center gap-1.5">
-                          {account.status !== 'active' ? (
-                            <button
-                              type="button"
-                              disabled={studentAccountSaving}
-                              onClick={() => void handleApproveOrToggleStatus(account, 'active')}
-                              className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold cursor-pointer disabled:opacity-50"
-                            >
-                              อนุมัติเปิดใช้งาน
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={studentAccountSaving}
-                              onClick={() => void handleApproveOrToggleStatus(account, 'suspended')}
-                              className="px-3 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[11px] font-bold cursor-pointer disabled:opacity-50"
-                            >
-                              ระงับสิทธิ์
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={studentAccountSaving}
-                            onClick={() => setPendingStudentAccountConfirm(account)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 text-[11px] font-bold cursor-pointer disabled:opacity-50"
-                            title="ยกเลิกและลบคำขอสมัครนี้"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>ยกเลิก/ลบคำขอ</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        return (
+                          <tr key={account.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                            <td className="py-2.5 px-3">
+                              <p className="font-semibold text-[var(--color-text-title)]">
+                                {account.full_name_th || account.full_name_en || 'ไม่ระบุชื่อ'}
+                              </p>
+                              <p className="font-mono text-[10px] text-[var(--color-text-muted)]">
+                                {account.email || account.id.slice(0, 8)}
+                              </p>
+                            </td>
+                            <td className="py-2.5 px-3 text-[var(--color-text-body)]">
+                              {linkedStudent ? (
+                                <span>
+                                  {linkedStudent.firstNameTh} {linkedStudent.lastNameTh}{' '}
+                                  <span className="font-mono text-[10px] text-[var(--color-primary-text)]">({linkedStudent.studentIdNumber})</span>
+                                </span>
+                              ) : (
+                                <span className="text-amber-700 dark:text-amber-300">ยังไม่ผูกกับรายชื่อนักเรียน</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  account.status === 'active'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                    : account.status === 'suspended'
+                                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                    : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                }`}
+                              >
+                                {account.status === 'active' ? 'ใช้งานได้' : account.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติ'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <TableActionMenu
+                                items={actionItems}
+                                ariaLabel={`จัดการบัญชี ${account.full_name_th || account.full_name_en || account.email || 'นักเรียน'}`}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
