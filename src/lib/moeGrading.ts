@@ -109,6 +109,14 @@ export function isPrimaryStage(stage: EducationStage): boolean {
   return stage === 'primary_early' || stage === 'primary_upper';
 }
 
+export function isPrimaryCourseCode(courseCode: string): boolean {
+  return courseCode.trim().startsWith('1');
+}
+
+export function shouldShowCourseCredits(courseCode: string, showPrimaryCourseCredits = false): boolean {
+  return showPrimaryCourseCredits || !isPrimaryCourseCode(courseCode);
+}
+
 export function isPrimaryGradeLevel(gradeLevel?: string | null): boolean {
   return isPrimaryStage(detectEducationStage(gradeLevel));
 }

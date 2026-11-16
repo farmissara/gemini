@@ -52,6 +52,7 @@ export interface School {
   gradingSystem?: GradingSystem;
   staffPositionOptions?: string[];
   roomOptions?: string[];
+  showPrimaryCourseCredits?: boolean;
   lineOaId: string;
   createdAt: string;
   status: 'active' | 'pending' | 'suspended';

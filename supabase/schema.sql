@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS public.schools (
     grading_system TEXT NOT NULL DEFAULT 'thai' CHECK (grading_system IN ('thai', 'international')),
     staff_position_options JSONB NOT NULL DEFAULT '["นักการภารโรง", "เจ้าหน้าที่ธุรการ", "ครูอัตราจ้าง", "ครูผู้ช่วย", "ครู", "รองผู้อำนวยการ", "ผู้อำนวยการ"]'::jsonb,
     room_options JSONB NOT NULL DEFAULT '[]'::jsonb,
+    show_primary_course_credits BOOLEAN NOT NULL DEFAULT FALSE,
     line_oa_id TEXT DEFAULT '@eduverse_th',
     status TEXT DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -817,7 +817,7 @@ export function validateAndParseMappedRows(
         teacherEmail: `${teacherName.replace(/\s+/g, '').toLowerCase()}@school.ac.th`,
         department: getVal(row, 'department') || 'วิชาการ',
         schedule: 'รอจัดตาราง',
-        room: getVal(row, 'room') || 'ห้อง 401',
+        room: getVal(row, 'room'),
         academicYear: context.academicYear || '2569',
         semester: context.semester || '1',
         enrolledStudentIds: [],

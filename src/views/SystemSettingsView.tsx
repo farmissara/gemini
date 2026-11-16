@@ -115,6 +115,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [schoolLogoSuccess, setSchoolLogoSuccess] = useState<string | null>(null);
   const [roomOptionsSaving, setRoomOptionsSaving] = useState(false);
   const [roomOptionsSaveError, setRoomOptionsSaveError] = useState<string | null>(null);
+  const [savingPrimaryCourseCreditSetting, setSavingPrimaryCourseCreditSetting] = useState(false);
+  const [primaryCourseCreditSettingError, setPrimaryCourseCreditSettingError] = useState<string | null>(null);
   const schoolLogoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -339,6 +341,22 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       setRoomOptionsSaveError(error instanceof Error ? error.message : 'บันทึกรายการห้องเรียนไม่สำเร็จ');
     } finally {
       setRoomOptionsSaving(false);
+    }
+  };
+
+  const handlePrimaryCourseCreditSettingChange = async (showPrimaryCourseCredits: boolean) => {
+    if (!onUpdateSchool) {
+      setPrimaryCourseCreditSettingError('ไม่พบช่องทางบันทึกการตั้งค่าโรงเรียน');
+      return;
+    }
+    setSavingPrimaryCourseCreditSetting(true);
+    setPrimaryCourseCreditSettingError(null);
+    try {
+      await onUpdateSchool({ showPrimaryCourseCredits });
+    } catch (error) {
+      setPrimaryCourseCreditSettingError(error instanceof Error ? error.message : 'บันทึกการตั้งค่าไม่สำเร็จ');
+    } finally {
+      setSavingPrimaryCourseCreditSetting(false);
     }
   };
 
@@ -1821,6 +1839,27 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
+                  <label className="flex items-start gap-2 font-semibold text-[var(--color-text-body)]">
+                    <input
+                      type="checkbox"
+                      checked={activeSchool.showPrimaryCourseCredits ?? false}
+                      onChange={(event) => void handlePrimaryCourseCreditSettingChange(event.target.checked)}
+                      disabled={savingPrimaryCourseCreditSetting || !['admin', 'super_admin'].includes(currentRole)}
+                      className="mt-0.5 accent-[var(--color-primary)]"
+                    />
+                    <span>แสดงหน่วยกิตของวิชาที่รหัสขึ้นต้นด้วย 1</span>
+                  </label>
+                  <p className="text-[10px] text-[var(--color-text-muted)]">
+                    ค่าเริ่มต้นซ่อนหน่วยกิตสำหรับวิชาประถม มีผลกับทุกหน้าที่แสดงรายวิชา
+                  </p>
+                  {savingPrimaryCourseCreditSetting && (
+                    <p role="status" className="text-[10px] text-[var(--color-text-muted)]">กำลังบันทึกการตั้งค่า...</p>
+                  )}
+                  {primaryCourseCreditSettingError && (
+                    <p role="alert" className="text-[10px] text-rose-700 dark:text-rose-300">{primaryCourseCreditSettingError}</p>
+                  )}
+                </div>
                 <div className="space-y-1">
                   <label className="font-semibold text-[var(--color-text-body)]">ระดับชั้น (1 รายการ/บรรทัด)</label>
                   <textarea

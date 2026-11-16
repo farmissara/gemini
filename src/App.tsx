@@ -3733,6 +3733,7 @@ export const App: React.FC = () => {
                     semesterOptions={systemConfig.semesterOptions}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
+                    showPrimaryCourseCredits={activeSchool.showPrimaryCourseCredits ?? false}
                     onOpenImportExport={(tab = 'courses') => {
                       setImportExportInitialTab(tab);
                       setShowImportExportModal(true);
@@ -3887,6 +3888,7 @@ export const App: React.FC = () => {
                     teachingLoadMinPeriods={activeSchool.teachingLoadMinPeriods}
                     teachingLoadMaxPeriods={activeSchool.teachingLoadMaxPeriods}
                     roomOptions={activeSchool.roomOptions}
+                    showPrimaryCourseCredits={activeSchool.showPrimaryCourseCredits ?? false}
                     onUpdateRoomOptions={(roomOptions) => handleUpdateSchool({ roomOptions })}
                     onUpdateTeachingLoadThresholds={(minPeriods, maxPeriods) => handleUpdateSchool({
                       teachingLoadMinPeriods: minPeriods,

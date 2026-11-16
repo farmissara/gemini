@@ -26,7 +26,7 @@ import {
   Teacher,
   UserRole,
 } from '../../types';
-import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
+import { calculateStudentAcademicSummary, shouldShowCourseCredits } from '../../lib/moeGrading';
 import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
@@ -634,7 +634,8 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                               {course.titleTh}
                             </div>
                             <div className="text-[10px] text-[var(--color-text-muted)] truncate">
-                              {course.teacherName} · {course.room} · {course.credits} นก.
+                              {course.teacherName} · {course.room}
+                              {shouldShowCourseCredits(course.code, activeSchool.showPrimaryCourseCredits ?? false) && ` · ${course.credits} นก.`}
                             </div>
                           </div>
                         </div>
@@ -809,7 +810,9 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                     <span className="font-mono font-bold px-2 py-0.5 rounded bg-white/20 text-[11px]">
                       {inspectedCourse.code}
                     </span>
-                    <span className="text-[11px] opacity-90">{inspectedCourse.credits} หน่วยกิต</span>
+                    {shouldShowCourseCredits(inspectedCourse.code, activeSchool.showPrimaryCourseCredits ?? false) && (
+                      <span className="text-[11px] opacity-90">{inspectedCourse.credits} หน่วยกิต</span>
+                    )}
                   </div>
                   <h3 className="text-sm font-bold mt-1 truncate">{inspectedCourse.titleTh}</h3>
                 </div>

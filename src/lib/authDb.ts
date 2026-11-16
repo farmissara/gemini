@@ -90,6 +90,7 @@ interface SchoolRow {
   grading_system?: School['gradingSystem'];
   staff_position_options?: string[] | null;
   room_options?: string[] | null;
+  show_primary_course_credits?: boolean | null;
   student_login_identifier_type?: School['studentLoginIdentifierType'] | null;
   custom_login_slug?: string | null;
   student_default_password_type?: School['studentDefaultPasswordType'] | null;
@@ -136,6 +137,7 @@ function mapSchool(row: SchoolRow): School {
     gradingSystem: row.grading_system || 'thai',
     staffPositionOptions: row.staff_position_options || DEFAULT_STAFF_POSITION_OPTIONS,
     roomOptions: row.room_options?.length ? row.room_options : undefined,
+    showPrimaryCourseCredits: row.show_primary_course_credits ?? false,
     studentLoginIdentifierType: row.student_login_identifier_type || 'both',
     customLoginSlug: row.custom_login_slug || undefined,
     studentDefaultPasswordType: row.student_default_password_type || 'birthdate',

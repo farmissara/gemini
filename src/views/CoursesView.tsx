@@ -34,7 +34,7 @@ import {
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
-import { calculateStudentAcademicSummary, isPrimaryGradeLevel } from '../lib/moeGrading';
+import { calculateStudentAcademicSummary, isPrimaryGradeLevel, shouldShowCourseCredits } from '../lib/moeGrading';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 
@@ -58,6 +58,7 @@ interface CoursesViewProps {
   semesterOptions?: string[];
   academicYear?: string;
   currentSemester?: string;
+  showPrimaryCourseCredits?: boolean;
 }
 
 export const STANDARD_CATEGORIES: { key: string; th: string; en: string; defaultColor: string }[] = [
@@ -104,6 +105,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   semesterOptions = ['1', '2', 'Summer'],
   academicYear = '2569',
   currentSemester = '1',
+  showPrimaryCourseCredits = false,
 }) => {
   const canManageCourses = currentRole !== 'student' && currentRole !== 'parent';
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
@@ -691,9 +693,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                           รหัสซ้ำ
                         </span>
                       )}
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
-                        {credits} หน่วยกิต
-                      </span>
+                      {shouldShowCourseCredits(course.code, showPrimaryCourseCredits) && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
+                          {credits} หน่วยกิต
+                        </span>
+                      )}
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]">
                         {weeklyHours} ชั่วโมง/สัปดาห์
                       </span>
@@ -791,7 +795,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>หลักเกณฑ์ชั่วโมงเรียนและการมีสิทธิ์สอบ (ปพ.5)</span>
                     </span>
-                    <span className="font-mono text-blue-800 dark:text-blue-200">{activeCourse.credits} หน่วยกิต</span>
+                    {shouldShowCourseCredits(activeCourse.code, showPrimaryCourseCredits) && (
+                      <span className="font-mono text-blue-800 dark:text-blue-200">{activeCourse.credits} หน่วยกิต</span>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">

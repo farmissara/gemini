@@ -48,6 +48,7 @@ import {
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getTimetableDuplicateReasons } from '../lib/duplicateRecords';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
+import { shouldShowCourseCredits } from '../lib/moeGrading';
 import {
   formatSlotTeachersDisplay,
   getSlotTeachers,
@@ -88,6 +89,7 @@ interface TimetableScheduleViewProps {
   teachingLoadMinPeriods?: number;
   teachingLoadMaxPeriods?: number;
   roomOptions?: string[];
+  showPrimaryCourseCredits?: boolean;
   onUpdateRoomOptions?: (roomOptions: string[]) => Promise<void>;
   onUpdateTeachingLoadThresholds?: (minPeriods: number, maxPeriods: number) => Promise<void>;
   onUpdateAcademicPeriod?: (
@@ -162,6 +164,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   teachingLoadMinPeriods,
   teachingLoadMaxPeriods,
   roomOptions: savedRoomOptions,
+  showPrimaryCourseCredits = false,
   onUpdateRoomOptions,
   onUpdateTeachingLoadThresholds,
   onUpdateAcademicPeriod,
@@ -951,7 +954,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       setNewTitleEn(c.titleEn);
       setNewTeacher(parsedCourseTeachers.teacherName || teacherNames[0] || '');
       setNewCoTeacher(parsedCourseTeachers.coTeacherName || '');
-      setNewRoom(c.room || 'ห้อง 401');
+      setNewRoom(c.room || '');
       setNewCredits(c.credits || 1.5);
 
       // Recommend color tag by category
@@ -1254,6 +1257,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       effectiveHoursTeacherFilter,
       hoursTeacherOptions
     )
+  );
+  const showCreditsColumn = classroomCoursesList.some((item) =>
+    shouldShowCourseCredits(item.code, showPrimaryCourseCredits)
   );
 
   const timetableGroup = getModuleGroupMeta('timetable');
@@ -2146,7 +2152,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   <th className="p-3">รหัสวิชา</th>
                   <th className="p-3">ชื่อวิชา (ไทย / EN)</th>
                   <th className="p-3">ครูผู้สอน</th>
-                  <th className="p-3 text-center">หน่วยกิต</th>
+                  {showCreditsColumn && <th className="p-3 text-center">หน่วยกิต</th>}
                   <th className="p-3 text-center">คาบจัดสอนจริง</th>
                   <th className="p-3 text-center">ชั่วโมงรวม/เทอม (20 สัปดาห์)</th>
                   <th className="p-3 text-center">เกณฑ์เวลาเรียน 80%</th>
@@ -2157,7 +2163,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <tbody className="divide-y divide-[var(--color-border)]">
                 {classroomCoursesList.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
+                    <td colSpan={showCreditsColumn ? 9 : 8} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
                       ยังไม่มีการจัดตารางสอนสำหรับห้องนี้ กดปุ่ม &quot;+ เพิ่มคาบเรียน&quot; เพื่อเริ่มต้นจัดตาราง
                     </td>
                   </tr>
@@ -2183,9 +2189,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         <td className="p-3 text-[var(--color-text-body)]">
                           {item.teacher}
                         </td>
-                        <td className="p-3 text-center font-bold text-[var(--color-text-title)]">
-                          {credits}
-                        </td>
+                        {showCreditsColumn && (
+                          <td className="p-3 text-center font-bold text-[var(--color-text-title)]">
+                            {shouldShowCourseCredits(item.code, showPrimaryCourseCredits) && credits}
+                          </td>
+                        )}
                         <td className="p-3 text-center font-bold">
                           <span className={`px-2 py-0.5 rounded ${
                             isComplete
@@ -2996,10 +3004,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <span className="text-[var(--color-text-muted)]">สถานที่/ห้องแล็บ (Room):</span>
                     <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.room}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-text-muted)]">หน่วยกิต (Credits):</span>
-                    <span className="font-bold text-[var(--color-primary-text)]">{selectedSlotForDetail.credits || 1.5} หน่วยกิต</span>
-                  </div>
+                  {shouldShowCourseCredits(selectedSlotForDetail.courseCode, showPrimaryCourseCredits) && (
+                    <div className="flex justify-between">
+                      <span className="text-[var(--color-text-muted)]">หน่วยกิต (Credits):</span>
+                      <span className="font-bold text-[var(--color-primary-text)]">{selectedSlotForDetail.credits || 1.5} หน่วยกิต</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-[var(--color-text-muted)]">เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ):</span>
                     <span className="font-bold text-emerald-700 dark:text-emerald-300">
@@ -3183,7 +3193,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     >
                       <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                         <span className="font-mono text-[11px] font-bold">{course.code}</span>
-                        <span className="text-[10px] text-[var(--color-text-muted)]">{course.credits} หน่วยกิต</span>
+                        {shouldShowCourseCredits(course.code, showPrimaryCourseCredits) && (
+                          <span className="text-[10px] text-[var(--color-text-muted)]">{course.credits} หน่วยกิต</span>
+                        )}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] font-semibold">
                         {course.titleTh || course.titleEn || 'ไม่ระบุชื่อวิชา'}
