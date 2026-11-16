@@ -22,9 +22,10 @@ import {
   Send,
   Check,
   FileCheck2,
-  HelpCircle
+  HelpCircle,
+  Calendar
 } from 'lucide-react';
-import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage, SdqAssessment } from '../../types';
+import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage, SdqAssessment, TimetableSlot, SchoolPeriodTime } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import {
   getCourseDuplicateReasons,
@@ -33,6 +34,14 @@ import {
 } from '../../lib/duplicateRecords';
 import { calculateGrade } from '../../lib/schoolSettings';
 import { isSpecialMoeGrade } from '../../lib/moeGrading';
+import {
+  downloadTimetableTemplateCsv,
+  downloadTimetableTemplateXlsx,
+  exportTimetableCsv,
+  exportTimetableXlsx,
+  parseTimetableImportFile,
+} from '../../lib/timetableImportExport';
+import { formatSlotTeachersDisplay } from '../../lib/timetableTeachers';
 
 export type ImportExportTab = 
   | 'students' // DMC ทะเบียนนักเรียน
@@ -44,6 +53,7 @@ export type ImportExportTab =
   | 'sdq' // OBEC Care ดูแลช่วยเหลือนักเรียน & SDQ
   | 'onet' // สทศ. O-NET ป.6/ม.3/ม.6
   | 'pp3' // ปพ.3 ออนไลน์ ใบจบรวม
+  | 'timetable' // ตารางเรียนและตารางสอน (พร้อมครูสอนคู่)
   | 'questions'; // คลังข้อสอบ
 
 interface DataImportExportModalProps {
@@ -52,6 +62,8 @@ interface DataImportExportModalProps {
   questions: QuizQuestion[];
   courses?: Course[];
   grades?: GradeRecord[];
+  timetableSlots?: TimetableSlot[];
+  schoolPeriods?: SchoolPeriodTime[];
   activeSchoolId?: string;
   lang: AppLanguage;
   onImportStudents: (newStudents: Student[]) => void;
@@ -61,6 +73,7 @@ interface DataImportExportModalProps {
   onImportEnrollment?: (courseId: string, studentIds: string[]) => void;
   onImportGrades?: (newGrades: GradeRecord[]) => void;
   onImportSdq?: (newSdq: any[]) => void;
+  onImportTimetableSlots?: (slots: TimetableSlot[]) => Promise<void> | void;
   onClose: () => void;
   initialTab?: string;
 }
@@ -71,6 +84,8 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   questions,
   courses = [],
   grades = [],
+  timetableSlots = [],
+  schoolPeriods = [],
   activeSchoolId = 'sch-bkk-01',
   lang,
   onImportStudents,
@@ -80,11 +95,12 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   onImportEnrollment,
   onImportGrades,
   onImportSdq,
+  onImportTimetableSlots,
   onClose,
   initialTab = 'students',
 }) => {
   const [activeTab, setActiveTab] = useState<ImportExportTab>(
-    (initialTab === 'courses' || initialTab === 'teachers' || initialTab === 'grades' || initialTab === 'cct' || initialTab === 'sdq' || initialTab === 'onet' || initialTab === 'pp3' || initialTab === 'questions' || initialTab === 'enrollment')
+    (initialTab === 'courses' || initialTab === 'teachers' || initialTab === 'grades' || initialTab === 'cct' || initialTab === 'sdq' || initialTab === 'onet' || initialTab === 'pp3' || initialTab === 'timetable' || initialTab === 'questions' || initialTab === 'enrollment')
       ? initialTab as ImportExportTab
       : 'students'
   );
@@ -100,6 +116,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   const sdqFileRef = useRef<HTMLInputElement>(null);
   const onetFileRef = useRef<HTMLInputElement>(null);
   const pp3FileRef = useRef<HTMLInputElement>(null);
+  const timetableFileRef = useRef<HTMLInputElement>(null);
   const questionFileRef = useRef<HTMLInputElement>(null);
 
   // Preview States
@@ -112,6 +129,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   const [previewSdq, setPreviewSdq] = useState<any[]>([]);
   const [previewOnet, setPreviewOnet] = useState<any[]>([]);
   const [previewPp3, setPreviewPp3] = useState<any[]>([]);
+  const [previewTimetableSlots, setPreviewTimetableSlots] = useState<TimetableSlot[]>([]);
   const [previewQuestions, setPreviewQuestions] = useState<QuizQuestion[]>([]);
 
   // Page Numbers
@@ -926,6 +944,19 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <FileText className="w-4 h-4 text-orange-600" />
             <span>ปพ.3 ออนไลน์</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('timetable'); setPage(0); }}
+            className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'timetable'
+                ? 'border-emerald-600 text-emerald-600 bg-[var(--color-card)] rounded-t-xl'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <span>ตารางเรียน/สอน ({timetableSlots.length})</span>
+          </button>
         </div>
 
         {/* Modal Scrollable Body */}
@@ -1541,6 +1572,185 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                     >
                       <X className="w-4 h-4" />
                       <span>ปิดพรีวิว</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 9: ตารางเรียนและตารางสอน (รองรับครูสอนคู่ + Excel/CSV) */}
+          {activeTab === 'timetable' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/30 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
+                      <span>นำเข้าตารางเรียน / ตารางสอน</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      รองรับไฟล์ Excel (.xlsx/.xls) และ CSV พร้อมคอลัมน์ครูผู้สอนหลักและครูสอนคู่
+                    </p>
+                  </div>
+                  <input
+                    ref={timetableFileRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const res = await parseTimetableImportFile(file, {
+                          schoolId: activeSchoolId,
+                          academicYear: '2569',
+                          semester: '1',
+                          schoolPeriods,
+                        });
+                        setPreviewTimetableSlots(res.slots);
+                        showToast(
+                          res.slots.length > 0
+                            ? `อ่านตารางเรียนได้ ${res.slots.length} คาบ${res.skippedRows > 0 ? ` (ข้าม ${res.skippedRows} แถว)` : ''}`
+                            : 'ไม่พบรายการคาบเรียนที่ถูกต้องในไฟล์'
+                        );
+                      } catch {
+                        showToast('อ่านไฟล์ตารางเรียนไม่สำเร็จ');
+                      } finally {
+                        e.target.value = '';
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => timetableFileRef.current?.click()}
+                    className="w-full py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer transition"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>เลือกไฟล์ Excel / CSV</span>
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      <span>ดาวน์โหลดแม่แบบ (รวมครูสอนคู่)</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ตัวอย่างตารางสอนที่มีทั้งแบบสอนเดี่ยวและสอนคู่
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => downloadTimetableTemplateXlsx()}
+                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Excel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadTimetableTemplateCsv()}
+                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>CSV</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
+                      <Download className="w-4 h-4 text-blue-600" />
+                      <span>ส่งออกตารางปัจจุบัน ({timetableSlots.length} คาบ)</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                      ส่งออกตารางเรียนทั้งหมดพร้อมข้อมูลครูผู้สอนหลักและครูสอนคู่
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={timetableSlots.length === 0}
+                      onClick={() => exportTimetableXlsx(timetableSlots)}
+                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Excel</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={timetableSlots.length === 0}
+                      onClick={() => exportTimetableCsv(timetableSlots)}
+                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>CSV</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {previewTimetableSlots.length > 0 && (
+                <div className="p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/30 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>ตรวจสอบคาบเรียนที่จะนำเข้า ({previewTimetableSlots.length} คาบ)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTimetableSlots([])}
+                      className="text-xs text-rose-600 hover:underline font-bold flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>ล้างพรีวิว</span>
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto max-h-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
+                        <tr>
+                          <th className="px-3 py-2">วัน / คาบ</th>
+                          <th className="px-3 py-2">รายวิชา</th>
+                          <th className="px-3 py-2">ห้องเรียน</th>
+                          <th className="px-3 py-2">ครูผู้สอน (หลัก / คู่)</th>
+                          <th className="px-3 py-2">สถานที่</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {previewTimetableSlots.slice(0, 25).map((slot) => (
+                          <tr key={slot.id}>
+                            <td className="px-3 py-2 whitespace-nowrap font-semibold">
+                              {slot.dayOfWeek.toUpperCase()} · คาบ {slot.periodNumber} ({slot.startTime}-{slot.endTime})
+                            </td>
+                            <td className="px-3 py-2">{slot.courseCode} · {slot.courseTitleTh}</td>
+                            <td className="px-3 py-2 font-bold">{slot.classRoom}</td>
+                            <td className="px-3 py-2">{formatSlotTeachersDisplay(slot)}</td>
+                            <td className="px-3 py-2">{slot.room}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!onImportTimetableSlots) return;
+                        await onImportTimetableSlots(previewTimetableSlots);
+                        showToast(`นำเข้าตารางเรียน ${previewTimetableSlots.length} คาบเข้าสู่ระบบสำเร็จ!`);
+                        setPreviewTimetableSlots([]);
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>ยืนยันนำเข้า {previewTimetableSlots.length} คาบเรียน</span>
                     </button>
                   </div>
                 </div>

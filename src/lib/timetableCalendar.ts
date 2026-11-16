@@ -1,4 +1,5 @@
 import { DayOfWeek, TimetableSlot } from '../types';
+import { parseSlotTeachersFromRaw } from './timetableTeachers';
 
 const BANGKOK_OFFSET_MINUTES = 7 * 60;
 const ICAL_DAYS: Record<DayOfWeek, string> = {
@@ -143,9 +144,11 @@ export function buildTimetableIcs(
     }
 
     const termKey = `${slot.academicYear || ''}-${slot.semester || ''}`;
+    const { teacherName, coTeacherName } = parseSlotTeachersFromRaw(slot.teacherName, slot.coTeacherName);
     const description = [
       `ห้องเรียน: ${slot.classRoom || 'ไม่ระบุ'}`,
-      `ครูผู้สอน: ${slot.teacherName || 'ไม่ระบุ'}`,
+      `ครูผู้สอนหลัก: ${teacherName || 'ไม่ระบุ'}`,
+      ...(coTeacherName ? [`ครูสอนคู่: ${coTeacherName}`] : []),
       `สถานที่: ${slot.room || 'ไม่ระบุ'}`,
       `ภาคเรียน: ${termKey}`,
     ].join('\n');

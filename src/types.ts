@@ -754,6 +754,7 @@ export interface TimetableSlot {
   courseTitleTh: string;
   courseTitleEn: string;
   teacherName: string;
+  coTeacherName?: string;
   room: string;
   classRoom: string; // e.g. "ห้อง 401 (วิทย์-คณิต)", "ห้อง 402"
   colorTag: 'sky' | 'emerald' | 'amber' | 'rose' | 'purple' | 'indigo' | 'cyan';

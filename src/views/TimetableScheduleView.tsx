@@ -24,12 +24,12 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import {
   addCalendarDays,
-  buildTimetableIcs,
   formatCalendarDate,
   getBangkokDateInputValue,
   getCalendarWeekStart,
@@ -41,6 +41,15 @@ import {
 } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getTimetableDuplicateReasons } from '../lib/duplicateRecords';
+import {
+  formatSlotTeachersDisplay,
+  getSlotTeachers,
+  normalizeTeacherName,
+  parseSlotTeachersFromRaw,
+  slotHasTeacher,
+} from '../lib/timetableTeachers';
+import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
+import { TimetableImportExportModal } from '../components/modals/TimetableImportExportModal';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -50,6 +59,7 @@ interface TimetableScheduleViewProps {
   onAddSlot: (slot: TimetableSlot) => Promise<void>;
   onUpdateSlot?: (slot: TimetableSlot) => Promise<void>;
   onDeleteSlot: (id: string) => Promise<void>;
+  onImportSlots?: (slots: TimetableSlot[]) => Promise<void> | void;
   schoolPeriods: SchoolPeriodTime[];
   onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
   lang: AppLanguage;
@@ -97,14 +107,8 @@ type TimetableConflict = {
 };
 type TimetableConflictCandidate = Pick<
   TimetableSlot,
-  'dayOfWeek' | 'periodNumber' | 'startTime' | 'endTime' | 'teacherName' | 'room' | 'classRoom'
+  'dayOfWeek' | 'periodNumber' | 'startTime' | 'endTime' | 'teacherName' | 'coTeacherName' | 'room' | 'classRoom'
 >;
-
-const normalizeTeacherName = (name: string) => name
-  .normalize('NFC')
-  .trim()
-  .replace(/\s+/g, ' ')
-  .toLocaleLowerCase();
 
 const getAcademicPeriodKey = (academicYear: string, semester: string) => JSON.stringify([academicYear, semester]);
 
@@ -126,6 +130,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onAddSlot,
   onUpdateSlot,
   onDeleteSlot,
+  onImportSlots,
   schoolPeriods,
   onSaveSchoolPeriods,
   lang,
@@ -205,10 +210,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => (
     getCalendarWeekStart(getBangkokDateInputValue())
   ));
-  const [showIcsExportModal, setShowIcsExportModal] = useState(false);
-  const [icsStartDate, setIcsStartDate] = useState(calendarWeekStart);
-  const [icsEndDate, setIcsEndDate] = useState(addCalendarDays(calendarWeekStart, 15 * 7 + 4));
-  const [icsExportError, setIcsExportError] = useState<string | null>(null);
+  const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
+  const [showImportExportModal, setShowImportExportModal] = useState(false);
 
   // Classroom selection
   const uniqueClassRooms = Array.from(
@@ -239,8 +242,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const gradeLevels = Array.from(gradeRooms.keys()).sort((a, b) => a.localeCompare(b, 'th'));
   const scheduledTeacherNames = Array.from(new Map(
     slots
-      .map((slot) => slot.teacherName.trim())
-      .filter(Boolean)
+      .flatMap((slot) => getSlotTeachers(slot))
       .map((name) => [normalizeTeacherName(name), name] as const)
   ).values()).sort((a, b) => a.localeCompare(b, 'th'));
   const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
@@ -255,10 +257,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [roomOptionsError, setRoomOptionsError] = useState<string | null>(null);
   const [isSavingRoomOption, setIsSavingRoomOption] = useState(false);
 
-  // Teacher names are used as suggestions when assigning a teacher to a slot.
+  // Teacher names are used as suggestions when assigning a teacher or co-teacher to a slot.
   const teacherNames = Array.from(new Map([
       ...teachers.map((t) => t.fullNameTh),
-      ...slots.map((s) => s.teacherName).filter(Boolean),
+      ...slots.flatMap((s) => getSlotTeachers(s)),
       ...courses.map((c) => c.teacherName).filter(Boolean),
     ]
     .map((name) => [normalizeTeacherName(name), name.normalize('NFC').trim().replace(/\s+/g, ' ')] as const)
@@ -340,6 +342,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newTitleTh, setNewTitleTh] = useState('');
   const [newTitleEn, setNewTitleEn] = useState('');
   const [newTeacher, setNewTeacher] = useState(teacherNames[0] || '');
+  const [newCoTeacher, setNewCoTeacher] = useState('');
   const [newClassRoom, setNewClassRoom] = useState('');
   const [newRoom, setNewRoom] = useState('');
   const [newCredits, setNewCredits] = useState<number>(1.5);
@@ -372,9 +375,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     if (!overlaps) return null;
 
     const reasons: string[] = [];
-    const teacherKey = normalizeTeacherName(slotA.teacherName);
-    if (teacherKey && teacherKey === normalizeTeacherName(slotB.teacherName)) {
-      reasons.push(`ครูผู้สอน ${slotA.teacherName}`);
+    const teachersA = getSlotTeachers(slotA);
+    const teacherKeysB = new Set(getSlotTeachers(slotB).map(normalizeTeacherName));
+    const overlappingTeachers = teachersA.filter((name) => teacherKeysB.has(normalizeTeacherName(name)));
+    if (overlappingTeachers.length > 0) {
+      reasons.push(`ครูผู้สอน ${overlappingTeachers.join(', ')}`);
     }
     const roomKey = normalizeTeacherName(slotA.room);
     if (roomKey && roomKey === normalizeTeacherName(slotB.room)) {
@@ -402,10 +407,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       return;
     }
 
-    const updatedSlot = {
+    const parsedTeachers = parseSlotTeachersFromRaw(editSlotDraft.teacherName, editSlotDraft.coTeacherName);
+    if (
+      editSlotDraft.coTeacherName?.trim() &&
+      normalizeTeacherName(editSlotDraft.coTeacherName) === normalizeTeacherName(editSlotDraft.teacherName)
+    ) {
+      setSlotActionError('ครูสอนคู่ต้องไม่ใช่บุคคลเดียวกับครูผู้สอนหลัก');
+      return;
+    }
+
+    const updatedSlot: TimetableSlot = {
       ...editSlotDraft,
       classRoom: editSlotDraft.classRoom.trim(),
-      teacherName: editSlotDraft.teacherName.trim(),
+      teacherName: parsedTeachers.teacherName,
+      coTeacherName: parsedTeachers.coTeacherName,
       room: editSlotDraft.room.trim(),
     };
     if (!updatedSlot.classRoom) {
@@ -421,6 +436,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       dayOfWeek: updatedSlot.dayOfWeek,
       periodNumber: updatedSlot.periodNumber,
       teacherName: updatedSlot.teacherName,
+      coTeacherName: updatedSlot.coTeacherName,
       room: updatedSlot.room,
     }, otherSlots);
     const overlappingReasons = otherSlots.flatMap((slot) => {
@@ -467,7 +483,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       if (!roomsInGrade?.has(normalizeTeacherName(slot.classRoom))) return false;
     }
     if (filters.classRoom && slot.classRoom !== filters.classRoom) return false;
-    if (filters.teacherName && normalizeTeacherName(slot.teacherName) !== normalizeTeacherName(filters.teacherName)) {
+    if (filters.teacherName && !slotHasTeacher(slot, filters.teacherName)) {
       return false;
     }
     return true;
@@ -495,47 +511,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     });
     setShowScheduleSettingsModal(true);
   };
-  const openIcsExportModal = () => {
-    setIcsStartDate(calendarWeekStart);
-    setIcsEndDate(addCalendarDays(calendarWeekStart, 15 * 7 + 4));
-    setIcsExportError(null);
-    setShowIcsExportModal(true);
-  };
-  const handleDownloadIcs = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIcsExportError(null);
-    try {
-      const filterLabel = activeScheduleFilters
-        ? [activeScheduleFilters.gradeLevel, activeScheduleFilters.classRoom, activeScheduleFilters.teacherName]
-          .filter(Boolean)
-          .join(' · ')
-        : selectedClassRoom === ALL_CLASSROOMS
-          ? 'ทุกห้อง'
-          : selectedClassRoom;
-      const calendarName = `${schoolName} · ${filterLabel || 'ตารางสอน'} · ${viewAcademicYear} ${viewSemester}`;
-      const calendarContent = buildTimetableIcs(
-        activeSlots,
-        icsStartDate,
-        icsEndDate,
-        calendarName,
-        schoolId
-      );
-      const blob = new Blob([calendarContent], { type: 'text/calendar;charset=utf-8' });
-      const objectUrl = URL.createObjectURL(blob);
-      const downloadLink = document.createElement('a');
-      const filename = `${schoolName}-${viewAcademicYear}-${viewSemester}-calendar.ics`
-        .replace(/[\\/:*?"<>|]+/g, '-')
-        .replace(/\s+/g, '-');
-      downloadLink.href = objectUrl;
-      downloadLink.download = filename;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      downloadLink.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      setShowIcsExportModal(false);
-    } catch (error) {
-      setIcsExportError(error instanceof Error ? error.message : String(error));
-    }
+  const openGoogleCalendarModal = () => {
+    setShowGoogleCalendarModal(true);
   };
   const handleSaveTeachingLoadThresholds = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -593,7 +570,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     ? Array.from(new Set([...uniqueClassRooms, editSlotDraft.classRoom])).filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'))
     : [];
   const editSlotTeacherOptions = editSlotDraft
-    ? Array.from(new Set([...teacherNames, editSlotDraft.teacherName])).filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'))
+    ? Array.from(new Set([...teacherNames, ...getSlotTeachers(editSlotDraft)])).filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'))
     : [];
 
   const getSlotDurationHours = (slot: TimetableSlot) => {
@@ -615,31 +592,37 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     if (key) workloadPeople.set(key, { name, teacher });
   });
   slots.forEach((slot) => {
-    const name = slot.teacherName.normalize('NFC').trim().replace(/\s+/g, ' ');
-    const key = normalizeTeacherName(name);
-    if (key && !workloadPeople.has(key)) {
-      workloadPeople.set(key, { name });
-    }
+    getSlotTeachers(slot).forEach((name) => {
+      const key = normalizeTeacherName(name);
+      if (key && !workloadPeople.has(key)) {
+        workloadPeople.set(key, { name });
+      }
+    });
   });
   const workloadByTeacher = new Map<string, TimetableSlot[]>();
   slots.forEach((slot) => {
-    const key = normalizeTeacherName(slot.teacherName);
-    if (!key) return;
-    const teacherSlots = workloadByTeacher.get(key) || [];
-    teacherSlots.push(slot);
-    workloadByTeacher.set(key, teacherSlots);
+    getSlotTeachers(slot).forEach((teacherName) => {
+      const key = normalizeTeacherName(teacherName);
+      if (!key) return;
+      const teacherSlots = workloadByTeacher.get(key) || [];
+      teacherSlots.push(slot);
+      workloadByTeacher.set(key, teacherSlots);
+    });
   });
   const teacherWorkloadRows = [...workloadPeople.entries()]
     .map(([key, person]) => {
       const teacherSlots = workloadByTeacher.get(key) || [];
       const periodCount = teacherSlots.length;
-      const courseMap = new Map<string, { code: string; title: string; periodCount: number; rooms: Set<string> }>();
+      const courseMap = new Map<string, { code: string; title: string; periodCount: number; coTaughtPeriods: number; rooms: Set<string> }>();
       teacherSlots.forEach((slot) => {
         const code = slot.courseCode.trim();
         const title = slot.courseTitleTh.trim() || slot.courseTitleEn.trim();
         const courseKey = `${code.normalize('NFC').toLocaleLowerCase()}|${title.normalize('NFC').toLocaleLowerCase()}`;
-        const course = courseMap.get(courseKey) || { code, title, periodCount: 0, rooms: new Set<string>() };
+        const course = courseMap.get(courseKey) || { code, title, periodCount: 0, coTaughtPeriods: 0, rooms: new Set<string>() };
         course.periodCount += 1;
+        if (getSlotTeachers(slot).length > 1) {
+          course.coTaughtPeriods += 1;
+        }
         if (slot.classRoom.trim()) course.rooms.add(slot.classRoom.trim());
         courseMap.set(courseKey, course);
       });
@@ -685,15 +668,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   // Check course auto-fill when course selector changes in Add Modal
   const handleSelectCourse = (courseId: string) => {
     setSelectedCourseId(courseId);
+    setNewCoTeacher('');
     if (courseId === 'custom') {
       return;
     }
     const c = courses.find((crs) => crs.id === courseId);
     if (c) {
+      const parsedCourseTeachers = parseSlotTeachersFromRaw(c.teacherName || '');
       setNewCourseCode(c.code);
       setNewTitleTh(c.titleTh);
       setNewTitleEn(c.titleEn);
-      setNewTeacher(c.teacherName || teacherNames[0] || '');
+      setNewTeacher(parsedCourseTeachers.teacherName || teacherNames[0] || '');
+      setNewCoTeacher(parsedCourseTeachers.coTeacherName || '');
       setNewRoom(c.room || 'ห้อง 401');
       setNewCredits(c.credits || 1.5);
 
@@ -716,6 +702,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       startTime: periodTime?.startTime || '',
       endTime: periodTime?.endTime || '',
       teacherName: newTeacher,
+      coTeacherName: newCoTeacher,
       room: newRoom,
       classRoom: newClassRoom,
     };
@@ -729,6 +716,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       startTime: getPeriodTime(newPeriod)?.startTime || '',
       endTime: getPeriodTime(newPeriod)?.endTime || '',
       teacherName: newTeacher,
+      coTeacherName: newCoTeacher,
       room: newRoom,
       classRoom: newClassRoom,
     }, prospectiveConflict)
@@ -741,12 +729,17 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       return;
     }
     if (!newCourseCode || !newTitleTh) return;
+    if (newCoTeacher.trim() && normalizeTeacherName(newCoTeacher) === normalizeTeacherName(newTeacher)) {
+      setSlotActionError('ครูสอนคู่ต้องไม่ใช่บุคคลเดียวกับครูผู้สอนหลัก');
+      return;
+    }
 
     const periodTime = getPeriodTime(newPeriod);
 
     const targetCourse = selectedCourseId !== 'custom' ? courses.find((c) => c.id === selectedCourseId) : null;
     const credits = targetCourse?.credits || newCredits || 1.5;
     const totalSemesterHours = targetCourse?.totalHours || Math.round(credits * 40);
+    const parsedTeachers = parseSlotTeachersFromRaw(newTeacher, newCoTeacher);
 
     const newSlot: TimetableSlot = {
       id: `time-${Date.now()}`,
@@ -759,7 +752,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       courseCode: newCourseCode.trim(),
       courseTitleTh: newTitleTh.trim(),
       courseTitleEn: newTitleEn.trim() || newTitleTh.trim(),
-      teacherName: newTeacher.trim(),
+      teacherName: parsedTeachers.teacherName,
+      ...(parsedTeachers.coTeacherName ? { coTeacherName: parsedTeachers.coTeacherName } : {}),
       room: newRoom.trim(),
       classRoom: newClassRoom,
       colorTag: newColor,
@@ -775,7 +769,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         classRoom: newClassRoom,
         dayOfWeek: newDay,
         periodNumber: newPeriod,
-        teacherName: newTeacher.trim(),
+        teacherName: newSlot.teacherName,
+        coTeacherName: newSlot.coTeacherName,
         room: newRoom.trim(),
       },
       slots
@@ -956,7 +951,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         code: s.courseCode,
         titleTh: s.courseTitleTh,
         titleEn: s.courseTitleEn,
-        teacher: s.teacherName,
+        teacher: formatSlotTeachersDisplay(s),
         scheduledPeriods: 0,
         course: matchCourse,
       };
@@ -1235,7 +1230,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         <span className="w-full truncate font-bold">
                           {slot.courseCode} · {slot.courseTitleTh}
                         </span>
-                        <span>ห้องเรียน {slot.classRoom || 'ไม่ระบุ'} · ครู {slot.teacherName || 'ไม่ระบุ'}</span>
+                        <span>ห้องเรียน {slot.classRoom || 'ไม่ระบุ'} · ครู {formatSlotTeachersDisplay(slot)}</span>
                         <span>
                           สถานที่ {slot.room || 'ไม่ระบุ'} · {canEditTimetableSlots ? 'แก้ไขคาบนี้' : 'เปิดรายละเอียดคาบนี้'}
                         </span>
@@ -1511,6 +1506,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 <span className="min-w-0 break-words text-xs font-semibold text-[var(--color-text-body)]">
                                   <span className="font-mono font-bold text-[var(--color-primary-text)]">{subject.code}</span>
                                   {subject.title ? ` · ${subject.title}` : ''}
+                                  {subject.coTaughtPeriods > 0 && (
+                                    <span className="ml-1.5 inline-flex items-center rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                      สอนคู่ ({subject.coTaughtPeriods} คาบ)
+                                    </span>
+                                  )}
                                 </span>
                                 <span className="whitespace-nowrap text-[10px] font-semibold text-[var(--color-text-muted)]">
                                   {subject.periodCount} คาบ/สัปดาห์
@@ -1692,12 +1692,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={openIcsExportModal}
-                  disabled={activeSlots.length === 0}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setShowImportExportModal(true)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  ส่งออก Google Calendar
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                  Export / Import
+                </button>
+                <button
+                  type="button"
+                  onClick={openGoogleCalendarModal}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  เชื่อมต่อ Google Calendar
                 </button>
               </div>
             </div>
@@ -1733,6 +1740,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                           <p className="py-6 text-center text-[10px] text-[var(--color-text-muted)]">ไม่มีคาบ</p>
                         ) : daySlots.map((slot) => {
                           const timeRange = getSlotTimeRange(slot);
+                          const hasCoTeacher = getSlotTeachers(slot).length > 1;
                           return (
                             <button
                               key={slot.id}
@@ -1746,13 +1754,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                             >
                               <span className="flex items-center justify-between gap-1 text-[9px] font-semibold text-[var(--color-primary-text)]">
                                 <span>{timeRange ? `${formatTimeMinutes(timeRange.start)}–${formatTimeMinutes(timeRange.end)}` : `คาบ ${slot.periodNumber}`}</span>
-                                {conflictingSlotIds.has(slot.id) && <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" />}
+                                <span className="flex items-center gap-1">
+                                  {hasCoTeacher && (
+                                    <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                      สอนคู่
+                                    </span>
+                                  )}
+                                  {conflictingSlotIds.has(slot.id) && <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" />}
+                                </span>
                               </span>
                               <span className="mt-1 block text-[10px] font-bold text-[var(--color-text-title)]">
                                 {slot.courseCode} · {slot.courseTitleTh}
                               </span>
                               <span className="mt-1 block text-[9px] text-[var(--color-text-body)]">
-                                {slot.classRoom} · {slot.teacherName || 'ไม่ระบุครู'}
+                                {slot.classRoom} · {formatSlotTeachersDisplay(slot)}
                               </span>
                               {slot.room && (
                                 <span className="mt-0.5 block text-[9px] text-[var(--color-text-muted)]">
@@ -1812,6 +1827,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     }
                     if (activeScheduleFilters?.teacherName) {
                       setNewTeacher(activeScheduleFilters.teacherName);
+                      setNewCoTeacher('');
                     }
                     setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
                     setSlotActionError(null);
@@ -1896,6 +1912,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   </div>
                 </div>
               </details>
+              <button
+                type="button"
+                onClick={() => setShowImportExportModal(true)}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Export / Import</span>
+              </button>
+              <button
+                type="button"
+                onClick={openGoogleCalendarModal}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/80 px-2.5 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200 cursor-pointer"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Google Calendar</span>
+              </button>
               <button
                 type="button"
                 onClick={openScheduleSettings}
@@ -2002,9 +2034,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   </div>
 
                                   <div className={`pt-1 border-t border-current/20 space-y-0.5 ${isAllClassroomsView ? 'text-[9px]' : 'text-[10px]'} opacity-95`}>
-                                    <div className="flex items-center gap-1 truncate">
-                                      <User className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="truncate">{slot.teacherName}</span>
+                                    <div className="flex items-center gap-1 min-w-0" title={formatSlotTeachersDisplay(slot)}>
+                                      {getSlotTeachers(slot).length > 1 ? (
+                                        <Users className="w-2.5 h-2.5 shrink-0" />
+                                      ) : (
+                                        <User className="w-2.5 h-2.5 shrink-0" />
+                                      )}
+                                      <span className="truncate">{formatSlotTeachersDisplay(slot)}</span>
+                                      {getSlotTeachers(slot).length > 1 && (
+                                        <span className="shrink-0 rounded bg-white/75 px-1 text-[8px] font-bold text-emerald-800 dark:bg-slate-900/70 dark:text-emerald-300">
+                                          สอนคู่
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-1 truncate" title={`ห้องสถานที่: ${slot.room || 'ไม่ระบุ'}`}>
                                       <MapPin className="w-2.5 h-2.5 shrink-0" />
@@ -2250,7 +2291,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       </select>
                     </label>
                     <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      ครูผู้สอน
+                      ครูผู้สอนหลัก
                       <select
                         value={editSlotDraft.teacherName}
                         onChange={(event) => setEditSlotDraft((previous) => previous
@@ -2262,6 +2303,23 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         {editSlotTeacherOptions.map((teacherName) => (
                           <option key={teacherName} value={teacherName}>{teacherName}</option>
                         ))}
+                      </select>
+                    </label>
+                    <label className="col-span-2 space-y-1 text-[10px] text-[var(--color-text-muted)]">
+                      ครูสอนคู่ (ถ้ามี)
+                      <select
+                        value={editSlotDraft.coTeacherName || ''}
+                        onChange={(event) => setEditSlotDraft((previous) => previous
+                          ? { ...previous, coTeacherName: event.target.value || undefined }
+                          : previous)}
+                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
+                      >
+                        <option value="">ไม่มีครูสอนคู่</option>
+                        {editSlotTeacherOptions
+                          .filter((name) => normalizeTeacherName(name) !== normalizeTeacherName(editSlotDraft.teacherName))
+                          .map((teacherName) => (
+                            <option key={teacherName} value={teacherName}>{teacherName}</option>
+                          ))}
                       </select>
                     </label>
                     <label className="col-span-2 space-y-1 text-[10px] text-[var(--color-text-muted)]">
@@ -2294,10 +2352,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <span className="text-[var(--color-text-muted)]">ห้องเรียน (Classroom):</span>
                     <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.classRoom}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-text-muted)]">ครูผู้สอน (Instructor):</span>
-                    <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.teacherName}</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--color-text-muted)]">ครูผู้สอนหลัก (Instructor):</span>
+                    <span className="font-bold text-[var(--color-text-title)] text-right">{selectedSlotForDetail.teacherName || 'ไม่ระบุ'}</span>
                   </div>
+                  {selectedSlotForDetail.coTeacherName && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-[var(--color-text-muted)]">ครูสอนคู่ (Co-Teacher):</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300 text-right">
+                        {selectedSlotForDetail.coTeacherName}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-[var(--color-text-muted)]">สถานที่/ห้องแล็บ (Room):</span>
                     <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.room}</span>
@@ -2553,30 +2619,47 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </div>
               </div>
 
-              {/* Teacher and Room */}
+              {/* Teacher, Co-Teacher, and Room */}
+              <datalist id="timetable-teacher-options">
+                {teacherNames.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ครูผู้สอน</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ครูผู้สอนหลัก</label>
                   <input
                     type="text"
                     required
+                    list="timetable-teacher-options"
                     value={newTeacher}
                     onChange={(e) => setNewTeacher(e.target.value)}
-                    placeholder="ชื่ออาจารย์"
+                    placeholder="ชื่อครูผู้สอนหลัก"
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียน / แล็บ</label>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ครูสอนคู่ (ถ้ามี)</label>
                   <input
                     type="text"
-                    required
-                    value={newRoom}
-                    onChange={(e) => setNewRoom(e.target.value)}
-                    placeholder="เช่น ห้อง 401 หรือ Lab 2"
+                    list="timetable-teacher-options"
+                    value={newCoTeacher}
+                    onChange={(e) => setNewCoTeacher(e.target.value)}
+                    placeholder="เลือกหรือพิมพ์ชื่อครูสอนคู่"
                     className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียน / แล็บ</label>
+                <input
+                  type="text"
+                  required
+                  value={newRoom}
+                  onChange={(e) => setNewRoom(e.target.value)}
+                  placeholder="เช่น ห้อง 401 หรือ Lab 2"
+                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                />
               </div>
 
               {/* Classroom destination & Color tag */}
@@ -2637,72 +2720,58 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
-      {showIcsExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="timetable-ics-export-title"
-            className="w-full max-w-md space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-text-body)] shadow-2xl"
-          >
-            <header>
-              <h2 id="timetable-ics-export-title" className="text-base font-bold text-[var(--color-text-title)]">
-                ส่งออกตารางไป Google Calendar
-              </h2>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                ส่งออก {activeSlots.length} คาบตามห้อง/ตัวกรองและภาคเรียนที่เลือก เป็นกิจกรรมรายสัปดาห์ในช่วงวันที่กำหนด
-              </p>
-            </header>
-            <form onSubmit={handleDownloadIcs} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1 text-xs font-semibold">
-                  เริ่มวันที่
-                  <input
-                    type="date"
-                    required
-                    value={icsStartDate}
-                    onChange={(event) => setIcsStartDate(event.target.value)}
-                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
-                  />
-                </label>
-                <label className="space-y-1 text-xs font-semibold">
-                  สิ้นสุดวันที่
-                  <input
-                    type="date"
-                    required
-                    min={icsStartDate}
-                    value={icsEndDate}
-                    onChange={(event) => setIcsEndDate(event.target.value)}
-                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
-                  />
-                </label>
-              </div>
-              <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
-                ดาวน์โหลดไฟล์ .ics แล้วนำเข้าใน Google Calendar ที่การตั้งค่า → นำเข้าและส่งออก การนำเข้าเป็นสำเนา ณ เวลาส่งออก หากมีการแก้ตารางภายหลังให้นำเข้าไฟล์ใหม่ ไฟล์นี้ยังไม่ซิงก์อัตโนมัติและไม่รวมวันหยุดพิเศษ
-              </p>
-              {icsExportError && (
-                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                  {icsExportError}
-                </p>
-              )}
-              <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowIcsExportModal(false)}
-                  className="rounded-lg border border-[var(--color-border)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--color-card-subtle)]"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)]"
-                >
-                  ดาวน์โหลด .ics
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
+      {showGoogleCalendarModal && (
+        <GoogleCalendarSyncModal
+          slots={activeSlots}
+          schoolId={schoolId}
+          schoolName={schoolName}
+          academicYear={viewAcademicYear}
+          semester={viewSemester}
+          filterLabel={
+            activeScheduleFilters
+              ? [activeScheduleFilters.gradeLevel, activeScheduleFilters.classRoom, activeScheduleFilters.teacherName]
+                  .filter(Boolean)
+                  .join(' · ') || 'ตารางที่กรอง'
+              : selectedClassRoom === ALL_CLASSROOMS
+                ? `ทุกห้อง (${uniqueClassRooms.length} ห้อง)`
+                : selectedClassRoom || 'ตารางเรียน'
+          }
+          defaultStartDate={calendarWeekStart}
+          defaultEndDate={addCalendarDays(calendarWeekStart, 15 * 7 + 4)}
+          calendarWeekStart={calendarWeekStart}
+          onClose={() => setShowGoogleCalendarModal(false)}
+        />
+      )}
+
+      {showImportExportModal && (
+        <TimetableImportExportModal
+          schoolId={schoolId}
+          academicYear={viewAcademicYear}
+          semester={viewSemester}
+          filteredSlots={activeSlots}
+          allSlots={allTimetableSlots}
+          existingSlotsForTerm={slots}
+          schoolPeriods={schoolPeriods}
+          filterLabel={
+            activeScheduleFilters
+              ? [activeScheduleFilters.gradeLevel, activeScheduleFilters.classRoom, activeScheduleFilters.teacherName]
+                  .filter(Boolean)
+                  .join(' · ') || 'ตารางที่กรอง'
+              : selectedClassRoom === ALL_CLASSROOMS
+                ? `ทุกห้อง (${uniqueClassRooms.length} ห้อง)`
+                : selectedClassRoom || 'ทุกห้อง'
+          }
+          onImportSlots={async (importedSlots) => {
+            if (onImportSlots) {
+              await onImportSlots(importedSlots);
+            } else {
+              for (const slot of importedSlots) {
+                await onAddSlot(slot);
+              }
+            }
+          }}
+          onClose={() => setShowImportExportModal(false)}
+        />
       )}
 
       {showScheduleSettingsModal && (

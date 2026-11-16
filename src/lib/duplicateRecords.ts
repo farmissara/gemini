@@ -14,6 +14,7 @@ import {
   TimetableSlot,
   TuitionInvoice,
 } from '../types';
+import { formatSlotTeachersDisplay, getSlotTeachers, normalizeTeacherName } from './timetableTeachers';
 
 function hasDuplicateCandidate<T>(candidates: T[], existing: T[], keyFor: (record: T) => string): boolean {
   const seen = new Set(existing.map((record) => keyFor(record).trim().toLocaleLowerCase()).filter(Boolean));
@@ -277,7 +278,7 @@ export function getDuplicateRecordReports(data: DuplicateRecordData): DuplicateR
     data.timetableSlots,
     (slot) => `${slot.classRoom}|${slot.dayOfWeek}|${slot.periodNumber}`,
     (slot) => `${slot.classRoom} · ${dayLabels[slot.dayOfWeek] || slot.dayOfWeek} · คาบ ${slot.periodNumber}`,
-    (slot) => `${slot.courseCode} ${slot.courseTitleTh} · ${slot.teacherName} · ${slot.room || 'ไม่ระบุห้องสถานที่'}`
+    (slot) => `${slot.courseCode} ${slot.courseTitleTh} · ${formatSlotTeachersDisplay(slot)} · ${slot.room || 'ไม่ระบุห้องสถานที่'}`
   ));
   addCheck('attendance', 'บันทึกเช็คชื่อรายวันซ้ำ', getDuplicateMatches(
     data.attendance || [],
@@ -481,7 +482,7 @@ export function getGradeDuplicateReasons(candidates: GradeRecord[], existing: Gr
 }
 
 export function getTimetableDuplicateReasons(
-  candidate: Pick<TimetableSlot, 'academicYear' | 'semester' | 'classRoom' | 'dayOfWeek' | 'periodNumber' | 'teacherName' | 'room'>,
+  candidate: Pick<TimetableSlot, 'academicYear' | 'semester' | 'classRoom' | 'dayOfWeek' | 'periodNumber' | 'teacherName' | 'coTeacherName' | 'room'>,
   existing: TimetableSlot[],
   excludeId?: string
 ): string[] {
@@ -502,16 +503,21 @@ export function getTimetableDuplicateReasons(
   ) {
     reasons.push(`ห้อง ${candidate.classRoom} มีคาบเรียนในวัน/คาบที่ ${candidate.periodNumber} อยู่แล้ว`);
   }
-  if (
-    candidate.teacherName.trim() &&
-    pool.some(
-      (s) =>
-        normalize(s.teacherName) === normalize(candidate.teacherName) &&
-        s.dayOfWeek === candidate.dayOfWeek &&
-        s.periodNumber === candidate.periodNumber
-    )
-  ) {
-    reasons.push(`ผู้สอน "${candidate.teacherName}" มีตารางสอนซ้อนในวันและคาบเดียวกัน`);
+  const candidateTeachers = getSlotTeachers(candidate);
+  if (candidateTeachers.length > 0) {
+    const overlappingTeachers = new Set<string>();
+    pool.forEach((s) => {
+      if (s.dayOfWeek !== candidate.dayOfWeek || s.periodNumber !== candidate.periodNumber) return;
+      const existingTeacherKeys = new Set(getSlotTeachers(s).map(normalizeTeacherName));
+      candidateTeachers.forEach((teacher) => {
+        if (existingTeacherKeys.has(normalizeTeacherName(teacher))) {
+          overlappingTeachers.add(teacher);
+        }
+      });
+    });
+    if (overlappingTeachers.size > 0) {
+      reasons.push(`ผู้สอน "${Array.from(overlappingTeachers).join(', ')}" มีตารางสอนซ้อนในวันและคาบเดียวกัน`);
+    }
   }
   if (
     candidate.room.trim() &&

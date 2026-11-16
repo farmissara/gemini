@@ -2538,6 +2538,22 @@ export const App: React.FC = () => {
     setTimetableSlots(next);
   };
 
+  const handleImportTimetableSlots = async (importedSlots: TimetableSlot[]) => {
+    if (importedSlots.length === 0) return;
+    const normalized = importedSlots.map((slot) => ({
+      ...slot,
+      schoolId: activeSchool.id,
+      academicYear: slot.academicYear || timetableAcademicYear,
+      semester: slot.semester || timetableSemester,
+    }));
+    const next = [...normalized, ...timetableSlots];
+    if (!isDemoMode) {
+      await saveTimetableSlotsToDb(activeSchool.id, next);
+    }
+    setTimetableSlots(next);
+    setDataSyncError(null);
+  };
+
   const handleSaveSchoolPeriods = async (periods: SchoolPeriodTime[]) => {
     if (!currentUser) throw new Error('กรุณาเข้าสู่ระบบก่อนบันทึกเวลาเรียน');
     const retainedPeriodNumbers = new Set(periods.map((period) => period.periodNumber));
@@ -3614,6 +3630,7 @@ export const App: React.FC = () => {
                     onAddSlot={handleAddTimetableSlot}
                     onUpdateSlot={handleUpdateTimetableSlot}
                     onDeleteSlot={handleDeleteTimetableSlot}
+                    onImportSlots={handleImportTimetableSlots}
                     schoolPeriods={schoolPeriods}
                     onSaveSchoolPeriods={handleSaveSchoolPeriods}
                     lang={lang}
@@ -4001,6 +4018,8 @@ export const App: React.FC = () => {
           questions={schoolQuestions}
           courses={schoolCourses}
           grades={schoolGrades}
+          timetableSlots={schoolTimetableSlotsAllTerms}
+          schoolPeriods={schoolPeriods}
           activeSchoolId={activeSchool.id}
           lang={lang}
           initialTab={importExportInitialTab}
@@ -4010,6 +4029,7 @@ export const App: React.FC = () => {
           onImportCourses={handleImportCourses}
           onImportEnrollment={handleImportEnrollment}
           onImportGrades={handleImportGrades}
+          onImportTimetableSlots={handleImportTimetableSlots}
           onClose={() => setShowImportExportModal(false)}
         />
       )}

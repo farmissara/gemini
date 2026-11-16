@@ -20,6 +20,7 @@ import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
+import { parseSlotTeachersFromRaw, serializeSlotTeacherForDb } from './timetableTeachers';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -461,26 +462,30 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   if (periodAttResult.error && !isMissingTableError(periodAttResult.error)) {
     throw new Error(`Could not load period attendance: ${periodAttResult.error.message}`);
   }
-  const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => ({
-    id: row.id,
-    schoolId: row.school_id,
-    academicYear: row.academic_year || undefined,
-    semester: row.semester || undefined,
-    dayOfWeek: row.day_of_week,
-    periodNumber: Number(row.period_number),
-    startTime: String(row.start_time).slice(0, 5),
-    endTime: String(row.end_time).slice(0, 5),
-    courseId: row.course_id || undefined,
-    courseCode: row.course_code || '',
-    courseTitleTh: row.course_title_th || '',
-    courseTitleEn: row.course_title_en || '',
-    teacherName: row.teacher_name || '',
-    room: row.room || '',
-    classRoom: row.classroom || '',
-    colorTag: row.color_tag || 'sky',
-    credits: Number(row.credits || 1.5),
-    totalSemesterHours: Number(row.total_semester_hours || 60),
-  }));
+  const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => {
+    const parsedTeachers = parseSlotTeachersFromRaw(row.teacher_name || '');
+    return {
+      id: row.id,
+      schoolId: row.school_id,
+      academicYear: row.academic_year || undefined,
+      semester: row.semester || undefined,
+      dayOfWeek: row.day_of_week,
+      periodNumber: Number(row.period_number),
+      startTime: String(row.start_time).slice(0, 5),
+      endTime: String(row.end_time).slice(0, 5),
+      courseId: row.course_id || undefined,
+      courseCode: row.course_code || '',
+      courseTitleTh: row.course_title_th || '',
+      courseTitleEn: row.course_title_en || '',
+      teacherName: parsedTeachers.teacherName,
+      ...(parsedTeachers.coTeacherName ? { coTeacherName: parsedTeachers.coTeacherName } : {}),
+      room: row.room || '',
+      classRoom: row.classroom || '',
+      colorTag: row.color_tag || 'sky',
+      credits: Number(row.credits || 1.5),
+      totalSemesterHours: Number(row.total_semester_hours || 60),
+    };
+  });
   const leaveRequests: LeaveRequest[] = (leaveResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -1347,7 +1352,7 @@ export async function saveTimetableSlotsToDb(schoolId: string, slots: TimetableS
     course_code: s.courseCode,
     course_title_th: s.courseTitleTh,
     course_title_en: s.courseTitleEn,
-    teacher_name: s.teacherName,
+    teacher_name: serializeSlotTeacherForDb(s.teacherName, s.coTeacherName),
     room: s.room,
     classroom: s.classRoom,
     color_tag: s.colorTag || 'sky',

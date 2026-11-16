@@ -35,6 +35,7 @@ import {
   Monitor,
   BookOpen
 } from 'lucide-react';
+import { slotHasTeacher } from '../lib/timetableTeachers';
 import { 
   Student, 
   Teacher,
@@ -153,7 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const daySlots = timetableSlots.filter((s) => s.dayOfWeek === todayDayKey);
     if (currentUser?.role === 'teacher') {
       const teacherName = currentUser.fullNameTh || '';
-      const mine = daySlots.filter((s) => s.teacherName === teacherName);
+      const mine = daySlots.filter((s) => slotHasTeacher(s, teacherName));
       return (mine.length > 0 ? mine : daySlots).slice().sort((a, b) => a.periodNumber - b.periodNumber);
     }
     return daySlots.slice().sort((a, b) => a.periodNumber - b.periodNumber);
