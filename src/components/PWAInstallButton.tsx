@@ -19,7 +19,7 @@ import { QrCodeMatrix } from './QrCodeMatrix';
 
 interface PWAInstallButtonProps {
   lang?: AppLanguage;
-  variant?: 'nav' | 'hero' | 'banner' | 'mobile_card' | 'sidebar';
+  variant?: 'nav' | 'hero' | 'banner' | 'mobile_card' | 'sidebar' | 'top_mobile_banner';
   className?: string;
   defaultTab?: 'android' | 'ios' | 'qr';
 }
@@ -185,6 +185,85 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           </div>
           <Download className="w-3.5 h-3.5 text-blue-700 dark:text-blue-300" />
         </button>
+      );
+    }
+
+    if (variant === 'top_mobile_banner') {
+      const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+      const isSafariBrowser = isIOS || (/safari/.test(ua) && !/chrome|crios|fxios|edg/.test(ua));
+      const isChromeBrowser = isAndroid || /chrome|crios/.test(ua);
+
+      const platformSubtitle = isIOS
+        ? lang === 'th'
+          ? `iOS${isSafariBrowser ? ' · Safari' : ''} — เพิ่มลงหน้าจอโฮมได้ทันที`
+          : `iOS${isSafariBrowser ? ' · Safari' : ''} — Add to Home Screen`
+        : isAndroid
+          ? lang === 'th'
+            ? `Android${isChromeBrowser ? ' · Chrome' : ''} — ${isInstallable ? 'พร้อมติดตั้งทันที' : 'เพิ่มลงหน้าจอหลัก'}`
+            : `Android${isChromeBrowser ? ' · Chrome' : ''} — ${isInstallable ? 'Ready to install' : 'Install to Home Screen'}`
+          : lang === 'th'
+            ? 'รองรับ iOS (Safari) & Android (Chrome) — เพิ่มลงหน้าจอโฮม'
+            : 'iOS (Safari) & Android (Chrome) — Install to Home Screen';
+
+      const ctaLabel = isIOS
+        ? lang === 'th'
+          ? 'วิธีเพิ่มลงหน้าจอโฮม'
+          : 'Install to Home Screen'
+        : isAndroid && isInstallable
+          ? lang === 'th'
+            ? 'ติดตั้งแอปทันที'
+            : 'Install App'
+          : lang === 'th'
+            ? 'ติดตั้งลงหน้าจอโฮม'
+            : 'Install to Home Screen';
+
+      const handleBannerClick = async () => {
+        if (isIOS) {
+          setActiveTab('ios');
+          setShowModal(true);
+          return;
+        }
+        if (isAndroid && isInstallable) {
+          const ok = await install();
+          if (ok) {
+            setInstallSuccess(true);
+            setTimeout(() => setInstallSuccess(false), 4000);
+            return;
+          }
+        }
+        setActiveTab(isAndroid ? 'android' : isIOS ? 'ios' : 'qr');
+        setShowModal(true);
+      };
+
+      return (
+        <div
+          className={`w-full flex items-center justify-between gap-2.5 px-3.5 py-2 border-b border-[var(--color-border)] bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-sky-500/10 dark:from-blue-950/70 dark:via-indigo-950/70 dark:to-slate-900 ${className}`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-[var(--color-primary)] text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <Smartphone className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-extrabold text-[var(--color-text-title)] truncate">
+                  {lang === 'th' ? 'รับแอป EduVerse (Get EduVerse App)' : 'Get EduVerse App'}
+                </span>
+              </div>
+              <p className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">
+                {platformSubtitle}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleBannerClick()}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-bold shadow-2xs transition shrink-0 cursor-pointer whitespace-nowrap"
+          >
+            <Download className="w-3.5 h-3.5 shrink-0" />
+            <span>{ctaLabel}</span>
+          </button>
+        </div>
       );
     }
 

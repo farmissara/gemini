@@ -298,98 +298,110 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none">
       {/* ======================================================== */}
-      {/* 1. TOP MOBILE HEADER */}
+      {/* 1. TOP MOBILE HEADER (VERTICALLY STACKED UTILITY TIERS) */}
       {/* ======================================================== */}
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-2.5 flex items-center justify-between gap-2 shadow-xs transition-colors">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shadow-xs shrink-0 overflow-hidden">
-            {activeSchool.logoUrl ? (
-              <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain bg-white" />
-            ) : (
-              <GraduationCap className="w-4 h-4" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm text-[var(--color-text-title)] tracking-tight truncate">EduVerse</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
-                {lang === 'th' ? 'โหมดมือถือ' : 'Mobile'}
-              </span>
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-col shadow-xs transition-colors">
+        {/* Tier 1: Persistent Get EduVerse App Banner (Platform-aware iOS/Safari & Android/Chrome) */}
+        <PWAInstallButton lang={lang} variant="top_mobile_banner" />
+
+        {/* Tier 2: App Wordmark, Mode Switchers & Language Switcher */}
+        <div className="px-3.5 py-1.5 border-b border-[var(--color-border)]/70 bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shadow-2xs shrink-0 overflow-hidden">
+              {activeSchool.logoUrl ? (
+                <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-full h-full object-contain bg-white" />
+              ) : (
+                <GraduationCap className="w-3.5 h-3.5" />
+              )}
             </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] truncate max-w-[170px]">
-              {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-            </p>
+            <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">EduVerse</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shrink-0">
+              {lang === 'th' ? 'มือถือ' : 'Mobile'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Switch to Full Computer / Desktop View */}
+            <button
+              type="button"
+              onClick={onSwitchToDesktopMode}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
+              title="สลับเป็นมุมมองคอมพิวเตอร์ (Desktop ERP)"
+            >
+              <Laptop className="w-3 h-3" />
+              <span>{lang === 'th' ? 'คอมพิวเตอร์' : 'Desktop'}</span>
+            </button>
+
+            {/* Quick Language Switcher */}
+            <button
+              type="button"
+              onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[11px] font-bold text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
+              title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
+            >
+              <Globe className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
+              <span>{lang === 'th' ? 'ไทย (TH)' : 'EN'}</span>
+            </button>
           </div>
         </div>
 
-        {/* Right actions: Desktop Switcher & Profile Avatar */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Quick Onboarding Tutor */}
-          {onOpenOnboardingTutor && (
-            <button
-              type="button"
-              onClick={onOpenOnboardingTutor}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-[11px] font-bold transition shadow-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
-              title="คู่มือและติวเตอร์ระบบการศึกษาไทย"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span className="hidden xs:inline">ติวเตอร์</span>
-            </button>
-          )}
-
-          {/* Switch to Full Computer / Desktop View */}
-          <button
-            type="button"
-            onClick={onSwitchToDesktopMode}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)] hover:opacity-90 text-[var(--color-primary-text)] text-[11px] font-bold transition shadow-xs cursor-pointer"
-            title="สลับเป็นมุมมองคอมพิวเตอร์ (Desktop ERP)"
-          >
-            <Laptop className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">มุมมอง</span>คอมพิวเตอร์
-          </button>
-
-          {/* Quick Language Toggle */}
-          <button
-            type="button"
-            onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-            className="p-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-body)] cursor-pointer"
-            title="เปลี่ยนภาษา (TH/EN)"
-          >
-            {lang.toUpperCase()}
-          </button>
-
-          {/* Mobile Install App Button */}
-          <PWAInstallButton lang={lang} variant="nav" />
-
-          {/* Web Push & Notification Center Trigger */}
-          {onOpenNotifications && (
-            <button
-              type="button"
-              onClick={onOpenNotifications}
-              className="relative p-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
-              title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
-            >
-              <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse shadow-xs">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* User Profile Thumbnail */}
+        {/* Tier 3: User Profile Area & Alerts */}
+        <div className="px-3.5 py-2 bg-[var(--color-card)] flex items-center justify-between gap-2.5">
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className="w-8 h-8 rounded-full overflow-hidden border-2 border-[var(--color-primary)] shadow-xs shrink-0 cursor-pointer"
+            className="flex items-center gap-2.5 min-w-0 text-left group cursor-pointer"
           >
-            <img 
-              src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
-              alt={currentUser?.fullNameTh || 'User'} 
-              className="w-full h-full object-cover"
-            />
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shadow-xs shrink-0">
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.fullNameTh || currentUser.fullNameEn || 'User'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] truncate leading-tight">
+                {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
+              </p>
+              <p className="text-[10px] text-[var(--color-text-muted)] truncate">
+                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
+              </p>
+            </div>
           </button>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onOpenOnboardingTutor && (
+              <button
+                type="button"
+                onClick={onOpenOnboardingTutor}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-[11px] font-bold transition cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                title="คู่มือและติวเตอร์ระบบการศึกษาไทย"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>{lang === 'th' ? 'ติวเตอร์' : 'Tutor'}</span>
+              </button>
+            )}
+
+            {onOpenNotifications && (
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
+                title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
+              >
+                <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs tabular-nums">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -428,9 +440,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Mobile App Install Card (Android & iOS) */}
-            <PWAInstallButton lang={lang} variant="mobile_card" />
 
             {/* Quick Core Actions */}
             <div className="grid grid-cols-1 gap-2.5">
