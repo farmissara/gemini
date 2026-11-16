@@ -57,6 +57,7 @@ import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapi
 import { AttendanceImportModal } from '../components/modals/AttendanceImportModal';
 import { AttendanceMonthlyTrendLineChart } from '../components/AttendanceMonthlyTrendLineChart';
 import { AttendanceCheckinHeatmap } from '../components/AttendanceCheckinHeatmap';
+import { WeeklyAttendanceGrid } from '../components/WeeklyAttendanceGrid';
 import { PeriodQrGeneratorPanel } from '../components/PeriodQrGeneratorPanel';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
@@ -187,6 +188,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     : [];
 
   // Filter logs by date range, class/room, course, and scope
+  const [attendanceViewMode, setAttendanceViewMode] = useState<'daily' | 'weekly'>('daily');
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(getLocalDateString());
   const [startDateFilter, setStartDateFilter] = useState(getLocalDateString());
   const [endDateFilter, setEndDateFilter] = useState(getLocalDateString());
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -475,17 +478,40 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   };
 
   // Export Daily / Filtered Attendance Report to CSV with UTF-8 BOM
-  const handleExportDailyCsv = () => {
+  const handleExportDailyCsv = (customRange?: { start: string; end: string }) => {
+    const activeStart = customRange ? customRange.start : startDateFilter;
+    const activeEnd = customRange ? customRange.end : endDateFilter;
+
+    const exportRecords = customRange
+      ? scopedAttendance.filter((a) => {
+          if (activeStart && a.date < activeStart) return false;
+          if (activeEnd && a.date > activeEnd) return false;
+          const stu = students.find((s) => s.id === a.studentId);
+          if (classFilter !== 'all' && a.userDepartmentOrRoom !== classFilter && stu?.room !== classFilter && stu?.gradeLevel !== classFilter) {
+            return false;
+          }
+          if (selectedCourseObj) {
+            const enrolled = selectedCourseObj.enrolledStudentIds || [];
+            if (enrolled.length > 0 && !enrolled.includes(a.studentId)) return false;
+            if (enrolled.length === 0 && selectedCourseObj.room && a.userDepartmentOrRoom !== selectedCourseObj.room && stu?.room !== selectedCourseObj.room) {
+              return false;
+            }
+          }
+          return true;
+        })
+      : displayedFilteredLogs;
+
     const headers = [
       'วันที่',
       'เวลา',
       'รหัสประจำตัว',
-      'ชื่อ-นามสกุล',
+      'ชื่อ-นามสกุล (ไทย)',
+      'Student Name (EN)',
       'บทบาท',
       'ชั้น/ห้อง/กลุ่มสาระ',
       'รายวิชาที่กรอง',
       'ประเภทการบันทึก',
-      'สถานะ',
+      'สถานะ (Status)',
       'วิธีการเช็คชื่อ',
       'จุดตรวจ/ประตู',
       'ระยะห่าง GPS (ม.)',
@@ -494,20 +520,32 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     ];
 
     const courseLabel = selectedCourseObj ? `${selectedCourseObj.code} ${selectedCourseObj.titleTh}` : 'ทุกวิชา (ประตูโรงเรียน)';
-    const rows = displayedFilteredLogs.map(log => {
+    const rows = exportRecords.map(log => {
       const stu = students.find(s => s.id === log.studentId);
       const displayName = log.userName || (stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : 'ผู้ใช้งาน');
+      const displayNameEn = stu ? `${stu.firstNameEn} ${stu.lastNameEn}` : displayName;
       const displayId = stu?.studentIdNumber || log.studentId;
+      const statusLabel =
+        log.status === 'present'
+          ? 'ตรงเวลา (Present)'
+          : log.status === 'late'
+          ? 'มาสาย (Late)'
+          : log.status === 'sick'
+          ? 'ลาป่วย (Sick)'
+          : log.status === 'leave'
+          ? 'ลากิจ (Leave)'
+          : 'ขาดเรียน (Absent)';
       return [
         `"${log.date}"`,
         `"${log.time}"`,
         `"${displayId}"`,
         `"${displayName}"`,
+        `"${displayNameEn}"`,
         `"${log.userType === 'teacher' ? 'ครู' : 'นักเรียน'}"`,
         `"${log.userDepartmentOrRoom || stu?.room || '-'}"`,
         `"${courseLabel}"`,
         `"${log.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน'}"`,
-        `"${log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : log.status === 'sick' ? 'ลาป่วย' : log.status === 'leave' ? 'ลากิจ' : 'ขาด'}"`,
+        `"${statusLabel}"`,
         `"${log.checkinMethod === 'selfie_geofence' ? 'ถ่ายรูปเซลฟี่+GPS' : log.checkinMethod === 'qr_scanner' ? 'เครื่องสแกน QR' : 'ระบบบันทึก'}"`,
         `"${log.location?.geofenceZoneName || 'ประตูโรงเรียน'}"`,
         log.location?.distanceMeters !== undefined ? `${log.location.distanceMeters}` : '-',
@@ -521,8 +559,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const rangeTag = startDateFilter && endDateFilter
-      ? (startDateFilter === endDateFilter ? startDateFilter : `${startDateFilter}_to_${endDateFilter}`)
+    const rangeTag = activeStart && activeEnd
+      ? (activeStart === activeEnd ? activeStart : `${activeStart}_to_${activeEnd}`)
       : 'all';
     link.download = `attendance_report_${rangeTag}.csv`;
     document.body.appendChild(link);
@@ -924,11 +962,45 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {/* Daily vs Weekly (Mon-Fri) Toggle */}
+                <div
+                  role="group"
+                  aria-label={lang === 'th' ? 'สลับมุมมองรายวันหรือรายสัปดาห์' : 'Switch between Daily and Weekly view'}
+                  className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceViewMode('daily')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
+                      attendanceViewMode === 'daily'
+                        ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'รายวัน' : 'Daily'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (startDateFilter) setSelectedWeekDate(startDateFilter);
+                      setAttendanceViewMode('weekly');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
+                      attendanceViewMode === 'weekly'
+                        ? 'bg-[var(--color-primary)] text-white shadow-2xs'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'รายสัปดาห์ (จ.–ศ.)' : 'Weekly (Mon–Fri)'}</span>
+                  </button>
+                </div>
+
                 {!isRestrictedViewer && (
                   <button
                     type="button"
                     onClick={() => setShowImportModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition whitespace-nowrap shrink-0 cursor-pointer"
                     title="นำเข้าบันทึกการเข้าเรียนจากไฟล์ Excel (.xlsx) หรือ CSV สำหรับห้องเรียนขนาดใหญ่"
                   >
                     <Upload className="w-3.5 h-3.5" />
@@ -937,12 +1009,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 )}
                 <button
                   type="button"
-                  onClick={handleExportDailyCsv}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                  title="ส่งออกรายงานการเข้าเรียนประจำวัน/ช่วงวันที่ที่กรองเป็นไฟล์ CSV"
+                  onClick={() => handleExportDailyCsv()}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                  title="ส่งออกรายงานการเข้าเรียนประจำวัน/ช่วงวันที่ที่กรองเป็นไฟล์ CSV พร้อมชื่อนักเรียนและสถานะ"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Export Attendance</span>
+                  <span>Download CSV</span>
                 </button>
               </div>
             </div>
@@ -1070,73 +1142,92 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
             </div>
 
-            <div className="divide-y divide-[var(--color-border)]">
-              {displayedFilteredLogs.length === 0 ? (
-                <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">
-                  {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
-                </p>
-              ) : (
-                <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
-                  const student = students.find(s => s.id === log.studentId);
-                  const name = log.userName || (student ? `${student.firstNameTh} ${student.lastNameTh}` : log.studentId);
-                  const photoSrc = log.photoUrl || log.userAvatar || student?.avatarUrl;
-                  const isMyRecord = log.studentId === loggedInProfile.targetId ||
-                    log.userName === loggedInProfile.userName ||
-                    (currentUser && (log.studentId === currentUser.id || log.studentId === currentUser.studentRecordId));
+            {attendanceViewMode === 'weekly' ? (
+              <WeeklyAttendanceGrid
+                students={scopedStudents}
+                attendance={scopedAttendance}
+                periodAttendance={periodAttendance}
+                leaveRequests={scopedLeaveRequests}
+                selectedWeekDate={selectedWeekDate}
+                onChangeWeekDate={setSelectedWeekDate}
+                selectedCourse={selectedCourseObj}
+                classFilter={classFilter}
+                lang={lang}
+                onSyncDateRangeToWeek={(monIso, friIso) => {
+                  setStartDateFilter(monIso);
+                  setEndDateFilter(friIso);
+                  handleExportDailyCsv({ start: monIso, end: friIso });
+                }}
+              />
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {displayedFilteredLogs.length === 0 ? (
+                  <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">
+                    {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
+                  </p>
+                ) : (
+                  <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
+                    const student = students.find(s => s.id === log.studentId);
+                    const name = log.userName || (student ? `${student.firstNameTh} ${student.lastNameTh}` : log.studentId);
+                    const photoSrc = log.photoUrl || log.userAvatar || student?.avatarUrl;
+                    const isMyRecord = log.studentId === loggedInProfile.targetId ||
+                      log.userName === loggedInProfile.userName ||
+                      (currentUser && (log.studentId === currentUser.id || log.studentId === currentUser.studentRecordId));
 
-                  return (
-                    <div key={log.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          onClick={() => log.photoUrl && setSelectedPhotoModal(log)}
-                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0 ${
-                            log.photoUrl ? 'cursor-pointer ring-2 ring-[var(--color-primary)]/50 hover:opacity-90' : ''
-                          }`}
-                        >
-                          <img src={photoSrc} alt={name} className="w-full h-full object-cover" />
-                          {log.photoUrl && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100">
-                              <Eye className="w-3.5 h-3.5" />
+                    return (
+                      <div key={log.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            onClick={() => log.photoUrl && setSelectedPhotoModal(log)}
+                            className={`relative w-10 h-10 rounded-xl overflow-hidden bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0 ${
+                              log.photoUrl ? 'cursor-pointer ring-2 ring-[var(--color-primary)]/50 hover:opacity-90' : ''
+                            }`}
+                          >
+                            <img src={photoSrc} alt={name} className="w-full h-full object-cover" />
+                            {log.photoUrl && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100">
+                                <Eye className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[var(--color-text-title)]">{name}</span>
+                              {isMyRecord && (
+                                <span className="px-1.5 py-0.2 rounded-sm bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[9px] border border-emerald-300 dark:border-emerald-700">
+                                  บัญชีของคุณ
+                                </span>
+                              )}
+                              {log.recordType === 'check_out' ? (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold">ออก</span>
+                              ) : (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">เข้า</span>
+                              )}
+                              <span className="text-[var(--color-text-muted)] font-mono text-[11px]">({log.studentId})</span>
                             </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-[var(--color-text-title)]">{name}</span>
-                            {isMyRecord && (
-                              <span className="px-1.5 py-0.2 rounded-sm bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[9px] border border-emerald-300 dark:border-emerald-700">
-                                บัญชีของคุณ
-                              </span>
-                            )}
-                            {log.recordType === 'check_out' ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold">ออก</span>
-                            ) : (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">เข้า</span>
-                            )}
-                            <span className="text-[var(--color-text-muted)] font-mono text-[11px]">({log.studentId})</span>
-                          </div>
-                          <div className="text-[11px] text-[var(--color-text-muted)]">
-                            เวลา {log.time} น. • {log.location?.geofenceZoneName || log.remarks || 'สแกนประตู'}
-                            {log.location?.distanceMeters !== undefined && ` (GPS ${log.location.distanceMeters} ม.)`}
-                            {log.recordedBy && ` • บันทึกโดย: ${log.recordedBy}`}
+                            <div className="text-[11px] text-[var(--color-text-muted)]">
+                              เวลา {log.time} น. • {log.location?.geofenceZoneName || log.remarks || 'สแกนประตู'}
+                              {log.location?.distanceMeters !== undefined && ` (GPS ${log.location.distanceMeters} ม.)`}
+                              {log.recordedBy && ` • บันทึกโดย: ${log.recordedBy}`}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="text-right">
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                          log.status === 'present' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
-                          log.status === 'late' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                        }`}>
-                          {log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}
-                        </span>
+                        <div className="text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                            log.status === 'present' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
+                            log.status === 'late' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                          }`}>
+                            {log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }} />
-              )}
-            </div>
+                    );
+                  }} />
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1309,11 +1400,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 )}
                 <button
                   type="button"
-                  onClick={handleExportDailyCsv}
-                  className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  onClick={() => handleExportDailyCsv()}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Export Attendance (CSV)</span>
+                  <span>Download CSV</span>
                 </button>
                 <button
                   type="button"
