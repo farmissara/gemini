@@ -462,4 +462,37 @@ textarea::placeholder {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Printable Batch Student QR Grid Isolation */
+  body:has(.batch-qr-print-area) #root,
+  body:has(.batch-qr-print-area) #root :has(.batch-qr-print-area) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body:has(.batch-qr-print-area) #root * {
+    visibility: hidden !important;
+  }
+
+  body:has(.batch-qr-print-area) #root .batch-qr-print-area,
+  body:has(.batch-qr-print-area) #root .batch-qr-print-area * {
+    visibility: visible !important;
+  }
+
+  body:has(.batch-qr-print-area) #root .batch-qr-print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

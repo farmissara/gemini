@@ -26,6 +26,8 @@ import {
   ChevronDown,
   Send,
   X,
+  QrCode,
+  FileDown,
 } from 'lucide-react';
 import {
   approveStudentAccountInSupabase,
@@ -48,9 +50,11 @@ import {
   STUDENT_STATUS_DETAILS 
 } from '../data/studentAcademicData';
 import { StudentPromotionModal } from '../components/modals/StudentPromotionModal';
+import { BatchQrPrintModal } from '../components/modals/BatchQrPrintModal';
 import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { calculateStudentAcademicSummary, getRawScoreFeedback, isPrimaryGradeLevel } from '../lib/moeGrading';
+import { downloadBatchStudentQrCodesPdf } from '../lib/moeReportPdf';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -154,6 +158,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   ]);
   const [bulkAddError, setBulkAddError] = useState<string | null>(null);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [selectedQrStudentIds, setSelectedQrStudentIds] = useState<string[]>([]);
+  const [showBatchQrModal, setShowBatchQrModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [studentFormStep, setStudentFormStep] = useState<1 | 2>(1);
@@ -507,6 +513,27 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       return matchesSearch && matchesGrade && matchesStatus;
     });
   }, [students, searchTerm, gradeFilter, statusFilter]);
+
+  const selectedQrStudentSet = useMemo(() => new Set(selectedQrStudentIds), [selectedQrStudentIds]);
+  const allFilteredSelected =
+    filteredStudents.length > 0 && filteredStudents.every((s) => selectedQrStudentSet.has(s.id));
+
+  const toggleSelectStudentForQr = (studentId: string) => {
+    setSelectedQrStudentIds((prev) =>
+      prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
+    );
+  };
+
+  const toggleSelectAllFilteredForQr = () => {
+    const filteredIds = filteredStudents.map((s) => s.id);
+    setSelectedQrStudentIds((prev) => {
+      if (allFilteredSelected) {
+        const filteredSet = new Set(filteredIds);
+        return prev.filter((id) => !filteredSet.has(id));
+      }
+      return Array.from(new Set([...prev, ...filteredIds]));
+    });
+  };
 
   const handleOpenAdd = () => {
     setStudentFormStep(1);
@@ -888,6 +915,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </button>
               )}
 
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.closest('details')?.removeAttribute('open');
+                  setShowBatchQrModal(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <QrCode className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <span>พิมพ์ QR ชุด (Batch Print QR)</span>
+              </button>
+
               {['admin', 'super_admin'].includes(currentRole) && (
                 <button
                   type="button"
@@ -917,6 +956,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               )}
             </div>
           </details>
+
+          <button
+            type="button"
+            onClick={() => setShowBatchQrModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
+          >
+            <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
+            <span>
+              พิมพ์ QR ชุด (PDF)
+              {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
+            </span>
+          </button>
 
           {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
             <button
@@ -1061,11 +1112,64 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
           </div>
 
+          {selectedQrStudentIds.length > 0 && (
+            <div className="shrink-0 px-3.5 py-2.5 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
+                <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>เลือกนักเรียนแล้ว {selectedQrStudentIds.length} คน สำหรับพิมพ์/ส่งออก QR Code</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const chosen = students.filter((s) => selectedQrStudentSet.has(s.id));
+                    if (chosen.length > 0) {
+                      downloadBatchStudentQrCodesPdf({
+                        students: chosen,
+                        school: activeSchool,
+                        lang: 'th',
+                      });
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>ดาวน์โหลด PDF QR รวม ({selectedQrStudentIds.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBatchQrModal(true)}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>จัดหน้า &amp; พิมพ์ชุด QR</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedQrStudentIds([])}
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] text-xs font-semibold transition cursor-pointer"
+                >
+                  ล้างที่เลือก
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Students Table with Sticky Header */}
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]">
             <table className="table-comfortable w-full text-left text-xs">
               <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] text-[var(--color-text-title)] uppercase tracking-wider font-semibold border-b border-[var(--color-border)]">
                 <tr>
+                  <th className="py-3 pl-4 pr-2 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAllFilteredForQr}
+                      aria-label="เลือกนักเรียนทั้งหมดที่กรอง"
+                      title="เลือกทั้งหมด / ยกเลิกทั้งหมด"
+                      className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] cursor-pointer accent-[var(--color-primary)]"
+                    />
+                  </th>
                   <th className="py-3 px-4">Student</th>
                   <th className="py-3 px-4">Thai Name</th>
                   <th className="py-3 px-4">Class &amp; Room</th>
@@ -1076,7 +1180,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                <PaginatedTableRows items={filteredStudents} colSpan={7} renderRow={(student) => {
+                <PaginatedTableRows items={filteredStudents} colSpan={8} renderRow={(student) => {
                   const statusCfg = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
                   const summary = calculateStudentAcademicSummary({
                     student,
@@ -1085,8 +1189,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     gradingSystem,
                   });
                   const displayGpa = summary.gpax ?? Number(student.gpa || 0);
+                  const isQrSelected = selectedQrStudentSet.has(student.id);
                   return (
-                    <tr key={student.id} className="hover:bg-[var(--color-card-subtle)] transition-colors group">
+                    <tr key={student.id} className={`hover:bg-[var(--color-card-subtle)] transition-colors group ${isQrSelected ? 'bg-[var(--color-primary-light)]/40' : ''}`}>
+                      <td className="py-3.5 pl-4 pr-2 align-middle">
+                        <input
+                          type="checkbox"
+                          checked={isQrSelected}
+                          onChange={() => toggleSelectStudentForQr(student.id)}
+                          aria-label={`เลือก ${student.firstNameTh} ${student.lastNameTh} สำหรับพิมพ์ QR`}
+                          className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] cursor-pointer accent-[var(--color-primary)]"
+                        />
+                      </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -2532,6 +2646,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           }
         }}
       />
+
+      {showBatchQrModal && (
+        <BatchQrPrintModal
+          isOpen={showBatchQrModal}
+          onClose={() => setShowBatchQrModal(false)}
+          students={students}
+          initialSelectedIds={
+            selectedQrStudentIds.length > 0
+              ? selectedQrStudentIds
+              : filteredStudents.map((s) => s.id)
+          }
+          school={activeSchool}
+          lang="th"
+        />
+      )}
     </div>
   );
 };

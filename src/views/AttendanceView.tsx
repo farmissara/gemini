@@ -56,6 +56,7 @@ import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
 import { AttendanceImportModal } from '../components/modals/AttendanceImportModal';
 import { AttendanceMonthlyTrendLineChart } from '../components/AttendanceMonthlyTrendLineChart';
+import { AttendanceCheckinHeatmap } from '../components/AttendanceCheckinHeatmap';
 import { PeriodQrGeneratorPanel } from '../components/PeriodQrGeneratorPanel';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
@@ -1139,6 +1140,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           </div>
         </div>
 
+          {/* 30-Day Check-in Heatmap (Peak Times & Popular Entry Gates) */}
+          <div className="mt-5">
+            <AttendanceCheckinHeatmap
+              attendance={scopedAttendance}
+              campusGates={campusGates}
+              lang={lang}
+            />
+          </div>
+
           {/* Monthly Attendance Trends Recharts LineChart */}
           <div className="mt-5">
             <AttendanceMonthlyTrendLineChart
@@ -1315,6 +1325,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </button>
               </div>
             </div>
+
+            <AttendanceCheckinHeatmap
+              attendance={scopedAttendance}
+              campusGates={campusGates}
+              lang={lang}
+            />
 
             <AttendanceMonthlyTrendLineChart
               attendance={scopedAttendance}
