@@ -173,15 +173,124 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     ? getAttendanceDuplicateReasons({ studentId: matchedScannerStudent.id, date: todayDateStr, recordType: 'check_in' }, attendance)
     : [];
 
-  // Filter logs by date and scope
-  const [dateFilter, setDateFilter] = useState(getLocalDateString());
+  // Filter logs by date range, class/room, course, and scope
+  const [startDateFilter, setStartDateFilter] = useState(getLocalDateString());
+  const [endDateFilter, setEndDateFilter] = useState(getLocalDateString());
+  const [classFilter, setClassFilter] = useState<string>('all');
+  const [courseFilter, setCourseFilter] = useState<string>('all');
   const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<AttendanceRecord | null>(null);
 
-  // Filtered logs (scoped to own student when logged in as student/parent)
+  const availableClasses = useMemo(() => {
+    const rooms = new Set<string>();
+    scopedStudents.forEach((s) => {
+      if (s.room?.trim()) rooms.add(s.room.trim());
+    });
+    attendance.forEach((a) => {
+      if (a.userDepartmentOrRoom?.trim()) rooms.add(a.userDepartmentOrRoom.trim());
+    });
+    return Array.from(rooms).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [scopedStudents, attendance]);
+
+  const selectedCourseObj = useMemo(
+    () => courses.find((c) => c.id === courseFilter) || null,
+    [courses, courseFilter]
+  );
+
+  // Unified log entries: gate logs + matching period attendance logs when a course is selected
   const filteredLogs = useMemo(() => {
-    return scopedAttendance.filter(a => a.date === dateFilter);
-  }, [scopedAttendance, dateFilter]);
+    const enrolledSet = selectedCourseObj
+      ? new Set(selectedCourseObj.enrolledStudentIds || [])
+      : null;
+
+    const studentById = new Map(students.map((s) => [s.id, s]));
+
+    const matchesDateRange = (dateStr: string) => {
+      if (startDateFilter && dateStr < startDateFilter) return false;
+      if (endDateFilter && dateStr > endDateFilter) return false;
+      return true;
+    };
+
+    const matchesClass = (roomOrDept?: string, studentId?: string) => {
+      if (classFilter === 'all') return true;
+      const stu = studentId ? studentById.get(studentId) : undefined;
+      return roomOrDept === classFilter || stu?.room === classFilter || stu?.gradeLevel === classFilter;
+    };
+
+    const matchesCourseGate = (log: AttendanceRecord) => {
+      if (!selectedCourseObj) return true;
+      if (enrolledSet && enrolledSet.size > 0) {
+        return enrolledSet.has(log.studentId);
+      }
+      if (selectedCourseObj.room) {
+        const stu = studentById.get(log.studentId);
+        return log.userDepartmentOrRoom === selectedCourseObj.room || stu?.room === selectedCourseObj.room;
+      }
+      return true;
+    };
+
+    const gateMatches = scopedAttendance.filter(
+      (a) => matchesDateRange(a.date) && matchesClass(a.userDepartmentOrRoom, a.studentId) && matchesCourseGate(a)
+    );
+
+    if (!selectedCourseObj || periodAttendance.length === 0) {
+      return gateMatches;
+    }
+
+    // Also include per-period attendance records for the selected course
+    const allowedStudentIds = isRestrictedViewer
+      ? new Set(scopedStudents.map((s) => s.id))
+      : null;
+
+    const periodMapped: AttendanceRecord[] = periodAttendance
+      .filter((pa) => {
+        if (pa.courseId !== selectedCourseObj.id) return false;
+        if (!matchesDateRange(pa.date)) return false;
+        if (allowedStudentIds && !allowedStudentIds.has(pa.studentId)) return false;
+        const stu = studentById.get(pa.studentId);
+        return matchesClass(stu?.room, pa.studentId);
+      })
+      .map((pa) => {
+        const stu = studentById.get(pa.studentId);
+        const mappedStatus: AttendanceStatus = pa.status === 'excused' ? 'leave' : pa.status;
+        const mappedMethod: AttendanceRecord['checkinMethod'] =
+          pa.checkMethod === 'qr_code'
+            ? 'qr_scanner'
+            : pa.checkMethod === 'teacher_proxy'
+            ? 'teacher_proxy'
+            : 'mobile_geofence';
+        return {
+          id: `pa-${pa.id}`,
+          schoolId: pa.schoolId,
+          studentId: pa.studentId,
+          userType: 'student' as const,
+          userName: stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : pa.studentId,
+          userRole: stu ? `นักเรียน (${stu.gradeLevel})` : 'นักเรียน',
+          userAvatar: stu?.avatarUrl,
+          userDepartmentOrRoom: stu?.room || selectedCourseObj.room || '-',
+          recordType: pa.recordType || ('check_in' as const),
+          date: pa.date,
+          time: pa.timeSlot || `คาบ ${pa.periodNumber}`,
+          status: mappedStatus,
+          remarks: `รายวิชา ${selectedCourseObj.code} ${selectedCourseObj.titleTh} (คาบ ${pa.periodNumber})${pa.remarks ? ` - ${pa.remarks}` : ''}`,
+          checkinMethod: mappedMethod,
+          lineNotificationSent: false,
+          recordedBy: pa.verifiedByTeacherName,
+        };
+      });
+
+    return [...periodMapped, ...gateMatches];
+  }, [
+    scopedAttendance,
+    periodAttendance,
+    students,
+    scopedStudents,
+    isRestrictedViewer,
+    startDateFilter,
+    endDateFilter,
+    classFilter,
+    selectedCourseObj,
+  ]);
 
   const displayedFilteredLogs = useMemo(() => {
     if (logScopeFilter === 'mine') {
@@ -193,6 +302,40 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     }
     return filteredLogs;
   }, [filteredLogs, logScopeFilter, loggedInProfile, currentUser]);
+
+  const applyQuickDatePreset = (preset: 'today' | '7d' | 'month' | 'all') => {
+    const today = getLocalDateString();
+    if (preset === 'today') {
+      setStartDateFilter(today);
+      setEndDateFilter(today);
+      return;
+    }
+    if (preset === '7d') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setStartDateFilter(getLocalDateString(d));
+      setEndDateFilter(today);
+      return;
+    }
+    if (preset === 'month') {
+      const now = new Date();
+      const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      setStartDateFilter(firstOfMonth);
+      setEndDateFilter(today);
+      return;
+    }
+    setStartDateFilter('');
+    setEndDateFilter('');
+  };
+
+  const handleResetLogFilters = () => {
+    const today = getLocalDateString();
+    setStartDateFilter(today);
+    setEndDateFilter(today);
+    setClassFilter('all');
+    setCourseFilter('all');
+    setLogScopeFilter('all');
+  };
 
   // Leave approval remarks input
   const [approvalNote, setApprovalNote] = useState<Record<string, string>>({});
@@ -318,7 +461,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     }, 600);
   };
 
-  // Export Daily Attendance Logs to CSV with UTF-8 BOM
+  // Export Daily / Filtered Attendance Report to CSV with UTF-8 BOM
   const handleExportDailyCsv = () => {
     const headers = [
       'วันที่',
@@ -327,6 +470,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       'ชื่อ-นามสกุล',
       'บทบาท',
       'ชั้น/ห้อง/กลุ่มสาระ',
+      'รายวิชาที่กรอง',
       'ประเภทการบันทึก',
       'สถานะ',
       'วิธีการเช็คชื่อ',
@@ -336,29 +480,41 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       'หมายเหตุ'
     ];
 
-    const rows = filteredLogs.map(log => [
-      log.date,
-      log.time,
-      log.studentId,
-      log.userName || (students.find(s => s.id === log.studentId)?.firstNameTh + ' ' + students.find(s => s.id === log.studentId)?.lastNameTh) || 'ผู้ใช้งาน',
-      log.userType === 'teacher' ? 'ครู' : 'นักเรียน',
-      log.userDepartmentOrRoom || (students.find(s => s.id === log.studentId)?.room) || '-',
-      log.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน',
-      log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : log.status === 'sick' ? 'ลาป่วย' : log.status === 'leave' ? 'ลากิจ' : 'ขาด',
-      log.checkinMethod === 'selfie_geofence' ? 'ถ่ายรูปเซลฟี่+GPS' : log.checkinMethod === 'qr_scanner' ? 'เครื่องสแกน QR' : 'ระบบบันทึก',
-      log.location?.geofenceZoneName || 'ประตูโรงเรียน',
-      log.location?.distanceMeters !== undefined ? `${log.location.distanceMeters}` : '-',
-      log.photoUrl ? 'ใช่' : 'ไม่ใช่',
-      `"${log.remarks || ''}"`
-    ]);
+    const courseLabel = selectedCourseObj ? `${selectedCourseObj.code} ${selectedCourseObj.titleTh}` : 'ทุกวิชา (ประตูโรงเรียน)';
+    const rows = displayedFilteredLogs.map(log => {
+      const stu = students.find(s => s.id === log.studentId);
+      const displayName = log.userName || (stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : 'ผู้ใช้งาน');
+      const displayId = stu?.studentIdNumber || log.studentId;
+      return [
+        `"${log.date}"`,
+        `"${log.time}"`,
+        `"${displayId}"`,
+        `"${displayName}"`,
+        `"${log.userType === 'teacher' ? 'ครู' : 'นักเรียน'}"`,
+        `"${log.userDepartmentOrRoom || stu?.room || '-'}"`,
+        `"${courseLabel}"`,
+        `"${log.recordType === 'check_out' ? 'ออกโรงเรียน' : 'เข้าโรงเรียน'}"`,
+        `"${log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : log.status === 'sick' ? 'ลาป่วย' : log.status === 'leave' ? 'ลากิจ' : 'ขาด'}"`,
+        `"${log.checkinMethod === 'selfie_geofence' ? 'ถ่ายรูปเซลฟี่+GPS' : log.checkinMethod === 'qr_scanner' ? 'เครื่องสแกน QR' : 'ระบบบันทึก'}"`,
+        `"${log.location?.geofenceZoneName || 'ประตูโรงเรียน'}"`,
+        log.location?.distanceMeters !== undefined ? `${log.location.distanceMeters}` : '-',
+        `"${log.photoUrl ? 'ใช่' : 'ไม่ใช่'}"`,
+        `"${(log.remarks || '').replace(/"/g, '""')}"`
+      ];
+    });
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `attendance_daily_${dateFilter}.csv`;
+    const rangeTag = startDateFilter && endDateFilter
+      ? (startDateFilter === endDateFilter ? startDateFilter : `${startDateFilter}_to_${endDateFilter}`)
+      : 'all';
+    link.download = `attendance_report_${rangeTag}.csv`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   };
 
@@ -675,13 +831,25 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </div>
           </div>
 
-          {/* Realtime Attendance Logs for Date */}
+          {/* Realtime Attendance Logs & Filter Component */}
           <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
               <div>
                 <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
                   <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>บันทึกการเข้า-ออกโรงเรียนประจำวัน ({dateFilter})</span>
+                  <span>
+                    บันทึกการเข้า-ออกโรงเรียน (
+                    {startDateFilter && endDateFilter
+                      ? startDateFilter === endDateFilter
+                        ? startDateFilter
+                        : `${startDateFilter} ถึง ${endDateFilter}`
+                      : startDateFilter
+                        ? `ตั้งแต่ ${startDateFilter}`
+                        : endDateFilter
+                          ? `ถึง ${endDateFilter}`
+                          : 'ทุกวันที่'}
+                    )
+                  </span>
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="text-[11px] text-[var(--color-text-muted)]">พบ {displayedFilteredLogs.length} รายการ</span>
@@ -714,21 +882,123 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="px-2.5 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
-                />
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleExportDailyCsv}
-                  className="text-emerald-700 dark:text-emerald-300 hover:underline text-xs font-bold flex items-center gap-1 underline-offset-4 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  title="ส่งออกรายงานการเข้าเรียนประจำวัน/ช่วงวันที่ที่กรองเป็นไฟล์ CSV"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>ส่งออก CSV</span>
+                  <span>Export Attendance</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Filter Component: Date Range + Class/Room + Course */}
+            <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5 text-[11px]">
+                  <Filter className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                  <span>ตัวกรองบันทึกการเข้าเรียน (ช่วงวันที่ • ห้องเรียน • รายวิชา)</span>
+                </span>
+                <div className="flex flex-wrap items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('today')}
+                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
+                  >
+                    วันนี้
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('7d')}
+                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
+                  >
+                    7 วันล่าสุด
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('month')}
+                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
+                  >
+                    เดือนนี้
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('all')}
+                    className="px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[10px] font-semibold cursor-pointer"
+                  >
+                    ทั้งหมด
+                  </button>
+                  {(classFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
+                    <button
+                      type="button"
+                      onClick={handleResetLogFilters}
+                      className="px-2 py-0.5 rounded text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                    >
+                      รีเซ็ต
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+                <label className="block">
+                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ตั้งแต่วันที่</span>
+                  <input
+                    type="date"
+                    aria-label="ตั้งแต่วันที่"
+                    value={startDateFilter}
+                    onChange={(e) => setStartDateFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ถึงวันที่</span>
+                  <input
+                    type="date"
+                    aria-label="ถึงวันที่"
+                    value={endDateFilter}
+                    onChange={(e) => setEndDateFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">ชั้น / ห้องเรียน</span>
+                  <select
+                    aria-label="กรองตามห้องเรียน"
+                    value={classFilter}
+                    onChange={(e) => setClassFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                  >
+                    <option value="all">ทุกห้องเรียน ({availableClasses.length})</option>
+                    {availableClasses.map((room) => (
+                      <option key={room} value={room}>
+                        {room}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">รายวิชา / คอร์สเรียน</span>
+                  <select
+                    aria-label="กรองตามรายวิชา"
+                    value={courseFilter}
+                    onChange={(e) => setCourseFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                  >
+                    <option value="all">ทุกรายวิชา (เช็คชื่อประตูรวม)</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.code} — {course.titleTh}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </div>
 
@@ -939,14 +1209,14 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={handleExportDailyCsv}
-                  className="text-[var(--color-primary-text)] hover:underline text-xs font-bold flex items-center gap-1.5 underline-offset-4 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>ส่งออกข้อมูลประจำวัน</span>
+                  <span>Export Attendance (CSV)</span>
                 </button>
                 <button
                   type="button"

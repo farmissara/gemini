@@ -21,7 +21,11 @@ import {
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { PagedList } from '../PagedList';
 import { STUDENT_STATUS_DETAILS, ALL_GRADE_LEVELS } from '../../data/studentAcademicData';
-import { calculateGrade } from '../../lib/schoolSettings';
+import {
+  calculateStudentAcademicSummary,
+  getEducationStageLabelTh,
+  resolveEffectiveGrade,
+} from '../../lib/moeGrading';
 
 interface StudentDetailModalProps {
   student: Student;
@@ -57,6 +61,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const studentGrades = grades.filter((g) => g.studentId === student.id);
   const studentAttendance = attendance.filter((a) => a.studentId === student.id);
   const currentStatusConfig = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
+  const academicSummary = calculateStudentAcademicSummary({
+    student,
+    courses,
+    grades,
+    gradingSystem,
+  });
+  const stageLabelTh = getEducationStageLabelTh(academicSummary.stage);
+  const effectiveGpax = academicSummary.gpax ?? Number(student.gpa || 0);
 
   const handlePhotoUpdated = (newUrl: string) => {
     if (onUpdateStudent) {
@@ -68,13 +80,11 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   };
 
   const handleCalculateGpaFromGrades = () => {
-    if (studentGrades.length === 0) return;
-    const totalPoints = studentGrades.reduce(
-      (sum, grade) => sum + calculateGrade(grade.totalScore, gradingSystem).point,
-      0
-    );
-    const calculated = Number((totalPoints / studentGrades.length).toFixed(2));
-    setEditGpa(calculated);
+    if (academicSummary.gpax !== null) {
+      setEditGpa(academicSummary.gpax);
+    } else {
+      setEditGpa(0);
+    }
   };
 
   const handleSaveClassEdit = () => {
@@ -262,16 +272,29 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">GPA สะสม</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">
+                    {academicSummary.isPrimary ? 'คะแนนดิบเฉลี่ย & เกรดรายปี' : 'GPA / GPAX สะสม'}
+                  </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
-                    Grade Point Average
+                    {stageLabelTh} • {academicSummary.isPrimary ? 'ประเมินรายปี' : 'ประเมินรายภาคเรียน'}
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300">
-                    {student.gpa.toFixed(2)}
-                  </span>
+                <div className="flex items-baseline gap-2.5 mt-0.5 flex-wrap">
+                  {academicSummary.isPrimary && academicSummary.averageRawScore !== null ? (
+                    <>
+                      <span className="text-2xl font-mono font-extrabold text-emerald-700 dark:text-emerald-300">
+                        {academicSummary.averageRawScore}%
+                      </span>
+                      <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-300">
+                        (เต็ม 100 • เกรดรายปี {effectiveGpax.toFixed(2)})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-2xl font-mono font-extrabold text-amber-700 dark:text-amber-300">
+                      {effectiveGpax.toFixed(2)}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setIsEditingClass(true)}
@@ -281,7 +304,11 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   </button>
                 </div>
                 <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                  เกรดเฉลี่ยสะสมระดับ 0.00 - 4.00 คำนวณจากทุกรายวิชา หรือครูสามารถคลิกปรับแก้ได้โดยตรง
+                  {academicSummary.isPrimary
+                    ? academicSummary.isEarlyPrimary
+                      ? 'ป.1–ป.3 สื่อสารด้วยคะแนนดิบ (เต็ม 100) / เปอร์เซ็นต์พัฒนาการ และสรุปตัดสินผลรายปีระดับ 0–4'
+                      : 'ระดับประถมศึกษา (ป.4–ป.6) ตัดสินผลการเรียนรายปี ใช้คะแนนเต็ม 100 / % ควบคู่ระดับผลการเรียน 0–4'
+                    : `คำนวณแบบถ่วงน้ำหนักหน่วยกิต (${academicSummary.gradedCredits} หน่วยกิตที่ตัดสินแล้ว) ไม่นับกิจกรรมพัฒนาผู้เรียน และ ร/มส.`}
                 </p>
               </div>
               <div className="border-t sm:border-t-0 sm:border-l border-[var(--color-border)] pt-2 sm:pt-0 sm:pl-3">
@@ -397,7 +424,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           /* Enrolled Courses & Grades */
           <div className="space-y-3">
             <span className="text-[11px] font-bold text-[var(--color-primary-text)] uppercase tracking-wider block">
-              ผลการเรียนประจำภาคเรียน
+              {academicSummary.isPrimary ? 'ผลการประเมินพัฒนาการและรายวิชา (รายปี)' : 'ผลการเรียนประจำภาคเรียน (ถ่วงน้ำหนักหน่วยกิต)'}
             </span>
             <div className="space-y-2 pr-1">
               {studentGrades.length === 0 ? (
@@ -405,6 +432,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               ) : (
                 <PagedList items={studentGrades} pageSize={4} renderItem={(g) => {
                   const course = courses.find((c) => c.id === g.courseId);
+                  const resolved = resolveEffectiveGrade(g, course, gradingSystem, false);
                   return (
                     <div
                       key={g.id}
@@ -412,12 +440,18 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     >
                       <div>
                         <span className="font-mono text-[var(--color-primary-text)] font-bold mr-2">{course?.code}</span>
-                        <span className="text-[var(--color-text-title)] font-medium">{course?.titleEn}</span>
+                        <span className="text-[var(--color-text-title)] font-medium">{course?.titleTh || course?.titleEn}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-[var(--color-text-body)]">{g.totalScore} pts</span>
-                        <span className="font-mono font-bold text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700">
-                          {calculateGrade(g.totalScore, gradingSystem).letter}
+                        <span className="font-mono text-[var(--color-text-body)]">
+                          {resolved.isActivity ? `${g.totalScore}%` : `${g.totalScore}/100 (${g.totalScore}%)`}
+                        </span>
+                        <span className={`font-mono font-bold px-2 py-0.5 rounded border ${
+                          resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
+                            ? 'text-red-900 dark:text-red-200 bg-red-100 dark:bg-red-950 border-red-300 dark:border-red-700'
+                            : 'text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700'
+                        }`}>
+                          {resolved.letter}
                         </span>
                       </div>
                     </div>

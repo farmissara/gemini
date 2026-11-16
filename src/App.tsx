@@ -86,6 +86,10 @@ import {
   DEFAULT_STAFF_POSITION_OPTIONS,
 } from './lib/schoolSettings';
 import {
+  calculateStudentAcademicSummary,
+  isSpecialMoeGrade,
+} from './lib/moeGrading';
+import {
   getDuplicateIdReports,
   getDuplicateRecordReports,
   getGradeDuplicateReasons,
@@ -657,6 +661,9 @@ export const App: React.FC = () => {
       if (updates.gradingSystem && updates.gradingSystem !== systemConfig.gradingSystem) {
         setGrades((current) => current.map((grade) => {
           if (grade.schoolId && grade.schoolId !== activeSchool.id) return grade;
+          if (isSpecialMoeGrade(grade.letterGrade)) {
+            return { ...grade, gradePoint: 0 };
+          }
           const nextGrade = calculateGrade(grade.totalScore, updates.gradingSystem || 'thai');
           return {
             ...grade,
@@ -898,6 +905,12 @@ export const App: React.FC = () => {
         setTeachers(resolvedTeachers);
         setCourses(resolvedCourses);
         setGrades(resolvedGrades.map((grade) => {
+          if (isSpecialMoeGrade(grade.letterGrade)) {
+            return {
+              ...grade,
+              gradePoint: 0,
+            };
+          }
           const currentGrade = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
           return {
             ...grade,
@@ -1527,13 +1540,34 @@ export const App: React.FC = () => {
     );
   };
 
+  const syncStudentGpaFromGrades = (nextGrades: GradeRecord[], targetStudentIds?: Set<string>) => {
+    setStudents((prevStudents) =>
+      prevStudents.map((stu) => {
+        if (stu.schoolId && stu.schoolId !== activeSchool.id) return stu;
+        if (targetStudentIds && !targetStudentIds.has(stu.id)) return stu;
+        const summary = calculateStudentAcademicSummary({
+          student: stu,
+          courses: schoolCourses,
+          grades: nextGrades,
+          gradingSystem: systemConfig.gradingSystem,
+          currentAcademicYear: systemConfig.academicYear,
+          currentSemester: systemConfig.currentSemester,
+        });
+        if (summary.gpax === null) return stu;
+        return { ...stu, gpa: summary.gpax };
+      })
+    );
+  };
+
   const handleImportGrades = (newGrades: GradeRecord[]) => {
     const duplicateReasons = getGradeDuplicateReasons(newGrades, schoolGrades);
     if (duplicateReasons.length > 0 &&
       !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
     setGrades((prev) => {
       const updated = [...prev];
+      const affectedIds = new Set<string>();
       newGrades.forEach((ng) => {
+        affectedIds.add(ng.studentId);
         const idx = updated.findIndex((g) => (g.studentId === ng.studentId || g.id === ng.id) && g.courseId === ng.courseId);
         if (idx >= 0) {
           updated[idx] = { ...updated[idx], ...ng, schoolId: activeSchool.id };
@@ -1545,6 +1579,7 @@ export const App: React.FC = () => {
           });
         }
       });
+      syncStudentGpaFromGrades(updated, affectedIds);
       return updated;
     });
   };
@@ -2483,9 +2518,18 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateGrade = (gradeId: string, updates: Partial<GradeRecord>) => {
-    setGrades((prev) =>
-      prev.map((g) => (g.id === gradeId ? { ...g, ...updates } : g))
-    );
+    setGrades((prev) => {
+      let affectedStudentId: string | undefined;
+      const next = prev.map((g) => {
+        if (g.id !== gradeId) return g;
+        affectedStudentId = g.studentId;
+        return { ...g, ...updates };
+      });
+      if (affectedStudentId) {
+        syncStudentGpaFromGrades(next, new Set([affectedStudentId]));
+      }
+      return next;
+    });
     if (currentUser) {
       appendAuditLog(activeSchool.id, {
         actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
@@ -2505,7 +2549,9 @@ export const App: React.FC = () => {
     if (entries.length === 0) return;
     setGrades((prev) => {
       const next = [...prev];
+      const affectedIds = new Set<string>();
       for (const entry of entries) {
+        affectedIds.add(entry.studentId);
         const idx = next.findIndex(
           (g) => (g.schoolId === activeSchool.id || !g.schoolId) && g.courseId === courseId && g.studentId === entry.studentId
         );
@@ -2518,13 +2564,14 @@ export const App: React.FC = () => {
               (existing.assignmentScore || 0) +
               entry.quizScore
           );
+          const preserveSpecial = isSpecialMoeGrade(existing.letterGrade);
           const graded = calculateGrade(totalScore, systemConfig.gradingSystem);
           next[idx] = {
             ...existing,
             quizScore: entry.quizScore,
             totalScore,
-            letterGrade: graded.letter,
-            gradePoint: graded.point,
+            letterGrade: preserveSpecial ? existing.letterGrade : graded.letter,
+            gradePoint: preserveSpecial ? 0 : graded.point,
           };
         } else {
           const totalScore = Math.min(100, entry.quizScore);
@@ -2546,6 +2593,7 @@ export const App: React.FC = () => {
           });
         }
       }
+      syncStudentGpaFromGrades(next, affectedIds);
       return next;
     });
     if (currentUser) {
@@ -3213,6 +3261,9 @@ export const App: React.FC = () => {
                 {currentTab === 'students' && (
                   <StudentsView
                     students={schoolStudents}
+                    courses={schoolCourses}
+                    grades={schoolGrades}
+                    gradingSystem={systemConfig.gradingSystem}
                     activeSchool={activeSchool}
                     currentRole={currentRole}
                     onSelectStudent={setSelectedStudentForProfile}
@@ -3741,6 +3792,7 @@ export const App: React.FC = () => {
           courses={schoolCourses}
           grades={schoolGrades}
           systemConfig={systemConfig}
+          school={activeSchool}
           onClose={() => setSelectedStudentForReport(null)}
         />
       )}

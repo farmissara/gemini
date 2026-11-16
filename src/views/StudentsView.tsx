@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Student, StudentStatus, GuardianInfo, School, UserRole } from '../types';
+import { Student, StudentStatus, GuardianInfo, School, UserRole, Course, GradeRecord, GradingSystem } from '../types';
 import { 
   Users, 
   Search, 
@@ -49,6 +49,7 @@ import {
 import { StudentPromotionModal } from '../components/modals/StudentPromotionModal';
 import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -98,6 +99,9 @@ const PaginatedTableRows = <T,>({
 
 interface StudentsViewProps {
   students: Student[];
+  courses?: Course[];
+  grades?: GradeRecord[];
+  gradingSystem?: GradingSystem;
   activeSchool?: School;
   currentRole?: UserRole;
   onSelectStudent: (student: Student) => void;
@@ -115,6 +119,9 @@ interface StudentsViewProps {
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
   students,
+  courses = [],
+  grades = [],
+  gradingSystem = 'thai',
   activeSchool,
   currentRole = 'admin',
   onSelectStudent,
@@ -420,7 +427,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     guardianName: '',
     guardianPhone: '081-',
     guardianEmail: '',
-    gpa: 3.50,
+    gpa: 0,
     avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
   });
 
@@ -518,7 +525,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       guardianName: '',
       guardianPhone: '081-',
       guardianEmail: '',
-      gpa: 3.50,
+      gpa: 0,
       avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
     });
     setGuardiansList([
@@ -1066,6 +1073,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               <tbody className="divide-y divide-[var(--color-border)]">
                 <PaginatedTableRows items={filteredStudents} colSpan={7} renderRow={(student) => {
                   const statusCfg = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
+                  const summary = calculateStudentAcademicSummary({
+                    student,
+                    courses,
+                    grades,
+                    gradingSystem,
+                  });
+                  const displayGpa = summary.gpax ?? Number(student.gpa || 0);
                   return (
                     <tr key={student.id} className="hover:bg-[var(--color-card-subtle)] transition-colors group">
                       <td className="py-3.5 px-4">
@@ -1111,15 +1125,29 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border ${
-                          student.gpa >= 3.5 
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
-                            : student.gpa >= 3.0 
-                            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                            : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                        }`}>
-                          {student.gpa.toFixed(2)}
-                        </span>
+                        {summary.isPrimary && summary.averageRawScore !== null ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700">
+                              {summary.averageRawScore}%
+                            </span>
+                            <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                              รายปี {displayGpa.toFixed(2)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border ${
+                              displayGpa >= 3.5
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                : displayGpa >= 3.0
+                                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                            }`}
+                            title={displayGpa === 0 && !summary.hasRecordedGrades ? 'ยังไม่ได้กรอก/นำเข้า GPAX' : undefined}
+                          >
+                            {displayGpa.toFixed(2)}
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -2264,10 +2292,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         เกรดเฉลี่ยสะสม (GPA / GPAX)
                       </label>
                       <span className="text-[11px] text-[var(--color-primary-text)] font-semibold">
-                        ค่าระหว่าง 0.00 - 4.00
+                        ค่าระหว่าง 0.00 - 4.00 (ค่าเริ่มต้น 0.00)
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="number"
                         min="0"
@@ -2275,14 +2303,34 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         step="0.01"
                         value={formData.gpa}
                         onChange={(e) => {
-                          const val = Math.min(4.00, Math.max(0, Number(e.target.value)));
+                          const parsed = Number(e.target.value);
+                          const val = Number.isFinite(parsed) ? Math.min(4.00, Math.max(0, parsed)) : 0;
                           setFormData({ ...formData, gpa: Number(val.toFixed(2)) });
                         }}
-                        placeholder="เช่น 3.50"
-                        className="w-40 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm"
+                        placeholder="0.00"
+                        className="w-36 px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-bold text-sm"
                       />
-                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1">
-                        ผลการเรียนเฉลี่ยรวมทุกวิชา สามารถพิมพ์แก้ไขได้ทันที หรือระบบจะคำนวณอัตโนมัติจากคะแนนในสมุด ปพ.5
+                      {editingStudent && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const summary = calculateStudentAcademicSummary({
+                              student: editingStudent,
+                              courses,
+                              grades,
+                              gradingSystem,
+                            });
+                            if (summary.gpax !== null) {
+                              setFormData({ ...formData, gpa: summary.gpax });
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-bold cursor-pointer"
+                        >
+                          คำนวณจาก ปพ.5
+                        </button>
+                      )}
+                      <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed flex-1 min-w-[200px]">
+                        หากยังไม่ตัดเกรดให้คงค่า 0.00 (สำหรับ ป.1–ป.6 ระบบจะเน้นคะแนนดิบ/เปอร์เซ็นต์และตัดสินรายปี และ ม.1–ม.6 จะคำนวณ GPA/GPAX ถ่วงน้ำหนักหน่วยกิตจาก ปพ.5)
                       </p>
                     </div>
                   </div>

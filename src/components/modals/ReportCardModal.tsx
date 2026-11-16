@@ -1,15 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { Student, Course, GradeRecord, SystemConfig } from '../../types';
-import { calculateGrade } from '../../lib/schoolSettings';
-import { 
-  Award, 
-  Printer, 
-  Download, 
-  CheckCircle2, 
-  X, 
-  GraduationCap,
-  Sparkles,
-  FileCheck
+import { Student, Course, GradeRecord, SystemConfig, School } from '../../types';
+import { formatSemesterLabel } from '../../lib/schoolSettings';
+import {
+  calculateStudentAcademicSummary,
+  getEducationStageLabelTh,
+  getStudentShortPrefixTh,
+  resolveEffectiveGrade,
+} from '../../lib/moeGrading';
+import {
+  Award,
+  Printer,
+  X,
 } from 'lucide-react';
 
 interface ReportCardModalProps {
@@ -17,6 +18,7 @@ interface ReportCardModalProps {
   courses: Course[];
   grades: GradeRecord[];
   systemConfig: SystemConfig;
+  school?: School;
   onClose: () => void;
 }
 
@@ -25,31 +27,38 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   courses,
   grades,
   systemConfig,
+  school,
   onClose,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [gradePage, setGradePage] = useState(0);
+  const [advisorName, setAdvisorName] = useState('');
+  const [principalName, setPrincipalName] = useState('');
 
   // Student grades
   const studentGrades = grades.filter((g) => g.studentId === student.id);
-
-  // Calculate term credits and weighted GPA
-  let totalCredits = 0;
-  let totalPointsEarned = 0;
-
-  studentGrades.forEach((g) => {
-    const course = courses.find((c) => c.id === g.courseId);
-    if (course) {
-      const currentGrade = calculateGrade(g.totalScore, systemConfig.gradingSystem);
-      totalCredits += course.credits;
-      totalPointsEarned += course.credits * currentGrade.point;
-    }
+  const summary = calculateStudentAcademicSummary({
+    student,
+    courses,
+    grades,
+    gradingSystem: systemConfig.gradingSystem,
+    currentAcademicYear: systemConfig.academicYear,
+    currentSemester: systemConfig.currentSemester,
   });
 
-  const termGPA = totalCredits > 0 ? (totalPointsEarned / totalCredits).toFixed(2) : student.gpa.toFixed(2);
-  const gradesPerPage = 5;
+  const termGPA = summary.termGpa !== null ? summary.termGpa.toFixed(2) : Number(student.gpa || 0).toFixed(2);
+  const cumulativeGPAX = summary.gpax !== null ? summary.gpax.toFixed(2) : Number(student.gpa || 0).toFixed(2);
+  const gradesPerPage = 8;
   const gradePageCount = Math.max(1, Math.ceil(studentGrades.length / gradesPerPage));
   const visibleGrades = studentGrades.slice(gradePage * gradesPerPage, (gradePage + 1) * gradesPerPage);
+  const schoolNameEn = school?.nameEn || systemConfig.schoolNameEn || 'School';
+  const schoolNameTh = school?.nameTh || systemConfig.schoolNameTh || 'สถานศึกษา';
+  const issuedDateTh = new Date().toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const currentYear = new Date().getFullYear();
 
   const handlePrint = () => {
     window.print();
@@ -59,7 +68,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Action Toolbar */}
-        <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-4">
+        <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-4 print:hidden">
           <div className="flex items-center gap-2 text-white">
             <Award className="w-5 h-5 text-indigo-400" />
             <div>
@@ -67,7 +76,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 Official Bilingual Transcript (ใบแสดงผลการเรียน ปพ.1)
               </h3>
               <p className="text-[11px] text-slate-300">
-                Student: {student.firstNameEn} {student.lastNameEn} • {student.studentIdNumber}
+                {getStudentShortPrefixTh(student)} {student.firstNameTh} {student.lastNameTh} • {student.studentIdNumber}
               </p>
             </div>
           </div>
@@ -95,31 +104,43 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
           <div className="border-b-2 border-slate-900 pb-4 mb-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-xl bg-indigo-900 text-amber-400 flex items-center justify-center font-bold text-2xl border-2 border-amber-400 shadow">
-                  EV
-                </div>
+                {school?.logoUrl ? (
+                  <img
+                    src={school.logoUrl}
+                    alt={schoolNameTh}
+                    className="w-16 h-16 rounded-xl object-contain border border-slate-300 bg-white p-1"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-indigo-900 text-amber-300 flex items-center justify-center font-bold text-lg border-2 border-amber-400 shadow">
+                    {schoolNameEn.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <h1 className="text-xl font-extrabold uppercase tracking-tight text-slate-950">
-                    {systemConfig.schoolNameEn}
+                    {schoolNameEn}
                   </h1>
                   <h2 className="text-sm font-bold text-slate-700 font-thai">
-                    {systemConfig.schoolNameTh}
+                    {schoolNameTh}
                   </h2>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Ministry of Education Accreditation No. MOE-BKK-8812 • Bangkok, Thailand
+                    {school?.province ? `${school.province} • ` : ''}
+                    {school?.code ? `รหัสสถานศึกษา ${school.code} • ` : ''}
+                    หลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พ.ศ. 2551 (ฉบับปรับปรุง 2560)
                   </p>
                 </div>
               </div>
 
               <div className="text-right">
                 <span className="inline-block px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 font-mono text-xs font-bold rounded">
-                  OFFICIAL GRADE TRANSCRIPT
+                  {summary.isPrimary ? 'ปพ.1 (ประเมินรายปี)' : 'ปพ.1 / TRANSCRIPT'}
                 </span>
                 <p className="text-[11px] text-slate-600 mt-1 font-mono">
-                  AY: {systemConfig.academicYear} | {systemConfig.currentSemester}
+                  {summary.isPrimary
+                    ? `ปีการศึกษา ${systemConfig.academicYear} (รายปี)`
+                    : `AY ${systemConfig.academicYear} | ${formatSemesterLabel(systemConfig.currentSemester)}`}
                 </p>
                 <p className="text-[10px] text-slate-600 font-mono">
-                  Ref: TR-{student.studentIdNumber}-2026
+                  Ref: TR-{student.studentIdNumber}-{currentYear}
                 </p>
               </div>
             </div>
@@ -128,22 +149,28 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
                 <span className="text-slate-600 block text-[10px] uppercase font-bold">Student Name</span>
-                <span className="font-bold text-slate-900">{student.firstNameEn} {student.lastNameEn}</span>
-                <span className="text-[11px] text-slate-700 block font-thai">{student.firstNameTh} {student.lastNameTh}</span>
+                <span className="font-bold text-slate-900">
+                  {getStudentShortPrefixTh(student)} {student.firstNameTh} {student.lastNameTh}
+                </span>
+                <span className="text-[11px] text-slate-700 block">
+                  {student.firstNameEn} {student.lastNameEn}
+                </span>
               </div>
               <div>
                 <span className="text-slate-600 block text-[10px] uppercase font-bold">Student ID / National ID</span>
                 <span className="font-mono font-bold text-indigo-700">{student.studentIdNumber}</span>
-                <span className="text-[11px] text-slate-600 block font-mono">{student.nationalId || 'N/A'}</span>
+                <span className="text-[11px] text-slate-600 block font-mono">{student.nationalId || '-'}</span>
               </div>
               <div>
                 <span className="text-slate-600 block text-[10px] uppercase font-bold">Grade Level &amp; Room</span>
                 <span className="font-semibold text-slate-900">{student.gradeLevel}</span>
-                <span className="text-[11px] text-slate-600 block">{student.room}</span>
+                <span className="text-[11px] text-slate-600 block">
+                  {student.room} • {getEducationStageLabelTh(summary.stage)}
+                </span>
               </div>
               <div>
                 <span className="text-slate-600 block text-[10px] uppercase font-bold">Date of Birth &amp; Gender</span>
-                <span className="font-semibold text-slate-900">{student.dateOfBirth}</span>
+                <span className="font-semibold text-slate-900">{student.dateOfBirth || '-'}</span>
                 <span className="text-[11px] text-slate-600 block capitalize">{student.gender}</span>
               </div>
             </div>
@@ -151,61 +178,74 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
 
           {/* Academic Table */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-l-4 border-indigo-700 pl-2">
-              Academic Performance Record (ผลการประเมินรายวิชา)
-            </h4>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-l-4 border-indigo-700 pl-2">
+                {summary.isPrimary
+                  ? 'ผลการประเมินพัฒนาการและรายวิชา (ตัดเกรดรายปี)'
+                  : 'Academic Performance Record (ผลการเรียนรายภาคเรียน)'}
+              </h4>
+              {summary.isPrimary && (
+                <span className="text-[11px] font-semibold text-sky-900 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
+                  {summary.isEarlyPrimary
+                    ? 'ป.1–ป.3: สื่อสารผลด้วยคะแนนดิบ (เต็ม 100) / ร้อยละ (%) ควบคู่ระดับเกรด 0–4 รายปี'
+                    : 'ป.1–ป.6: ประเมินผลรายปีด้วยคะแนนเต็ม 100 (%) และระดับผลการเรียน 0–4'}
+                </span>
+              )}
+            </div>
 
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 border-y border-slate-300">
                   <th className="py-2 px-2.5 font-bold">Course Code</th>
                   <th className="py-2 px-2.5 font-bold">Course Title (รายวิชา)</th>
-                  <th className="py-2 px-2.5 text-center font-bold">Credits (หน่วยกิต)</th>
-                  <th className="py-2 px-2.5 text-center font-bold">Score (คะแนนรวม)</th>
+                  <th className="py-2 px-2.5 text-center font-bold">{summary.isPrimary ? 'Weight' : 'Credits'}</th>
+                  <th className="py-2 px-2.5 text-center font-bold">Score (เต็ม 100 / %)</th>
                   <th className="py-2 px-2.5 text-center font-bold">Grade (เกรด)</th>
-                  <th className="py-2 px-2.5 text-center font-bold">Grade Point (แต้ม)</th>
+                  <th className="py-2 px-2.5 text-center font-bold">Grade Point</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {studentGrades.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-6 text-center text-slate-600">
-                      No grades recorded for this academic term yet.
+                      ยังไม่มีบันทึกผลการเรียนในภาคเรียน/ปีการศึกษานี้
                     </td>
                   </tr>
                 ) : (
                   visibleGrades.map((grade) => {
                     const course = courses.find((c) => c.id === grade.courseId);
                     if (!course) return null;
-                    const gradeDisplay = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
+                    const resolved = resolveEffectiveGrade(grade, course, systemConfig.gradingSystem, false);
                     return (
                       <tr key={grade.id} className="hover:bg-slate-50">
                         <td className="py-2 px-2.5 font-mono font-bold text-slate-900">
                           {course.code}
                         </td>
                         <td className="py-2 px-2.5">
-                          <div className="font-semibold text-slate-900">{course.titleEn}</div>
-                          <div className="text-[11px] text-slate-600 font-thai">{course.titleTh}</div>
+                          <div className="font-semibold text-slate-900">{course.titleTh}</div>
+                          <div className="text-[11px] text-slate-600">{course.titleEn}</div>
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono text-slate-800">
-                          {course.credits.toFixed(1)}
+                          {resolved.isActivity ? 'กิจกรรม' : course.credits.toFixed(1)}
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono font-semibold text-slate-900">
-                          {grade.totalScore}
+                          {grade.totalScore} ({grade.totalScore}%)
                         </td>
                         <td className="py-2 px-2.5 text-center font-bold font-mono">
                           <span className={`inline-block px-2 py-0.5 rounded text-xs ${
-                            gradeDisplay.point >= 3.5
-                              ? 'bg-emerald-100 text-emerald-800' 
-                              : gradeDisplay.point >= 2.5
+                            resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
+                              ? 'bg-rose-100 text-rose-800'
+                              : resolved.point >= 3.5 || resolved.letter === 'ผ'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : resolved.point >= 2.5
                               ? 'bg-blue-100 text-blue-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {gradeDisplay.letter}
+                            {resolved.letter}
                           </span>
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono font-bold text-slate-900">
-                          {gradeDisplay.point.toFixed(1)}
+                          {resolved.isSpecial ? '-' : resolved.point.toFixed(1)}
                         </td>
                       </tr>
                     );
@@ -223,38 +263,77 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
 
             {/* Summary Statistics */}
             <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 grid grid-cols-3 gap-4 text-center">
-              <div>
-                <span className="text-[11px] text-slate-600 block uppercase font-semibold">Total Credits Earned</span>
-                <span className="text-xl font-bold font-mono text-slate-900">{totalCredits.toFixed(1)}</span>
-              </div>
-              <div className="border-x border-slate-200">
-                <span className="text-[11px] text-slate-600 block uppercase font-semibold">Term Grade Point Average (GPA)</span>
-                <span className="text-xl font-extrabold font-mono text-indigo-700">{termGPA}</span>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-600 block uppercase font-semibold">Cumulative GPA (สะสม)</span>
-                <span className="text-xl font-extrabold font-mono text-emerald-700">{student.gpa.toFixed(2)}</span>
-              </div>
+              {summary.isPrimary ? (
+                <>
+                  <div>
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">จำนวนวิชาที่ประเมิน</span>
+                    <span className="text-xl font-bold font-mono text-slate-900">{summary.gradedSubjectCount} วิชา</span>
+                  </div>
+                  <div className="border-x border-slate-200">
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">คะแนนดิบเฉลี่ย (เต็ม 100 / %)</span>
+                    <span className="text-xl font-extrabold font-mono text-emerald-700">
+                      {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">เกรดเฉลี่ยรายปี (0–4)</span>
+                    <span className="text-xl font-extrabold font-mono text-indigo-700">{cumulativeGPAX}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">Total Credits Earned</span>
+                    <span className="text-xl font-bold font-mono text-slate-900">{summary.earnedCredits.toFixed(1)}</span>
+                  </div>
+                  <div className="border-x border-slate-200">
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">Term Grade Point Average (GPA)</span>
+                    <span className="text-xl font-extrabold font-mono text-indigo-700">{termGPA}</span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-600 block uppercase font-semibold">Cumulative GPAX (สะสม)</span>
+                    <span className="text-xl font-extrabold font-mono text-emerald-700">{cumulativeGPAX}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Official Signatures & Seal */}
             <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-3 gap-6 text-center text-xs">
               <div className="space-y-1">
                 <div className="h-12 border-b border-dashed border-slate-400 mx-6"></div>
-                <p className="font-bold text-slate-800 mt-2">Kru Somkiat Chotipan</p>
+                <input
+                  type="text"
+                  value={advisorName}
+                  onChange={(e) => setAdvisorName(e.target.value)}
+                  placeholder="(ระบุชื่อครูที่ปรึกษา...)"
+                  className="print:hidden w-full text-center font-bold text-slate-800 bg-transparent border-b border-slate-200 focus:outline-none focus:border-indigo-500 mt-1 text-xs"
+                />
+                <p className="hidden print:block font-bold text-slate-800 mt-2">
+                  ({advisorName.trim() || '........................................'})
+                </p>
                 <p className="text-[11px] text-slate-600">Classroom Advisor (ครูที่ปรึกษา)</p>
               </div>
 
               <div className="flex flex-col items-center justify-center">
                 <div className="w-16 h-16 rounded-full border-2 border-indigo-900/30 flex items-center justify-center text-[10px] text-indigo-950 font-bold text-center leading-tight uppercase p-1">
-                  OFFICIAL SCHOOL SEAL
+                  ตราโรงเรียน
                 </div>
-                <p className="text-[10px] text-slate-600 mt-1">Issued: November 4, 2026</p>
+                <p className="text-[10px] text-slate-600 mt-1">ออกเอกสาร: {issuedDateTh}</p>
               </div>
 
               <div className="space-y-1">
                 <div className="h-12 border-b border-dashed border-slate-400 mx-6"></div>
-                <p className="font-bold text-slate-800 mt-2">Dr. Thanaporn Kittisak</p>
+                <input
+                  type="text"
+                  value={principalName}
+                  onChange={(e) => setPrincipalName(e.target.value)}
+                  placeholder="(ระบุชื่อผู้อำนวยการ...)"
+                  className="print:hidden w-full text-center font-bold text-slate-800 bg-transparent border-b border-slate-200 focus:outline-none focus:border-indigo-500 mt-1 text-xs"
+                />
+                <p className="hidden print:block font-bold text-slate-800 mt-2">
+                  ({principalName.trim() || '........................................'})
+                </p>
                 <p className="text-[11px] text-slate-600">School Principal (ผู้อำนวยการโรงเรียน)</p>
               </div>
             </div>

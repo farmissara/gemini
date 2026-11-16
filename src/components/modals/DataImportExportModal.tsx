@@ -31,6 +31,8 @@ import {
   getStudentDuplicateReasons,
   getTeacherDuplicateReasons,
 } from '../../lib/duplicateRecords';
+import { calculateGrade } from '../../lib/schoolSettings';
+import { isSpecialMoeGrade } from '../../lib/moeGrading';
 
 export type ImportExportTab = 
   | 'students' // DMC ทะเบียนนักเรียน
@@ -172,22 +174,69 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           showToast('ไฟล์ไม่มีข้อมูลหรือแถวไม่ถูกต้อง');
           return;
         }
+        const normalizeHeader = (value: string) => value.toLowerCase().replace(/[\s()_\-/.]/g, '');
+        const headers = rows[0].map(normalizeHeader);
+        const aliases = {
+          studentIdNumber: ['studentidnumber', 'studentid', 'รหัสประจำตัวstudentid', 'รหัสประจำตัว', 'รหัสนักเรียน'],
+          nationalId: ['nationalid', 'เลขบัตรประชาชน13หลักdmc', 'เลขบัตรประชาชน13หลัก', 'เลขประจำตัวประชาชน'],
+          firstNameTh: ['firstnameth', 'ชื่อไทย', 'ชื่อ'],
+          lastNameTh: ['lastnameth', 'นามสกุลไทย', 'นามสกุล'],
+          firstNameEn: ['firstnameen', 'ชื่อen', 'ชื่ออังกฤษ'],
+          lastNameEn: ['lastnameen', 'นามสกุลen', 'นามสกุลอังกฤษ'],
+          gender: ['gender', 'เพศ'],
+          dateOfBirth: ['dateofbirth', 'dob', 'วันเกิด', 'วันเดือนปีเกิด'],
+          gradeLevel: ['gradelevel', 'ระดับชั้น', 'ชั้น'],
+          room: ['room', 'ห้องเรียน', 'ห้อง'],
+          gpa: ['gpa', 'gpax', 'เกรดเฉลี่ย', 'เกรดเฉลี่ยสะสม'],
+          guardianName: ['guardianname', 'ชื่อผู้ปกครอง', 'ผู้ปกครอง'],
+          guardianRelation: ['guardianrelation', 'ความสัมพันธ์'],
+          guardianPhone: ['guardianphone', 'เบอร์โทรผู้ปกครอง', 'เบอร์โทร'],
+        };
+        const hasNamedHeaders = [...aliases.studentIdNumber, ...aliases.firstNameTh, ...aliases.gradeLevel, ...aliases.gpa]
+          .some((alias) => headers.includes(normalizeHeader(alias)));
+        const col = (field: keyof typeof aliases, fallback: number) => {
+          const idx = headers.findIndex((h) => aliases[field].some((alias) => normalizeHeader(alias) === h));
+          return idx >= 0 ? idx : hasNamedHeaders ? -1 : fallback;
+        };
+        const cols = {
+          studentIdNumber: col('studentIdNumber', 0),
+          nationalId: col('nationalId', 1),
+          firstNameTh: col('firstNameTh', 2),
+          lastNameTh: col('lastNameTh', 3),
+          firstNameEn: col('firstNameEn', 4),
+          lastNameEn: col('lastNameEn', 5),
+          gender: col('gender', 6),
+          dateOfBirth: col('dateOfBirth', 7),
+          gradeLevel: col('gradeLevel', 8),
+          room: col('room', 9),
+          gpa: col('gpa', 10),
+          guardianName: col('guardianName', 11),
+          guardianRelation: col('guardianRelation', 12),
+          guardianPhone: col('guardianPhone', 13),
+        };
+        const cell = (row: string[], index: number) => (index >= 0 ? row[index]?.trim() || '' : '');
+
         const dataRows = rows.slice(1);
         const imported: Student[] = dataRows.map((r, idx) => {
-          const stuId = r[0] || `STU-${Date.now()}-${idx + 1}`;
-          const natId = r[1] || '';
-          const fTh = r[2] || '';
-          const lTh = r[3] || '';
-          const fEn = r[4] || fTh;
-          const lEn = r[5] || lTh;
-          const gender = (r[6]?.toLowerCase().includes('fe') || r[6] === 'หญิง') ? 'female' : 'male';
-          const dob = r[7] || '2008-01-01';
-          const grade = r[8] || 'มัธยมศึกษาปีที่ 4 (M.4)';
-          const room = r[9] || 'ห้อง 401';
-          const gpa = parseFloat(r[10]) || 3.50;
-          const gName = r[11] || '';
-          const gRel = r[12] || 'ผู้ปกครอง';
-          const gPhone = r[13] || '';
+          const stuId = cell(r, cols.studentIdNumber) || `STU-${Date.now()}-${idx + 1}`;
+          const natId = cell(r, cols.nationalId);
+          const fTh = cell(r, cols.firstNameTh);
+          const lTh = cell(r, cols.lastNameTh);
+          const fEn = cell(r, cols.firstNameEn) || fTh;
+          const lEn = cell(r, cols.lastNameEn) || lTh;
+          const rawGender = cell(r, cols.gender).toLowerCase();
+          const gender = (rawGender.includes('fe') || rawGender === 'หญิง' || rawGender === 'f') ? 'female' : 'male';
+          const dob = cell(r, cols.dateOfBirth) || '2008-01-01';
+          const grade = cell(r, cols.gradeLevel) || 'มัธยมศึกษาปีที่ 4 (M.4)';
+          const room = cell(r, cols.room) || 'ห้อง 401';
+          const rawGpaStr = cell(r, cols.gpa);
+          const parsedGpa = rawGpaStr !== '' ? Number(rawGpaStr) : NaN;
+          const gpa = Number.isFinite(parsedGpa)
+            ? Math.min(4, Math.max(0, Number(parsedGpa.toFixed(2))))
+            : 0;
+          const gName = cell(r, cols.guardianName);
+          const gRel = cell(r, cols.guardianRelation) || 'ผู้ปกครอง';
+          const gPhone = cell(r, cols.guardianPhone);
           return {
             id: `stu-dmc-${Date.now()}-${idx}`,
             studentIdNumber: stuId,
@@ -921,6 +970,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                           <th className="px-3 py-2">รหัสนักเรียน</th>
                           <th className="px-3 py-2">ชื่อ - นามสกุล</th>
                           <th className="px-3 py-2">ระดับชั้น / ห้อง</th>
+                          <th className="px-3 py-2 text-right">GPAX นำเข้า</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
@@ -931,6 +981,9 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                               <td className="px-3 py-2 font-mono font-bold text-blue-600">{code}</td>
                               <td className="px-3 py-2 font-bold">{s.firstNameTh} {s.lastNameTh}</td>
                               <td className="px-3 py-2">{s.gradeLevel} ({s.room})</td>
+                              <td className="px-3 py-2 text-right font-mono">
+                                {s.gpa > 0 ? s.gpa.toFixed(2) : <span className="text-[var(--color-text-muted)]">0.00 (ยังไม่ระบุ)</span>}
+                              </td>
                             </tr>
                           );
                         })}
@@ -1103,23 +1156,160 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <div className="space-y-6">
               {renderUploadBox(
                 'School MIS คะแนน & ปพ.5',
-                'เลือกไฟล์ CSV คะแนนเก็บกลางภาค ปลายภาค และการตัดเกรด ปพ.5',
+                'เลือกไฟล์ CSV คะแนนเก็บกลางภาค ปลายภาค และการตัดเกรด ปพ.5 (รองรับ ร, มส., ผ, มผ)',
                 gradeFileRef,
                 (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  showToast('อ่านไฟล์คะแนน ปพ.5 สำเร็จ');
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    try {
+                      const text = event.target?.result as string;
+                      const rows = parseCSVLines(text);
+                      if (rows.length < 2) {
+                        showToast('ไฟล์ไม่มีข้อมูลคะแนน');
+                        return;
+                      }
+                      const studentByNumber = new Map(
+                        students.map((s) => [s.studentIdNumber.trim().toLowerCase(), s])
+                      );
+                      const studentById = new Map(students.map((s) => [s.id.trim().toLowerCase(), s]));
+                      const courseByCode = new Map(courses.map((c) => [c.code.trim().toLowerCase(), c]));
+                      const courseById = new Map(courses.map((c) => [c.id.trim().toLowerCase(), c]));
+
+                      const imported: GradeRecord[] = [];
+                      rows.slice(1).forEach((r, idx) => {
+                        const stuRef = (r[0] || '').trim().toLowerCase();
+                        const crsRef = (r[1] || '').trim().toLowerCase();
+                        const matchedStu = studentByNumber.get(stuRef) || studentById.get(stuRef);
+                        const matchedCrs = courseByCode.get(crsRef) || courseById.get(crsRef);
+                        if (!matchedStu || !matchedCrs) return;
+
+                        const midtermScore = Math.min(30, Math.max(0, Number(r[2]) || 0));
+                        const finalScore = Math.min(40, Math.max(0, Number(r[3]) || 0));
+                        const assignmentScore = Math.min(20, Math.max(0, Number(r[4]) || 0));
+                        const quizScore = Math.min(10, Math.max(0, Number(r[5]) || 0));
+                        const rawTotal = Number(r[6]);
+                        const totalScore = Number.isFinite(rawTotal) && r[6]?.trim() !== ''
+                          ? Math.min(100, Math.max(0, rawTotal))
+                          : Math.min(100, midtermScore + finalScore + assignmentScore + quizScore);
+                        const rawLetter = (r[7] || '').trim();
+                        const calculated = calculateGrade(totalScore, 'thai');
+                        const letterGrade = isSpecialMoeGrade(rawLetter) ? rawLetter : calculated.letter;
+                        const gradePoint = isSpecialMoeGrade(rawLetter) ? 0 : calculated.point;
+
+                        imported.push({
+                          id: `grd-imp-${Date.now()}-${idx}`,
+                          schoolId: activeSchoolId,
+                          studentId: matchedStu.id,
+                          courseId: matchedCrs.id,
+                          academicYear: matchedCrs.academicYear || '2569',
+                          semester: matchedCrs.semester || '1',
+                          midtermScore,
+                          finalScore,
+                          assignmentScore,
+                          quizScore,
+                          totalScore,
+                          letterGrade,
+                          gradePoint,
+                        });
+                      });
+
+                      if (imported.length === 0) {
+                        showToast('ไม่พบรายการที่จับคู่รหัสนักเรียนและรหัสวิชาในระบบได้');
+                        return;
+                      }
+                      setPage(0);
+                      setPreviewGrades(imported);
+                      showToast(`อ่านไฟล์คะแนน ปพ.5 สำเร็จ พบ ${imported.length} รายการ`);
+                    } catch {
+                      showToast('อ่านไฟล์คะแนน ปพ.5 ไม่สำเร็จ');
+                    }
+                  };
+                  reader.readAsText(file, 'UTF-8');
+                  e.target.value = '';
                 },
                 () => {
                   downloadFile('template_mis_grades.csv', 'studentIdNumber,courseCode,midtermScore,finalScore,assignmentScore,quizScore,totalScore,letterGrade');
+                  showToast('ดาวน์โหลดแบบฟอร์ม ปพ.5 แล้ว');
                 },
+                undefined,
                 () => {
-                  showToast('โหลดตัวอย่างคะแนน ปพ.5 เรียบร้อย');
-                },
-                () => {
+                  const headers = ['studentIdNumber', 'courseCode', 'midtermScore', 'finalScore', 'assignmentScore', 'quizScore', 'totalScore', 'letterGrade', 'gradePoint'];
+                  const rows = grades.map((g) => {
+                    const stu = students.find((s) => s.id === g.studentId);
+                    const crs = courses.find((c) => c.id === g.courseId);
+                    return [
+                      stu?.studentIdNumber || g.studentId,
+                      crs?.code || g.courseId,
+                      g.midtermScore,
+                      g.finalScore,
+                      g.assignmentScore,
+                      g.quizScore,
+                      g.totalScore,
+                      `"${g.letterGrade}"`,
+                      g.gradePoint,
+                    ];
+                  });
+                  downloadFile(`mis_grades_export_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map((r) => r.join(','))].join('\n'));
                   showToast('ส่งออกผลคะแนน ปพ.5 แล้ว');
                 },
                 'amber'
+              )}
+
+              {previewGrades.length > 0 && (
+                <div className="p-4 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-amber-900 dark:text-amber-100">
+                      ตรวจสอบผลคะแนน ปพ.5 ({previewGrades.length} รายการ)
+                    </span>
+                    <button type="button" onClick={() => setPreviewGrades([])} className="text-xs text-rose-600 font-bold cursor-pointer">
+                      ล้างพรีวิว
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                    <table className="table-comfortable w-full text-xs text-left">
+                      <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
+                        <tr>
+                          <th className="px-3 py-2">รหัสนักเรียน</th>
+                          <th className="px-3 py-2">รหัสวิชา</th>
+                          <th className="px-3 py-2 text-center">คะแนนรวม</th>
+                          <th className="px-3 py-2 text-center">เกรด</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {previewGrades.slice(0, 8).map((g, idx) => {
+                          const stu = students.find((s) => s.id === g.studentId);
+                          const crs = courses.find((c) => c.id === g.courseId);
+                          return (
+                            <tr key={idx}>
+                              <td className="px-3 py-2 font-mono">{stu?.studentIdNumber || g.studentId}</td>
+                              <td className="px-3 py-2 font-mono">{crs?.code || g.courseId}</td>
+                              <td className="px-3 py-2 text-center font-mono font-bold">{g.totalScore}</td>
+                              <td className="px-3 py-2 text-center font-mono font-bold">{g.letterGrade}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onImportGrades) {
+                          onImportGrades(previewGrades);
+                          showToast(`นำเข้าคะแนน ปพ.5 จำนวน ${previewGrades.length} รายการสำเร็จ!`);
+                          setPreviewGrades([]);
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>ยืนยันนำเข้าคะแนน {previewGrades.length} รายการ</span>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}

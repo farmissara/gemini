@@ -32,6 +32,18 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
+import {
+  calculateStudentAcademicSummary,
+  clampScore,
+  detectCourseEducationStage,
+  getEducationStageLabelTh,
+  getStudentPrefixTh,
+  getStudentShortPrefixTh,
+  isActivityCourse,
+  isPrimaryStage,
+  matchesEducationLevelFilter,
+  resolveEffectiveGrade,
+} from '../lib/moeGrading';
 
 interface GradebookViewProps {
   students: Student[];
@@ -47,22 +59,6 @@ interface GradebookViewProps {
   attendance?: AttendanceRecord[];
   periodAttendance?: PeriodAttendanceRecord[];
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
-}
-
-function matchesPp3Level(student: Student, level: 'all' | 'p6' | 'm3' | 'm6'): boolean {
-  if (level === 'all') return true;
-  const gradeLevel = student.gradeLevel.toLowerCase().replace(/\s+/g, '');
-  if (level === 'p6') {
-    return gradeLevel.includes('ป.6') ||
-      gradeLevel.includes('ประถมศึกษาปีที่6') ||
-      gradeLevel.includes('p.6') ||
-      gradeLevel.includes('primary6');
-  }
-  const target = level === 'm3' ? '3' : '6';
-  return gradeLevel.includes(`ม.${target}`) ||
-    gradeLevel.includes(`มัธยมศึกษาปีที่${target}`) ||
-    gradeLevel.includes(`m.${target}`) ||
-    gradeLevel.includes(`m${target}`);
 }
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
@@ -133,6 +129,52 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     )
   ));
   const selectedStudentForPp6 = students.find((s) => s.id === selectedStudentIdForPp6) || students[0];
+  const courseStudents = gradebookRows.map(({ student }) => student);
+  const courseStage = detectCourseEducationStage(selectedCourse, courseStudents);
+  const isPrimaryCourse = isPrimaryStage(courseStage);
+  const isEarlyPrimaryCourse = courseStage === 'primary_early';
+  const courseIsActivity = isActivityCourse(selectedCourse);
+  const pp3EligibleStudents = students.filter((student) => matchesEducationLevelFilter(student.gradeLevel, pp3LevelFilter));
+  const onetEligibleStudents = students.filter((student) => matchesEducationLevelFilter(student.gradeLevel, onetLevelFilter));
+  const onetRows = onetEligibleStudents.map((stu, idx) => {
+    const summary = calculateStudentAcademicSummary({
+      student: stu,
+      courses,
+      grades,
+      gradingSystem: systemConfig.gradingSystem,
+    });
+    const effectiveGpa = summary.gpax ?? Number(stu.gpa || 0);
+    const stuGrades = grades.filter((g) => g.studentId === stu.id);
+    const findSubjectScore = (keywords: string[], fallback: number) => {
+      const matched = stuGrades.find((g) => {
+        const c = courses.find((cr) => cr.id === g.courseId);
+        const title = `${c?.titleTh || ''} ${c?.titleEn || ''} ${c?.department || ''}`.toLowerCase();
+        return keywords.some((kw) => title.includes(kw));
+      });
+      return matched ? Math.round(matched.totalScore) : fallback;
+    };
+    const baseFromGpa = effectiveGpa > 0 ? effectiveGpa : 2.5;
+    const thScore = findSubjectScore(['ไทย', 'thai'], Math.min(95, Math.round(52 + baseFromGpa * 10)));
+    const mathScore = findSubjectScore(['คณิต', 'math'], Math.min(95, Math.round(46 + baseFromGpa * 11)));
+    const sciScore = findSubjectScore(['วิทย', 'science'], Math.min(95, Math.round(50 + baseFromGpa * 10.5)));
+    const engScore = findSubjectScore(['อังกฤษ', 'english'], Math.min(95, Math.round(48 + baseFromGpa * 11)));
+    const avgNumber = Number(((thScore + mathScore + sciScore + engScore) / 4).toFixed(1));
+    return {
+      stu,
+      idx,
+      nationalId: stu.nationalId || `1100${idx.toString().padStart(9, '0')}`,
+      seatNo: `67${(idx + 1).toString().padStart(6, '0')}`,
+      thScore,
+      mathScore,
+      sciScore,
+      engScore,
+      avgNumber,
+    };
+  });
+  const onetOverallAverage =
+    onetRows.length > 0
+      ? (onetRows.reduce((sum, row) => sum + row.avgNumber, 0) / onetRows.length).toFixed(1)
+      : null;
   const gradePageSize = 15;
   const pp5PageSize = 15;
   const pp6CoursePageSize = 5;
@@ -188,59 +230,113 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   };
 
   const getGradeDisplay = (grade: GradeRecord) =>
-    calculateGrade(grade.totalScore, systemConfig.gradingSystem);
+    resolveEffectiveGrade(grade, selectedCourse, systemConfig.gradingSystem, false);
 
   const handleScoreChange = (
     grade: GradeRecord,
     field: 'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore',
-    val: number
+    rawVal: number
   ) => {
-    const updated = { ...grade, [field]: val };
-    const total =
-      (field === 'midtermScore' ? val : updated.midtermScore) +
-      (field === 'finalScore' ? val : updated.finalScore) +
-      (field === 'assignmentScore' ? val : updated.assignmentScore) +
-      (field === 'quizScore' ? val : updated.quizScore);
+    const maxMap = {
+      midtermScore: 30,
+      finalScore: 40,
+      assignmentScore: 20,
+      quizScore: 10,
+    } as const;
+    const clampedVal = clampScore(rawVal, maxMap[field]);
+    const updated = { ...grade, [field]: clampedVal };
+    const total = clampScore(
+      (field === 'midtermScore' ? clampedVal : updated.midtermScore) +
+        (field === 'finalScore' ? clampedVal : updated.finalScore) +
+        (field === 'assignmentScore' ? clampedVal : updated.assignmentScore) +
+        (field === 'quizScore' ? clampedVal : updated.quizScore),
+      100
+    );
+
+    if (courseIsActivity || grade.letterGrade === 'ผ' || grade.letterGrade === 'มผ') {
+      onUpdateGrade(grade.id, {
+        [field]: clampedVal,
+        totalScore: total,
+        letterGrade: total >= 50 ? 'ผ' : 'มผ',
+        gradePoint: 0,
+      });
+      return;
+    }
+
+    if (grade.letterGrade === 'ร' || grade.letterGrade === 'มส.') {
+      onUpdateGrade(grade.id, {
+        [field]: clampedVal,
+        totalScore: total,
+        letterGrade: grade.letterGrade,
+        gradePoint: 0,
+      });
+      return;
+    }
 
     const { letter, point } = calculateGrade(total, systemConfig.gradingSystem);
     onUpdateGrade(grade.id, {
-      [field]: val,
+      [field]: clampedVal,
       totalScore: total,
       letterGrade: letter,
       gradePoint: point,
     });
   };
 
+  const handleSpecialStatusChange = (grade: GradeRecord, status: 'auto' | 'ร' | 'มส.' | 'ผ' | 'มผ') => {
+    if (status === 'auto') {
+      if (courseIsActivity) {
+        onUpdateGrade(grade.id, {
+          letterGrade: grade.totalScore >= 50 ? 'ผ' : 'มผ',
+          gradePoint: 0,
+        });
+      } else {
+        const { letter, point } = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
+        onUpdateGrade(grade.id, { letterGrade: letter, gradePoint: point });
+      }
+      return;
+    }
+    onUpdateGrade(grade.id, {
+      letterGrade: status,
+      gradePoint: 0,
+    });
+  };
+
   const handleExportCSV = () => {
     if (!selectedCourse) return;
+    const cycleLabel = isPrimaryCourse ? 'รายปี (ป.1-ป.6)' : 'รายภาคเรียน (ม.1-ม.6)';
     const headers = [
       'รหัสนักเรียน',
       'ชื่อ-นามสกุล (ไทย)',
       'Name (English)',
       'ห้องเรียน',
+      'รอบการประเมิน',
       'กลางภาค (30)',
       'ปลายภาค (40)',
       'การบ้าน/ชิ้นงาน (20)',
       'แบบทดสอบย่อย (10)',
       'คะแนนรวม (100)',
-      'ระดับผลการเรียน (เกรด)',
-      'ค่าระดับเกรด (0-4)',
+      'ร้อยละ (%)',
+      'ผลการเรียน (ปพ.5)',
+      'ค่าระดับ (0-4)',
     ];
 
     const rows = courseGrades.map((g) => {
       const stu = students.find((s) => s.id === g.studentId);
+      const disp = getGradeDisplay(g);
       return [
         `"${stu?.studentIdNumber || ''}"`,
         `"${stu?.firstNameTh || ''} ${stu?.lastNameTh || ''}"`,
         `"${stu?.firstNameEn || ''} ${stu?.lastNameEn || ''}"`,
         `"${stu?.room || ''}"`,
+        `"${cycleLabel}"`,
         g.midtermScore,
         g.finalScore,
         g.assignmentScore,
         g.quizScore,
         g.totalScore,
-        `"${getGradeDisplay(g).letter}"`,
-        getGradeDisplay(g).point.toFixed(1),
+        `${g.totalScore}%`,
+        `"${disp.letter}"`,
+        disp.isSpecial ? '-' : disp.point.toFixed(1),
       ];
     });
 
@@ -265,26 +361,35 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       'นามสกุล',
       'ระดับชั้นที่สำเร็จการศึกษา',
       'ห้อง',
-      'GPAX_ผลการเรียนเฉลี่ยสะสม',
+      'รอบประเมิน',
+      'GPAX / คะแนนเฉลี่ย (%)',
       'เลขที่ชุด_ปพ3',
       'เลขที่เอกสาร',
       'วันที่อนุมัติจบการศึกษา',
       'สถานะการสำเร็จการศึกษา'
     ];
 
-    const eligibleStudents = students.filter((student) => matchesPp3Level(student, pp3LevelFilter));
-
-    const rows = eligibleStudents.map((s, idx) => {
+    const rows = pp3EligibleStudents.map((s, idx) => {
+      const summary = calculateStudentAcademicSummary({
+        student: s,
+        courses,
+        grades,
+        gradingSystem: systemConfig.gradingSystem,
+      });
+      const metricValue = summary.isPrimary && summary.averageRawScore !== null
+        ? `${summary.averageRawScore}% (เกรด ${(summary.gpax ?? s.gpa).toFixed(2)})`
+        : (summary.gpax ?? s.gpa).toFixed(2);
       return [
         idx + 1,
         `"${s.studentIdNumber}"`,
         `"${s.nationalId || ''}"`,
-        `"${s.gender === 'female' ? 'เด็กหญิง' : 'เด็กชาย'}"`,
+        `"${getStudentPrefixTh(s)}"`,
         `"${s.firstNameTh}"`,
         `"${s.lastNameTh}"`,
         `"${s.gradeLevel}"`,
         `"${s.room}"`,
-        s.gpa.toFixed(2),
+        `"${summary.isPrimary ? 'รายปี' : 'รายภาคเรียน'}"`,
+        `"${metricValue}"`,
         '""',
         '""',
         '""',
@@ -319,36 +424,20 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       'สถานะนำส่ง สทศ.'
     ];
 
-    const eligibleStudents = students.filter((s) => {
-      if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
-      if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
-      if (onetLevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
-      return true;
-    });
-
-    const rows = eligibleStudents.map((s, idx) => {
-      const nationalId = s.nationalId || `1100${idx.toString().padStart(9, '0')}`;
-      const seatNo = `67${(idx + 1).toString().padStart(6, '0')}`;
-      const thScore = Math.min(95, Math.round(55 + (s.gpa * 10)));
-      const mathScore = Math.min(95, Math.round(48 + (s.gpa * 11)));
-      const sciScore = Math.min(95, Math.round(52 + (s.gpa * 10.5)));
-      const engScore = Math.min(95, Math.round(50 + (s.gpa * 11.2)));
-      const avg = ((thScore + mathScore + sciScore + engScore) / 4).toFixed(2);
-      return [
-        `"1001-01"`,
-        `"${seatNo}"`,
-        `"${nationalId}"`,
-        `"${s.studentIdNumber}"`,
-        `"${s.firstNameTh} ${s.lastNameTh}"`,
-        `"${s.gradeLevel}"`,
-        thScore,
-        mathScore,
-        sciScore,
-        engScore,
-        avg,
-        `"นำส่งข้อมูล สทศ. เรียบร้อย"`
-      ];
-    });
+    const rows = onetRows.map((row) => [
+      `"1001-01"`,
+      `"${row.seatNo}"`,
+      `"${row.nationalId}"`,
+      `"${row.stu.studentIdNumber}"`,
+      `"${getStudentShortPrefixTh(row.stu)} ${row.stu.firstNameTh} ${row.stu.lastNameTh}"`,
+      `"${row.stu.gradeLevel}"`,
+      row.thScore,
+      row.mathScore,
+      row.sciScore,
+      row.engScore,
+      row.avgNumber.toFixed(2),
+      `"นำส่งข้อมูล สทศ. เรียบร้อย"`
+    ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -384,17 +473,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         attendance,
         periodAttendance,
       });
+      const summary = calculateStudentAcademicSummary({
+        student: s,
+        courses,
+        grades,
+        gradingSystem: systemConfig.gradingSystem,
+      });
+      const effectiveGpax = summary.gpax ?? Number(s.gpa || 0);
       return [
         `"${s.schoolId || ''}"`,
         `"${s.nationalId || `1100${idx.toString().padStart(9, '0')}`}"`,
         `"${s.studentIdNumber}"`,
-        `"${s.gender === 'female' ? 'เด็กหญิง' : 'เด็กชาย'}"`,
+        `"${getStudentPrefixTh(s)}"`,
         `"${s.firstNameTh}"`,
         `"${s.lastNameTh}"`,
         `"${s.gender === 'female' ? 'หญิง' : 'ชาย'}"`,
         `"${s.gradeLevel}"`,
         `"${s.room}"`,
-        s.gpa.toFixed(2),
+        effectiveGpax.toFixed(2),
         eligibility.attendancePercent,
         `"${s.status === 'active' ? 'กำลังศึกษา' : s.status}"`,
       ];
@@ -415,19 +511,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     const course = selectedCourse || courses[0];
     if (!course) return;
     const targetGrades = grades.filter((g) => g.courseId === course.id);
+    const targetStage = detectCourseEducationStage(course, students);
+    const targetIsPrimary = isPrimaryStage(targetStage);
     const headers = [
       'รหัสวิชา',
       'ชื่อรายวิชา',
-      'ภาคเรียน',
+      'รอบการประเมิน',
       'ปีการศึกษา',
       'รหัสนักเรียน',
       'ชื่อ-นามสกุล',
       'ห้องเรียน',
       'มาเรียน (%)',
       'สถานะสิทธิ์สอบ',
-      'คะแนนระหว่างภาค (60)',
-      'คะแนนปลายภาค (40)',
+      'คะแนนระหว่างเรียน (60)',
+      'คะแนนปลายภาค/ปลายปี (40)',
       'คะแนนรวม (100)',
+      'ร้อยละ (%)',
       'ผลการเรียน',
     ];
     const rows = targetGrades.map((g) => {
@@ -441,21 +540,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             periodAttendance,
           })
         : { attendancePercent: 95, isAtRiskMs: false };
-      const disp = getGradeDisplay(g);
+      const disp = resolveEffectiveGrade(g, course, systemConfig.gradingSystem, eligibility.isAtRiskMs);
       return [
         `"${course.code}"`,
         `"${course.titleTh}"`,
-        `"${course.semester || systemConfig.currentSemester}"`,
+        `"${targetIsPrimary ? 'รายปี' : `ภาคเรียนที่ ${course.semester || systemConfig.currentSemester}`}"`,
         `"${course.academicYear || systemConfig.academicYear}"`,
         `"${stu?.studentIdNumber || ''}"`,
-        `"${stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : ''}"`,
+        `"${stu ? `${getStudentShortPrefixTh(stu)} ${stu.firstNameTh} ${stu.lastNameTh}` : ''}"`,
         `"${stu?.room || ''}"`,
         eligibility.attendancePercent,
         `"${eligibility.isAtRiskMs ? 'มส. (เวลาเรียนไม่ถึง 80%)' : 'มีสิทธิ์สอบ'}"`,
         g.midtermScore + g.assignmentScore + g.quizScore,
         g.finalScore,
         g.totalScore,
-        `"${eligibility.isAtRiskMs ? 'มส.' : disp.letter}"`,
+        `${g.totalScore}%`,
+        `"${disp.letter}"`,
       ];
     });
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -730,15 +830,43 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         {activeTab === 'gradebook' && selectedCourse && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible space-y-3 p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2 text-xs">
-        <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
               <span className="text-[var(--color-text-title)] font-bold text-sm">{selectedCourse.titleEn}</span>
               <span className="text-[var(--color-text-muted)] font-thai">({selectedCourse.titleTh})</span>
-              <span className="text-[var(--color-text-muted)]">· {selectedCourse.teacherName} · {selectedCourse.credits} หน่วยกิต</span>
+              <span className="text-[var(--color-text-muted)]">
+                · {selectedCourse.teacherName} · {isPrimaryCourse ? `ประเมินรายปี ปีการศึกษา ${systemConfig.academicYear}` : `${formatSemesterLabel(systemConfig.currentSemester)} / ${systemConfig.academicYear}`} · {selectedCourse.credits} {isPrimaryCourse ? 'น้ำหนักวิชา' : 'หน่วยกิต'}
+              </span>
             </div>
 
             <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
               {getGradingScaleLegend(systemConfig.gradingSystem)}
+            </div>
+          </div>
+
+          {/* MOE Assessment Standard Banner */}
+          <div className={`rounded-xl border px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 ${
+            courseIsActivity
+              ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200'
+              : isPrimaryCourse
+              ? 'border-sky-300 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200'
+              : 'border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200'
+          }`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded font-bold bg-white/80 dark:bg-slate-900/70 border border-current/20">
+                {courseIsActivity
+                  ? 'กิจกรรมพัฒนาผู้เรียน (ผ / มผ)'
+                  : `${getEducationStageLabelTh(courseStage)} • ${isPrimaryCourse ? 'ตัดเกรดรายปี' : 'ตัดเกรดรายภาคเรียน'}`}
+              </span>
+              <span>
+                {courseIsActivity
+                  ? 'ตัดสินผลเป็น ผ่าน (ผ) / ไม่ผ่าน (มผ) และไม่นำไปคิดรวมในเกรดเฉลี่ย (GPA / GPAX)'
+                  : isPrimaryCourse
+                  ? isEarlyPrimaryCourse
+                    ? 'ประถมต้น (ป.1–ป.3): ตัดสินผลรายปี เกรด 0–4 โดยสื่อสารกับผู้ปกครองด้วยคะแนนดิบ (เต็ม 100) และเปอร์เซ็นต์ (%) พัฒนาการเป็นหลัก'
+                    : 'ระดับประถมศึกษา (ป.1–ป.6): ตัดสินผลการเรียน "รายปี" ใช้เกรด 0–4 ควบคู่คะแนนดิบ (เต็ม 100) / เปอร์เซ็นต์ (%)'
+                  : 'ระดับมัธยมศึกษา (ม.1–ม.6): ตัดสินผล "รายภาคเรียน" (เกรด 0–4) และคำนวณ GPA / GPAX ถ่วงน้ำหนักหน่วยกิตสำหรับยื่นศึกษาต่อ/TCAS'}
+              </span>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 sm:grid-cols-3 print:hidden">
@@ -929,21 +1057,59 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </td>
 
                         <td className="py-3 px-3 text-center font-mono font-bold text-sm text-[var(--color-text-title)]">
-                          {grade.totalScore}
+                          <div>{grade.totalScore}</div>
+                          <div className="text-[10px] font-normal text-[var(--color-text-muted)]">{grade.totalScore}%</div>
                         </td>
 
                         <td className="py-3 px-3 text-center">
-                          <span
-                            className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
-                              getGradeDisplay(grade).point >= 3.5
-                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                : getGradeDisplay(grade).point >= 2.5
-                                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                                : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                            }`}
-                          >
-                            {getGradeDisplay(grade).letter} ({getGradeDisplay(grade).point.toFixed(1)})
-                          </span>
+                          {(() => {
+                            const disp = getGradeDisplay(grade);
+                            const currentSpecialValue =
+                              grade.letterGrade === 'ร' ||
+                              grade.letterGrade === 'มส.' ||
+                              grade.letterGrade === 'ผ' ||
+                              grade.letterGrade === 'มผ'
+                                ? grade.letterGrade
+                                : 'auto';
+                            return (
+                              <div className="inline-flex flex-col items-center gap-1">
+                                <span
+                                  className={`inline-block px-2.5 py-0.5 rounded font-mono font-bold text-xs border ${
+                                    disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ' || disp.letter === '0' || disp.letter === 'F'
+                                      ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                      : disp.point >= 3.5 || disp.letter === 'ผ'
+                                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                      : disp.point >= 2.5
+                                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                                      : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                  }`}
+                                >
+                                  {disp.isSpecial ? disp.letter : `${disp.letter} (${disp.point.toFixed(1)})`}
+                                </span>
+                                <select
+                                  aria-label={`สถานะเกรด ปพ.5 ของ ${student.firstNameTh}`}
+                                  value={currentSpecialValue}
+                                  onChange={(e) =>
+                                    handleSpecialStatusChange(
+                                      grade,
+                                      e.target.value as 'auto' | 'ร' | 'มส.' | 'ผ' | 'มผ'
+                                    )
+                                  }
+                                  className="px-1.5 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[10px] text-[var(--color-text-muted)] cursor-pointer"
+                                >
+                                  <option value="auto">{courseIsActivity ? 'อัตโนมัติ (ผ/มผ)' : 'ปกติ (คิดเกรด)'}</option>
+                                  <option value="ร">ร (รอตัดสิน)</option>
+                                  <option value="มส.">มส. (ไม่มีสิทธิ์สอบ)</option>
+                                  {courseIsActivity && (
+                                    <>
+                                      <option value="ผ">ผ (ผ่านกิจกรรม)</option>
+                                      <option value="มผ">มผ (ไม่ผ่านกิจกรรม)</option>
+                                    </>
+                                  )}
+                                </select>
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         <td className="py-3 px-3 text-right">
@@ -1019,19 +1185,26 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       {/* Total Score & Grade Badge */}
                       <div className="text-right shrink-0">
                         <div className="text-base font-bold font-mono text-[var(--color-text-title)]">
-                          {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100</span>
+                          {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100 ({grade.totalScore}%)</span>
                         </div>
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                            getGradeDisplay(grade).point >= 3.5
-                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                              : getGradeDisplay(grade).point >= 2.5
-                              ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                              : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                          }`}
-                        >
-                          เกรด {getGradeDisplay(grade).letter}
-                        </span>
+                        {(() => {
+                          const disp = getGradeDisplay(grade);
+                          return (
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ'
+                                  ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                  : disp.point >= 3.5 || disp.letter === 'ผ'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                  : disp.point >= 2.5
+                                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                              }`}
+                            >
+                              {disp.isSpecial ? disp.letter : `เกรด ${disp.letter}`}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -1236,7 +1409,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20">
               <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">นักเรียนในระดับชั้นที่เลือก</div>
               <div className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mt-0.5">
-                {students.filter((student) => matchesPp3Level(student, pp3LevelFilter)).length} คน
+                {pp3EligibleStudents.length} คน
               </div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
@@ -1263,55 +1436,67 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-2.5 px-3">เลขประจำตัวประชาชน (13 หลัก DMC)</th>
                   <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
                   <th className="py-2.5 px-3">ระดับชั้น</th>
-                  <th className="py-2.5 px-3 text-center">GPAX สะสม</th>
+                  <th className="py-2.5 px-3 text-center">GPAX / ร้อยละสะสม</th>
                   <th className="py-2.5 px-3">เลขที่ชุด / เล่มที่ ปพ.3</th>
                   <th className="py-2.5 px-3 text-center">สถานะอนุมัติ</th>
                   <th className="py-2.5 px-3 text-right">รายงาน ปพ.1</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {students
-                  .filter((student) => matchesPp3Level(student, pp3LevelFilter))
-                  .map((stu, idx) => {
-                    return (
-                      <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
-                        <td className="py-2.5 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{stu.nationalId || '—'}</td>
-                        <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
-                          {stu.gender === 'female' ? 'ด.ญ. ' : 'ด.ช. '}{stu.firstNameTh} {stu.lastNameTh}
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-medium">
-                            {stu.gradeLevel} ({stu.room})
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                          {stu.gpa.toFixed(2)}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-xs">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">ยังไม่กำหนด</span>
-                          <span className="text-[10px] text-[var(--color-text-muted)] block">กรอกหลังออกเลขทะเบียนจริง</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            รอตรวจสอบข้อมูล
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => onOpenReportCard(stu)}
-                            className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-semibold cursor-pointer shadow-xs"
-                          >
-                            ดู ปพ.1
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                {pp3EligibleStudents.map((stu, idx) => {
+                  const summary = calculateStudentAcademicSummary({
+                    student: stu,
+                    courses,
+                    grades,
+                    gradingSystem: systemConfig.gradingSystem,
+                  });
+                  const effectiveGpax = summary.gpax ?? Number(stu.gpa || 0);
+                  return (
+                    <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                      <td className="py-2.5 px-3 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{stu.studentIdNumber}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{stu.nationalId || '—'}</td>
+                      <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
+                        {getStudentShortPrefixTh(stu)} {stu.firstNameTh} {stu.lastNameTh}
+                        <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{stu.firstNameEn} {stu.lastNameEn}</div>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-medium">
+                          {stu.gradeLevel} ({stu.room})
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                        {summary.isPrimary && summary.averageRawScore !== null ? (
+                          <div>
+                            <span>{summary.averageRawScore}%</span>
+                            <span className="block text-[10px] text-[var(--color-text-muted)]">รายปี {effectiveGpax.toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          effectiveGpax.toFixed(2)
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-xs">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">ยังไม่กำหนด</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] block">กรอกหลังออกเลขทะเบียนจริง</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          รอตรวจสอบข้อมูล
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onOpenReportCard(stu)}
+                          className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-semibold cursor-pointer shadow-xs"
+                        >
+                          ดู ปพ.1
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1408,12 +1593,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)]">
               <div className="text-[11px] font-bold text-[var(--color-primary-text)]">ผู้มีสิทธิ์สอบ {onetLevelFilter.toUpperCase()}</div>
               <div className="text-xl font-bold text-[var(--color-primary-text)] dark:text-blue-100 mt-0.5">
-                {students.filter(s => {
-                  if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
-                  if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
-                  if (onetLevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
-                  return true;
-                }).length} คน
+                {onetRows.length} คน
               </div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
@@ -1422,7 +1602,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">คะแนนเฉลี่ยรวมทุกวิชา</div>
-              <div className="text-xl font-bold text-[var(--color-primary-text)] mt-0.5">78.4%</div>
+              <div className="text-xl font-bold text-[var(--color-primary-text)] mt-0.5">
+                {onetOverallAverage ? `${onetOverallAverage}%` : '—'}
+              </div>
             </div>
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
               <div className="text-[11px] font-bold text-[var(--color-text-muted)]">สถานะการส่งข้อมูล สทศ.</div>
@@ -1450,45 +1632,37 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {students
-                  .filter((s) => {
-                    if (onetLevelFilter === 'p6') return s.gradeLevel.toLowerCase().includes('6') && !s.gradeLevel.toLowerCase().includes('m');
-                    if (onetLevelFilter === 'm3') return s.gradeLevel.toLowerCase().includes('3') || s.gradeLevel.includes('ม.3');
-                    if (onetLevelFilter === 'm6') return s.gradeLevel.toLowerCase().includes('6') || s.gradeLevel.includes('ม.6');
-                    return true;
-                  })
-                  .map((stu, idx) => {
-                    const nationalId = stu.nationalId || `1100${idx.toString().padStart(9, '0')}`;
-                    const seatNo = `67${(idx + 1).toString().padStart(6, '0')}`;
-                    const thScore = Math.min(95, Math.round(55 + (stu.gpa * 10)));
-                    const mathScore = Math.min(95, Math.round(48 + (stu.gpa * 11)));
-                    const sciScore = Math.min(95, Math.round(52 + (stu.gpa * 10.5)));
-                    const engScore = Math.min(95, Math.round(50 + (stu.gpa * 11.2)));
-                    const avg = ((thScore + mathScore + sciScore + engScore) / 4).toFixed(1);
-                    return (
-                      <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
-                        <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{seatNo}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{nationalId}</td>
-                        <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
-                          {stu.firstNameTh} {stu.lastNameTh}
-                          <div className="text-[10px] text-[var(--color-text-muted)]">{stu.gradeLevel} ({stu.room})</div>
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{thScore}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{mathScore}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{sciScore}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-semibold">{engScore}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-[var(--color-primary-text)] bg-[var(--color-primary-light)]">
-                          {avg}%
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px] font-bold">
-                            <CheckCircle2 className="w-3 h-3 text-[var(--color-primary-text)]" />
-                            นำส่ง สทศ. แล้ว
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                {onetRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-[var(--color-text-muted)]">
+                      ไม่พบรายชื่อนักเรียนระดับ {onetLevelFilter.toUpperCase()} ในโรงเรียนนี้
+                    </td>
+                  </tr>
+                ) : (
+                  onetRows.map(({ stu, nationalId, seatNo, thScore, mathScore, sciScore, engScore, avgNumber }) => (
+                    <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                      <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-primary-text)]">{seatNo}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 tracking-wider">{nationalId}</td>
+                      <td className="py-2.5 px-3 font-semibold text-[var(--color-text-title)]">
+                        {getStudentShortPrefixTh(stu)} {stu.firstNameTh} {stu.lastNameTh}
+                        <div className="text-[10px] text-[var(--color-text-muted)]">{stu.gradeLevel} ({stu.room})</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-mono font-semibold">{thScore}</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-semibold">{mathScore}</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-semibold">{sciScore}</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-semibold">{engScore}</td>
+                      <td className="py-2.5 px-3 text-center font-mono font-bold text-[var(--color-primary-text)] bg-[var(--color-primary-light)]">
+                        {avgNumber.toFixed(1)}%
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px] font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-[var(--color-primary-text)]" />
+                          นำส่ง สทศ. แล้ว
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -11,6 +11,15 @@ import {
 import { calculateGrade, formatSemesterLabel } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
 import {
+  calculateStudentAcademicSummary,
+  detectCourseEducationStage,
+  getEducationStageLabelTh,
+  getStudentShortPrefixTh,
+  isActivityCourse,
+  isPrimaryStage,
+  resolveEffectiveGrade,
+} from '../lib/moeGrading';
+import {
   Award,
   ChevronLeft,
   ChevronRight,
@@ -73,7 +82,10 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   const [headOfDeptName, setHeadOfDeptName] = useState('');
   const [measurementHeadName, setMeasurementHeadName] = useState('');
   const [directorName, setDirectorName] = useState('');
-  const [docSetNo, setDocSetNo] = useState('๑ / ๒๕๖๙');
+  const [docSetNo, setDocSetNo] = useState(`๑ / ${systemConfig.academicYear || '๒๕๖๙'}`);
+  const [qualityOverrides, setQualityOverrides] = useState<
+    Record<string, { attr?: number; reading?: number; competency?: number }>
+  >({});
 
   const totalHours = selectedCourse.totalHours || Math.max(20, Math.round(selectedCourse.credits * 40));
   const minAttendanceHours = selectedCourse.minAttendanceHours || Math.round(totalHours * 0.8);
@@ -85,9 +97,16 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     const combinedIds = new Set([...enrolledIds, ...gradedIds]);
     const list = students.filter((s) => combinedIds.has(s.id));
     if (list.length > 0) return list;
-    // Fallback: match courseGrades order if students list didn't match
     return [];
   }, [students, selectedCourse.enrolledStudentIds, courseGrades]);
+
+  const courseStage = useMemo(
+    () => detectCourseEducationStage(selectedCourse, rosterStudents),
+    [selectedCourse, rosterStudents]
+  );
+  const isPrimaryCourse = isPrimaryStage(courseStage);
+  const isEarlyPrimaryCourse = courseStage === 'primary_early';
+  const courseIsActivity = isActivityCourse(selectedCourse);
 
   const distinctRooms = useMemo(() => {
     const rooms = Array.from(new Set(rosterStudents.map((s) => s.room).filter(Boolean)));
@@ -105,15 +124,12 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
         periodAttendance,
       });
       const isMs = eligibility.isAtRiskMs;
-      const gradeResult = grade
-        ? calculateGrade(grade.totalScore, systemConfig.gradingSystem)
-        : null;
-      const finalLetter = isMs
-        ? 'มส.'
-        : gradeResult
-          ? gradeResult.letter
-          : 'ร';
-      const quality = deriveQualityRating(grade ? grade.totalScore : null, isMs);
+      const resolved = resolveEffectiveGrade(grade, selectedCourse, systemConfig.gradingSystem, isMs);
+      const baseQuality = deriveQualityRating(grade ? grade.totalScore : null, isMs || resolved.letter === 'ร');
+      const overrides = qualityOverrides[student.id] || {};
+      const attrNum = overrides.attr ?? baseQuality.num;
+      const readingNum = overrides.reading ?? baseQuality.num;
+      const competencyNum = overrides.competency ?? baseQuality.num;
       const courseworkSubtotal = grade
         ? grade.assignmentScore + grade.quizScore + grade.midtermScore
         : null;
@@ -123,22 +139,36 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
         student,
         grade,
         eligibility,
-        isMs,
-        gradeResult,
-        finalLetter,
-        quality,
+        isMs: isMs || resolved.letter === 'มส.',
+        resolved,
+        finalLetter: resolved.letter,
+        baseQuality,
+        attrNum,
+        readingNum,
+        competencyNum,
         courseworkSubtotal,
       };
     });
-  }, [rosterStudents, courseGrades, selectedCourse, timetableSlots, attendance, periodAttendance, systemConfig.gradingSystem]);
+  }, [
+    rosterStudents,
+    courseGrades,
+    selectedCourse,
+    timetableSlots,
+    attendance,
+    periodAttendance,
+    systemConfig.gradingSystem,
+    qualityOverrides,
+  ]);
 
   // Live statistics for Part 1
   const stats = useMemo(() => {
     const total = rows.length;
     const isThai = systemConfig.gradingSystem === 'thai';
-    const gradeKeys = isThai
+    const gradeKeys = courseIsActivity
+      ? ['ผ', 'มผ', 'ร', 'มส.']
+      : isThai
       ? ['4', '3.5', '3', '2.5', '2', '1.5', '1', '0', 'ร', 'มส.']
-      : ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'F', 'ร', 'มส.'];
+      : ['A', 'B', 'C', 'D', 'F', 'ร', 'มส.'];
 
     const counts: Record<string, number> = {};
     gradeKeys.forEach((k) => {
@@ -148,25 +178,33 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     const scores: number[] = [];
     let passedCount = 0;
     let level3OrAboveCount = 0;
-    const attrCounts = { '3': 0, '2': 0, '1': 0, '0': 0 };
+    const attrCounts: Record<'3' | '2' | '1' | '0', number> = { '3': 0, '2': 0, '1': 0, '0': 0 };
+    const readingCounts: Record<'3' | '2' | '1' | '0', number> = { '3': 0, '2': 0, '1': 0, '0': 0 };
+    const competencyCounts: Record<'3' | '2' | '1' | '0', number> = { '3': 0, '2': 0, '1': 0, '0': 0 };
 
     rows.forEach((row) => {
       if (row.finalLetter in counts) {
         counts[row.finalLetter] += 1;
       } else if (row.finalLetter === 'มส.') {
-        counts['มส.'] += 1;
-      } else {
+        counts['มส.'] = (counts['มส.'] || 0) + 1;
+      } else if ('ร' in counts) {
         counts['ร'] += 1;
       }
 
-      if (row.grade && !row.isMs) {
+      if (row.grade && !row.resolved.isSpecial) {
         scores.push(row.grade.totalScore);
-        if ((row.gradeResult?.point ?? 0) >= 1) passedCount += 1;
-        if ((row.gradeResult?.point ?? 0) >= 3) level3OrAboveCount += 1;
+        if (row.resolved.point >= 1) passedCount += 1;
+        if (row.resolved.point >= 3) level3OrAboveCount += 1;
+      } else if (courseIsActivity && row.finalLetter === 'ผ') {
+        if (row.grade) scores.push(row.grade.totalScore);
+        passedCount += 1;
+      } else if (row.grade && row.finalLetter === 'มผ') {
+        scores.push(row.grade.totalScore);
       }
-      if (row.quality.num >= 0) {
-        attrCounts[String(row.quality.num) as keyof typeof attrCounts] += 1;
-      }
+
+      if (row.attrNum >= 0) attrCounts[String(row.attrNum) as '3' | '2' | '1' | '0'] += 1;
+      if (row.readingNum >= 0) readingCounts[String(row.readingNum) as '3' | '2' | '1' | '0'] += 1;
+      if (row.competencyNum >= 0) competencyCounts[String(row.competencyNum) as '3' | '2' | '1' | '0'] += 1;
     });
 
     const pct = (n: number) => (total > 0 ? ((n / total) * 100).toFixed(1) : '0.0');
@@ -184,12 +222,14 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
       level3OrAboveCount,
       failedOrIncompleteCount: total - passedCount,
       attrCounts,
+      readingCounts,
+      competencyCounts,
       pct,
       mean,
       max,
       min,
     };
-  }, [rows, systemConfig.gradingSystem]);
+  }, [rows, systemConfig.gradingSystem, courseIsActivity]);
 
   return (
     <div className="space-y-4">
@@ -315,9 +355,16 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                 <td className="border border-slate-500 px-3 py-1.5">{selectedCourse.department || '-'}</td>
               </tr>
               <tr>
-                <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">ภาคเรียน / ปีการศึกษา</td>
+                <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">
+                  {isPrimaryCourse ? 'รอบการประเมิน / ปีการศึกษา' : 'ภาคเรียน / ปีการศึกษา'}
+                </td>
                 <td className="border border-slate-500 px-3 py-1.5">
-                  {formatSemesterLabel(selectedCourse.semester)} ปีการศึกษา {selectedCourse.academicYear}
+                  {isPrimaryCourse
+                    ? `ประเมินผลรายปี • ปีการศึกษา ${selectedCourse.academicYear || systemConfig.academicYear}`
+                    : `${formatSemesterLabel(selectedCourse.semester)} ปีการศึกษา ${selectedCourse.academicYear || systemConfig.academicYear}`}
+                  <span className="ml-1.5 text-[10px] text-slate-600">
+                    ({getEducationStageLabelTh(courseStage)})
+                  </span>
                 </td>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">ระดับชั้น / ห้องเรียน</td>
                 <td className="border border-slate-500 px-3 py-1.5">{distinctRooms}</td>
@@ -325,7 +372,11 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
               <tr>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">น้ำหนัก / เวลาเรียน</td>
                 <td className="border border-slate-500 px-3 py-1.5 tabular-nums">
-                  {selectedCourse.credits.toFixed(1)} หน่วยกิต ({totalHours} ชม./ภาค • เกณฑ์ 80% = {minAttendanceHours} ชม.)
+                  {courseIsActivity
+                    ? `กิจกรรมพัฒนาผู้เรียน (ประเมิน ผ/มผ • ${totalHours} ชม.)`
+                    : isPrimaryCourse
+                    ? `${selectedCourse.credits.toFixed(1)} น้ำหนักวิชา (${totalHours} ชม./ปี • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`
+                    : `${selectedCourse.credits.toFixed(1)} หน่วยกิต (${totalHours} ชม./ภาค • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`}
                 </td>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">ครูผู้สอน</td>
                 <td className="border border-slate-500 px-3 py-1.5 font-semibold">{selectedCourse.teacherName || '-'}</td>
@@ -425,18 +476,18 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
               </thead>
               <tbody>
                 {[
-                  'คุณลักษณะอันพึงประสงค์ ๘ ประการ',
-                  'การอ่าน คิดวิเคราะห์ และเขียน',
-                  'สมรรถนะสำคัญของผู้เรียน ๕ ประการ',
-                ].map((label) => {
-                  const goodOrAbove = stats.attrCounts['3'] + stats.attrCounts['2'];
+                  { label: 'คุณลักษณะอันพึงประสงค์ ๘ ประการ', counts: stats.attrCounts },
+                  { label: 'การอ่าน คิดวิเคราะห์ และเขียน', counts: stats.readingCounts },
+                  { label: 'สมรรถนะสำคัญของผู้เรียน ๕ ประการ', counts: stats.competencyCounts },
+                ].map(({ label, counts }) => {
+                  const goodOrAbove = counts['3'] + counts['2'];
                   return (
                     <tr key={label}>
                       <td className="border border-slate-600 px-2.5 py-1.5 text-left font-medium">{label}</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{stats.attrCounts['3']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{stats.attrCounts['2']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{stats.attrCounts['1']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{stats.attrCounts['0']} คน</td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['3']} คน</td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['2']} คน</td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['1']} คน</td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['0']} คน</td>
                       <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold">
                         {stats.pct(goodOrAbove)}%
                       </td>
@@ -496,6 +547,8 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                     const isVisible =
                       idx >= currentPp5Page * pp5PageSize &&
                       idx < (currentPp5Page + 1) * pp5PageSize;
+                    const renderQualityText = (val: number) =>
+                      val === 3 ? 'ดีเยี่ยม (๓)' : val === 2 ? 'ดี (๒)' : val === 1 ? 'ผ่าน (๑)' : val === 0 ? 'ไม่ผ่าน (๐)' : '-';
                     return (
                       <tr
                         key={row.student.id}
@@ -504,7 +557,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                         <td className="border border-slate-400 py-1.5 font-mono">{idx + 1}</td>
                         <td className="border border-slate-400 py-1.5 px-2 text-left">
                           <span className="font-semibold text-slate-900">
-                            {row.student.firstNameTh} {row.student.lastNameTh}
+                            {getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}
                           </span>
                           <span className="block text-[10px] text-slate-600 font-mono">
                             {row.student.studentIdNumber}
@@ -537,11 +590,16 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                           {row.grade ? row.grade.finalScore : '-'}
                         </td>
                         <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
-                          {row.grade ? row.grade.totalScore : '-'}
+                          {row.grade ? (
+                            <span>
+                              {row.grade.totalScore}
+                              {isPrimaryCourse ? <span className="block text-[9px] font-normal text-slate-600">({row.grade.totalScore}%)</span> : null}
+                            </span>
+                          ) : '-'}
                         </td>
                         <td
                           className={`border border-slate-400 py-1.5 font-mono font-extrabold text-sm ${
-                            row.isMs || row.finalLetter === '0' || row.finalLetter === 'F'
+                            row.isMs || row.finalLetter === '0' || row.finalLetter === 'F' || row.finalLetter === 'มผ'
                               ? 'bg-rose-50 text-rose-800'
                               : row.finalLetter === 'ร'
                                 ? 'bg-amber-50 text-amber-800'
@@ -550,15 +608,38 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                         >
                           {row.finalLetter}
                         </td>
-                        <td className="border border-slate-400 py-1.5 text-[11px] font-medium">
-                          {row.quality.pass ? `${row.quality.level} (${row.quality.code})` : row.quality.level}
-                        </td>
-                        <td className="border border-slate-400 py-1.5 text-[11px] font-medium">
-                          {row.quality.pass ? `${row.quality.level} (${row.quality.code})` : row.quality.level}
-                        </td>
-                        <td className="border border-slate-400 py-1.5 text-[11px] font-medium">
-                          {row.quality.pass ? `${row.quality.level} (${row.quality.code})` : row.quality.level}
-                        </td>
+                        {(['attr', 'reading', 'competency'] as const).map((metricKey) => {
+                          const currentVal =
+                            metricKey === 'attr'
+                              ? row.attrNum
+                              : metricKey === 'reading'
+                              ? row.readingNum
+                              : row.competencyNum;
+                          return (
+                            <td key={metricKey} className="border border-slate-400 py-1 px-1 text-[11px] font-medium">
+                              <span className="hidden print:inline">{renderQualityText(currentVal)}</span>
+                              <select
+                                value={currentVal}
+                                onChange={(e) =>
+                                  setQualityOverrides((prev) => ({
+                                    ...prev,
+                                    [row.student.id]: {
+                                      ...(prev[row.student.id] || {}),
+                                      [metricKey]: Number(e.target.value),
+                                    },
+                                  }))
+                                }
+                                className="print:hidden w-full bg-transparent text-center text-[11px] font-medium focus:outline-none cursor-pointer"
+                              >
+                                <option value={-1}>-</option>
+                                <option value={3}>ดีเยี่ยม (๓)</option>
+                                <option value={2}>ดี (๒)</option>
+                                <option value={1}>ผ่าน (๑)</option>
+                                <option value={0}>ไม่ผ่าน (๐)</option>
+                              </select>
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })
@@ -712,6 +793,10 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
   const [homeroomComment, setHomeroomComment] = useState(
     'นักเรียนมีความตั้งใจในการเรียน สนใจใฝ่รู้ รับผิดชอบงานที่ได้รับมอบหมายสม่ำเสมอ อยู่ร่วมกับเพื่อนและปฏิบัติตามระเบียบของสถานศึกษาได้เป็นอย่างดี'
   );
+  const [attributeRatings, setAttributeRatings] = useState<Record<number, string>>({});
+  const [readingRating, setReadingRating] = useState('ดีเยี่ยม (๓)');
+  const [competencyRating, setCompetencyRating] = useState('ดีเยี่ยม (๓)');
+  const [activityRatings, setActivityRatings] = useState<Record<number, string>>({});
 
   const filteredStudents = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
@@ -742,31 +827,40 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
     return matched.length > 0 ? matched : courses;
   }, [courses, grades, selectedStudent]);
 
-  // Real Term GPA calculation
+  // Credit-weighted & Primary vs Secondary MOE Summary
   const academicSummary = useMemo(() => {
-    if (!selectedStudent) return { registeredCredits: 0, earnedCredits: 0, termGpa: '0.00' };
-    let registeredCredits = 0;
-    let earnedCredits = 0;
-    let gradedCredits = 0;
-    let weightedPoints = 0;
-
-    studentCourses.forEach((course) => {
-      registeredCredits += course.credits;
-      const grade = grades.find((g) => g.courseId === course.id && g.studentId === selectedStudent.id);
-      if (grade) {
-        const res = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
-        gradedCredits += course.credits;
-        weightedPoints += course.credits * res.point;
-        if (res.point >= 1) earnedCredits += course.credits;
-      }
+    if (!selectedStudent) {
+      return {
+        isPrimary: false,
+        isEarlyPrimary: false,
+        registeredCredits: 0,
+        earnedCredits: 0,
+        termGpa: '0.00',
+        gpax: '0.00',
+        averageRawScore: null as number | null,
+        stageLabel: 'การศึกษาขั้นพื้นฐาน',
+      };
+    }
+    const summary = calculateStudentAcademicSummary({
+      student: selectedStudent,
+      courses: studentCourses,
+      grades,
+      gradingSystem: systemConfig.gradingSystem,
+      currentAcademicYear: systemConfig.academicYear,
+      currentSemester: systemConfig.currentSemester,
     });
-
-    const termGpa = gradedCredits > 0
-      ? (weightedPoints / gradedCredits).toFixed(2)
-      : selectedStudent.gpa.toFixed(2);
-
-    return { registeredCredits, earnedCredits, termGpa };
-  }, [studentCourses, grades, selectedStudent, systemConfig.gradingSystem]);
+    const fallbackGpa = Number(selectedStudent.gpa || 0).toFixed(2);
+    return {
+      isPrimary: summary.isPrimary,
+      isEarlyPrimary: summary.isEarlyPrimary,
+      registeredCredits: summary.registeredCredits,
+      earnedCredits: summary.earnedCredits,
+      termGpa: summary.termGpa !== null ? summary.termGpa.toFixed(2) : fallbackGpa,
+      gpax: summary.gpax !== null ? summary.gpax.toFixed(2) : fallbackGpa,
+      averageRawScore: summary.averageRawScore,
+      stageLabel: getEducationStageLabelTh(summary.stage),
+    };
+  }, [studentCourses, grades, selectedStudent, systemConfig.gradingSystem, systemConfig.academicYear, systemConfig.currentSemester]);
 
   // Student Attendance Summary
   const attendanceStats = useMemo(() => {
@@ -873,12 +967,16 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                   โรงเรียน{systemConfig.schoolNameTh}
                 </h2>
                 <p className="text-[11px] text-slate-600">
-                  สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน • {formatSemesterLabel(systemConfig.currentSemester)} ปีการศึกษา {systemConfig.academicYear}
+                  สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน •{' '}
+                  {academicSummary.isPrimary
+                    ? `รายงานผลการประเมินรายปี ปีการศึกษา ${systemConfig.academicYear}`
+                    : `${formatSemesterLabel(systemConfig.currentSemester)} ปีการศึกษา ${systemConfig.academicYear}`}{' '}
+                  ({academicSummary.stageLabel})
                 </p>
               </div>
               <div className="border-2 border-slate-900 px-3 py-1.5 text-center shrink-0">
                 <div className="text-sm font-extrabold">ปพ.๖</div>
-                <div className="text-[10px] font-mono">รายบุคคล</div>
+                <div className="text-[10px] font-mono">{academicSummary.isPrimary ? 'รายปี' : 'รายภาค'}</div>
               </div>
             </div>
 
@@ -888,7 +986,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 <tr>
                   <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold w-32">ชื่อ - สกุล ผู้เรียน</td>
                   <td className="border border-slate-500 px-3 py-1.5 font-bold text-slate-950">
-                    {selectedStudent.gender === 'female' ? 'ด.ญ./น.ส. ' : 'ด.ช./นาย '}
+                    {getStudentShortPrefixTh(selectedStudent)}{' '}
                     {selectedStudent.firstNameTh} {selectedStudent.lastNameTh}
                     <span className="ml-2 text-slate-600 font-normal">({selectedStudent.firstNameEn} {selectedStudent.lastNameEn})</span>
                   </td>
@@ -921,9 +1019,18 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
           {/* Section 1: Subject Grades Table */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
-              ตอนที่ ๑ ผลการพัฒนาคุณภาพผู้เรียนรายวิชา
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
+                ตอนที่ ๑ ผลการพัฒนาคุณภาพผู้เรียนรายวิชา ({academicSummary.isPrimary ? 'ประเมินผลรายปี' : 'ประเมินผลรายภาคเรียน'})
+              </h3>
+              {academicSummary.isPrimary && (
+                <span className="text-[11px] font-semibold text-sky-900 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
+                  {academicSummary.isEarlyPrimary
+                    ? 'ป.1–ป.3: สื่อสารด้วยคะแนนดิบ (เต็ม 100) / ร้อยละ (%) และสรุปเกรด 0–4 รายปี'
+                    : 'ประถมศึกษา: ประเมินรายปี เกรด 0–4 ควบคู่คะแนนดิบ (เต็ม 100) / ร้อยละ (%)'}
+                </span>
+              )}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse border border-slate-700 text-center tabular-nums">
                 <thead>
@@ -932,9 +1039,9 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                     <th className="border border-slate-600 py-2 px-2 w-24">รหัสวิชา</th>
                     <th className="border border-slate-600 py-2 px-2 text-left">รายวิชา</th>
                     <th className="border border-slate-600 py-2 px-2 w-24">ประเภท</th>
-                    <th className="border border-slate-600 py-2 px-2 w-16">หน่วยกิต</th>
+                    <th className="border border-slate-600 py-2 px-2 w-16">{academicSummary.isPrimary ? 'น้ำหนัก' : 'หน่วยกิต'}</th>
                     <th className="border border-slate-600 py-2 px-2 w-16">คะแนนเต็ม</th>
-                    <th className="border border-slate-600 py-2 px-2 w-20 bg-amber-50">คะแนนที่ได้</th>
+                    <th className="border border-slate-600 py-2 px-2 w-24 bg-amber-50">คะแนนที่ได้ (%)</th>
                     <th className="border border-slate-600 py-2 px-2 w-20 bg-slate-200">ระดับผลการเรียน</th>
                     <th className="border border-slate-600 py-2 px-2 w-24">ผลการตัดสิน</th>
                   </tr>
@@ -944,10 +1051,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                     const grade = grades.find(
                       (g) => g.courseId === course.id && g.studentId === selectedStudent.id
                     );
-                    const gradeDisplay = grade
-                      ? calculateGrade(grade.totalScore, systemConfig.gradingSystem)
-                      : null;
-                    const isPass = gradeDisplay ? gradeDisplay.point >= 1 : null;
+                    const resolved = resolveEffectiveGrade(grade, course, systemConfig.gradingSystem, false);
                     const isVisible =
                       index >= currentPp6CoursePage * pp6CoursePageSize &&
                       index < (currentPp6CoursePage + 1) * pp6CoursePageSize;
@@ -963,26 +1067,32 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                           {course.titleTh}
                         </td>
                         <td className="border border-slate-400 py-1.5 text-[11px] text-slate-600">
-                          {course.category === 'core' ? 'พื้นฐาน' : 'เพิ่มเติม'}
+                          {getCategoryTypeLabel(course.category)}
                         </td>
-                        <td className="border border-slate-400 py-1.5 font-mono">{course.credits.toFixed(1)}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono">
+                          {resolved.isActivity ? '-' : course.credits.toFixed(1)}
+                        </td>
                         <td className="border border-slate-400 py-1.5 font-mono">100</td>
                         <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
-                          {grade ? grade.totalScore : '-'}
+                          {grade ? `${grade.totalScore} (${grade.totalScore}%)` : '-'}
                         </td>
-                        <td className="border border-slate-400 py-1.5 font-mono font-extrabold bg-slate-100 text-slate-950">
-                          {gradeDisplay ? gradeDisplay.letter : 'รอผล'}
+                        <td className={`border border-slate-400 py-1.5 font-mono font-extrabold ${
+                          resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
+                            ? 'bg-rose-50 text-rose-800'
+                            : 'bg-slate-100 text-slate-950'
+                        }`}>
+                          {resolved.letter}
                         </td>
                         <td
                           className={`border border-slate-400 py-1.5 font-semibold text-[11px] ${
-                            isPass === true
+                            resolved.passed === true
                               ? 'text-emerald-800'
-                              : isPass === false
+                              : resolved.passed === false
                                 ? 'text-rose-700'
                                 : 'text-slate-500'
                           }`}
                         >
-                          {isPass === true ? 'ผ่านเกณฑ์' : isPass === false ? 'ไม่ผ่านเกณฑ์' : 'รอประเมิน'}
+                          {resolved.passed === true ? 'ผ่านเกณฑ์' : resolved.passed === false ? (resolved.isSpecial ? resolved.letter : 'ไม่ผ่านเกณฑ์') : 'รอประเมิน'}
                         </td>
                       </tr>
                     );
@@ -990,18 +1100,34 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-100 font-bold text-slate-950 border-t-2 border-slate-700">
-                    <td colSpan={4} className="border border-slate-600 py-2 px-3 text-left">
-                      สรุปผลการเรียนประจำภาคเรียน
-                    </td>
-                    <td className="border border-slate-600 py-2 font-mono">
-                      {academicSummary.registeredCredits.toFixed(1)}
-                    </td>
-                    <td colSpan={2} className="border border-slate-600 py-2 px-2 text-right font-mono">
-                      หน่วยกิตที่ได้: {academicSummary.earnedCredits.toFixed(1)}
-                    </td>
-                    <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
-                      GPA: {academicSummary.termGpa} | GPAX: {selectedStudent.gpa.toFixed(2)}
-                    </td>
+                    {academicSummary.isPrimary ? (
+                      <>
+                        <td colSpan={4} className="border border-slate-600 py-2 px-3 text-left">
+                          สรุปผลการประเมินรายปี (ป.1–ป.6)
+                        </td>
+                        <td colSpan={3} className="border border-slate-600 py-2 px-3 text-right font-mono">
+                          คะแนนดิบเฉลี่ย: {academicSummary.averageRawScore !== null ? `${academicSummary.averageRawScore}% (เต็ม 100)` : '-'}
+                        </td>
+                        <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
+                          เกรดรายปีเฉลี่ย (0–4): {academicSummary.gpax}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td colSpan={4} className="border border-slate-600 py-2 px-3 text-left">
+                          สรุปผลการเรียนประจำภาคเรียน (ม.1–ม.6)
+                        </td>
+                        <td className="border border-slate-600 py-2 font-mono">
+                          {academicSummary.registeredCredits.toFixed(1)}
+                        </td>
+                        <td colSpan={2} className="border border-slate-600 py-2 px-2 text-right font-mono">
+                          หน่วยกิตที่ได้: {academicSummary.earnedCredits.toFixed(1)}
+                        </td>
+                        <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
+                          GPA: {academicSummary.termGpa} | GPAX: {academicSummary.gpax}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 </tfoot>
               </table>
@@ -1027,21 +1153,42 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 <thead>
                   <tr className="bg-slate-100 font-bold text-slate-900">
                     <th className="border border-slate-600 px-2.5 py-1.5 text-left">คุณลักษณะอันพึงประสงค์ ๘ ประการ</th>
-                    <th className="border border-slate-600 px-2 py-1.5 text-center w-24">ผลการประเมิน</th>
+                    <th className="border border-slate-600 px-2 py-1.5 text-center w-28">ผลการประเมิน</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {MOE_ATTRIBUTES.map((attr) => (
-                    <tr key={attr}>
-                      <td className="border border-slate-400 px-2.5 py-1">{attr}</td>
-                      <td className="border border-slate-400 px-2 py-1 text-center font-semibold text-emerald-800">
-                        ดีเยี่ยม (๓)
-                      </td>
-                    </tr>
-                  ))}
+                  {MOE_ATTRIBUTES.map((attr, idx) => {
+                    const val = attributeRatings[idx] || 'ดีเยี่ยม (๓)';
+                    return (
+                      <tr key={attr}>
+                        <td className="border border-slate-400 px-2.5 py-1">{attr}</td>
+                        <td className="border border-slate-400 px-2 py-1 text-center font-semibold text-emerald-800">
+                          <span className="hidden print:inline">{val}</span>
+                          <select
+                            value={val}
+                            onChange={(e) => setAttributeRatings((prev) => ({ ...prev, [idx]: e.target.value }))}
+                            className="print:hidden w-full bg-transparent text-center font-semibold text-emerald-800 focus:outline-none cursor-pointer"
+                          >
+                            <option value="ดีเยี่ยม (๓)">ดีเยี่ยม (๓)</option>
+                            <option value="ดี (๒)">ดี (๒)</option>
+                            <option value="ผ่าน (๑)">ผ่าน (๑)</option>
+                            <option value="ไม่ผ่าน (๐)">ไม่ผ่าน (๐)</option>
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   <tr className="bg-slate-50 font-bold">
                     <td className="border border-slate-600 px-2.5 py-1.5">สรุปผลการประเมินคุณลักษณะอันพึงประสงค์</td>
-                    <td className="border border-slate-600 px-2 py-1.5 text-center text-emerald-900">ดีเยี่ยม (๓)</td>
+                    <td className="border border-slate-600 px-2 py-1.5 text-center text-emerald-900">
+                      {Object.values(attributeRatings).some((v) => v === 'ไม่ผ่าน (๐)')
+                        ? 'ไม่ผ่าน (๐)'
+                        : Object.values(attributeRatings).some((v) => v === 'ผ่าน (๑)')
+                        ? 'ผ่าน (๑)'
+                        : Object.values(attributeRatings).some((v) => v === 'ดี (๒)')
+                        ? 'ดี (๒)'
+                        : 'ดีเยี่ยม (๓)'}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -1053,17 +1200,30 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                     <tr className="bg-slate-100 font-bold text-slate-900">
                       <th className="border border-slate-600 px-2.5 py-1.5 text-left">กิจกรรมพัฒนาผู้เรียน</th>
                       <th className="border border-slate-600 px-2 py-1.5 text-center w-16">เวลา</th>
-                      <th className="border border-slate-600 px-2 py-1.5 text-center w-20">ผลการเรียน</th>
+                      <th className="border border-slate-600 px-2 py-1.5 text-center w-24">ผลการเรียน</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {MOE_ACTIVITIES.map((act) => (
-                      <tr key={act.name}>
-                        <td className="border border-slate-400 px-2.5 py-1.5">{act.name}</td>
-                        <td className="border border-slate-400 px-2 py-1.5 text-center font-mono">{act.hours}</td>
-                        <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">{act.result}</td>
-                      </tr>
-                    ))}
+                    {MOE_ACTIVITIES.map((act, idx) => {
+                      const val = activityRatings[idx] || act.result;
+                      return (
+                        <tr key={act.name}>
+                          <td className="border border-slate-400 px-2.5 py-1.5">{act.name}</td>
+                          <td className="border border-slate-400 px-2 py-1.5 text-center font-mono">{act.hours}</td>
+                          <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">
+                            <span className="hidden print:inline">{val}</span>
+                            <select
+                              value={val}
+                              onChange={(e) => setActivityRatings((prev) => ({ ...prev, [idx]: e.target.value }))}
+                              className="print:hidden w-full bg-transparent text-center font-bold text-emerald-800 focus:outline-none cursor-pointer"
+                            >
+                              <option value="ผ (ผ่าน)">ผ (ผ่าน)</option>
+                              <option value="มผ (ไม่ผ่าน)">มผ (ไม่ผ่าน)</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
@@ -1071,17 +1231,41 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                   <thead>
                     <tr className="bg-slate-100 font-bold text-slate-900">
                       <th className="border border-slate-600 px-2.5 py-1.5 text-left">การประเมินสมรรถนะและการอ่านคิดวิเคราะห์</th>
-                      <th className="border border-slate-600 px-2 py-1.5 text-center w-24">ระดับคุณภาพ</th>
+                      <th className="border border-slate-600 px-2 py-1.5 text-center w-28">ระดับคุณภาพ</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td className="border border-slate-400 px-2.5 py-1.5">การอ่าน คิดวิเคราะห์ และเขียน</td>
-                      <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">ดีเยี่ยม (๓)</td>
+                      <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">
+                        <span className="hidden print:inline">{readingRating}</span>
+                        <select
+                          value={readingRating}
+                          onChange={(e) => setReadingRating(e.target.value)}
+                          className="print:hidden w-full bg-transparent text-center font-bold text-emerald-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="ดีเยี่ยม (๓)">ดีเยี่ยม (๓)</option>
+                          <option value="ดี (๒)">ดี (๒)</option>
+                          <option value="ผ่าน (๑)">ผ่าน (๑)</option>
+                          <option value="ไม่ผ่าน (๐)">ไม่ผ่าน (๐)</option>
+                        </select>
+                      </td>
                     </tr>
                     <tr>
                       <td className="border border-slate-400 px-2.5 py-1.5">สมรรถนะสำคัญของผู้เรียน ๕ ประการ</td>
-                      <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">ดีเยี่ยม (๓)</td>
+                      <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">
+                        <span className="hidden print:inline">{competencyRating}</span>
+                        <select
+                          value={competencyRating}
+                          onChange={(e) => setCompetencyRating(e.target.value)}
+                          className="print:hidden w-full bg-transparent text-center font-bold text-emerald-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="ดีเยี่ยม (๓)">ดีเยี่ยม (๓)</option>
+                          <option value="ดี (๒)">ดี (๒)</option>
+                          <option value="ผ่าน (๑)">ผ่าน (๑)</option>
+                          <option value="ไม่ผ่าน (๐)">ไม่ผ่าน (๐)</option>
+                        </select>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
