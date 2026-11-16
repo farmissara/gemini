@@ -62,6 +62,7 @@ import { filterAttendanceForUser } from '../lib/attendanceScope';
 import { PagedList } from '../components/PagedList';
 import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsPanel';
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
+import { GradeLevelAnalyticsChart } from '../components/GradeLevelAnalyticsChart';
 import { PriorityActionWidget } from '../components/PriorityActionWidget';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 
@@ -678,6 +679,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               />
             )}
 
+            {/* Grade-Level Attendance Trends & Academic Performance (Recharts Bar Chart) */}
+            <GradeLevelAnalyticsChart
+              students={students}
+              attendance={scopedAttendance}
+              courses={courses}
+              grades={grades}
+              systemConfig={systemConfig}
+              lang={lang}
+            />
+
             <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl p-4 hover:bg-[var(--color-card-subtle)]">
                 <span>
@@ -1066,6 +1077,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               lang={lang}
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}
+            />
+
+            {/* Grade-Level Attendance & Academic Comparison */}
+            <GradeLevelAnalyticsChart
+              students={students}
+              attendance={scopedAttendance}
+              courses={courses}
+              grades={grades}
+              systemConfig={systemConfig}
+              lang={lang}
             />
           </div>
           )}

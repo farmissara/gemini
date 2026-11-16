@@ -10,9 +10,17 @@ import {
 } from '../../lib/moeGrading';
 import {
   Award,
+  CheckCircle2,
+  Download,
+  FileCheck2,
   Printer,
+  SlidersHorizontal,
   X,
 } from 'lucide-react';
+import {
+  downloadMoeGradeSummaryPdf,
+  printHtmlElementInIsolatedFrame,
+} from '../../lib/moeReportPdf';
 
 interface ReportCardModalProps {
   student: Student;
@@ -34,7 +42,16 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   const printRef = useRef<HTMLDivElement>(null);
   const [gradePage, setGradePage] = useState(0);
   const [advisorName, setAdvisorName] = useState('');
+  const [registrarName, setRegistrarName] = useState('');
   const [principalName, setPrincipalName] = useState('');
+  const [readingRating, setReadingRating] = useState('ดีเยี่ยม (๓)');
+  const [attributeRating, setAttributeRating] = useState('ดีเยี่ยม (๓)');
+  const [competencyRating, setCompetencyRating] = useState('ดีเยี่ยม (๓)');
+  const [activityResult, setActivityResult] = useState('ผ (ผ่าน)');
+  const [homeroomRemark, setHomeroomRemark] = useState('');
+  const [showMoeConfig, setShowMoeConfig] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfNotice, setPdfNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const summary = calculateStudentAcademicSummary({
     student,
@@ -71,16 +88,56 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   const currentYear = new Date().getFullYear();
 
   const handlePrint = () => {
-    window.print();
+    const html = printRef.current?.innerHTML || '';
+    const title = summary.isPrimary
+      ? `MOE_Primary_Report_${student.studentIdNumber}`
+      : `MOE_Transcript_${student.studentIdNumber}`;
+    printHtmlElementInIsolatedFrame(html, title);
   };
+
+  const handleDownloadMoePdf = () => {
+    setIsGeneratingPdf(true);
+    setPdfNotice(null);
+    try {
+      const { fileName } = downloadMoeGradeSummaryPdf({
+        student,
+        courses,
+        grades,
+        systemConfig,
+        school,
+        advisorName,
+        principalName,
+        registrarName,
+        readingRating,
+        attributeRating,
+        competencyRating,
+        activityResult,
+        homeroomRemark,
+      });
+      setPdfNotice({
+        type: 'success',
+        message: `สร้างและดาวน์โหลดไฟล์ PDF มาตรฐาน ศธ. เรียบร้อยแล้ว (${fileName})`,
+      });
+    } catch (err) {
+      setPdfNotice({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'ไม่สามารถสร้างไฟล์ PDF ได้ กรุณาลองใหม่อีกครั้ง',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const moeRatingOptions = ['ดีเยี่ยม (๓)', 'ดี (๒)', 'ผ่าน (๑)', 'ไม่ผ่าน (๐)'];
+  const moeActivityOptions = ['ผ (ผ่าน)', 'มผ (ไม่ผ่าน)'];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Action Toolbar */}
-        <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-4 print:hidden">
+        <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex items-center gap-2 text-white">
-            <Award className="w-5 h-5 text-indigo-400" />
+            <Award className="w-5 h-5 text-indigo-400 shrink-0" />
             <div>
               <h3 className="text-sm font-bold">
                 {summary.isPrimary
@@ -93,15 +150,38 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
+              type="button"
+              onClick={() => setShowMoeConfig((prev) => !prev)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                showMoeConfig
+                  ? 'bg-sky-900/60 border-sky-500 text-sky-100'
+                  : 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>เกณฑ์ ศธ. &amp; ลงนาม</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadMoePdf}
+              disabled={isGeneratingPdf}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-700/30 transition-all cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isGeneratingPdf ? 'กำลังสร้าง PDF...' : 'ดาวน์โหลด PDF (ศธ.)'}</span>
+            </button>
+            <button
+              type="button"
               onClick={handlePrint}
               className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-700/30 transition-all cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save PDF</span>
+              <span>Print A4</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
@@ -109,6 +189,119 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Inline Status Notice & MOE Criteria Editor */}
+        {pdfNotice && (
+          <div
+            className={`px-4 py-2.5 text-xs font-semibold flex items-center justify-between gap-2 border-b print:hidden ${
+              pdfNotice.type === 'success'
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
+                : 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-800'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {pdfNotice.message}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPdfNotice(null)}
+              className="text-current opacity-70 hover:opacity-100 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {showMoeConfig && (
+          <div className="p-4 bg-slate-900 text-slate-100 border-b border-slate-800 space-y-3 text-xs print:hidden">
+            <div className="flex items-center justify-between">
+              <span className="font-bold flex items-center gap-1.5 text-sky-300">
+                <FileCheck2 className="w-4 h-4" />
+                กำหนดผลประเมินองค์ประกอบหลักสูตรแกนกลางฯ (ศธ.) และผู้ลงนามสำหรับ PDF
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMoeConfig(false)}
+                className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
+              >
+                ซ่อนแผงตั้งค่า
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <label className="space-y-1">
+                <span className="block text-[11px] text-slate-300">การอ่าน คิดวิเคราะห์ และเขียน</span>
+                <select
+                  value={readingRating}
+                  onChange={(e) => setReadingRating(e.target.value)}
+                  className="w-full rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 text-xs text-white"
+                >
+                  {moeRatingOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="block text-[11px] text-slate-300">คุณลักษณะอันพึงประสงค์ ๘ ประการ</span>
+                <select
+                  value={attributeRating}
+                  onChange={(e) => setAttributeRating(e.target.value)}
+                  className="w-full rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 text-xs text-white"
+                >
+                  {moeRatingOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="block text-[11px] text-slate-300">สมรรถนะสำคัญของผู้เรียน ๕ ประการ</span>
+                <select
+                  value={competencyRating}
+                  onChange={(e) => setCompetencyRating(e.target.value)}
+                  className="w-full rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 text-xs text-white"
+                >
+                  {moeRatingOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="block text-[11px] text-slate-300">กิจกรรมพัฒนาผู้เรียน</span>
+                <select
+                  value={activityResult}
+                  onChange={(e) => setActivityResult(e.target.value)}
+                  className="w-full rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 text-xs text-white"
+                >
+                  {moeActivityOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <label className="space-y-1">
+                <span className="block text-[11px] text-slate-300">ชื่อนายทะเบียน / งานวัดผล (ไม่บังคับ)</span>
+                <input
+                  type="text"
+                  value={registrarName}
+                  onChange={(e) => setRegistrarName(e.target.value)}
+                  placeholder="เช่น นางสาวสุชาดา งานวัดผลและทะเบียน"
+                  className="w-full rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 text-xs text-white placeholder-slate-500"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="block text-[11px] text-slate-300">ความเห็น / ข้อเสนอแนะครูที่ปรึกษา</span>
+                <input
+                  type="text"
+                  value={homeroomRemark}
+                  onChange={(e) => setHomeroomRemark(e.target.value)}
+                  placeholder="เช่น มีความตั้งใจเรียนและรับผิดชอบงานดีเยี่ยม"
+                  className="w-full rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 text-xs text-white placeholder-slate-500"
+                />
+              </label>
+            </div>
+          </div>
+        )}
 
         {/* Printable Document Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-white text-slate-900 font-sans print:p-0 print:m-0" ref={printRef}>
@@ -381,10 +574,42 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               )}
             </div>
 
+            {/* Section 2: MOE Core Curriculum Qualitative Assessment */}
+            <div className="mt-4 space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-l-4 border-emerald-700 pl-2">
+                ๒. สรุปผลการประเมินตามเกณฑ์มาตรฐานหลักสูตรแกนกลางฯ (ศธ.)
+              </h4>
+              <table className="w-full text-left text-xs border-collapse border border-slate-300">
+                <tbody>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <td className="py-1.5 px-2.5 font-semibold text-slate-800">1. การอ่าน คิดวิเคราะห์ และเขียน</td>
+                    <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 w-36">{readingRating}</td>
+                  </tr>
+                  <tr className="border-b border-slate-200">
+                    <td className="py-1.5 px-2.5 font-semibold text-slate-800">2. คุณลักษณะอันพึงประสงค์ ๘ ประการ</td>
+                    <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 w-36">{attributeRating}</td>
+                  </tr>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <td className="py-1.5 px-2.5 font-semibold text-slate-800">3. สมรรถนะสำคัญของผู้เรียน ๕ ประการ</td>
+                    <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 w-36">{competencyRating}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 px-2.5 font-semibold text-slate-800">4. กิจกรรมพัฒนาผู้เรียน (แนะแนว / ลูกเสือ-เนตรนารี / ชุมนุม / เพื่อสังคม)</td>
+                    <td className="py-1.5 px-2.5 text-center font-bold text-emerald-700 w-36">{activityResult}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {homeroomRemark.trim() && (
+                <p className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  <span className="font-bold">ความเห็นครูที่ปรึกษา:</span> {homeroomRemark.trim()}
+                </p>
+              )}
+            </div>
+
             {/* Official Signatures & Seal */}
             <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-3 gap-6 text-center text-xs">
               <div className="space-y-1">
-                <div className="h-12 border-b border-dashed border-slate-400 mx-6"></div>
+                <div className="h-12 border-b border-dashed border-slate-400 mx-4"></div>
                 <input
                   type="text"
                   value={advisorName}
@@ -395,18 +620,26 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 <p className="hidden print:block font-bold text-slate-800 mt-2">
                   ({advisorName.trim() || '........................................'})
                 </p>
-                <p className="text-[11px] text-slate-600">Classroom Advisor (ครูที่ปรึกษา)</p>
-              </div>
-
-              <div className="flex flex-col items-center justify-center">
-                <div className="w-16 h-16 rounded-full border-2 border-indigo-900/30 flex items-center justify-center text-[10px] text-indigo-950 font-bold text-center leading-tight uppercase p-1">
-                  ตราโรงเรียน
-                </div>
-                <p className="text-[10px] text-slate-600 mt-1">ออกเอกสาร: {issuedDateTh}</p>
+                <p className="text-[11px] text-slate-600">ครูประจำชั้น / ครูที่ปรึกษา</p>
               </div>
 
               <div className="space-y-1">
-                <div className="h-12 border-b border-dashed border-slate-400 mx-6"></div>
+                <div className="h-12 border-b border-dashed border-slate-400 mx-4"></div>
+                <input
+                  type="text"
+                  value={registrarName}
+                  onChange={(e) => setRegistrarName(e.target.value)}
+                  placeholder="(งานวัดผลและทะเบียน...)"
+                  className="print:hidden w-full text-center font-bold text-slate-800 bg-transparent border-b border-slate-200 focus:outline-none focus:border-indigo-500 mt-1 text-xs"
+                />
+                <p className="hidden print:block font-bold text-slate-800 mt-2">
+                  ({registrarName.trim() || 'งานวัดผลและทะเบียน'})
+                </p>
+                <p className="text-[11px] text-slate-600">นายทะเบียน • {issuedDateTh}</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="h-12 border-b border-dashed border-slate-400 mx-4"></div>
                 <input
                   type="text"
                   value={principalName}
@@ -417,7 +650,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 <p className="hidden print:block font-bold text-slate-800 mt-2">
                   ({principalName.trim() || '........................................'})
                 </p>
-                <p className="text-[11px] text-slate-600">School Principal (ผู้อำนวยการโรงเรียน)</p>
+                <p className="text-[11px] text-slate-600">ผู้อำนวยการสถานศึกษา</p>
               </div>
             </div>
           </div>
