@@ -31,6 +31,7 @@ import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { addCalendarDays, getBangkokDateInputValue, getCalendarWeekStart } from '../lib/timetableCalendar';
 import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -296,7 +297,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                   <th className="p-2.5">{lang === 'th' ? 'ไฟล์งานที่แนบ' : 'Attached File'}</th>
                   <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนน' : 'Score'}</th>
                   <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                  <th className="p-2.5 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
+                  <th className="p-2.5 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -357,20 +358,44 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                       </td>
 
                       <td className="p-2.5 text-right">
-                        {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') ? (
-                          <button
-                            onClick={() => {
-                              setSelectedSubForGrading(sub);
-                              setGradingScore(sub.score ?? 18);
-                              setGradingFeedback(sub.teacherFeedback ?? 'ผลงานดีมาก มีความตั้งใจ');
-                            }}
-                            className="px-2 py-1 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 hover:bg-amber-400 hover:text-slate-950 border border-amber-300 dark:border-amber-700 text-[10px] font-bold transition cursor-pointer"
-                          >
-                            {sub.status === 'graded' ? 'แก้ไขคะแนน' : 'ตรวจงาน'}
-                          </button>
-                        ) : (
-                          <span className="text-[var(--color-text-muted)] text-[10px]">ดูรายละเอียด</span>
-                        )}
+                        {(() => {
+                          const canGrade = currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
+                          const actionItems: TableActionItem[] = [
+                            ...(canGrade
+                              ? [
+                                  {
+                                    id: 'grade',
+                                    label: sub.status === 'graded' ? 'แก้ไขคะแนน & ความเห็น' : 'ตรวจงาน / ให้คะแนน',
+                                    icon: <Award className="w-3.5 h-3.5" />,
+                                    variant: 'warning' as const,
+                                    onClick: () => {
+                                      setSelectedSubForGrading(sub);
+                                      setGradingScore(sub.score ?? 18);
+                                      setGradingFeedback(sub.teacherFeedback ?? 'ผลงานดีมาก มีความตั้งใจ');
+                                    },
+                                  },
+                                ]
+                              : []),
+                            {
+                              id: 'filter_student',
+                              label: `กรองดูเฉพาะ ${sub.studentName}`,
+                              icon: <Search className="w-3.5 h-3.5" />,
+                              onClick: () => setSearchTerm(sub.studentName),
+                            },
+                            {
+                              id: 'view_assignment_tab',
+                              label: 'ดูรายการงานที่สั่งทั้งหมด',
+                              icon: <BookOpen className="w-3.5 h-3.5" />,
+                              onClick: () => setHwTab('assignments'),
+                            },
+                          ];
+                          return (
+                            <TableActionMenu
+                              items={actionItems}
+                              ariaLabel={`จัดการงานส่งของ ${sub.studentName}`}
+                            />
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

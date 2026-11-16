@@ -38,6 +38,7 @@ import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { fetchSchoolCounts } from '../lib/supabase';
 import { getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { 
   School, 
   SchoolTier,
@@ -581,7 +582,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                         <th className="py-2.5 px-3">ผู้สมัคร / อีเมล</th>
                         <th className="py-2.5 px-3">วันที่สมัคร</th>
                         <th className="py-2.5 px-3">สถานะอีเมล</th>
-                        <th className="py-2.5 px-3 text-right">การจัดการ</th>
+                        <th className="py-2.5 px-3 text-right w-16">จัดการ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
@@ -608,30 +609,33 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                             </span>
                           </td>
                           <td className="py-3 px-3 text-right whitespace-nowrap">
-                            <div className="inline-flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleApproveRegistration(registration)}
-                                disabled={approvingUserId !== null || cancellingUserId !== null}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white disabled:opacity-50 text-[11px] font-bold cursor-pointer"
-                              >
-                                {approvingUserId === registration.user_id
-                                  ? 'กำลังอนุมัติ...'
-                                  : registration.email_confirmed
-                                  ? 'อนุมัติบัญชี'
-                                  : 'ยืนยันอีเมลและอนุมัติ'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelRegistration(registration)}
-                                disabled={approvingUserId !== null || cancellingUserId !== null}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 disabled:opacity-50 text-[11px] font-bold cursor-pointer"
-                                title="ยกเลิกและลบคำขอสมัครโรงเรียน"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>{cancellingUserId === registration.user_id ? 'กำลังลบ...' : 'ยกเลิก/ลบคำขอ'}</span>
-                              </button>
-                            </div>
+                            <TableActionMenu
+                              ariaLabel={`จัดการคำขอสมัคร ${registration.school_name_th}`}
+                              items={[
+                                {
+                                  id: 'approve',
+                                  label:
+                                    approvingUserId === registration.user_id
+                                      ? 'กำลังอนุมัติ...'
+                                      : registration.email_confirmed
+                                      ? 'อนุมัติบัญชีโรงเรียน'
+                                      : 'ยืนยันอีเมลและอนุมัติ',
+                                  icon: <Check className="w-3.5 h-3.5" />,
+                                  variant: 'success',
+                                  disabled: approvingUserId !== null || cancellingUserId !== null,
+                                  onClick: () => void handleApproveRegistration(registration),
+                                },
+                                {
+                                  id: 'cancel',
+                                  label: cancellingUserId === registration.user_id ? 'กำลังลบ...' : 'ยกเลิก / ลบคำขอ',
+                                  icon: <Trash2 className="w-3.5 h-3.5" />,
+                                  variant: 'danger',
+                                  dividerBefore: true,
+                                  disabled: approvingUserId !== null || cancellingUserId !== null,
+                                  onClick: () => handleCancelRegistration(registration),
+                                },
+                              ]}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -866,7 +870,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                     <th className="py-2.5 px-3">ใช้ไปแล้ว / โควตา</th>
                     <th className="py-2.5 px-3">วันหมดเขต</th>
                     <th className="py-2.5 px-3 text-right">สถานะ</th>
-                    <th className="py-2.5 px-3 text-right">การจัดการ</th>
+                    <th className="py-2.5 px-3 text-right w-16">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text-body)]">
@@ -909,13 +913,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePromoStatus(p.id)}
-                          className="text-xs text-[var(--color-primary-text)] hover:underline font-medium cursor-pointer"
-                        >
-                          {p.status === 'active' ? 'พักแคมเปญ' : 'เปิดใหม่'}
-                        </button>
+                        <TableActionMenu
+                          ariaLabel={`จัดการโปรโมชั่น ${p.code}`}
+                          items={[
+                            {
+                              id: 'toggle_promo',
+                              label: p.status === 'active' ? 'พักแคมเปญชั่วคราว' : 'เปิดใช้งานแคมเปญใหม่',
+                              icon: p.status === 'active' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />,
+                              variant: p.status === 'active' ? 'warning' : 'success',
+                              onClick: () => handleTogglePromoStatus(p.id),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -1060,7 +1069,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   <th className="py-2.5 px-3">นักเรียน / ครู (จริง)</th>
                   <th className="py-2.5 px-3">โปรโมชั่นที่ใช้</th>
                   <th className="py-2.5 px-3 text-right">สถานะ</th>
-                  <th className="py-2.5 px-3 text-right">การจัดการ</th>
+                  <th className="py-2.5 px-3 text-right w-16">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text-body)]">
@@ -1099,37 +1108,51 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFlagEditorSchool(s);
-                          setFlagDraft(getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise'));
-                        }}
-                        className="text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline mr-3 cursor-pointer"
-                      >
-                        ตั้งค่าโมดูล ({getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise').tier})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onViewSchool(s)}
-                        className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline mr-3 cursor-pointer"
-                      >
-                        ดูข้อมูลโรงเรียน
-                      </button>
-                      {s.status === 'pending' ? (
-                        <span className="text-xs text-[var(--color-text-muted)]">รออนุมัติจากคิวสมัคร</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => void handleToggleSchoolStatus(s.id)}
-                          disabled={updatingSchoolId !== null}
-                          className={`text-xs font-medium hover:underline cursor-pointer ${
-                            s.status === 'active' ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-800 dark:text-emerald-300'
-                          } disabled:opacity-50`}
-                        >
-                          {updatingSchoolId === s.id ? 'กำลังบันทึก...' : s.status === 'active' ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
-                        </button>
-                      )}
+                      {(() => {
+                        const actionItems: TableActionItem[] = [
+                          {
+                            id: 'view_school',
+                            label: 'ดูข้อมูล / เข้าดูโรงเรียนนี้',
+                            icon: <Building2 className="w-3.5 h-3.5" />,
+                            variant: 'primary',
+                            onClick: () => onViewSchool(s),
+                          },
+                          {
+                            id: 'feature_flags',
+                            label: `ตั้งค่าโมดูล (${getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise').tier})`,
+                            icon: <Sparkles className="w-3.5 h-3.5" />,
+                            variant: 'warning',
+                            onClick: () => {
+                              setFlagEditorSchool(s);
+                              setFlagDraft(getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise'));
+                            },
+                          },
+                          ...(s.status !== 'pending'
+                            ? [
+                                {
+                                  id: 'toggle_status',
+                                  label:
+                                    updatingSchoolId === s.id
+                                      ? 'กำลังบันทึก...'
+                                      : s.status === 'active'
+                                      ? 'ระงับสิทธิ์การใช้งานชั่วคราว'
+                                      : 'เปิดใช้งานโรงเรียน',
+                                  icon: s.status === 'active' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />,
+                                  variant: (s.status === 'active' ? 'danger' : 'success') as 'danger' | 'success',
+                                  dividerBefore: true,
+                                  disabled: updatingSchoolId !== null,
+                                  onClick: () => void handleToggleSchoolStatus(s.id),
+                                },
+                              ]
+                            : []),
+                        ];
+                        return (
+                          <TableActionMenu
+                            items={actionItems}
+                            ariaLabel={`จัดการโรงเรียน ${s.nameTh}`}
+                          />
+                        );
+                      })()}
                     </td>
                   </tr>
                 );

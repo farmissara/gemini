@@ -62,6 +62,7 @@ import {
   resolveEffectiveGrade,
 } from '../lib/moeGrading';
 import { dispatchGradeAlert, GradeAlertRecord } from '../lib/gradeNotifications';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 interface GradebookViewProps {
   students: Student[];
@@ -1518,7 +1519,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-3 px-3 text-center font-bold text-[var(--color-primary-text)]">
                     {isPrimaryCourse ? 'Feedback (พัฒนาการรายปี)' : 'Grade'}
                   </th>
-                  <th className="py-3 px-3 text-right">Transcript</th>
+                  <th className="py-3 px-3 text-right w-16">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -1718,45 +1719,58 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           })()}
                         </td>
 
-                        <td className="py-3 px-3 text-right">
-                          <div className="inline-flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => void triggerGradeAlertNow(grade, false, true)}
-                              className="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                              title="ส่งแจ้งเตือนผลการเรียนไปยังนักเรียนและผู้ปกครองทันที"
-                            >
-                              <BellRing className="w-3 h-3" />
-                              <span>แจ้งเตือน</span>
-                            </button>
-                            {onPracticeInAi && grade.totalScore < 65 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onPracticeInAi({
-                                    subject: selectedCourse.titleTh,
-                                    topicTh: `${selectedCourse.code} ${selectedCourse.titleTh}`,
-                                    studentName: `${student.firstNameTh} ${student.lastNameTh}`,
-                                    score: grade.totalScore,
-                                    targetTab: 'socratic_tutor',
-                                  })
-                                }
-                                className="px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                                title="ส่งนักเรียนไปฝึกซ่อมเสริมใน AI Socratic Tutor"
-                              >
-                                <Sparkles className="w-3 h-3" />
-                                <span>ซ่อมเสริม AI</span>
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => onOpenReportCard(student)}
-                              className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              <span>Transcript</span>
-                            </button>
-                          </div>
+                        <td className="py-2.5 px-3 text-right">
+                          {(() => {
+                            const actionItems: TableActionItem[] = [
+                              {
+                                id: 'transcript',
+                                label: 'ดูใบรายงานผล (Transcript / ปพ.6)',
+                                icon: <FileText className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => onOpenReportCard(student),
+                              },
+                              {
+                                id: 'pp6_tab',
+                                label: 'เปิดในแท็บ ปพ.6 ประจำตัว',
+                                icon: <Award className="w-3.5 h-3.5" />,
+                                onClick: () => {
+                                  setSelectedStudentIdForPp6(student.id);
+                                  setActiveTab('pp6');
+                                },
+                              },
+                              {
+                                id: 'notify_grade',
+                                label: 'ส่งแจ้งเตือนผลการเรียน LINE/แอป',
+                                icon: <BellRing className="w-3.5 h-3.5" />,
+                                onClick: () => void triggerGradeAlertNow(grade, false, true),
+                              },
+                              ...(onPracticeInAi && grade.totalScore < 65
+                                ? [
+                                    {
+                                      id: 'ai_remedial',
+                                      label: 'ส่งฝึกซ่อมเสริม AI Socratic',
+                                      icon: <Sparkles className="w-3.5 h-3.5" />,
+                                      variant: 'warning' as const,
+                                      dividerBefore: true,
+                                      onClick: () =>
+                                        onPracticeInAi({
+                                          subject: selectedCourse.titleTh,
+                                          topicTh: `${selectedCourse.code} ${selectedCourse.titleTh}`,
+                                          studentName: `${student.firstNameTh} ${student.lastNameTh}`,
+                                          score: grade.totalScore,
+                                          targetTab: 'socratic_tutor',
+                                        }),
+                                    },
+                                  ]
+                                : []),
+                            ];
+                            return (
+                              <TableActionMenu
+                                items={actionItems}
+                                ariaLabel={`จัดการผลการเรียน ${student.firstNameTh} ${student.lastNameTh}`}
+                              />
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
@@ -2062,7 +2076,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-2 px-3 text-center">GPAX / ร้อยละสะสม</th>
                   <th className="py-2 px-3">เลขที่ชุด / เล่มที่ ปพ.3</th>
                   <th className="py-2 px-3 text-center">สถานะอนุมัติ</th>
-                  <th className="py-2 px-3 text-right">รายงาน ปพ.1</th>
+                  <th className="py-2 px-3 text-right w-16">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -2119,13 +2133,27 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </span>
                       </td>
                       <td className="py-2 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => onOpenReportCard(stu)}
-                          className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-semibold cursor-pointer shadow-xs"
-                        >
-                          ดู ปพ.1
-                        </button>
+                        <TableActionMenu
+                          ariaLabel={`จัดการรายงาน ปพ. ของ ${stu.firstNameTh} ${stu.lastNameTh}`}
+                          items={[
+                            {
+                              id: 'pp1',
+                              label: 'ดูเอกสาร ปพ.1 / ใบรายงานผล',
+                              icon: <FileText className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => onOpenReportCard(stu),
+                            },
+                            {
+                              id: 'pp6',
+                              label: 'ดูแบบรายงาน ปพ.6 ประจำตัว',
+                              icon: <Award className="w-3.5 h-3.5" />,
+                              onClick: () => {
+                                setSelectedStudentIdForPp6(stu.id);
+                                setActiveTab('pp6');
+                              },
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   );

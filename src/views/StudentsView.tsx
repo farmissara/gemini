@@ -55,6 +55,7 @@ import { getStudentDuplicateReasons } from '../lib/duplicateRecords';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { calculateStudentAcademicSummary, getRawScoreFeedback, isPrimaryGradeLevel } from '../lib/moeGrading';
 import { downloadBatchStudentQrCodesPdf } from '../lib/moeReportPdf';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -1183,7 +1184,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   <th className="py-3 px-4">สถานะ (Status)</th>
                   <th className="py-3 px-4">GPA</th>
                   <th className="py-3.5 px-4">Guardian / LINE OA</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4 text-right w-16">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -1321,70 +1322,67 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => onOpenReportCard(student)}
-                            className="px-2.5 py-1 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                            title="View Thai/English Transcript"
-                          >
-                            <Award className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Report Card</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => onSelectStudent(student)}
-                            className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-medium transition-colors cursor-pointer"
-                          >
-                            Profile
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(student)}
-                            className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer"
-                            title="แก้ไขข้อมูลนักเรียน ระดับชั้น หรือสถานะ"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-
-                          {canManageApprovals && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenInviteModal(student, 'student')}
-                                disabled={invitingStudentId === student.id}
-                                className="p-1.5 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] transition-colors cursor-pointer disabled:opacity-50"
-                                title="ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี"
-                              >
-                                <Mail className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenInviteModal(student, 'parent')}
-                                disabled={invitingStudentId === student.id}
-                                className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
-                                title="เชิญผู้ปกครองเข้าใช้งานและผูกกับนักเรียน"
-                              >
-                                <Send className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
-
-                          {onDeleteStudent && (
-                            <button
-                              type="button"
-                              onClick={() => handleRequestDeleteStudent(student)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
-                              title="ยกเลิก/ลบข้อมูลนักเรียน"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span className="hidden xl:inline">ยกเลิก/ลบ</span>
-                            </button>
-                          )}
-                        </div>
+                      <td className="py-3 px-4 text-right">
+                        {(() => {
+                          const actionItems: TableActionItem[] = [
+                            {
+                              id: 'profile',
+                              label: 'ดูโปรไฟล์ / ประวัตินักเรียน',
+                              icon: <UserCheck className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => onSelectStudent(student),
+                            },
+                            {
+                              id: 'report_card',
+                              label: 'ดูใบรายงานผล (ปพ.1 / ปพ.6)',
+                              icon: <Award className="w-3.5 h-3.5" />,
+                              onClick: () => onOpenReportCard(student),
+                            },
+                            {
+                              id: 'edit',
+                              label: 'แก้ไขข้อมูล / ห้อง / สถานะ',
+                              icon: <Edit3 className="w-3.5 h-3.5" />,
+                              onClick: () => handleOpenEdit(student),
+                            },
+                            ...(canManageApprovals
+                              ? [
+                                  {
+                                    id: 'invite_student',
+                                    label: 'ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี',
+                                    icon: <Mail className="w-3.5 h-3.5" />,
+                                    disabled: invitingStudentId === student.id,
+                                    onClick: () => handleOpenInviteModal(student, 'student'),
+                                  },
+                                  {
+                                    id: 'invite_parent',
+                                    label: 'เชิญผู้ปกครองเข้าใช้งาน',
+                                    icon: <Send className="w-3.5 h-3.5" />,
+                                    variant: 'success' as const,
+                                    disabled: invitingStudentId === student.id,
+                                    onClick: () => handleOpenInviteModal(student, 'parent'),
+                                  },
+                                ]
+                              : []),
+                            ...(onDeleteStudent
+                              ? [
+                                  {
+                                    id: 'delete',
+                                    label: 'ยกเลิก / ลบข้อมูลนักเรียน',
+                                    icon: <Trash2 className="w-3.5 h-3.5" />,
+                                    variant: 'danger' as const,
+                                    dividerBefore: true,
+                                    onClick: () => handleRequestDeleteStudent(student),
+                                  },
+                                ]
+                              : []),
+                          ];
+                          return (
+                            <TableActionMenu
+                              items={actionItems}
+                              ariaLabel={`จัดการข้อมูล ${student.firstNameTh} ${student.lastNameTh}`}
+                            />
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

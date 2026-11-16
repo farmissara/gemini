@@ -4,25 +4,23 @@ import {
   GraduationCap, 
   Building2, 
   Globe, 
-  Search, 
   LogOut, 
   ChevronDown,
   Sun,
   Moon,
   Laptop,
   Smartphone,
-  ShieldCheck,
   Menu,
   HelpCircle,
   FileSpreadsheet,
   Sparkles,
   Bell,
-  Mail,
-  CreditCard,
   SlidersHorizontal,
   Compass
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
+import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
+import { Course, GradeRecord, Student, Teacher } from '../../types';
 
 interface NavbarProps {
   currentTab?: string;
@@ -57,6 +55,13 @@ interface NavbarProps {
   coordinationUnreadCount?: number;
   onOpenCoordinationDesk?: () => void;
   onOpenExamPaymentSettings?: () => void;
+  students?: Student[];
+  teachers?: Teacher[];
+  courses?: Course[];
+  grades?: GradeRecord[];
+  onOpenStudentProfile?: (student: Student) => void;
+  onOpenReportCard?: (student: Student) => void;
+  onNavigateTab?: (tab: 'students' | 'teachers' | 'courses' | 'gradebook') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -86,9 +91,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchToMobileMode,
   unreadCount = 0,
   onOpenNotifications,
-  coordinationUnreadCount = 0,
-  onOpenCoordinationDesk,
-  onOpenExamPaymentSettings,
+  students = [],
+  teachers = [],
+  courses = [],
+  grades = [],
+  onOpenStudentProfile,
+  onOpenReportCard,
+  onNavigateTab,
 }) => {
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
@@ -197,16 +206,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            <div className="relative hidden xl:flex items-center" data-guide-id="nav-quick-search">
-              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 pointer-events-none" />
-              <input
-                type="text"
-                placeholder={lang === 'th' ? 'ค้นหาด่วน...' : 'Quick search...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-36 pl-8 pr-2.5 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-colors"
-              />
-            </div>
+            <UnifiedNavbarSearch
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              students={students}
+              teachers={teachers}
+              courses={courses}
+              grades={grades}
+              activeSchool={activeSchool}
+              gradingSystem={activeSchool.gradingSystem}
+              currentRole={currentRole}
+              currentStudentRecordId={currentUser?.studentRecordId}
+              lang={lang}
+              onOpenStudentProfile={onOpenStudentProfile}
+              onOpenReportCard={onOpenReportCard}
+              onNavigateTab={onNavigateTab}
+            />
           </div>
         )}
 

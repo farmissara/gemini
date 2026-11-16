@@ -33,6 +33,7 @@ import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getBehaviorDuplicateReasons, getSdqDuplicateReasons } from '../lib/duplicateRecords';
 import { getLocalDateString } from '../lib/date';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -429,7 +430,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                       <th className="p-2.5">{lang === 'th' ? 'ห้องเรียน' : 'Room'}</th>
                       <th className="p-2.5 text-center">{lang === 'th' ? 'คะแนนคงเหลือ' : 'Score'}</th>
                       <th className="p-2.5 text-center">{lang === 'th' ? 'สถานะ' : 'Status'}</th>
-                      <th className="p-2.5 text-right">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
+                      <th className="p-2.5 text-right w-16">{lang === 'th' ? 'จัดการ' : 'Action'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
@@ -468,15 +469,35 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                             </span>
                           </td>
                           <td className="p-2.5 text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedStudentId(student.id);
-                                setShowAddRecordModal(true);
-                              }}
-                              className="px-2 py-1 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] hover:bg-[var(--color-primary)] hover:text-white border border-[var(--color-border)] text-[10px] font-semibold transition cursor-pointer"
-                            >
-                              {lang === 'th' ? 'บันทึกคะแนน' : 'Add Record'}
-                            </button>
+                            <TableActionMenu
+                              ariaLabel={`จัดการคะแนนความประพฤติ ${student.firstNameTh} ${student.lastNameTh}`}
+                              items={[
+                                {
+                                  id: 'add_record',
+                                  label: lang === 'th' ? 'บันทึกความดี / ตัดคะแนน' : 'Add Behavior Record',
+                                  icon: <Plus className="w-3.5 h-3.5" />,
+                                  variant: 'primary',
+                                  onClick: () => {
+                                    setSelectedStudentId(student.id);
+                                    setShowAddRecordModal(true);
+                                  },
+                                },
+                                {
+                                  id: 'new_sdq',
+                                  label: lang === 'th' ? 'ประเมินคัดกรอง SDQ' : 'Open SDQ Tab',
+                                  icon: <HeartHandshake className="w-3.5 h-3.5" />,
+                                  onClick: () => {
+                                    setActiveTab('sdq');
+                                  },
+                                },
+                                {
+                                  id: 'filter_student',
+                                  label: lang === 'th' ? 'กรองชื่อนักเรียนนี้' : 'Filter Student',
+                                  icon: <Search className="w-3.5 h-3.5" />,
+                                  onClick: () => setSearchTerm(`${student.firstNameTh} ${student.lastNameTh}`),
+                                },
+                              ]}
+                            />
                           </td>
                         </tr>
                       );

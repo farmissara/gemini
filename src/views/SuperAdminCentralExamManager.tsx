@@ -37,6 +37,7 @@ import {
   verifyExamEntitlement,
 } from '../lib/centralExamBank';
 import { CentralExamPack, LearningStrandId, QuizQuestion, SchoolExamEntitlement } from '../types';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 interface SuperAdminCentralExamManagerProps {
   isDemoMode: boolean;
@@ -1085,7 +1086,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                     <th className="p-3">ยอดเงิน (บาท)</th>
                     <th className="p-3">สลิปหลักฐาน (100%)</th>
                     <th className="p-3">สถานะตรวจสอบ</th>
-                    <th className="p-3 text-right">การจัดการ</th>
+                    <th className="p-3 text-right w-16">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
@@ -1169,33 +1170,55 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                           )}
                         </td>
                         <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {status !== 'verified' && status !== 'revoked' && (
-                              <button
-                                type="button"
-                                disabled={isProcessingAudit}
-                                onClick={() => void handleVerifySlip(item)}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer transition shadow-xs"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                <span>ยืนยันสลิป</span>
-                              </button>
-                            )}
-                            {status !== 'revoked' && (
-                              <button
-                                type="button"
-                                disabled={isProcessingAudit}
-                                onClick={() => {
-                                  setRevokingEntitlement(item);
-                                  setRevokeReasonInput('สลิปไม่ตรง หรือมีการทุจริต');
-                                }}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition"
-                              >
-                                <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                                <span>เพิกถอนสิทธิ์</span>
-                              </button>
-                            )}
-                          </div>
+                          {(() => {
+                            const actionItems: TableActionItem[] = [
+                              ...(item.slipUrl
+                                ? [
+                                    {
+                                      id: 'view_slip',
+                                      label: 'ดูภาพสลิปขยายใหญ่',
+                                      icon: <Eye className="w-3.5 h-3.5" />,
+                                      variant: 'primary' as const,
+                                      onClick: () => setSelectedSlipImage(item.slipUrl!),
+                                    },
+                                  ]
+                                : []),
+                              ...(status !== 'verified' && status !== 'revoked'
+                                ? [
+                                    {
+                                      id: 'verify',
+                                      label: 'ยืนยันสลิปถูกต้อง',
+                                      icon: <Check className="w-3.5 h-3.5" />,
+                                      variant: 'success' as const,
+                                      disabled: isProcessingAudit,
+                                      onClick: () => void handleVerifySlip(item),
+                                    },
+                                  ]
+                                : []),
+                              ...(status !== 'revoked'
+                                ? [
+                                    {
+                                      id: 'revoke',
+                                      label: 'เพิกถอนสิทธิ์ชุดข้อสอบ',
+                                      icon: <ShieldAlert className="w-3.5 h-3.5" />,
+                                      variant: 'danger' as const,
+                                      dividerBefore: true,
+                                      disabled: isProcessingAudit,
+                                      onClick: () => {
+                                        setRevokingEntitlement(item);
+                                        setRevokeReasonInput('สลิปไม่ตรง หรือมีการทุจริต');
+                                      },
+                                    },
+                                  ]
+                                : []),
+                            ];
+                            return (
+                              <TableActionMenu
+                                items={actionItems}
+                                ariaLabel={`จัดการสิทธิ์ชุดข้อสอบ ${item.packId}`}
+                              />
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

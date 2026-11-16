@@ -47,6 +47,7 @@ import {
   listSchoolStaffParentAccounts,
   type StaffParentAccountLink,
 } from '../lib/authDb';
+import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -1052,7 +1053,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <th className="px-4 py-3">ตำแหน่ง</th>
                   <th className="px-4 py-3">วิทยฐานะ (ว.PA)</th>
                   <th className="px-4 py-3">ประสบการณ์</th>
-                  <th className="px-4 py-3 text-right">การจัดการ</th>
+                  <th className="px-4 py-3 text-right w-16">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -1088,48 +1089,55 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       {teacher.teachingExperienceYears === undefined ? 'ไม่ระบุ' : `${teacher.teachingExperienceYears} ปี`}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTeacherForDetail(teacher);
-                            setDetailTab('profile');
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] border border-[var(--color-border)] text-xs font-semibold cursor-pointer"
-                        >
-                          รายละเอียด
-                        </button>
-                        {canManage && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenTeacherInviteModal(teacher)}
-                              className="p-1 rounded-lg hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] cursor-pointer"
-                              title="เชิญครูเข้าสู่ระบบทางอีเมล"
-                            >
-                              <Send className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(teacher)}
-                              className="p-1 rounded-lg hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] cursor-pointer"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`คุณต้องการลบข้อมูล "${teacher.fullNameTh}" หรือไม่?`)) {
-                                  onDeleteTeacher(teacher.id);
-                                }
-                              }}
-                              className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {(() => {
+                        const actionItems: TableActionItem[] = [
+                          {
+                            id: 'detail',
+                            label: 'ดูรายละเอียด & แฟ้ม ว.PA',
+                            icon: <FileText className="w-3.5 h-3.5" />,
+                            variant: 'primary',
+                            onClick: () => {
+                              setSelectedTeacherForDetail(teacher);
+                              setDetailTab('profile');
+                            },
+                          },
+                          ...(canManage
+                            ? [
+                                {
+                                  id: 'edit',
+                                  label: 'แก้ไขข้อมูลครู',
+                                  icon: <Edit3 className="w-3.5 h-3.5" />,
+                                  onClick: () => handleOpenEdit(teacher),
+                                },
+                                {
+                                  id: 'invite',
+                                  label: 'ส่งคำเชิญเข้าสู่ระบบทางอีเมล',
+                                  icon: <Send className="w-3.5 h-3.5" />,
+                                  variant: 'success' as const,
+                                  onClick: () => handleOpenTeacherInviteModal(teacher),
+                                },
+                                {
+                                  id: 'delete',
+                                  label: 'ลบข้อมูลครู',
+                                  icon: <Trash2 className="w-3.5 h-3.5" />,
+                                  variant: 'danger' as const,
+                                  dividerBefore: true,
+                                  onClick: () => {
+                                    if (confirm(`คุณต้องการลบข้อมูล "${teacher.fullNameTh}" หรือไม่?`)) {
+                                      onDeleteTeacher(teacher.id);
+                                    }
+                                  },
+                                },
+                              ]
+                            : []),
+                        ];
+                        return (
+                          <TableActionMenu
+                            items={actionItems}
+                            ariaLabel={`จัดการข้อมูล ${teacher.fullNameTh}`}
+                          />
+                        );
+                      })()}
                     </td>
                   </tr>
                 )} />

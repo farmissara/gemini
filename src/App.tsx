@@ -3106,6 +3106,16 @@ export const App: React.FC = () => {
         coordinationUnreadCount={coordinationUnreadCount}
         onOpenCoordinationDesk={['admin', 'super_admin'].includes(currentRole) ? () => navigateToAppTab('admin_superadmin_desk') : undefined}
         onOpenExamPaymentSettings={currentRole === 'super_admin' ? handleOpenExamPaymentSettings : undefined}
+        students={schoolStudents}
+        teachers={schoolTeachers}
+        courses={schoolCourses}
+        grades={schoolGrades}
+        onOpenStudentProfile={setSelectedStudentForProfile}
+        onOpenReportCard={setSelectedStudentForReport}
+        onNavigateTab={(tab) => {
+          setProgramMode('school_erp');
+          navigateToAppTab(tab);
+        }}
       />}
       {!useImmersiveGameLayout && isDemoMode && (
         <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
