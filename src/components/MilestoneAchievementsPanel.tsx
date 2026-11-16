@@ -257,7 +257,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0 max-w-full">
           {canSwitchStudent && (
             <select
               aria-label={lang === 'th' ? 'เลือกนักเรียน' : 'Select Student'}
@@ -266,7 +266,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
                 setNewlyUnlockedBanner(null);
                 setSelectedUserId(e.target.value);
               }}
-              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full sm:w-auto max-w-full min-w-0 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               {studentScores.map((sc) => (
                 <option key={sc.userId} value={sc.userId}>
@@ -311,7 +311,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 360, damping: 26 }}
             role="status"
-            className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex items-center justify-between gap-3"
+            className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex items-start sm:items-center justify-between gap-3"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
@@ -362,7 +362,7 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
       </AnimatePresence>
 
       {/* PlayerScores Live Threshold Metrics Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-0.5">
           <div className="text-[11px] font-medium text-[var(--color-text-muted)]">
             {lang === 'th' ? 'เข้าเรียนสะสม' : 'Attendance'}

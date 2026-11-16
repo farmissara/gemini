@@ -413,7 +413,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   return (
-    <div className={`dashboard-print-area h-full flex flex-col min-h-0 overflow-hidden dash-shell dashboard-frosted-backdrop rounded-2xl ${getModuleTone('dashboard')}`}>
+    <div className={`dashboard-print-area h-full flex flex-col min-h-0 min-w-0 max-w-full overflow-hidden dash-shell dashboard-frosted-backdrop rounded-2xl ${getModuleTone('dashboard')}`}>
       {/* Print-Only Administrative Report Header */}
       <div className="hidden print:flex items-center justify-between gap-4 pb-3 mb-2 border-b-2 border-slate-300">
         <div className="flex items-center gap-3 min-w-0">
@@ -467,8 +467,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <div data-guide-id="dashboard-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 flex-wrap">
+          <div data-guide-id="dashboard-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
             <button
               type="button"
               data-active={dashboardTab === 'overview'}
@@ -587,7 +587,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Main Tab Panels Container */}
-      <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto pr-1 pb-16 dash-scroll-stack">
+      <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1 pb-16 dash-scroll-stack">
         {/* TAB 1: CLEAN 2-COLUMN (50% / 50%) FROSTED ARCHITECTURE */}
         {dashboardTab === 'overview' && (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
@@ -1367,7 +1367,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="no-print group frosted-card rounded-[var(--dash-card-radius)] overflow-hidden"
                     >
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-white/60 dark:hover:bg-slate-800/40">
-                        <div>
+                        <div className="min-w-0">
                           <span className="block text-sm font-bold text-[#0f172a] dark:text-slate-100">
                             {lang === 'th'
                               ? 'แนวโน้มรายเดือน & ความสำเร็จผู้เรียนเพิ่มเติม'
@@ -1471,12 +1471,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     type="date"
                     value={selectedDate}
                     onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] focus:outline-hidden"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
                   />
                   <select
                     value={selectedRoleFilter}
                     onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] focus:outline-hidden"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
                   >
                     <option value="all">{lang === 'th' ? 'ทุกบทบาท' : 'All Roles'}</option>
                     <option value="student">{lang === 'th' ? 'นักเรียน' : 'Students'}</option>
@@ -1485,7 +1485,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <select
                     value={selectedTypeFilter}
                     onChange={(e) => setSelectedTypeFilter(e.target.value as 'all' | 'check_in' | 'check_out')}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] focus:outline-hidden"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
                   >
                     <option value="all">{lang === 'th' ? 'เข้า & ออก' : 'All'}</option>
                     <option value="check_in">{lang === 'th' ? 'เข้าโรงเรียน' : 'Check-in'}</option>
@@ -1493,7 +1493,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </select>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={handleExportSelectedDateCsv}
@@ -1532,10 +1532,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {(attendanceStep === 'summary' || attendanceStep === 'analytics') && <>
         {/* Detailed Visual Analytics & Graphs Section */}
-        <div className="p-5 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-5">
+        <div className="p-3.5 sm:p-5 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-5">
           {/* Summary Metric Counters */}
           {attendanceStep === 'summary' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
               <p className="text-[11px] text-[var(--color-text-muted)] font-bold">{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</p>
               <p className="text-xl font-bold text-[var(--color-text-title)] mt-0.5">{totalForDate}</p>
@@ -1586,8 +1586,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Hourly Distribution Bar Chart */}
-              <div className="lg:col-span-2 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="lg:col-span-2 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-3 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-[var(--color-primary)]" />
@@ -1710,7 +1710,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {attendanceStep === 'records' && <>
         {/* Gallery / Cards of Recent Selfie Check-ins with Click-to-View Modal */}
-        <div className="p-5 space-y-4">
+        <div className="p-3.5 sm:p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
@@ -1873,21 +1873,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Live Gate Check-in Feed inside Tab 2 */}
             {attendanceStep === 'live_feed' && (
-            <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[var(--color-primary)]" />
+            <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 sm:p-5 shadow-xs space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Clock className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
                   <h2 className="text-sm font-bold text-[var(--color-text-title)]">
                     {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนวันนี้' : 'Live Gate & Class Check-in Feed'}
                   </h2>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700 shrink-0">
                     {lang === 'th' ? 'สด' : 'Live'}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => onNavigate('attendance')}
-                  className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer shrink-0"
                 >
                   {lang === 'th' ? 'ดูบันทึกทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
@@ -1898,31 +1898,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div
                     key={rec.id}
                     onClick={() => openPhotoRecord(rec)}
-                    className="py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 transition"
+                    className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 transition"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <img
                         src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                         alt={rec.userName}
                         referrerPolicy="no-referrer"
-                        className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)]"
+                        className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                       />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[var(--color-text-title)]">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <span className="font-bold text-[var(--color-text-title)] truncate">
                             {rec.userName}
                           </span>
                           <span className="text-[var(--color-text-muted)] font-mono text-[11px]">
                             ({rec.studentId})
                           </span>
                         </div>
-                        <div className="text-[11px] text-[var(--color-text-muted)]">
+                        <div className="text-[11px] text-[var(--color-text-muted)] truncate">
                           {rec.userDepartmentOrRoom || rec.userRole} • {lang === 'th' ? `เวลา ${rec.time} น.` : rec.time} • {rec.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}
                         </div>
                       </div>
                     </div>
 
-                    <div>
+                    <div className="shrink-0 self-start sm:self-auto">
                       {rec.status === 'present' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold text-[11px] border border-emerald-300 dark:border-emerald-700">
                           <CheckCircle2 className="w-3 h-3" />
@@ -2102,10 +2102,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-4 animate-in fade-in duration-150">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Announcements Section (2 cols) */}
-              <div className="lg:col-span-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BellRing className="w-4 h-4 text-[var(--color-primary)]" />
+              <div className="lg:col-span-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 sm:p-5 shadow-xs space-y-4 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BellRing className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
                     <h2 className="text-sm font-bold text-[var(--color-text-title)]">
                       {lang === 'th' ? 'ข่าวสารและประกาศสำคัญของโรงเรียน' : 'Official School Announcements'}
                     </h2>
@@ -2113,7 +2113,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigate('announcements')}
-                    className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer shrink-0"
                   >
                     {lang === 'th' ? 'ดูประกาศทั้งหมด' : 'All Announcements'} <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
@@ -2121,9 +2121,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <PagedList items={announcements} pageSize={2} renderItem={(item) => (
-                    <div key={item.id} className="p-3.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5 flex flex-col justify-between">
+                    <div key={item.id} className="p-3.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5 flex flex-col justify-between min-w-0">
                       <div className="space-y-1">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-1">
                           <span className="font-bold text-[var(--color-text-title)]">{item.title}</span>
                           <span className="text-[10px] text-[var(--color-text-muted)]">{item.publishedAt}</span>
                         </div>
@@ -2131,7 +2131,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {item.content}
                         </p>
                       </div>
-                      <div className="text-[10px] text-[var(--color-text-muted)] pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+                      <div className="text-[10px] text-[var(--color-text-muted)] pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-1">
                         <span>{lang === 'th' ? `โดย: ${item.author}` : `By: ${item.author}`}</span>
                         <span className="text-[10px] font-semibold text-[var(--color-primary-text)]">
                           {item.authorRole}
@@ -2143,10 +2143,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Honor Students Card (1 col) */}
-              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 sm:p-5 shadow-xs space-y-4 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Award className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                     <h2 className="text-sm font-bold text-[var(--color-text-title)]">
                       {lang === 'th' ? 'นักเรียนผลการเรียนดีเด่น' : 'Honor Students Roll'}
                     </h2>
@@ -2154,7 +2154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigate('gradebook')}
-                    className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer shrink-0"
                   >
                     {lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'} <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
@@ -2166,26 +2166,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       key={st.id}
                       className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between gap-2 text-xs"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-5 text-center font-bold text-[var(--color-text-muted)] text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-5 text-center font-bold text-[var(--color-text-muted)] text-xs shrink-0">
                           #{idx + 1}
                         </div>
                         <img
                           src={st.avatarUrl}
                           alt={st.firstNameEn}
-                          className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)]"
+                          className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                         />
-                        <div>
-                          <div className="font-bold text-[var(--color-text-title)]">
+                        <div className="min-w-0">
+                          <div className="font-bold text-[var(--color-text-title)] truncate">
                             {lang === 'th' ? `${st.firstNameTh} ${st.lastNameTh}` : `${st.firstNameEn} ${st.lastNameEn}`}
                           </div>
-                          <div className="text-[11px] text-[var(--color-text-muted)]">
+                          <div className="text-[11px] text-[var(--color-text-muted)] truncate">
                             {lang === 'th' ? `ชั้น ${st.gradeLevel} ห้อง ${st.room}` : `Grade ${st.gradeLevel} / ${st.room}`}
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         {(() => {
                           const summary = calculateStudentAcademicSummary({
                             student: st,
@@ -2232,7 +2232,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Lightbox Modal: Captured Selfie Photo & Metadata */}
       {selectedPhotoRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
             {/* Modal Header */}
             <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-card-subtle)]">
               <div className="flex items-center gap-2.5">
@@ -2258,7 +2258,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 sm:p-5 space-y-4 overflow-hidden">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
               {/* Captured Photo Container */}
               {photoModalStep === 0 && <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-4/3 max-h-56 mx-auto shadow-inner border border-slate-800 flex items-center justify-center">
                 <img
@@ -2300,7 +2300,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Information Grid */}
-              {photoModalStep === 1 && <div className="grid grid-cols-2 gap-3 text-xs">
+              {photoModalStep === 1 && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
                   <span className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
                   <p className="font-bold text-[var(--color-text-title)]">{selectedPhotoRecord.userName}</p>
@@ -2311,7 +2311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
                   <span className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase">{lang === 'th' ? 'ประเภทและสถานะ' : 'Type & Status'}</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {selectedPhotoRecord.recordType === 'check_out' ? (
                       <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 font-bold text-[11px]">
                         {lang === 'th' ? 'เช็คชื่อออก' : 'Check-out'}
@@ -2332,7 +2332,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </p>
                 </div>
 
-                <div className="col-span-2 p-3 rounded-xl bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 space-y-1">
+                <div className="sm:col-span-2 p-3 rounded-xl bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 space-y-1">
                   <span className="text-[10px] text-blue-950 dark:text-blue-200 font-bold uppercase flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-blue-800 dark:text-blue-300" />
                     <span>{lang === 'th' ? 'ข้อมูลตำแหน่ง GPS & รั้วเสมือน (Geofence)' : 'GPS & Geofence Coordinates'}</span>
@@ -2356,7 +2356,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
+            <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
                 ID: {selectedPhotoRecord.id}
               </span>

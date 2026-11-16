@@ -172,7 +172,7 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 bg-white/80 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
+        <div className="flex flex-wrap items-center gap-1 bg-white/80 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 max-w-full">
           <button
             type="button"
             onClick={() => setMode('chase')}

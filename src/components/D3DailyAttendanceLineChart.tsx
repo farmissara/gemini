@@ -88,7 +88,7 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
     const el = chartWrapperRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
     const updateWidth = () => {
-      const next = Math.max(300, Math.floor(el.clientWidth));
+      const next = Math.max(220, Math.floor(el.clientWidth));
       setContainerWidth(next);
     };
     updateWidth();
@@ -250,7 +250,7 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
 
     const height = 220;
     const margin = { top: 18, right: 16, bottom: 28, left: 40 };
-    const width = Math.max(300, containerWidth);
+    const width = Math.max(220, containerWidth);
     const innerWidth = Math.max(120, width - margin.left - margin.right);
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -532,8 +532,8 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
         </div>
 
         {/* Controls: School Level Dropdown + Month Stepper */}
-        <div className="no-print flex flex-wrap items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5">
+        <div className="no-print flex flex-wrap items-center gap-2 w-full xl:w-auto min-w-0 max-w-full">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0 max-w-full">
             <label
               htmlFor="d3-school-level-filter"
               className="sr-only"
@@ -547,7 +547,7 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
                 setHoveredPoint(null);
                 setSchoolLevelFilter(e.target.value);
               }}
-              className="px-3 py-1.5 rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/85 dark:bg-slate-900/75 text-xs font-semibold text-[#1e293b] dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer"
+              className="w-full sm:w-auto max-w-full min-w-0 px-3 py-1.5 rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/85 dark:bg-slate-900/75 text-xs font-semibold text-[#1e293b] dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer"
             >
               <option value="all">
                 {lang === 'th' ? 'ทุกระดับชั้น (ทั้งโรงเรียน)' : 'All School Levels'}
@@ -692,7 +692,7 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
       <div ref={chartWrapperRef} className="relative w-full min-w-0">
         <svg
           ref={svgRef}
-          className="w-full h-[220px] block overflow-visible"
+          className="w-full max-w-full h-[220px] block overflow-hidden"
           role="img"
           aria-label={
             lang === 'th'

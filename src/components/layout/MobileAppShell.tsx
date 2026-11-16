@@ -698,7 +698,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </div>
 
             {/* 4 Core Executive Metric Cards (Vertical, Clean, Space-optimized) */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Card 1: Attendance */}
               <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
@@ -778,7 +778,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <span>อัตราส่วนทรัพยากรโรงเรียน</span>
                 <span className="text-[10px] text-[var(--color-text-muted)]">MIS ข้อมูลล่าสุด</span>
               </h3>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
                 <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                   <div className="text-xs text-[var(--color-text-muted)]">นักเรียน</div>
                   <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalStudents} คน</div>
@@ -797,7 +797,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {/* Director Quick Links */}
             <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
               <h3 className="text-xs font-bold text-[var(--color-text-title)]">ทางลัดการบริหาร</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setActiveTab('checkin')}

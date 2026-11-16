@@ -296,7 +296,7 @@ export const GradeLevelAnalyticsChart: React.FC<GradeLevelAnalyticsChartProps> =
         <div
           role="tablist"
           aria-label={lang === 'th' ? 'กรองระดับชั้น' : 'Filter grade stage'}
-          className="no-print inline-flex items-center rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-1 text-xs font-medium self-start xl:self-auto shrink-0"
+          className="no-print flex flex-wrap sm:inline-flex items-center gap-0.5 max-w-full rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-white/80 dark:bg-slate-900/65 p-1 text-xs font-medium self-start xl:self-auto"
         >
           <button
             type="button"

@@ -430,7 +430,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
           <div
             role="tablist"
             aria-label={lang === 'th' ? 'กรองตามประเภทปัญหา' : 'Filter priority items'}
-            className="inline-flex items-center rounded-xl border border-orange-200/75 dark:border-orange-800/60 bg-white/75 dark:bg-slate-900/60 p-0.5 text-[11px]"
+            className="flex flex-wrap sm:inline-flex items-center gap-0.5 max-w-full rounded-xl border border-orange-200/75 dark:border-orange-800/60 bg-white/75 dark:bg-slate-900/60 p-0.5 text-[11px]"
           >
             <button
               type="button"
@@ -639,7 +639,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                   </div>
 
                   {/* Quick contextual links */}
-                  <div className="no-print flex flex-wrap items-center gap-2 pl-10 text-[11px]">
+                  <div className="no-print flex flex-wrap items-center gap-2 pl-0 sm:pl-10 text-[11px]">
                     {onSelectStudent && (
                       <button
                         type="button"

@@ -22,7 +22,7 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: '/',
-          name: 'BaanPakKru (บ้านพักครู) - ระบบช่วยงานและลดภาระคุณครู',
+          name: 'BaanPakKru',
           short_name: 'BaanPakKru',
           description: 'BaanPakKru (บ้านพักครู) ระบบบริหารจัดการโรงเรียนและลดภาระงานเอกสารคุณครู ทั้งเช็คชื่อ บันทึกคะแนน จัดตารางสอน และแจ้งเตือนผู้ปกครอง',
           theme_color: '#1e40af',
