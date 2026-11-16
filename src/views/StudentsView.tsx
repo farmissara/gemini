@@ -42,6 +42,7 @@ import {
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
   ALL_GRADE_LEVELS, 
   STUDENT_STATUS_DETAILS 
@@ -853,7 +854,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <ModuleTourTrigger moduleId="students" lang="th" />
           <details className="relative" data-guide-id="students-import-export">
             <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
               <span>จัดการข้อมูล</span>
@@ -941,7 +943,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       </div>
 
       {/* View Tabs */}
-      <div className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
+      <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
         <button
           type="button"
           onClick={() => setActiveTab('roster')}
@@ -998,7 +1000,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {activeTab === 'roster' && (
         <>
           {/* Filter and Search Bar */}
-          <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-3">
+          <div data-guide-id="students-search-bar" className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="relative w-full md:w-72">
               <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input

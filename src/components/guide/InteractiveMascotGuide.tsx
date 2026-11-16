@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
+  ArrowRight,
   BookOpen,
+  CheckCircle2,
   ChevronRight,
   Compass,
   EyeOff,
@@ -8,6 +11,7 @@ import {
   HelpCircle,
   Lightbulb,
   MousePointerClick,
+  Play,
   Power,
   Sparkles,
   UserCheck,
@@ -20,7 +24,9 @@ import {
   ROLE_WORKFLOW_STEPS,
   resolveInteractiveTopic,
 } from '../../data/interactiveGuideTopics';
+import { MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
 import { MascotAvatar } from './MascotAvatar';
+import { useGuideTour } from './GuideTourContext';
 import { GuideModuleId } from '../modals/ModuleGuideModal';
 
 interface InteractiveMascotGuideProps {
@@ -44,6 +50,7 @@ interface ActiveHoverTarget {
 }
 
 const POPUP_MAX_WIDTH = 340;
+const TOUR_CARD_WIDTH = 370;
 const VIEWPORT_MARGIN = 12;
 
 export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
@@ -56,6 +63,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   onNavigateTab,
   onOpenFullGuide,
 }) => {
+  const tourCtx = useGuideTour();
+
   const [hoverTarget, setHoverTarget] = useState<ActiveHoverTarget | null>(null);
   const [isPopupHovered, setIsPopupHovered] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -65,11 +74,27 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   const [selectedTopicPreviewId, setSelectedTopicPreviewId] = useState<string | null>(null);
   const [bubbleMinimized, setBubbleMinimized] = useState(false);
   const [dockMinimizedWhenOff, setDockMinimizedWhenOff] = useState(false);
+  const [tourTargetRect, setTourTargetRect] = useState<DOMRect | null>(null);
 
   const openTimerRef = useRef<number | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const currentHoverElementRef = useRef<HTMLElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
+
+  const isTourRunning = Boolean(
+    tourCtx?.activeTourModuleId && tourCtx.activeTourSteps.length > 0
+  );
+  const activeTourStep = isTourRunning
+    ? tourCtx!.activeTourSteps[tourCtx!.activeTourStepIndex] || null
+    : null;
+
+  const activeModuleKey =
+    programMode === 'lms_classroom'
+      ? 'lms_classroom'
+      : programMode === 'parent_portal'
+      ? 'parent_portal'
+      : currentTab;
+  const currentModuleTourDef = MODULE_GUIDED_TOURS[activeModuleKey] || null;
 
   const clearTimers = useCallback(() => {
     if (openTimerRef.current !== null) {
@@ -91,21 +116,69 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     }
   }, [currentRole]);
 
-  // Turn off active hover popups immediately if navigation guide is disabled
+  // Turn off active hover popups immediately if navigation guide is disabled or tour starts
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || isTourRunning) {
       clearTimers();
       currentHoverElementRef.current = null;
       setHoverTarget(null);
       setIsPopupHovered(false);
-    } else {
+    }
+    if (enabled) {
       setDockMinimizedWhenOff(false);
     }
-  }, [enabled, clearTimers]);
+  }, [enabled, isTourRunning, clearTimers]);
 
-  // Global mouseover / focusin listener when guide is enabled
+  // Track Spotlight Guided Tour target element position + auto-scroll into view
   useEffect(() => {
-    if (!enabled) return;
+    if (!isTourRunning || !activeTourStep) {
+      setTourTargetRect(null);
+      return;
+    }
+
+    const measureAndScroll = (shouldScroll: boolean) => {
+      const el = document.querySelector<HTMLElement>(activeTourStep.selector);
+      if (!el) {
+        setTourTargetRect(null);
+        return;
+      }
+      if (shouldScroll) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+      setTourTargetRect(el.getBoundingClientRect());
+    };
+
+    measureAndScroll(true);
+    const settleTimer = window.setTimeout(() => measureAndScroll(false), 260);
+
+    const handleSync = () => measureAndScroll(false);
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        tourCtx?.endTour();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        tourCtx?.nextTourStep();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        tourCtx?.prevTourStep();
+      }
+    };
+
+    window.addEventListener('scroll', handleSync, true);
+    window.addEventListener('resize', handleSync);
+    document.addEventListener('keydown', handleKey);
+
+    return () => {
+      window.clearTimeout(settleTimer);
+      window.removeEventListener('scroll', handleSync, true);
+      window.removeEventListener('resize', handleSync);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [isTourRunning, activeTourStep, tourCtx]);
+
+  // Global mouseover listener when Hover Guide is enabled (paused during active Spotlight Tour)
+  useEffect(() => {
+    if (!enabled || isTourRunning) return;
 
     const findGuideElement = (target: EventTarget | null): { el: HTMLElement; topicId: string } | null => {
       if (!(target instanceof Element)) return null;
@@ -189,14 +262,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       window.removeEventListener('scroll', handleScrollOrResize, true);
       window.removeEventListener('resize', handleScrollOrResize);
     };
-  }, [enabled, isPopupHovered, clearTimers]);
-
-  // Keep popup hover state from closing immediately on exit
-  useEffect(() => {
-    if (!isPopupHovered && currentHoverElementRef.current) {
-      // Let pointer over document handle dismissal cleanly
-    }
-  }, [isPopupHovered]);
+  }, [enabled, isTourRunning, isPopupHovered, clearTimers]);
 
   const resolvedHover = useMemo(() => {
     if (!hoverTarget) return null;
@@ -215,13 +281,10 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     let left = rect.right + 12;
     let top = rect.top - 8;
 
-    // Prefer right side for left sidebar items; prefer below for top navbar items; otherwise smart flip
     if (rect.top < 80) {
-      // Top navbar area: open below element
       top = rect.bottom + 10;
       left = rect.left + rect.width / 2 - width / 2;
     } else if (rect.right + 12 + width > vw - VIEWPORT_MARGIN) {
-      // Not enough room on right -> try left side or below
       if (rect.left - 12 - width >= VIEWPORT_MARGIN) {
         left = rect.left - width - 12;
       } else {
@@ -230,9 +293,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       }
     }
 
-    // Clamp horizontally
     left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - width - VIEWPORT_MARGIN));
-    // Clamp vertically
     if (top + estHeight > vh - VIEWPORT_MARGIN) {
       top = Math.max(VIEWPORT_MARGIN, rect.top - estHeight - 10);
     }
@@ -241,19 +302,57 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     return { left, top, width };
   }, [hoverTarget]);
 
-  // Current active page/tab topic for the mascot speech bubble when idle
+  // Calculate viewport-clamped position for the Guided Tour Card next to spotlight
+  const tourCardPosition = useMemo(() => {
+    if (!isTourRunning || typeof window === 'undefined') return null;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const width = Math.min(TOUR_CARD_WIDTH, vw - VIEWPORT_MARGIN * 2);
+    const estHeight = 260;
+
+    if (!tourTargetRect) {
+      return {
+        left: Math.max(VIEWPORT_MARGIN, vw / 2 - width / 2),
+        top: Math.max(VIEWPORT_MARGIN, vh / 2 - estHeight / 2),
+        width,
+      };
+    }
+
+    const rect = tourTargetRect;
+    // Prefer below target if space allows
+    let left = rect.left + Math.min(24, rect.width / 4);
+    let top = rect.bottom + 14;
+
+    if (top + estHeight > vh - VIEWPORT_MARGIN) {
+      // Try above target
+      if (rect.top - estHeight - 14 >= VIEWPORT_MARGIN) {
+        top = rect.top - estHeight - 14;
+      } else if (rect.right + width + 16 <= vw - VIEWPORT_MARGIN) {
+        // Place to the right
+        left = rect.right + 16;
+        top = rect.top;
+      } else if (rect.left - width - 16 >= VIEWPORT_MARGIN) {
+        // Place to the left
+        left = rect.left - width - 16;
+        top = rect.top;
+      } else {
+        // Bottom-center safe fallback (for very large target containers like histograms)
+        top = vh - estHeight - VIEWPORT_MARGIN;
+        left = vw / 2 - width / 2;
+      }
+    }
+
+    left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - width - VIEWPORT_MARGIN));
+    top = Math.max(VIEWPORT_MARGIN, Math.min(top, vh - estHeight - VIEWPORT_MARGIN));
+    return { left, top, width };
+  }, [isTourRunning, tourTargetRect]);
+
   const activeContextTopic = useMemo(() => {
-    const contextId =
-      programMode === 'lms_classroom'
-        ? 'nav-program-lms_classroom'
-        : programMode === 'parent_portal'
-        ? 'nav-program-parent_portal'
-        : currentTab;
     return (
-      resolveInteractiveTopic(contextId, currentRole, lang) ||
+      resolveInteractiveTopic(activeModuleKey, currentRole, lang) ||
       resolveInteractiveTopic('dashboard', currentRole, lang)
     );
-  }, [programMode, currentTab, currentRole, lang]);
+  }, [activeModuleKey, currentRole, lang]);
 
   const roleWorkflowSteps = useMemo(() => {
     const targetRole = drawerRoleTab === 'student' ? 'student' : 'teacher';
@@ -300,8 +399,153 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
 
   return (
     <>
-      {/* 1. FLOATING HOVER-TO-EXPLAIN POPUP CARD (when Guide ON & hovering a tagged feature) */}
-      {enabled && resolvedHover && popupPosition && (
+      {/* 0. INTERACTIVE STEP-BY-STEP SPOTLIGHT GUIDED TOUR */}
+      {isTourRunning && activeTourStep && tourCtx && tourCardPosition && (
+        <div data-mascot-chrome="true" className="fixed inset-0 z-50 pointer-events-none">
+          {/* Spotlight Cutout Frame with subtle dark backdrop */}
+          {tourTargetRect ? (
+            <div
+              aria-hidden="true"
+              style={{
+                left: Math.max(4, tourTargetRect.left - 6),
+                top: Math.max(4, tourTargetRect.top - 6),
+                width: Math.max(24, tourTargetRect.width + 12),
+                height: Math.max(24, tourTargetRect.height + 12),
+                boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.52)',
+              }}
+              className="fixed rounded-2xl ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all duration-200 pointer-events-none"
+            />
+          ) : (
+            <div className="fixed inset-0 bg-slate-900/45 pointer-events-none" />
+          )}
+
+          {/* Anchored Guided Tour Mascot Pop-up Card */}
+          <div
+            role="dialog"
+            aria-modal="false"
+            aria-label={lang === 'th' ? activeTourStep.titleTh : activeTourStep.titleEn}
+            style={{
+              left: tourCardPosition.left,
+              top: tourCardPosition.top,
+              width: tourCardPosition.width,
+            }}
+            className="fixed z-50 pointer-events-auto rounded-2xl border-2 border-[var(--color-primary)] bg-[var(--color-card)] shadow-2xl p-4 text-[var(--color-text-body)] space-y-3"
+          >
+            {/* Card Header with Animated Mascot & Step Counter */}
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] p-1 border border-[var(--color-border)]">
+                <MascotAvatar mood={activeTourStep.mood} size={46} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide text-[var(--color-primary-text)] tabular-nums">
+                    <Compass className="w-3 h-3 shrink-0" />
+                    <span>
+                      {lang === 'th'
+                        ? `ทัวร์นำทาง · ขั้นตอน ${tourCtx.activeTourStepIndex + 1}/${tourCtx.activeTourSteps.length}`
+                        : `Guided Tour · Step ${tourCtx.activeTourStepIndex + 1}/${tourCtx.activeTourSteps.length}`}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={tourCtx.endTour}
+                    aria-label={lang === 'th' ? 'ปิดทัวร์นำทาง' : 'Close tour'}
+                    className="p-1 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <h4 className="text-sm font-extrabold text-[var(--color-text-title)] leading-snug mt-0.5">
+                  {lang === 'th' ? activeTourStep.titleTh : activeTourStep.titleEn}
+                </h4>
+              </div>
+            </div>
+
+            {/* Step Description & Hint */}
+            <div className="space-y-2">
+              <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                {lang === 'th' ? activeTourStep.descriptionTh : activeTourStep.descriptionEn}
+              </p>
+
+              {(activeTourStep.actionHintTh || activeTourStep.actionHintEn) && (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-2 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                  <span>
+                    {lang === 'th' ? activeTourStep.actionHintTh : activeTourStep.actionHintEn}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Progress Dots + Navigation Controls */}
+            <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                {tourCtx.activeTourSteps.map((s, idx) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => tourCtx.goToTourStep(idx)}
+                    aria-label={`Step ${idx + 1}`}
+                    className={`h-2 rounded-full transition-all cursor-pointer ${
+                      idx === tourCtx.activeTourStepIndex
+                        ? 'w-5 bg-[var(--color-primary)]'
+                        : 'w-2 bg-[var(--color-border)] hover:bg-[var(--color-text-muted)]'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    tourCtx.endTour();
+                    onToggleEnabled(false);
+                  }}
+                  title={lang === 'th' ? 'ปิดการนำทางทั้งหมด' : 'Turn off navigation guide'}
+                  className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-[var(--color-text-muted)] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-[var(--color-card-subtle)] transition cursor-pointer whitespace-nowrap"
+                >
+                  {lang === 'th' ? 'ปิดนำทาง' : 'Turn Off'}
+                </button>
+
+                {tourCtx.activeTourStepIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={tourCtx.prevTourStep}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-xs font-bold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ย้อนกลับ' : 'Back'}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={tourCtx.nextTourStep}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap"
+                >
+                  {tourCtx.activeTourStepIndex + 1 >= tourCtx.activeTourSteps.length ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{lang === 'th' ? 'เสร็จสิ้น' : 'Finish'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{lang === 'th' ? 'ถัดไป' : 'Next'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. FLOATING HOVER-TO-EXPLAIN POPUP CARD (when Guide ON, no tour running, & hovering a tagged feature) */}
+      {enabled && !isTourRunning && resolvedHover && popupPosition && (
         <div
           ref={popupRef}
           data-mascot-chrome="true"
@@ -419,6 +663,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       )}
 
       {/* 2. FLOATING CARTOON MASCOT NAVIGATOR DOCK (Bottom-Right Corner) */}
+      {!isTourRunning && (
       <div
         data-mascot-chrome="true"
         className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 max-w-[calc(100vw-2rem)]"
@@ -439,8 +684,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   <p className="text-[10px] text-[var(--color-text-muted)] truncate">
                     {enabled
                       ? lang === 'th'
-                        ? 'เปิดอยู่ — เอาเมาส์ชี้เมนูหรือปุ่มเพื่อดูวิธีใช้ทันที'
-                        : 'ON — Hover any menu or button to inspect tips'
+                        ? 'เปิดอยู่ — เอาเมาส์ชี้เมนู/ปุ่ม หรือกดเริ่มทัวร์หน้านี้ได้เลย'
+                        : 'ON — Hover buttons or start a Guided Tour for this page'
                       : lang === 'th'
                       ? 'ปิดป๊อปอัปชี้เมาส์อยู่ (เปิดใหม่ได้ทุกเมื่อ)'
                       : 'Hover guide is OFF (re-enable anytime)'}
@@ -458,8 +703,34 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
               </button>
             </div>
 
-            {/* Interactive Mode ON/OFF Switch + Role Selector Tabs */}
+            {/* Guided Tour Trigger for Current Page + Interactive ON/OFF Switch + Role Tabs */}
             <div className="p-3 border-b border-[var(--color-border)] space-y-2.5 shrink-0 bg-[var(--color-card)]">
+              {currentModuleTourDef && tourCtx && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    window.setTimeout(() => {
+                      tourCtx.startModuleTour(activeModuleKey);
+                    }, 40);
+                  }}
+                  className="w-full flex items-center justify-between gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-3 py-2.5 shadow-sm transition cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 min-w-0 text-left">
+                    <Play className="w-4 h-4 shrink-0 fill-current" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-extrabold truncate">
+                        {lang === 'th' ? currentModuleTourDef.titleTh : currentModuleTourDef.titleEn}
+                      </div>
+                      <div className="text-[10px] text-blue-100 truncate">
+                        {lang === 'th' ? currentModuleTourDef.subtitleTh : currentModuleTourDef.subtitleEn}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 shrink-0" />
+                </button>
+              )}
+
               <div className="flex items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <MousePointerClick className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
@@ -685,7 +956,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
           <div className="flex items-end gap-2">
             {/* Live Cartoon Speech Bubble when Guide is ON and not minimized */}
             {enabled && !bubbleMinimized && activeContextTopic && (
-              <div className="hidden sm:flex flex-col max-w-[250px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-sm shadow-lg px-3 py-2 text-[var(--color-text-body)]">
+              <div className="hidden sm:flex flex-col max-w-[260px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-sm shadow-lg px-3 py-2 text-[var(--color-text-body)]">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-extrabold text-[var(--color-primary-text)] truncate">
                     {resolvedHover ? resolvedHover.title : activeContextTopic.title}
@@ -703,8 +974,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   {resolvedHover
                     ? resolvedHover.summary
                     : lang === 'th'
-                    ? 'เอาเมาส์ชี้ปุ่มหรือเมนูใดก็ได้เพื่อดูวิธีใช้ หรือคลิกน้องเอดูเพื่อเปิดคู่มือครู/นักเรียน'
-                    : 'Hover any button or menu for instant help, or click EduBuddy to open Student & Teacher Guides.'}
+                    ? 'เอาเมาส์ชี้ปุ่มหรือเมนูใดก็ได้เพื่อดูวิธีใช้ หรือคลิกน้องเอดูเพื่อเริ่มทัวร์หน้านี้'
+                    : 'Hover any button for hints or click EduBuddy to start this page’s Guided Tour.'}
                 </p>
               </div>
             )}
@@ -744,8 +1015,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   title={
                     enabled
                       ? lang === 'th'
-                        ? 'คลิกเพื่อเปิดคู่มือคุณครู & นักเรียน หรือสลับเปิด/ปิดการนำทาง'
-                        : 'Open Student & Teacher Guides or toggle hover navigation'
+                        ? 'คลิกเพื่อเริ่มทัวร์หน้านี้ / ดูคู่มือคุณครู & นักเรียน'
+                        : 'Click to launch Guided Tour or browse Student & Teacher guides'
                       : lang === 'th'
                       ? 'การนำทางปิดอยู่ — คลิกเพื่อเปิดดูคู่มือหรือเปิดใช้งานอีกครั้ง'
                       : 'Guide is OFF — click to open guides or re-enable'
@@ -775,7 +1046,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                       {enabled
                         ? lang === 'th'
                           ? 'เปิดอยู่'
-                          : 'Hover ON'
+                          : 'Tour ON'
                         : lang === 'th'
                         ? 'ปิดอยู่'
                         : 'OFF'}
@@ -787,6 +1058,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
           </div>
         )}
       </div>
+      )}
     </>
   );
 };

@@ -130,6 +130,7 @@ import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
 import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
 import { InteractiveMascotGuide } from './components/guide/InteractiveMascotGuide';
+import { GuideTourProvider } from './components/guide/GuideTourContext';
 import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
 import { AiDiagnosticLearningView } from './views/AiDiagnosticLearningView';
@@ -2997,6 +2998,13 @@ export const App: React.FC = () => {
   }
 
   return (
+    <GuideTourProvider
+      currentRole={currentRole}
+      currentTab={programMode === 'lms_classroom' ? 'lms_classroom' : programMode === 'parent_portal' ? 'parent_portal' : currentTab}
+      lang={lang}
+      isGuideEnabled={isMascotGuideEnabled}
+      onSetGuideEnabled={(next) => handleToggleMascotGuide(next)}
+    >
     <div className={`${isMobileInDesktopView ? 'min-h-dvh w-full overflow-x-auto overflow-y-auto' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
       {/* Sticky Top Banner when viewing Desktop View on Mobile Screen */}
       {isMobileInDesktopView && (
@@ -4262,6 +4270,7 @@ export const App: React.FC = () => {
       {/* Offline Status Connectivity Banner */}
       <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
     </div>
+    </GuideTourProvider>
   );
 };
 

@@ -36,6 +36,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
   Student, 
   Teacher,
@@ -348,9 +349,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               ? `ปีการศึกษา ${systemConfig.academicYear} • ${formatSemesterLabel(systemConfig.currentSemester)}`
               : `AY ${systemConfig.academicYear} • ${systemConfig.currentSemester}`}
           </span>
+          <ModuleTourTrigger moduleId="dashboard" lang={lang} />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <div data-guide-id="dashboard-subtabs" className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setDashboardTab('overview')}
@@ -690,7 +692,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               lang={lang}
             />
 
-            <details className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+            <details data-guide-id="dashboard-charts" className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl p-4 hover:bg-[var(--color-card-subtle)]">
                 <span>
                   <span className="block text-sm font-bold text-[var(--color-text-title)]">

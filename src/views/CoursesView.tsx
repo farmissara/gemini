@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Course, Student, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   getCourseDuplicateExtraIds,
   getCourseDuplicateReasons,
@@ -427,8 +428,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           </span>
         </div>
 
-        {canManageCourses && (
-          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <ModuleTourTrigger moduleId="courses" lang="th" />
+          {canManageCourses && (
+            <div data-guide-id="courses-header-actions" className="flex items-center gap-2 flex-wrap">
             {/* Quick Academic Import / Export Button */}
             {onOpenImportExport && (
               <button
@@ -498,7 +501,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               <span>เพิ่มรายวิชาใหม่ (Add Course)</span>
             </button>
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {courseDeleteError && (

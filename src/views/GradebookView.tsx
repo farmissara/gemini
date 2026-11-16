@@ -40,6 +40,7 @@ import {
   X,
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   ChartViewMode,
   GradeDistributionHistogram,
@@ -856,6 +857,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <ModuleTourTrigger moduleId="gradebook" lang={lang} />
           {activeTab === 'gradebook' && (
             <button
               type="button"
@@ -984,7 +986,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       </div>
 
       {/* Main Tab Switcher: Gradebook / ปพ.5 / ปพ.6 / ปพ.3 ออนไลน์ / สทศ. O-NET */}
-      <div className="shrink-0 flex rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 shadow-xs overflow-x-auto no-scrollbar">
+      <div data-guide-id="gradebook-tabs" className="shrink-0 flex rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] p-1 gap-1 shadow-xs overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('gradebook')}
@@ -1048,7 +1050,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
       {/* Course selector tabs (shown in Gradebook and ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'pp5') && (
-        <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 print:hidden">
+        <div data-guide-id="gradebook-course-bar" className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 print:hidden">
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,1.3fr)]">
             <label className="min-w-0">
               <span className="mb-1 block text-[11px] font-semibold text-[var(--color-text-muted)]">

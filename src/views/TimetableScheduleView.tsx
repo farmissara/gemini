@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Assignment, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -1120,7 +1121,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-            <nav aria-label="หน้าตารางเรียนและตารางสอน" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1">
+            <ModuleTourTrigger moduleId="timetable" lang={lang} />
+            <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1">
               <button
                 type="button"
                 aria-pressed={viewMode === 'classroom'}

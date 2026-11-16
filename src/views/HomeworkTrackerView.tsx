@@ -28,6 +28,7 @@ import {
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { addCalendarDays, getBangkokDateInputValue, getCalendarWeekStart } from '../lib/timetableCalendar';
 import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 
@@ -195,8 +196,9 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <ModuleTourTrigger moduleId="homework" lang={lang} />
           {/* Subtabs Navigation */}
-          <div className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div data-guide-id="homework-subtabs" className="flex p-1 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
             <button
               onClick={() => setHwTab('submissions')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
@@ -225,6 +227,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
           <button
             type="button"
+            data-guide-id="homework-gcal-sync"
             onClick={() => setShowGoogleCalendarModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] transition cursor-pointer"
           >
@@ -233,6 +236,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
           </button>
 
           <button
+            data-guide-id="homework-submit-btn"
             onClick={() => {
               setAllowDuplicateConfirm(false);
               setShowSubmitModal(true);

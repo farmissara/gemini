@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Course, Student, Lesson, Assignment, AppLanguage } from '../types';
 import { PagedList } from '../components/PagedList';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
   Play, 
   CheckCircle2, 
@@ -81,7 +82,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <ModuleTourTrigger moduleId="lms_classroom" lang={lang} />
           {submittedAlert && (
             <div className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />

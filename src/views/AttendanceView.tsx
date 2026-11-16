@@ -42,6 +42,7 @@ import {
   Upload
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -604,15 +605,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     <div className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3.5">
       {/* Top Header */}
       <div className="shrink-0 p-3 app-page-header flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex items-center gap-2">
+        <div className="min-w-0 flex flex-wrap items-center gap-2">
           <QrCode className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
           <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
             การเข้าเรียน &amp; สแกนประตูโรงเรียน
           </h1>
+          <ModuleTourTrigger moduleId="attendance" lang={lang} />
         </div>
 
         {/* Subtabs Navigation - Clean Compact Underlined Text Links (Never overflows) */}
-        <nav aria-label="Attendance sections" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 shrink-0 border-t lg:border-t-0 border-[var(--color-border)] pt-2 lg:pt-0">
+        <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 shrink-0 border-t lg:border-t-0 border-[var(--color-border)] pt-2 lg:pt-0">
           <button
             type="button"
             onClick={() => setActiveTab('gate_scanner')}
@@ -685,6 +687,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           {/* Continuous Rapid Scanner Modal Trigger */}
           <button
             type="button"
+            data-guide-id="attendance-rapid-scanner"
             onClick={() => setShowRapidScannerModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] text-white font-semibold text-xs shadow-xs transition cursor-pointer"
           >
