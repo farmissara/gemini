@@ -1,5 +1,5 @@
-import React, { useId, useState } from 'react';
-import { Coffee, Heart, Play, Sparkles } from 'lucide-react';
+import React, { useEffect, useId, useState } from 'react';
+import { Coffee, Eye, EyeOff, Heart, Play, Sparkles } from 'lucide-react';
 import { AppLanguage } from '../../types';
 import {
   CharcoalSvgGroup,
@@ -7,6 +7,11 @@ import {
   MeeSvgGroup,
 } from './MascotAvatar';
 import { emitMascotDashboardEvent } from './InteractiveMascotGuide';
+import {
+  AMBIENT_MASCOTS_EVENT,
+  getSavedAmbientMascotsEnabled,
+  setSavedAmbientMascotsEnabled,
+} from './DashboardAmbientMascots';
 
 export type PlayyardMode = 'chase' | 'cozy' | 'cheer';
 type PetTarget = 'charcoal' | 'mee' | 'jidrid';
@@ -82,6 +87,19 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
   const meeGradId = `playMee-${safeId}`;
 
   const [mode, setMode] = useState<PlayyardMode>(initialMode);
+  const [ambientOn, setAmbientOn] = useState<boolean>(() =>
+    getSavedAmbientMascotsEnabled()
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<boolean>).detail;
+      if (typeof detail === 'boolean') setAmbientOn(detail);
+    };
+    window.addEventListener(AMBIENT_MASCOTS_EVENT, handler);
+    return () => window.removeEventListener(AMBIENT_MASCOTS_EVENT, handler);
+  }, []);
   const [lastPet, setLastPet] = useState<{
     target: PetTarget;
     lineIdx: number;
@@ -190,6 +208,30 @@ export const BaanPakKruPlayyard: React.FC<BaanPakKruPlayyardProps> = ({
               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap"
             >
               <span>{lang === 'th' ? 'ทัวร์แนะนำ' : 'Tour'}</span>
+            </button>
+          )}
+          {variant === 'dashboard' && (
+            <button
+              type="button"
+              aria-pressed={ambientOn}
+              onClick={() => {
+                const next = !ambientOn;
+                setAmbientOn(next);
+                setSavedAmbientMascotsEnabled(next);
+              }}
+              className={`hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                ambientOn
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+              title={
+                lang === 'th'
+                  ? 'เปิด/ปิด ชาร์โคล & หมี เดินเล่นตามขอบการ์ดแดชบอร์ด'
+                  : 'Toggle ambient roaming mascots on dashboard borders'
+              }
+            >
+              {ambientOn ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+              <span>{lang === 'th' ? 'เดินเล่นขอบการ์ด' : 'Ambient'}</span>
             </button>
           )}
         </div>

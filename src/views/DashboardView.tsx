@@ -42,6 +42,7 @@ import { slotHasTeacher } from '../lib/timetableTeachers';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { BaanPakKruPlayyard } from '../components/guide/BaanPakKruPlayyard';
+import { DashboardAmbientMascots } from '../components/guide/DashboardAmbientMascots';
 import { 
   Student, 
   Teacher,
@@ -719,7 +720,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* ==============================================================
                 MAIN 2-COLUMN WORKSPACE (50% / 50%)
                ============================================================== */}
-            <div className="dashboard-print-grid dash-grid grid-cols-1 lg:grid-cols-2 items-start">
+            <div className="dashboard-print-grid relative dash-grid grid-cols-1 lg:grid-cols-2 items-start">
+              <DashboardAmbientMascots lang={lang} />
               {/* ──────────────────────────────────────────────────────────
                   LEFT COLUMN (50%): School Overview (Blue) + Attendance & Parent Link (Green)
                  ────────────────────────────────────────────────────────── */}

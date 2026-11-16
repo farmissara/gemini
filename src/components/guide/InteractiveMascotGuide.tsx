@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -29,8 +29,11 @@ import {
 } from '../../data/interactiveGuideTopics';
 import { MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
 import {
+  CharcoalSvgGroup,
+  JidRidChickSvgGroup,
   MascotAvatar,
   MascotCharacter,
+  MeeSvgGroup,
   getSavedMascotCharacter,
   setSavedMascotCharacter,
 } from './MascotAvatar';
@@ -156,6 +159,21 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
   const dockExitTimerRef = useRef<number | null>(null);
   const hoverExitTimerRef = useRef<number | null>(null);
   const bubbleExitTimerRef = useRef<number | null>(null);
+  const dockLauncherRef = useRef<HTMLDivElement | null>(null);
+  const chaseTimersRef = useRef<number[]>([]);
+  const lastChaseTriggerAtRef = useRef<number>(0);
+
+  const rawChaseId = useId();
+  const safeChaseId = rawChaseId.replace(/:/g, '');
+  const chaseCharcoalGradId = `chaseCharcoal-${safeChaseId}`;
+  const chaseMeeGradId = `chaseMee-${safeChaseId}`;
+
+  const [screenChase, setScreenChase] = useState<{
+    id: number;
+    waypoints: { x: number; y: number }[];
+    stepIdx: number;
+    facingRight: boolean;
+  } | null>(null);
 
   const isTourRunning = Boolean(
     tourCtx?.activeTourModuleId && tourCtx.activeTourSteps.length > 0
@@ -219,6 +237,142 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       triggerDashboardEvent(dashboardEvent);
     }
   }, [dashboardEvent, triggerDashboardEvent]);
+
+  const clearChaseTimers = useCallback(() => {
+    chaseTimersRef.current.forEach((id) => window.clearTimeout(id));
+    chaseTimersRef.current = [];
+  }, []);
+
+  const startScreenWideChase = useCallback(
+    (force = false) => {
+      if (typeof window === 'undefined') return;
+      const now = Date.now();
+      if (!force && now - lastChaseTriggerAtRef.current < 1600) return;
+      lastChaseTriggerAtRef.current = now;
+      clearChaseTimers();
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const marginX = 32;
+      const maxX = Math.max(marginX + 60, vw - 290);
+      const minY = 56;
+      const maxY = Math.max(minY + 60, vh - 130);
+      const startWp = {
+        x: Math.max(marginX, vw - 290),
+        y: Math.max(minY, vh - 130),
+      };
+
+      const waypoints: { x: number; y: number }[] = [startWp];
+      for (let i = 0; i < 4; i++) {
+        const prev = waypoints[waypoints.length - 1];
+        let candidate = {
+          x: Math.round(marginX + Math.random() * (maxX - marginX)),
+          y: Math.round(minY + Math.random() * (maxY - minY)),
+        };
+        // Pick a point far enough across the viewport for a lively chase path
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const dist = Math.hypot(candidate.x - prev.x, candidate.y - prev.y);
+          if (dist >= Math.min(240, vw * 0.35)) break;
+          candidate = {
+            x: Math.round(marginX + Math.random() * (maxX - marginX)),
+            y: Math.round(minY + Math.random() * (maxY - minY)),
+          };
+        }
+        waypoints.push(candidate);
+      }
+      waypoints.push(startWp);
+
+      const chaseId = now;
+      setScreenChase({
+        id: chaseId,
+        waypoints,
+        stepIdx: 0,
+        facingRight: waypoints[1].x > waypoints[0].x,
+      });
+
+      triggerDashboardEvent({
+        type: 'success',
+        titleTh: 'ชาร์โคล & หมี วิ่งไล่ลูกไก่จิ๊ดริ๊ด!',
+        titleEn: 'JidRid Chase Across Screen!',
+        messageTh:
+          'จิ๊บๆ! จิ๊ดริ๊ดและผองเพื่อนวิ่งหนีรอบหน้าจอโดยมีหมีกับชาร์โคลวิ่งตามติดๆ',
+        messageEn:
+          'Cheep! Charcoal and Mee are playfully chasing JidRid the chicks across your screen!',
+        durationMs: 4800,
+      });
+
+      // Kick off first random hop on next animation frame
+      const legDuration = 950;
+      const startTimer = window.setTimeout(() => {
+        setScreenChase((prev) => {
+          if (!prev || prev.id !== chaseId) return prev;
+          return {
+            ...prev,
+            stepIdx: 1,
+            facingRight: prev.waypoints[1].x > prev.waypoints[0].x,
+          };
+        });
+      }, 40);
+      chaseTimersRef.current.push(startTimer);
+
+      for (let idx = 2; idx < waypoints.length; idx++) {
+        const t = window.setTimeout(() => {
+          setScreenChase((prev) => {
+            if (!prev || prev.id !== chaseId) return prev;
+            const prevWp = prev.waypoints[idx - 1];
+            const nextWp = prev.waypoints[idx];
+            return {
+              ...prev,
+              stepIdx: idx,
+              facingRight: nextWp.x > prevWp.x,
+            };
+          });
+        }, 40 + (idx - 1) * legDuration);
+        chaseTimersRef.current.push(t);
+      }
+
+      const endTimer = window.setTimeout(() => {
+        setScreenChase((prev) => (prev && prev.id === chaseId ? null : prev));
+      }, 40 + (waypoints.length - 1) * legDuration + 550);
+      chaseTimersRef.current.push(endTimer);
+    },
+    [clearChaseTimers, triggerDashboardEvent]
+  );
+
+  useEffect(() => clearChaseTimers, [clearChaseTimers]);
+
+  // Detect clicks ON or NEAR (~90px around) the mascot pair dock to trigger playful chase
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const PROXIMITY_PX = 90;
+
+    const handlePointerNearMascot = (event: PointerEvent) => {
+      if (drawerMounted || isTourRunning) return;
+      const dockEl = dockLauncherRef.current;
+      if (!dockEl) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-mascot-dismiss="true"]')) {
+        return;
+      }
+      const rect = dockEl.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      const isInsideOrNear =
+        event.clientX >= rect.left - PROXIMITY_PX &&
+        event.clientX <= rect.right + PROXIMITY_PX &&
+        event.clientY >= rect.top - PROXIMITY_PX &&
+        event.clientY <= rect.bottom + PROXIMITY_PX;
+
+      if (isInsideOrNear) {
+        startScreenWideChase();
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerNearMascot, { passive: true });
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerNearMascot);
+    };
+  }, [drawerMounted, isTourRunning, startScreenWideChase]);
 
   const openDrawer = useCallback(() => {
     if (drawerExitTimerRef.current !== null) {
@@ -676,8 +830,111 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
     return lang === 'th' ? 'แนะนำการใช้งาน' : 'Feature Guide';
   };
 
+  const activeChaseWaypoint = screenChase
+    ? screenChase.waypoints[screenChase.stepIdx] || screenChase.waypoints[0]
+    : null;
+
   return (
     <>
+      {/* -1. SCREEN-WIDE RANDOM PATH CHASE (Triggered when clicking on or near the mascot pair) */}
+      {screenChase && activeChaseWaypoint && (
+        <div
+          data-mascot-chrome="true"
+          aria-hidden="true"
+          className="no-print fixed inset-0 z-[60] pointer-events-none overflow-hidden"
+        >
+          <div
+            style={{
+              transform: `translate3d(${activeChaseWaypoint.x}px, ${activeChaseWaypoint.y}px, 0)`,
+              transition: 'transform 930ms cubic-bezier(0.25, 0.85, 0.35, 1)',
+            }}
+            className="absolute top-0 left-0 will-change-transform"
+          >
+            {/* Readable Unflipped Speech Caption */}
+            <div className="mb-1 flex items-center justify-center gap-1.5">
+              <span className="rounded-full bg-amber-100/95 dark:bg-amber-950/95 border border-amber-300 dark:border-amber-700 px-2 py-0.5 text-[10px] font-extrabold text-amber-900 dark:text-amber-100 shadow-sm">
+                จิ๊บ จิ๊บ! (จิ๊ดริ๊ดวิ่งหนี!)
+              </span>
+              <span className="rounded-full bg-sky-100/95 dark:bg-sky-950/95 border border-sky-300 dark:border-sky-700 px-2 py-0.5 text-[10px] font-extrabold text-sky-900 dark:text-sky-100 shadow-sm">
+                โฮ่ง!
+              </span>
+            </div>
+
+            {/* Mirrored running pack facing current random segment direction */}
+            <div
+              style={{
+                transform: screenChase.facingRight ? 'scaleX(-1)' : 'scaleX(1)',
+              }}
+              className="transition-transform duration-200"
+            >
+              <svg viewBox="0 0 268 96" className="w-64 sm:w-72 h-24 drop-shadow-lg overflow-visible">
+                <defs>
+                  <linearGradient id={chaseCharcoalGradId} x1="20" y1="14" x2="78" y2="86" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#3F3F46" />
+                    <stop offset="50%" stopColor="#27272A" />
+                    <stop offset="100%" stopColor="#09090B" />
+                  </linearGradient>
+                  <linearGradient id={chaseMeeGradId} x1="18" y1="18" x2="104" y2="82" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#3F3F46" />
+                    <stop offset="55%" stopColor="#27272A" />
+                    <stop offset="100%" stopColor="#09090B" />
+                  </linearGradient>
+                </defs>
+
+                {/* Dust puffs behind Charcoal & Mee */}
+                <circle cx="250" cy="84" r="5" fill="#FFFFFF" fillOpacity="0.7" className="mascot-dust-puff" />
+                <circle cx="176" cy="85" r="4.2" fill="#FFFFFF" fillOpacity="0.6" className="mascot-dust-puff" />
+
+                {/* 3 JidRid Chicks leading the sprint (leftmost in base left-facing frame) */}
+                <g className="mascot-chick-hop">
+                  <JidRidChickSvgGroup
+                    variant="leader"
+                    flapping
+                    happyEyes
+                    transform="translate(2, 36) scale(0.92)"
+                  />
+                </g>
+                <g className="mascot-chick-hop-alt">
+                  <JidRidChickSvgGroup
+                    variant="chubby"
+                    flapping
+                    happyEyes
+                    transform="translate(26, 46) scale(0.8)"
+                  />
+                </g>
+                <g className="mascot-chick-hop">
+                  <JidRidChickSvgGroup
+                    variant="peeking"
+                    flapping
+                    transform="translate(48, 50) scale(0.74)"
+                  />
+                </g>
+
+                {/* Sausage Dog Mee chasing right behind them */}
+                <g className="mascot-run-bounce">
+                  <MeeSvgGroup
+                    mood="celebrate"
+                    running
+                    gradId={chaseMeeGradId}
+                    transform="translate(74, 8) scale(0.88)"
+                  />
+                </g>
+
+                {/* Chubby Charcoal running hard behind Mee */}
+                <g className="mascot-run-bounce-slow">
+                  <CharcoalSvgGroup
+                    mood="success"
+                    running
+                    gradId={chaseCharcoalGradId}
+                    transform="translate(168, 4) scale(0.92)"
+                  />
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 0. INTERACTIVE STEP-BY-STEP SPOTLIGHT GUIDED TOUR */}
       {isTourRunning && activeTourStep && tourCtx && tourCardPosition && (
         <div data-mascot-chrome="true" className="fixed inset-0 z-50 pointer-events-none">
@@ -1104,6 +1361,21 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
 
               <BaanPakKruPlayyard variant="drawer" lang={lang} />
 
+              <button
+                type="button"
+                onClick={() => {
+                  closeDrawer(() => startScreenWideChase(true));
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-900 dark:text-amber-100 text-xs font-extrabold transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
+                <span>
+                  {lang === 'th'
+                    ? 'ปล่อยชาร์โคล & หมี วิ่งไล่ลูกไก่จิ๊ดริ๊ดทั่วจอ!'
+                    : 'Play Screen-Wide JidRid Chase!'}
+                </span>
+              </button>
+
               {/* Dedicated In-Module Student & Teacher Guide Switcher */}
               <div className="grid grid-cols-3 gap-1.5">
                 <button
@@ -1388,6 +1660,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
               </button>
             ) : (
               <div
+                ref={dockLauncherRef}
                 className={`flex items-center gap-1.5 ${
                   dockMascotExiting ? 'mascot-exit' : 'mascot-enter'
                 }`}
@@ -1395,6 +1668,7 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 {!enabled && !activeDashboardEvent && (
                   <button
                     type="button"
+                    data-mascot-dismiss="true"
                     onClick={minimizeDockWhenOff}
                     aria-label={lang === 'th' ? 'ย่อปุ่มการ์ตูน' : 'Minimize guide button'}
                     className="p-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] shadow-sm text-[10px] cursor-pointer"
@@ -1402,19 +1676,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                     <X className="w-3 h-3" />
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={openDrawer}
-                  title={
-                    enabled
-                      ? lang === 'th'
-                        ? 'คลิกเพื่อเริ่มทัวร์หน้านี้ / ดูคู่มือคุณครู & นักเรียน'
-                        : 'Click to launch Guided Tour or browse Student & Teacher guides'
-                      : lang === 'th'
-                      ? 'การนำทางปิดอยู่ — คลิกเพื่อเปิดดูคู่มือหรือเปิดใช้งานอีกครั้ง'
-                      : 'Guide is OFF — click to open guides or re-enable'
-                  }
-                  className={`group relative flex items-center gap-2 rounded-2xl border px-2.5 py-1.5 shadow-lg transition cursor-pointer ${
+                <div
+                  className={`group relative flex items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 shadow-lg transition ${
                     activeDashboardEvent?.type === 'success'
                       ? 'border-emerald-400 bg-emerald-50/90 dark:bg-emerald-950/80'
                       : activeDashboardEvent?.type === 'warning'
@@ -1426,14 +1689,41 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                       : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-90 hover:opacity-100'
                   }`}
                 >
-                  <MascotAvatar
-                    mood={dockMascotMood}
-                    sleeping={dockMascotSleeping}
-                    running={!dockMascotSleeping}
-                    character={mascotCharacter}
-                    size={54}
-                  />
-                  <div className="text-left pr-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startScreenWideChase(true);
+                    }}
+                    title={
+                      lang === 'th'
+                        ? 'คลิกที่ชาร์โคล & หมี เพื่อวิ่งไล่ลูกไก่จิ๊ดริ๊ดทั่วหน้าจอ!'
+                        : 'Click Charcoal & Mee to chase JidRid chicks across the screen!'
+                    }
+                    className="cursor-pointer rounded-xl p-0.5 hover:scale-105 transition-transform focus:outline-none"
+                  >
+                    <MascotAvatar
+                      mood={dockMascotMood}
+                      sleeping={dockMascotSleeping}
+                      running={!dockMascotSleeping}
+                      character={mascotCharacter}
+                      size={54}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openDrawer}
+                    title={
+                      enabled
+                        ? lang === 'th'
+                          ? 'คลิกเพื่อเริ่มทัวร์หน้านี้ / ดูคู่มือคุณครู & นักเรียน'
+                          : 'Click to launch Guided Tour or browse Student & Teacher guides'
+                        : lang === 'th'
+                        ? 'การนำทางปิดอยู่ — คลิกเพื่อเปิดดูคู่มือหรือเปิดใช้งานอีกครั้ง'
+                        : 'Guide is OFF — click to open guides or re-enable'
+                    }
+                    className="text-left pr-1 cursor-pointer focus:outline-none"
+                  >
                     <div className="text-[11px] font-extrabold text-[var(--color-text-title)] leading-tight whitespace-nowrap">
                       {lang === 'th' ? mascotDisplayNameTh : mascotDisplayNameEn}
                     </div>
@@ -1464,14 +1754,14 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                           : 'Error'
                         : enabled
                         ? lang === 'th'
-                          ? 'เปิดอยู่'
+                          ? 'เปิดอยู่ · ดูคู่มือ'
                           : 'Tour ON'
                         : lang === 'th'
                         ? 'ปิดอยู่'
                         : 'OFF'}
                     </div>
-                  </div>
-                </button>
+                  </button>
+                </div>
               </div>
             )}
           </div>
