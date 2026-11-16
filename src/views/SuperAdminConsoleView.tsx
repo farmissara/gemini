@@ -39,6 +39,7 @@ import { fetchSchoolCounts } from '../lib/supabase';
 import { getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { getModuleTone } from '../lib/moduleTheme';
 import { 
   School, 
   SchoolTier,
@@ -410,7 +411,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${getModuleTone('super_admin_console')}`}>
       {/* Toast Alert */}
       {feedbackToast && (
         <div className="fixed bottom-6 right-6 z-50 p-3.5 rounded-xl bg-slate-900 text-white border border-slate-700 shadow-xl text-xs flex items-center gap-2">
@@ -421,40 +422,44 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
       {/* Super Admin Identity Header */}
       <div className="app-page-header p-3.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 space-y-0.5">
-          <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-            <span className="truncate">ศูนย์ควบคุมระบบและกำกับดูแลสถานศึกษา</span>
-          </h1>
-          <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)] flex-wrap">
-            <span>Super Admin Console</span>
-            <span>·</span>
-            <a
-              href="mailto:farmissara@gmail.com"
-              className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-300 font-mono hover:underline"
-              title="อีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
-            >
-              <Mail className="w-3 h-3" />
-              <span>farmissara@gmail.com</span>
-            </a>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] tracking-tight truncate">
+              ศูนย์ควบคุมระบบและกำกับดูแลสถานศึกษา
+            </h1>
+            <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)] flex-wrap">
+              <span>Super Admin Console</span>
+              <span>·</span>
+              <a
+                href="mailto:farmissara@gmail.com"
+                className="inline-flex items-center gap-1 text-[var(--tone)] font-mono hover:underline"
+                title="อีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
+              >
+                <Mail className="w-3 h-3" />
+                <span>farmissara@gmail.com</span>
+              </a>
+            </div>
           </div>
         </div>
 
         {/* Quick KPI stats & Urgent Desk Link */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs flex items-center gap-1.5 tabular-nums">
+          <div className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs flex items-center gap-1.5 tabular-nums">
             <span className="text-[var(--color-text-muted)]">โรงเรียน:</span>
             <strong className="text-[var(--color-text-title)]">{schools.length}</strong>
           </div>
-          <div className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-xs flex items-center gap-1.5 tabular-nums">
-            <span className="text-amber-900 dark:text-amber-200 font-medium">รออนุมัติ:</span>
-            <strong className="text-amber-900 dark:text-amber-100">{pendingRegistrations.length}</strong>
+          <div className="px-3 py-1.5 rounded-lg bg-[var(--tone-soft)] border border-[var(--color-border)] text-xs flex items-center gap-1.5 tabular-nums">
+            <span className="text-[var(--tone)] font-medium">รออนุมัติ:</span>
+            <strong className="text-[var(--tone)]">{pendingRegistrations.length}</strong>
           </div>
           {onOpenCoordinationDesk && (
             <button
               type="button"
               onClick={onOpenCoordinationDesk}
-              className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="btn-action-primary"
             >
               <Mail className="w-3.5 h-3.5" />
               <span>แชต/จดหมายโรงเรียน</span>
@@ -469,53 +474,41 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       </div>
 
       {/* Sub Tabs */}
-      <div className="flex items-center border-b border-[var(--color-border)] gap-2 overflow-x-auto no-scrollbar">
+      <div className="seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
         <button
           type="button"
+          data-active={activeSubTab === 'approvals'}
           onClick={() => setActiveSubTab('approvals')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            activeSubTab === 'approvals'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <MailCheck className="w-4 h-4" />
+          <MailCheck className="w-3.5 h-3.5" />
           <span>อนุมัติการสมัครโรงเรียน</span>
         </button>
         <button
           type="button"
+          data-active={activeSubTab === 'schools'}
           onClick={() => setActiveSubTab('schools')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            activeSubTab === 'schools'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <Building2 className="w-4 h-4" />
+          <Building2 className="w-3.5 h-3.5" />
           <span>กำกับดูแลสถานศึกษาทั้งหมด ({schools.length} แห่ง)</span>
         </button>
         <button
           type="button"
+          data-active={activeSubTab === 'central_exams'}
           onClick={() => setActiveSubTab('central_exams')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            activeSubTab === 'central_exams'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-3.5 h-3.5" />
           <span>คลังข้อสอบกลาง (8 สาระ)</span>
         </button>
         <button
           type="button"
+          data-active={activeSubTab === 'exam_payment'}
           onClick={() => setActiveSubTab('exam_payment')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            activeSubTab === 'exam_payment'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <CreditCard className="w-3.5 h-3.5" />
           <span>ตั้งค่า QR PromptPay รับเงินข้อสอบ</span>
         </button>
         <button

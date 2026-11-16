@@ -31,6 +31,7 @@ import {
   INITIAL_TEACHER_INSIGHTS 
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface SocraticTutorViewProps {
   lang?: AppLanguage;
@@ -170,52 +171,53 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('socratic_tutor')}`}>
       {/* Top Banner Header */}
-      <div className="shrink-0 bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-3.5 sm:p-4 shadow-md border border-teal-600/40 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-900/70 border border-teal-400/40 text-teal-100 text-[11px] font-semibold">
-              <BrainCircuit className="w-3.5 h-3.5 text-teal-300" />
-              <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ข้อสงสัยครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
+      <div className="shrink-0 app-page-header p-3.5 sm:p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 max-w-xl">
+            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+              <BrainCircuit className="w-5 h-5" />
             </div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              <span>{lang === 'th' ? 'AI Socratic Voice Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
-            </h1>
-            <p className="text-slate-200 text-xs leading-relaxed">
-              {lang === 'th' 
-                ? 'โหมดตัวอย่าง: บทสนทนาใช้คำตอบจำลอง ยังไม่ได้เชื่อม AI จริง ส่วนแดชบอร์ดครูแสดงข้อมูลตัวอย่าง'
-                : 'Demo mode: responses are simulated, not connected to a live AI. Teacher insights use sample data.'}
-            </p>
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ข้อสงสัยครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
+                <span>{lang === 'th' ? 'AI Socratic Voice Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs leading-relaxed">
+                {lang === 'th' 
+                  ? 'โหมดตัวอย่าง: บทสนทนาใช้คำตอบจำลอง ยังไม่ได้เชื่อม AI จริง ส่วนแดชบอร์ดครูแสดงข้อมูลตัวอย่าง'
+                  : 'Demo mode: responses are simulated, not connected to a live AI. Teacher insights use sample data.'}
+              </p>
+            </div>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-1.5 bg-slate-950/50 p-1 rounded-2xl backdrop-blur-md border border-white/25 shrink-0">
+          <div className="seg-tab-group shrink-0">
             <button
               type="button"
+              data-active={activeTab === 'tutor_chat'}
               onClick={() => setActiveTab('tutor_chat')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'tutor_chat'
-                  ? 'bg-teal-400 text-slate-950 shadow-md font-black'
-                  : 'text-white hover:bg-slate-800/70'
-              }`}
+              className="seg-tab-btn"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'ห้องแชทติวเตอร์ AI' : 'Student AI Chat'}</span>
             </button>
 
-            {canViewTeacherInsights && <button
-              type="button"
-              onClick={() => setActiveTab('teacher_insights')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'teacher_insights'
-                  ? 'bg-indigo-700 text-white shadow-md font-black'
-                  : 'text-white hover:bg-slate-800/70'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'แดชบอร์ดคุณครู' : 'Teacher Insights'}</span>
-            </button>}
+            {canViewTeacherInsights && (
+              <button
+                type="button"
+                data-active={activeTab === 'teacher_insights'}
+                onClick={() => setActiveTab('teacher_insights')}
+                className="seg-tab-btn"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'แดชบอร์ดคุณครู' : 'Teacher Insights'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

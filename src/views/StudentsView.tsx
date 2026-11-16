@@ -43,6 +43,7 @@ import {
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
+import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
@@ -977,7 +978,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
+    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-3`}>
       {accountsError && (
         <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium">
           {accountsError}
@@ -991,7 +992,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* Compact Single-Row Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Users className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <Users className="w-4 h-4" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             ทะเบียนนักเรียน (DMC / SIS)
           </h1>
@@ -1008,11 +1011,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               onClick={() => setShowQuickSortMenu((prev) => !prev)}
               aria-haspopup="menu"
               aria-expanded={showQuickSortMenu}
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                sortBy !== 'default'
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
+              data-active={sortBy !== 'default'}
+              className="btn-tool-neutral px-2.5 py-1.5"
             >
               <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
               <span>Quick Sort{sortBy !== 'default' ? `: ${activeQuickSortLabel}` : ''}</span>
@@ -1042,7 +1042,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       }}
                       className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition cursor-pointer ${
                         isActive
-                          ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold'
+                          ? 'tone-active font-bold'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                       }`}
                     >
@@ -1060,10 +1060,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             )}
           </div>
           <details className="relative" data-guide-id="students-import-export">
-            <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+            <summary className="btn-tool-tone list-none px-2.5 py-1.5">
               <span>เครื่องมือ / นำเข้าชุด</span>
               {selectedQrStudentIds.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-[var(--color-primary)] text-white text-[10px] font-bold tabular-nums">
+                <span className="px-1.5 py-0.2 rounded bg-[var(--tone-solid)] text-white text-[10px] font-bold tabular-nums">
                   {selectedQrStudentIds.length}
                 </span>
               )}
@@ -1093,7 +1093,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <QrCode className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <QrCode className="w-3.5 h-3.5 tone-text shrink-0" />
                 <span>
                   พิมพ์ QR ชุด (PDF)
                   {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
@@ -1122,7 +1122,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
                 <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
               </button>
 
@@ -1135,7 +1135,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
-                  <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
                   <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
                 </button>
               )}
@@ -1160,7 +1160,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             type="button"
             data-guide-id="students-add-single"
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
+            className="btn-action-primary px-3 py-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>เพิ่มนักเรียน</span>
@@ -1170,50 +1170,43 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* View Tabs */}
       <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
-        <button
-          type="button"
-          onClick={() => setActiveTab('roster')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'roster'
-              ? 'bg-[var(--color-primary)] text-white shadow-xs'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>ทะเบียนรายชื่อ ({filteredStudents.length} คน)</span>
-        </button>
-        {canManageApprovals && (
+        <div className="seg-tab-group overflow-x-auto no-scrollbar">
           <button
             type="button"
-            data-guide-id="students-approvals-tab"
-            onClick={() => setActiveTab('approvals')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'approvals'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
+            data-active={activeTab === 'roster'}
+            onClick={() => setActiveTab('roster')}
+            className="seg-tab-btn flex items-center gap-1.5"
           >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>คำขอสมัครเข้าโรงเรียน / อนุมัติบัญชี</span>
-            {pendingAccountsCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
-                {pendingAccountsCount} รออนุมัติ
-              </span>
-            )}
+            <Users className="w-3.5 h-3.5" />
+            <span>ทะเบียนรายชื่อ ({filteredStudents.length} คน)</span>
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setActiveTab('analytics')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'analytics'
-              ? 'bg-[var(--color-primary)] text-white shadow-xs'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
-        >
-          <Award className="w-3.5 h-3.5" />
-          <span>สถิติระดับชั้น &amp; สถานะนักเรียน</span>
-        </button>
+          {canManageApprovals && (
+            <button
+              type="button"
+              data-guide-id="students-approvals-tab"
+              data-active={activeTab === 'approvals'}
+              onClick={() => setActiveTab('approvals')}
+              className="seg-tab-btn flex items-center gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>คำขอสมัครเข้าโรงเรียน / อนุมัติบัญชี</span>
+              {pendingAccountsCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
+                  {pendingAccountsCount}
+                </span>
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            data-active={activeTab === 'analytics'}
+            onClick={() => setActiveTab('analytics')}
+            className="seg-tab-btn flex items-center gap-1.5"
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>สถิติระดับชั้น &amp; สถานะนักเรียน</span>
+          </button>
+        </div>
       </div>
 
       {activeTab === 'roster' && accountsSuccess && (
@@ -1226,7 +1219,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {activeTab === 'roster' && (
         <>
           {/* Compact Filter and Search Bar */}
-          <div data-guide-id="students-search-bar" className="shrink-0 px-3 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-2">
+          <div data-guide-id="students-search-bar" className="shrink-0 toolbar-filter-zone flex flex-col md:flex-row items-center justify-between gap-2">
             <div className="relative w-full md:w-72">
               <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input

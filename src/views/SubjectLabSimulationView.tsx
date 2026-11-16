@@ -40,6 +40,7 @@ import {
   Globe,
   Rocket
 } from 'lucide-react';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface SubjectLabSimulationViewProps {
   currentUserRole?: UserRole;
@@ -821,7 +822,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-slate-950 text-white select-none overflow-hidden font-sans">
+    <div className={`h-full w-full flex flex-col bg-slate-950 text-white select-none overflow-hidden font-sans ${getModuleTone('subject_labs')}`}>
       
       {/* ========================================================= */}
       {/* 1. TOP HEADER BAR: Compact, Single-line, No Multi-line Wrapping */}
@@ -843,7 +844,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           )}
 
           <div className={`h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 shrink-0 ${activeConfig.badgeBg}`}>
-            <activeConfig.icon className="w-3.5 h-3.5 animate-pulse shrink-0" />
+            <activeConfig.icon className="w-3.5 h-3.5 shrink-0" />
             <span className="font-extrabold whitespace-nowrap">{activeConfig.stageTitleTh}</span>
           </div>
         </div>

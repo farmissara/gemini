@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { getModuleTone } from '../lib/moduleTheme';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -641,11 +642,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   });
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-2">
+    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-2`}>
       {/* Compact Top Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
         <div className="min-w-0 flex items-center gap-2">
-          <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <QrCode className="w-4 h-4 shrink-0" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             การเข้าเรียน &amp; สแกนประตู
           </h1>
@@ -653,82 +656,69 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         </div>
 
         {/* Subtabs Navigation */}
-        <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-x-3 gap-y-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('gate_scanner')}
-            className={`px-1 py-1 text-xs font-bold transition cursor-pointer border-b-2 whitespace-nowrap ${
-              activeTab === 'gate_scanner'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            1. สแกนประตู
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('leave_approval')}
-            className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap ${
-              activeTab === 'leave_approval'
-                ? 'border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 shrink-0" />
-            <span>{isRestrictedViewer ? '2. ใบลาของฉัน' : '2. อนุมัติใบลา'}</span>
-            {scopedLeaveRequests.filter(r => r.status === 'pending').length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px]">
-                {scopedLeaveRequests.filter(r => r.status === 'pending').length}
-              </span>
+        <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="seg-tab-group overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              data-active={activeTab === 'gate_scanner'}
+              onClick={() => setActiveTab('gate_scanner')}
+              className="seg-tab-btn"
+            >
+              1. สแกนประตู
+            </button>
+            <button
+              type="button"
+              data-active={activeTab === 'leave_approval'}
+              onClick={() => setActiveTab('leave_approval')}
+              className="seg-tab-btn flex items-center gap-1"
+            >
+              <FileText className="w-3.5 h-3.5 shrink-0" />
+              <span>{isRestrictedViewer ? '2. ใบลาของฉัน' : '2. อนุมัติใบลา'}</span>
+              {scopedLeaveRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px] tabular-nums">
+                  {scopedLeaveRequests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              data-active={activeTab === 'export_reports'}
+              onClick={() => setActiveTab('export_reports')}
+              className="seg-tab-btn flex items-center gap-1"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+              <span>3. ส่งออก</span>
+            </button>
+            {isAdminUser && (
+              <button
+                type="button"
+                data-active={activeTab === 'period_qr'}
+                onClick={() => setActiveTab('period_qr')}
+                className="seg-tab-btn flex items-center gap-1"
+              >
+                <QrCode className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? '4. QR รายคาบ' : '4. Period QR'}</span>
+              </button>
             )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('export_reports')}
-            className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap ${
-              activeTab === 'export_reports'
-                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-            <span>3. ส่งออก</span>
-          </button>
-          {isAdminUser && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('period_qr')}
-              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
-                activeTab === 'period_qr'
-                  ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <QrCode className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? '4. QR รายคาบ' : '4. Period QR'}</span>
-            </button>
-          )}
-          {!isRestrictedViewer && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('school_gps')}
-              className={`px-1 py-1 text-xs font-bold transition flex items-center gap-1 cursor-pointer border-b-2 whitespace-nowrap shrink-0 ${
-                activeTab === 'school_gps'
-                  ? 'border-amber-600 dark:border-amber-400 text-amber-800 dark:text-amber-300'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'GPS' : 'GPS'}</span>
-            </button>
-          )}
+            {!isRestrictedViewer && (
+              <button
+                type="button"
+                data-active={activeTab === 'school_gps'}
+                onClick={() => setActiveTab('school_gps')}
+                className="seg-tab-btn flex items-center gap-1"
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'GPS' : 'GPS'}</span>
+              </button>
+            )}
+          </div>
 
           {/* Continuous Rapid Scanner Modal Trigger */}
           <button
             type="button"
             data-guide-id="attendance-rapid-scanner"
             onClick={() => setShowRapidScannerModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white font-semibold text-xs shadow-xs transition cursor-pointer whitespace-nowrap"
+            className="btn-action-primary px-3 py-1.5"
           >
             <Camera className="w-3.5 h-3.5" />
             <span>สแกนรัว 1วิ/คน</span>
@@ -966,30 +956,24 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 <div
                   role="group"
                   aria-label={lang === 'th' ? 'สลับมุมมองรายวันหรือรายสัปดาห์' : 'Switch between Daily and Weekly view'}
-                  className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs"
+                  className="seg-tab-group text-xs"
                 >
                   <button
                     type="button"
+                    data-active={attendanceViewMode === 'daily'}
                     onClick={() => setAttendanceViewMode('daily')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                      attendanceViewMode === 'daily'
-                        ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                    }`}
+                    className="seg-tab-btn"
                   >
                     {lang === 'th' ? 'รายวัน' : 'Daily'}
                   </button>
                   <button
                     type="button"
+                    data-active={attendanceViewMode === 'weekly'}
                     onClick={() => {
                       if (startDateFilter) setSelectedWeekDate(startDateFilter);
                       setAttendanceViewMode('weekly');
                     }}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer ${
-                      attendanceViewMode === 'weekly'
-                        ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                    }`}
+                    className="seg-tab-btn flex items-center gap-1"
                   >
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{lang === 'th' ? 'รายสัปดาห์ (จ.–ศ.)' : 'Weekly (Mon–Fri)'}</span>
@@ -1000,17 +984,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowImportModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                    className="btn-tool-tone px-3 py-1.5"
                     title="นำเข้าบันทึกการเข้าเรียนจากไฟล์ Excel (.xlsx) หรือ CSV สำหรับห้องเรียนขนาดใหญ่"
                   >
-                    <Upload className="w-3.5 h-3.5" />
+                    <Upload className="w-3.5 h-3.5 tone-text" />
                     <span>Import Excel/CSV</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => handleExportDailyCsv()}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                  className="btn-action-success px-3 py-1.5"
                   title="ส่งออกรายงานการเข้าเรียนประจำวัน/ช่วงวันที่ที่กรองเป็นไฟล์ CSV พร้อมชื่อนักเรียนและสถานะ"
                 >
                   <Download className="w-3.5 h-3.5" />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowDown, UserRound } from 'lucide-react';
 import { Teacher } from '../types';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface StaffOrganizationViewProps {
   teachers: Teacher[];
@@ -55,7 +56,7 @@ export const StaffOrganizationView: React.FC<StaffOrganizationViewProps> = ({
               className="h-10 w-10 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">
+            <span className="tone-chip grid h-10 w-10 shrink-0 place-items-center rounded-full">
               <UserRound className="h-5 w-5" />
             </span>
           )}
@@ -75,7 +76,7 @@ export const StaffOrganizationView: React.FC<StaffOrganizationViewProps> = ({
             <button
               type="button"
               onClick={() => onEditTeacher(teacher)}
-              className="shrink-0 rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+              className="btn-tool-neutral shrink-0 px-2.5 py-1.5 text-[11px] whitespace-nowrap cursor-pointer"
             >
               แก้ไข
             </button>
@@ -101,7 +102,7 @@ export const StaffOrganizationView: React.FC<StaffOrganizationViewProps> = ({
   ).length;
 
   return (
-    <section className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 sm:p-5">
+    <section className={`${getModuleTone('teachers')} min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 sm:p-5`}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-[var(--color-text-title)]">โครงสร้างบุคลากรและครู</h2>

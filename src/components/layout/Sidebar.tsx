@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import { getModuleTone, getCategoryTone } from '../../lib/moduleTheme';
 
 export type NavTab = 
   | 'super_admin_console'
@@ -487,10 +488,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       .filter((i): i is NavItemDef => Boolean(i));
   }, [categories, currentRole, featureFlags]);
 
-  const toneOf = (id: NavTab) => {
-    const idx = categories.findIndex(c => c.items.some(i => i.id === id));
-    return `tone-${(Math.max(idx, 0) % 6) + 1}`;
-  };
+  const toneOf = (id: NavTab) => getModuleTone(id);
   const pinnedIds = new Set(pinned.map(p => p.id));
 
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
@@ -630,8 +628,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
               const CategoryIcon = cat.icon;
+              const catTone = getCategoryTone(cat.id);
               return (
-                <div key={cat.id} className="space-y-1">
+                <div key={cat.id} className={`${catTone} space-y-1`}>
                   <button
                     type="button"
                     aria-expanded={!isCollapsed}
@@ -643,12 +642,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setCollapsed((previous) => ({ ...previous, [cat.id]: true }));
                       }
                     }}
-                    className="w-full flex min-h-9 items-center justify-between gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
+                    className={`w-full flex min-h-9 items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
+                      !isCollapsed
+                        ? 'border-transparent bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
+                        : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+                    }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      <CategoryIcon className="h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />
+                      <span className="tone-chip w-5 h-5 rounded-md"><CategoryIcon className="h-3.5 w-3.5" /></span>
                       <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
-                      <span className="shrink-0 rounded-full bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[9px] tabular-nums">
+                      <span className="shrink-0 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] px-1.5 py-0.5 text-[9px] tabular-nums text-[var(--color-text-muted)]">
                         {items.length}
                       </span>
                     </span>

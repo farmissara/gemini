@@ -28,6 +28,7 @@ import {
   saveCentralExamPaymentSettings,
 } from '../lib/centralExamBank';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface CentralExamPaymentSettingsViewProps {
   adminEmail?: string;
@@ -116,35 +117,36 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
   const promptPayPayload = generatePromptPayPayload(settings.promptPayId, testAmount);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Description */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-8 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-bold text-white border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+    <div className={`${getModuleTone('central_exam_hub')} space-y-5`}>
+      {/* Top Header */}
+      <div className="app-page-header px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="tone-chip w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
+            <QrCode className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[var(--tone-text)]">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span>Super Admin Portal · Central Exam Marketplace Payments</span>
             </div>
-            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight">
+            <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-[var(--color-text-title)]">
               ตั้งค่า QR PromptPay &amp; อัปโหลด QR รับเงินขายข้อสอบ
             </h2>
-            <p className="text-xs md:text-sm text-blue-100 max-w-2xl leading-relaxed">
-              Super Admin สามารถกำหนดเบอร์/เลขประจำตัวพร้อมเพย์, บัญชีธนาคาร และอัปโหลดภาพ QR Code จากแอปธนาคารได้เอง
-              ข้อมูลนี้จะแสดงผลในหน้าต่างชำระเงินของทุกโรงเรียนเมื่อสั่งซื้อชุดข้อสอบกลาง 8 กลุ่มสาระ
+            <p className="text-xs text-[var(--color-text-muted)] max-w-2xl leading-relaxed">
+              กำหนดเบอร์พร้อมเพย์ บัญชีธนาคาร และอัปโหลดภาพ QR Code จากแอปธนาคาร แสดงผลในหน้าชำระเงินทุกโรงเรียนที่สั่งซื้อข้อสอบกลาง 8 กลุ่มสาระ
             </p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่า</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn-action-primary px-4 py-2.5 text-xs flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <Save className="w-4 h-4 shrink-0" />
+            <span>บันทึกการตั้งค่า</span>
+          </button>
         </div>
       </div>
 
@@ -294,7 +296,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-semibold hover:bg-[var(--color-primary-light)] cursor-pointer flex items-center gap-1.5"
+                        className="btn-tool-neutral px-3 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                       >
                         <Upload className="w-3.5 h-3.5" />
                         <span>เปลี่ยนรูปใหม่</span>
@@ -302,7 +304,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
                       <button
                         type="button"
                         onClick={handleRemoveImage}
-                        className="px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-xs font-semibold hover:bg-rose-100 cursor-pointer flex items-center gap-1.5"
+                        className="btn-action-danger px-3 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>ลบรูปภาพ</span>
@@ -406,7 +408,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
             <button
               type="button"
               onClick={handleReset}
-              className="px-4 py-2 text-xs font-semibold text-[var(--color-text-muted)] hover:text-rose-600 flex items-center gap-1.5 transition cursor-pointer"
+              className="btn-action-danger px-3.5 py-2 text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>คืนค่าเริ่มต้น</span>
@@ -415,7 +417,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
             <button
               type="button"
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
+              className="btn-action-primary px-5 py-2.5 text-xs flex items-center gap-2 whitespace-nowrap cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>บันทึกการตั้งค่าทั้งหมด</span>
@@ -440,19 +442,16 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
               </div>
 
               {/* Amount Tester */}
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="text-[11px] font-bold text-[var(--color-text-body)]">ทดสอบตัวอย่างยอดชำระ:</div>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="seg-tab-group grid grid-cols-4 w-full">
                   {[190, 390, 490, 890].map((amt) => (
                     <button
                       key={amt}
                       type="button"
                       onClick={() => setTestAmount(amt)}
-                      className={`py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                        testAmount === amt
-                          ? 'bg-amber-600 text-white shadow-xs'
-                          : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)]'
-                      }`}
+                      data-active={testAmount === amt}
+                      className="seg-tab-btn py-1.5 text-xs whitespace-nowrap cursor-pointer"
                     >
                       ฿{amt}
                     </button>

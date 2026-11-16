@@ -34,6 +34,7 @@ import { formatSemesterLabel } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { calculateStudentAcademicSummary, isPrimaryGradeLevel } from '../lib/moeGrading';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -420,11 +421,13 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3">
+    <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-3`}>
       {/* Compact Single-Row Header */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <BookOpen className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <BookOpen className="w-4 h-4" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             หลักสูตรและรายวิชา (Curriculum)
           </h1>
@@ -442,7 +445,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   type="button"
                   onClick={() => void handleDeleteSelectedCourses()}
                   disabled={isDeletingCourses}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/60 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-bold hover:bg-rose-100 cursor-pointer whitespace-nowrap"
+                  className="btn-action-danger px-2.5 py-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
@@ -450,7 +453,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               )}
 
               <details className="relative">
-                <summary className="flex list-none cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+                <summary className="btn-tool-tone list-none px-2.5 py-1.5">
                   <span>เครื่องมือจัดการ</span>
                   <ChevronDown className="h-3.5 w-3.5" />
                 </summary>
@@ -478,7 +481,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       }}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                     >
-                      <Layers className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                      <Layers className="w-3.5 h-3.5 tone-text shrink-0" />
                       <span>จัดการกลุ่มสาระ</span>
                     </button>
                   )}
@@ -494,7 +497,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       }}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                     >
-                      <CheckCircle className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                      <CheckCircle className="w-3.5 h-3.5 tone-text shrink-0" />
                       <span>
                         {filteredCourses.every((c) => selectedCourseIds.includes(c.id))
                           ? 'ล้างที่เลือก'
@@ -520,14 +523,14 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               </details>
 
               <button
-              type="button"
-              onClick={handleOpenAddCourse}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold shadow-sm transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>เพิ่มรายวิชาใหม่ (Add Course)</span>
-            </button>
-          </div>
+                type="button"
+                onClick={handleOpenAddCourse}
+                className="btn-action-primary px-3 py-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มรายวิชาใหม่ (Add Course)</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -537,7 +540,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           {courseDeleteError}
         </p>
       )}
-      <div className="shrink-0 p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
+      <div className="shrink-0 p-2.5 toolbar-filter-zone flex flex-col md:flex-row items-center justify-between gap-2.5 shadow-xs">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -545,19 +548,16 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
             placeholder="ค้นหาตามรหัสวิชา, ชื่อวิชา หรืออาจารย์ผู้สอน..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+            className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+        <div className="seg-tab-group overflow-x-auto max-w-full no-scrollbar">
           <button
             type="button"
+            data-active={selectedCategory === 'all'}
             onClick={() => setSelectedCategory('all')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-              selectedCategory === 'all'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
-            }`}
+            className="seg-tab-btn"
           >
             ทุกหมวดวิชา ({courses.length})
           </button>
@@ -567,12 +567,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               <button
                 key={cat.key}
                 type="button"
+                data-active={selectedCategory === cat.key}
                 onClick={() => setSelectedCategory(cat.key)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                  selectedCategory === cat.key
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
-                }`}
+                className="seg-tab-btn"
               >
                 {cat.th} ({count})
               </button>

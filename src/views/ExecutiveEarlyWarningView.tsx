@@ -43,6 +43,7 @@ import {
   RiskInterventionRecord
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { getModuleTone } from '../lib/moduleTheme';
 import { calculateGrade } from '../lib/schoolSettings';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { addSchoolIntervention, getSchoolInterventions, updateSchoolInterventionStatus } from '../lib/campusDataStore';
@@ -588,7 +589,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+    <div className={`${getModuleTone('executive_warning')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
       {/* Toast Notification */}
       {notificationToast && (
         <div className="fixed top-16 right-6 z-50 p-3.5 rounded-2xl bg-slate-900 text-white shadow-2xl border border-slate-700 flex items-center gap-2.5 animate-in slide-in-from-top-2 max-w-md">
@@ -602,7 +603,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       {/* ======================================================== */}
       <div className="shrink-0 app-page-header px-3 py-2 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+          </span>
           <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
               {lang === 'th' ? 'ศูนย์เฝ้าระวังนักเรียนกลุ่มเสี่ยง (มส./ร./0)' : 'Executive Early Warning Radar'}
@@ -613,27 +616,21 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         {/* Quick Metrics & Persona Switcher */}
         <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
           {/* View Mode Toggle */}
-          <div className="inline-flex p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+          <div className="seg-tab-group">
             <button
               type="button"
+              data-active={viewPersona === 'executive'}
               onClick={() => setViewPersona('executive')}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                viewPersona === 'executive'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn flex items-center gap-1.5"
             >
               <Award className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'ภาพรวมผู้บริหาร' : 'Executive Overview'}</span>
             </button>
             <button
               type="button"
+              data-active={viewPersona === 'teacher'}
               onClick={() => setViewPersona('teacher')}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                viewPersona === 'teacher'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn flex items-center gap-1.5"
             >
               <Users className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'มาตรการครูประจำชั้น' : 'Advisor Intervention'}</span>
@@ -641,20 +638,17 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
           </div>
 
           {/* Threshold Adjuster */}
-          <div className="bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-xs">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          <div className="bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-2.5 py-1 rounded-xl flex items-center gap-1.5 text-xs">
+            <SlidersHorizontal className="w-3.5 h-3.5 tone-text" />
             <span className="text-[var(--color-text-muted)] font-medium">{lang === 'th' ? 'เกณฑ์ขาดเรียน:' : 'Absence:'}</span>
-            <div className="inline-flex items-center gap-1">
+            <div className="seg-tab-group">
               {[15, 20, 25].map((pct) => (
                 <button
                   key={pct}
                   type="button"
+                  data-active={absenceThresholdPct === pct}
                   onClick={() => setAbsenceThresholdPct(pct)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
-                    absenceThresholdPct === pct
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className="seg-tab-btn px-2 py-0.5 text-[11px] font-bold"
                   title={pct === 20 ? 'เกณฑ์ สพฐ. มาตรฐาน (เวลาเรียนต่ำกว่า 80%)' : undefined}
                 >
                   &gt;{pct}% {pct === 20 && '(มส.)'}

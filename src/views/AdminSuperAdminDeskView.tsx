@@ -34,6 +34,7 @@ import {
   updateCoordinationMessageStatus,
 } from '../lib/coordinationDesk';
 import { MASTER_SYSTEM_EMAIL } from '../lib/authDb';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface AdminSuperAdminDeskViewProps {
   currentUser: AuthUser | null;
@@ -313,31 +314,36 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
   const resolvedCount = visibleMessages.filter((m) => m.status === 'resolved').length;
 
   return (
-    <div className="space-y-4 pb-8">
+    <div className={`space-y-4 pb-8 ${getModuleTone('admin_superadmin_desk')}`}>
       {/* Header */}
       <div className="app-page-header p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold border border-[var(--color-border)]">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>ช่องทางประสานงานตรง Admin โรงเรียน ↔ Super Admin</span>
-            </span>
-            <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
-              Master: {MASTER_SYSTEM_EMAIL}
-            </span>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+            <Mail className="w-5 h-5" />
           </div>
-          <h1 className="text-lg sm:text-xl font-extrabold text-[var(--color-text-title)] tracking-tight">
-            {isSuperAdmin
-              ? 'ศูนย์รับเรื่อง & แชต/จดหมายประสานงานสถานศึกษา'
-              : `แชต & จดหมายประสานงานด่วนถึง Super Admin (${activeSchool.nameTh})`}
-          </h1>
-          <p className="text-xs text-[var(--color-text-body)]">
-            ส่งข้อความแชตด่วน หรือจดหมายราชการพร้อมแนบไฟล์เอกสาร PDF / Excel / รูปภาพ (สูงสุด 4 MB ต่อไฟล์) พร้อมติดตามสถานะการดำเนินการ
-          </p>
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-[11px] font-bold border border-[var(--color-border)]">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>ช่องทางประสานงานตรง Admin โรงเรียน ↔ Super Admin</span>
+              </span>
+              <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                Master: {MASTER_SYSTEM_EMAIL}
+              </span>
+            </div>
+            <h1 className="text-lg sm:text-xl font-extrabold text-[var(--color-text-title)] tracking-tight">
+              {isSuperAdmin
+                ? 'ศูนย์รับเรื่อง & แชต/จดหมายประสานงานสถานศึกษา'
+                : `แชต & จดหมายประสานงานด่วนถึง Super Admin (${activeSchool.nameTh})`}
+            </h1>
+            <p className="text-xs text-[var(--color-text-body)]">
+              ส่งข้อความแชตด่วน หรือจดหมายราชการพร้อมแนบไฟล์เอกสาร PDF / Excel / รูปภาพ (สูงสุด 4 MB ต่อไฟล์) พร้อมติดตามสถานะการดำเนินการ
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <div className="px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-center min-w-[82px]">
+          <div className="px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-center min-w-[82px]">
             <div className="text-[10px] text-[var(--color-text-muted)] font-semibold">เรื่องใหม่</div>
             <div className="text-lg font-extrabold text-[var(--color-text-title)] tabular-nums">{openCount}</div>
           </div>
@@ -353,7 +359,7 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
             type="button"
             onClick={() => void loadMessages()}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-title)] cursor-pointer disabled:opacity-50"
+            className="btn-tool-neutral disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>รีเฟรช</span>

@@ -44,6 +44,7 @@ import {
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface ExecutiveMonitorViewProps {
   activeSchool: School;
@@ -315,7 +316,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`space-y-4 pb-8 ${
+      className={`space-y-4 pb-8 ${getModuleTone('executive_monitor')} ${
         displayMode === 'tv'
           ? 'min-h-full bg-slate-950 text-slate-100 p-4 sm:p-6 rounded-2xl border border-slate-800'
           : 'print-area'
@@ -323,33 +324,40 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     >
       {/* Top Control Bar */}
       <div
-        className={`rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 border ${
+        className={`rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
           displayMode === 'tv'
-            ? 'bg-slate-900 border-slate-800 text-slate-100'
-            : 'bg-[var(--color-card)] border-[var(--color-border)]'
+            ? 'bg-slate-900 border border-slate-800 text-slate-100'
+            : 'app-page-header'
         }`}
       >
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
-                displayMode === 'tv'
-                  ? 'bg-sky-950 text-sky-300 border-sky-800'
-                  : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-              }`}
-            >
-              <Monitor className="w-3.5 h-3.5" />
-              <span>{displayMode === 'tv' ? 'TV MONITOR • BROADCAST MODE' : 'DIRECTOR EXECUTIVE OVERVIEW'}</span>
-            </span>
-            <span className={`text-xs font-semibold ${displayMode === 'tv' ? 'text-slate-300' : 'text-[var(--color-text-muted)]'}`}>
-              {activeSchool.nameTh} · ปีการศึกษา {activeSchool.academicYear}/{activeSchool.currentSemester}
-            </span>
+        <div className="flex items-start gap-3 min-w-0">
+          {displayMode === 'director' && (
+            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Monitor className="w-5 h-5" />
+            </div>
+          )}
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
+                  displayMode === 'tv'
+                    ? 'bg-sky-950 text-sky-300 border-sky-800'
+                    : 'bg-[var(--tone-soft)] text-[var(--tone)] border-[var(--color-border)]'
+                }`}
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>{displayMode === 'tv' ? 'TV MONITOR • BROADCAST MODE' : 'DIRECTOR EXECUTIVE OVERVIEW'}</span>
+              </span>
+              <span className={`text-xs font-semibold ${displayMode === 'tv' ? 'text-slate-300' : 'text-[var(--color-text-muted)]'}`}>
+                {activeSchool.nameTh} · ปีการศึกษา {activeSchool.academicYear}/{activeSchool.currentSemester}
+              </span>
+            </div>
+            <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight ${displayMode === 'tv' ? 'text-white' : 'text-[var(--color-text-title)]'}`}>
+              {displayMode === 'tv'
+                ? 'ศูนย์แสดงผลรายงานภาพรวมโรงเรียนแบบเรียลไทม์ (TV / Digital Signage)'
+                : 'แดชบอร์ดภาพรวมผู้บริหาร & ผู้อำนวยการโรงเรียน (Executive Monitor)'}
+            </h1>
           </div>
-          <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight ${displayMode === 'tv' ? 'text-white' : 'text-[var(--color-text-title)]'}`}>
-            {displayMode === 'tv'
-              ? 'ศูนย์แสดงผลรายงานภาพรวมโรงเรียนแบบเรียลไทม์ (TV / Digital Signage)'
-              : 'แดชบอร์ดภาพรวมผู้บริหาร & ผู้อำนวยการโรงเรียน (Executive Monitor)'}
-          </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -358,11 +366,11 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             className={`px-3 py-1.5 rounded-lg border text-right tabular-nums ${
               displayMode === 'tv'
                 ? 'bg-slate-950 border-slate-700 text-white'
-                : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)]'
+                : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)]'
             }`}
           >
             <div className="text-base font-extrabold leading-tight flex items-center gap-1.5 justify-end">
-              <Clock className="w-3.5 h-3.5 text-sky-500" />
+              <Clock className="w-3.5 h-3.5 text-[var(--tone)]" />
               <span>{formattedClock}</span>
             </div>
             <div className={`text-[10px] ${displayMode === 'tv' ? 'text-slate-400' : 'text-[var(--color-text-muted)]'}`}>
@@ -371,46 +379,52 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           </div>
 
           {/* Mode Toggle */}
-          <div
-            className={`inline-flex p-0.5 rounded-lg border ${
-              displayMode === 'tv'
-                ? 'bg-slate-950 border-slate-700'
-                : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setDisplayMode('director')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
-                displayMode === 'director'
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : displayMode === 'tv'
-                  ? 'text-slate-300 hover:text-white'
-                  : 'text-[var(--color-text-body)]'
-              }`}
-            >
-              โหมดผู้อำนวยการ
-            </button>
-            <button
-              type="button"
-              onClick={() => setDisplayMode('tv')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                displayMode === 'tv'
-                  ? 'bg-sky-600 text-white'
-                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Monitor className="w-3.5 h-3.5" />
-              <span>โหมดจอทีวี (TV)</span>
-            </button>
-          </div>
+          {displayMode === 'tv' ? (
+            <div className="inline-flex p-0.5 rounded-lg border bg-slate-950 border-slate-700">
+              <button
+                type="button"
+                onClick={() => setDisplayMode('director')}
+                className="px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer text-slate-300 hover:text-white"
+              >
+                โหมดผู้อำนวยการ
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode('tv')}
+                className="px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 bg-sky-600 text-white"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>โหมดจอทีวี (TV)</span>
+              </button>
+            </div>
+          ) : (
+            <div className="seg-tab-group">
+              <button
+                type="button"
+                data-active={displayMode === 'director'}
+                onClick={() => setDisplayMode('director')}
+                className="seg-tab-btn"
+              >
+                โหมดผู้อำนวยการ
+              </button>
+              <button
+                type="button"
+                data-active={false}
+                onClick={() => setDisplayMode('tv')}
+                className="seg-tab-btn"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>โหมดจอทีวี (TV)</span>
+              </button>
+            </div>
+          )}
 
           {displayMode === 'director' ? (
             <div className="flex items-center gap-1.5 print:hidden">
               <button
                 type="button"
                 onClick={handleExportExecutiveCsv}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-title)] cursor-pointer"
+                className="btn-action-success"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>ส่งออก CSV</span>
@@ -418,7 +432,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               <button
                 type="button"
                 onClick={handlePrintDirectorReport}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+                className="btn-action-primary"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>พิมพ์รายงาน (A4)</span>

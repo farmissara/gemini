@@ -74,6 +74,7 @@ import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapi
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -971,16 +972,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     : students.filter(s => s.gradeLevel === proxyGradeFilter);
 
   return (
-    <div className={embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full'}>
+    <div className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full'}`}>
       {/* Top Header - Compact for mobile */}
       {embeddedMobile ? (
         <div className="shrink-0 flex items-center justify-between px-1 py-1 text-[var(--color-text-title)]">
           <div className="flex items-center gap-1.5 min-w-0">
-            <Camera className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
+            <div className="w-6 h-6 rounded-lg tone-chip shrink-0">
+              <Camera className="w-3.5 h-3.5" />
+            </div>
             <h1 className="text-xs font-bold truncate">
               {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check in / out'}
             </h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700 shrink-0">
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] font-bold border border-[var(--color-border)] shrink-0">
               GPS Geofence
             </span>
           </div>
@@ -991,7 +994,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               className="p-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] text-xs cursor-pointer"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
-              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" /> : <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
             </button>
             <span className="text-[10px] font-mono text-[var(--color-text-title)] bg-[var(--color-card-subtle)] px-2 py-0.5 rounded-lg border border-[var(--color-border)]">
               {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
@@ -999,39 +1002,44 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-700 text-white flex flex-col md:flex-row md:items-center justify-between gap-2 shadow-xl">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-200 border border-emerald-600 text-xs font-bold">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-300" />
-              <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
+        <div className="app-page-header p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Smartphone className="w-5 h-5" />
             </div>
-            <h1 className="text-xl md:text-2xl font-bold text-white">
-              {lang === 'th' ? 'ระบบเช็คชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
-            </h1>
-            <p className="text-slate-200 text-xs">
-              {lang === 'th' 
-                ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
-                : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
-            </p>
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] border border-[var(--color-border)] text-[11px] font-bold">
+                <Radio className="w-3.5 h-3.5" />
+                <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
+              </div>
+              <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ระบบเช็คชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs">
+                {lang === 'th' 
+                  ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
+                  : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2 rounded-xl bg-slate-800 border border-slate-600 text-slate-100 hover:text-white transition cursor-pointer"
+              className="btn-tool-tone"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-300" /> : <VolumeX className="w-4 h-4 text-slate-300" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-[var(--color-text-muted)]" />}
             </button>
 
-            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800 border border-slate-600 text-slate-100 shrink-0">
-              <Clock className="w-5 h-5 text-indigo-300" />
+            <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shrink-0">
+              <Clock className="w-4 h-4 text-[var(--tone)]" />
               <div>
-                <div className="text-xs font-bold text-white">
+                <div className="text-xs font-bold text-[var(--color-text-title)]">
                   {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
-                <div className="text-[11px] text-emerald-300 font-mono font-semibold">
+                <div className="text-[11px] text-[var(--tone)] font-mono font-semibold">
                   เวลาทำการ 06:30 - 18:00 น.
                 </div>
               </div>
@@ -1040,50 +1048,51 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Navigation Sub Tabs - Compact Underlined Text Links (Never overflows container edges) */}
-      <nav aria-label="Attendance sub-navigation" className="shrink-0 flex flex-wrap items-center gap-x-3.5 gap-y-1 px-0.5 py-1 border-b border-[var(--color-border)] text-xs">
-        {[
-          { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็คชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
-          { id: 'leave_request', icon: FileText, labelTh: 'ใบลา', labelEn: 'Leave', badge: scopedLeaveRequests.filter(r => r.status === 'pending').length, staffOnly: false },
-          { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ครูลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
-          { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ (QR)', labelEn: 'Periods (QR)', staffOnly: false }
-        ]
-          .filter((tab) => isStaffUser || !tab.staffOnly)
-          .map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => {
-              setSubTab(tab.id as any);
-              if (tab.id === 'leave_request') setLeaveFormStep(1);
-            }}
-            className={`flex items-center gap-1 px-1 py-1 border-b-2 font-bold transition text-xs cursor-pointer whitespace-nowrap ${
-              subTab === tab.id
-                ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] hover:underline underline-offset-4'
-            }`}
-          >
-            <tab.icon className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
-            {tab.badge ? (
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px]">
-                {tab.badge}
-              </span>
-            ) : null}
-          </button>
-        ))}
+      {/* Navigation Sub Tabs & Primary Scanner Action */}
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
+        <nav aria-label="Attendance sub-navigation" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
+          {[
+            { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็คชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
+            { id: 'leave_request', icon: FileText, labelTh: 'ใบลา', labelEn: 'Leave', badge: scopedLeaveRequests.filter(r => r.status === 'pending').length, staffOnly: false },
+            { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ครูลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+            { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ (QR)', labelEn: 'Periods (QR)', staffOnly: false }
+          ]
+            .filter((tab) => isStaffUser || !tab.staffOnly)
+            .map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              data-active={subTab === tab.id}
+              onClick={() => {
+                setSubTab(tab.id as any);
+                if (tab.id === 'leave_request') setLeaveFormStep(1);
+              }}
+              className="seg-tab-btn"
+            >
+              <tab.icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+              {tab.badge ? (
+                <span className={`px-1.5 py-0.5 rounded-full font-bold text-[9px] tabular-nums ${
+                  subTab === tab.id ? 'bg-white/20 text-white' : 'bg-amber-400 text-slate-950'
+                }`}>
+                  {tab.badge}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
 
         {/* Rapid Scanner Button */}
         <button
           type="button"
           onClick={() => setShowRapidScanner(true)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--color-primary)] text-white font-semibold text-[11px] shadow-xs cursor-pointer ml-auto shrink-0"
+          className="btn-action-primary shrink-0"
           title="เปิดโหมดสแกนเนอร์บาร์โค้ด & QR รัวต่อเนื่อง"
         >
-          <Camera className="w-3 h-3" />
-          <span>📷 สแกนรัว 1วิ/คน</span>
+          <Camera className="w-3.5 h-3.5" />
+          <span>สแกนรัว 1วิ/คน</span>
         </button>
-      </nav>
+      </div>
 
       {/* Pane Switcher for Mobile Selfie - Compact Underlined Text Links */}
       {embeddedMobile && subTab === 'selfie_mobile' && (

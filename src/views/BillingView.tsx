@@ -26,6 +26,7 @@ import { PagedList } from '../components/PagedList';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getInvoiceDuplicateReasons } from '../lib/duplicateRecords';
 import { getLocalDateString } from '../lib/date';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface BillingViewProps {
   schoolId?: string;
@@ -123,10 +124,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
     : [];
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('billing')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Receipt className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <Receipt className="w-4 h-4 shrink-0" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             ค่าธรรมเนียมและใบแจ้งหนี้ (Billing)
           </h1>
@@ -147,8 +150,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
           )}
           {(isAdmin || (currentRole === 'super_admin' && onOpenExamPaymentSettings)) && (
             <details className="relative">
-              <summary className="list-none px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap">
-                <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              <summary className="btn-tool-tone list-none px-2.5 py-1.5">
+                <Sliders className="w-3.5 h-3.5 tone-text" />
                 <span>ตั้งค่า</span>
               </summary>
               <div className="absolute right-0 mt-1 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
@@ -161,7 +164,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                     }}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
                   >
-                    <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    <Sliders className="w-3.5 h-3.5 tone-text" />
                     <span>ตั้งค่าหมวดค่าธรรมเนียม</span>
                   </button>
                 )}
@@ -174,7 +177,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                     }}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
                   >
-                    <CreditCard className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    <CreditCard className="w-3.5 h-3.5 tone-text" />
                     <span>ตั้งค่า QR ขายข้อสอบ</span>
                   </button>
                 )}
@@ -188,7 +191,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 setAllowDupInvoiceConfirm(false);
                 setShowNewInvoiceModal(true);
               }}
-              className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+              className="btn-action-primary px-3 py-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>ออกใบแจ้งหนี้</span>
@@ -198,17 +201,15 @@ export const BillingView: React.FC<BillingViewProps> = ({
       </div>
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="shrink-0 p-2 toolbar-filter-zone flex items-center justify-between gap-2 flex-wrap">
+        <div className="seg-tab-group overflow-x-auto no-scrollbar">
           {['all', 'slip_pending', 'paid', 'pending', 'overdue'].map((st) => (
             <button
               key={st}
+              type="button"
+              data-active={filterStatus === st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer whitespace-nowrap ${
-                filterStatus === st
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)]'
-              }`}
+              className="seg-tab-btn capitalize"
             >
               {st === 'slip_pending'
                 ? `รอตรวจสลิป (${invoices.filter((i) => i.slipStatus === 'pending_review').length})`
@@ -217,7 +218,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
           ))}
         </div>
 
-        <span className="text-xs text-[var(--color-text-body)]">
+        <span className="text-xs text-[var(--color-text-body)] tabular-nums">
           Showing <strong className="text-[var(--color-text-title)]">{filteredInvoices.length}</strong> invoices
         </span>
       </div>

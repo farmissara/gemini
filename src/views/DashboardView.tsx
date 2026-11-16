@@ -67,6 +67,7 @@ import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
 import { GradeLevelAnalyticsChart } from '../components/GradeLevelAnalyticsChart';
 import { PriorityActionWidget } from '../components/PriorityActionWidget';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface DashboardViewProps {
   students: Student[];
@@ -337,10 +338,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('dashboard')}`}>
       {/* Compact Header & Subtabs Bar */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
+      <div className="shrink-0 app-page-header px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
+            <BarChart3 className="w-4 h-4" />
+          </div>
           <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
           </h1>
@@ -352,71 +356,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <ModuleTourTrigger moduleId="dashboard" lang={lang} />
         </div>
 
-        <div data-guide-id="dashboard-subtabs" className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
-          <button
-            type="button"
-            onClick={() => setDashboardTab('overview')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
-              dashboardTab === 'overview'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'ภาพรวม' : 'Overview'}</span>
-          </button>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div data-guide-id="dashboard-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              data-active={dashboardTab === 'overview'}
+              onClick={() => setDashboardTab('overview')}
+              className="seg-tab-btn"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ภาพรวม' : 'Overview'}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setDashboardTab('live_attendance')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
-              dashboardTab === 'live_attendance'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
-          >
-            <Camera className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'เช็คชื่อ & GPS สด' : 'Live GPS'}</span>
-            <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
-              dashboardTab === 'live_attendance'
-                ? 'bg-white/20 text-white'
-                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'
-            }`}>
-              {displayRecords.length}
-            </span>
-          </button>
+            <button
+              type="button"
+              data-active={dashboardTab === 'live_attendance'}
+              onClick={() => setDashboardTab('live_attendance')}
+              className="seg-tab-btn"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'เช็คชื่อ & GPS สด' : 'Live GPS'}</span>
+              <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
+                dashboardTab === 'live_attendance'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)]'
+              }`}>
+                {displayRecords.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setDashboardTab('innovative_hub')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
-              dashboardTab === 'innovative_hub'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
-          >
-            <Sparkles className={`w-3.5 h-3.5 ${dashboardTab === 'innovative_hub' ? 'text-amber-300' : 'text-amber-600 dark:text-amber-400'}`} />
-            <span>{lang === 'th' ? 'นวัตกรรม & เควสต์' : 'Innovations'}</span>
-          </button>
+            <button
+              type="button"
+              data-active={dashboardTab === 'innovative_hub'}
+              onClick={() => setDashboardTab('innovative_hub')}
+              className="seg-tab-btn"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'นวัตกรรม & เควสต์' : 'Innovations'}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setDashboardTab('announcements')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer whitespace-nowrap ${
-              dashboardTab === 'announcements'
-                ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
-          >
-            <BellRing className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'ประกาศ' : 'News'}</span>
-          </button>
+            <button
+              type="button"
+              data-active={dashboardTab === 'announcements'}
+              onClick={() => setDashboardTab('announcements')}
+              className="seg-tab-btn"
+            >
+              <BellRing className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ประกาศ' : 'News'}</span>
+            </button>
+          </div>
 
           {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
             <button
               type="button"
               onClick={() => onNavigate('executive_monitor')}
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+              className="hidden md:inline-flex btn-tool-tone"
               title={lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}
             >
               <Monitor className="w-3.5 h-3.5" />

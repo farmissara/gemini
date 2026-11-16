@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { School, UserRole, AppLanguage } from '../types';
 import { PagedList } from '../components/PagedList';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface SchoolPermissionSettingsViewProps {
   activeSchool: School;
@@ -181,7 +182,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
   const currentRolePolicies = policies.filter(p => p.role === selectedRole);
 
   return (
-    <div className="space-y-4 max-w-full overflow-hidden">
+    <div className={`space-y-4 max-w-full overflow-hidden ${getModuleTone('school_permissions')}`}>
       {/* Toast Alert */}
       {feedbackToast && (
         <div className="fixed bottom-6 right-6 z-50 p-3.5 rounded-xl bg-slate-900 text-white border border-slate-700 shadow-xl text-xs flex items-center gap-2">
@@ -192,23 +193,28 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
 
       {/* Header Banner */}
       <div className="app-page-header p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold border border-[var(--color-border)]">
-            <Building2 className="w-3.5 h-3.5" />
-            <span>การบริหารจัดการสิทธิ์เฉพาะสถาบัน • School Administrator Console</span>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+            <ShieldCheck className="w-5 h-5" />
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-title)] tracking-tight">
-            กำหนดสิทธิ์ผู้ใช้งานภายในโรงเรียน
-          </h1>
-          <p className="text-xs text-[var(--color-text-body)]">
-            {activeSchool.nameTh} ({activeSchool.code}) — ผู้อำนวยการและผู้บริหารโรงเรียนเป็นผู้กำหนดสิทธิ์การเข้าถึงข้อมูลของครู นักเรียน และผู้ปกครองในโรงเรียนนี้
-          </p>
+          <div className="space-y-1 min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-bold border border-[var(--color-border)]">
+              <Building2 className="w-3.5 h-3.5" />
+              <span>การบริหารจัดการสิทธิ์เฉพาะสถาบัน • School Administrator Console</span>
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-title)] tracking-tight">
+              กำหนดสิทธิ์ผู้ใช้งานภายในโรงเรียน
+            </h1>
+            <p className="text-xs text-[var(--color-text-body)]">
+              {activeSchool.nameTh} ({activeSchool.code}) — ผู้อำนวยการและผู้บริหารโรงเรียนเป็นผู้กำหนดสิทธิ์การเข้าถึงข้อมูลของครู นักเรียน และผู้ปกครองในโรงเรียนนี้
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={savePolicies}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs shadow-xs transition shrink-0 cursor-pointer"
+          className="btn-action-primary shrink-0"
         >
           <Save className="w-4 h-4" />
           <span>บันทึกการกำหนดสิทธิ์ (Save)</span>
@@ -216,43 +222,34 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       </div>
 
       {/* Role Selection Tabs */}
-      <div className="flex items-center gap-2 border-b border-[var(--color-border)] overflow-x-auto no-scrollbar pb-1">
+      <div className="seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
         <button
           type="button"
+          data-active={selectedRole === 'teacher'}
           onClick={() => setSelectedRole('teacher')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            selectedRole === 'teacher'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <User className="w-4 h-4" />
+          <User className="w-3.5 h-3.5" />
           <span>อาจารย์ผู้สอน / บุคลากร (Teachers)</span>
         </button>
 
         <button
           type="button"
+          data-active={selectedRole === 'student'}
           onClick={() => setSelectedRole('student')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            selectedRole === 'student'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <GraduationCap className="w-4 h-4" />
+          <GraduationCap className="w-3.5 h-3.5" />
           <span>นักเรียน (Students)</span>
         </button>
 
         <button
           type="button"
+          data-active={selectedRole === 'parent'}
           onClick={() => setSelectedRole('parent')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            selectedRole === 'parent'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-3.5 h-3.5" />
           <span>ผู้ปกครอง (Parents)</span>
         </button>
       </div>

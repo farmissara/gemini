@@ -37,6 +37,7 @@ import {
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
 import { playHeavyImpactSound, playComboStreakSound, playGrandVictoryFanfare } from '../lib/labSoundEffects';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface CoopBossRaidViewProps {
   questions?: QuizQuestion[];
@@ -200,41 +201,46 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const hpPercent = Math.round((bossConfig.bossCurrentHp / bossConfig.bossMaxHp) * 100);
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('boss_raid')}`}>
       {/* Toast Alert */}
       {activeHintToast && (
-        <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-indigo-500/50 flex items-center gap-2">
+        <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-[var(--tone)]/50 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-yellow-400 shrink-0" />
           <p className="text-xs font-semibold">{activeHintToast}</p>
         </div>
       )}
 
       {/* Top Banner Header */}
-      <div className="shrink-0 bg-gradient-to-r from-red-950 via-slate-900 to-indigo-950 text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-md border border-red-700/40 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
-          <div className="space-y-1 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-950/50 border border-white/25 text-red-200 text-[11px] font-semibold">
-              <Swords className="w-3.5 h-3.5 text-red-300" />
-              <span>{lang === 'th' ? 'โหมดห้องเรียนร่วมมือสู้บอส (Co-op Boss Raid & Peer Tutoring)' : 'Cooperative Classroom Boss Raid'}</span>
+      <div className="shrink-0 app-page-header p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-start gap-3 min-w-0 max-w-xl">
+            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Swords className="w-5 h-5" />
             </div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              <span>{bossConfig.bossNameTh}</span>
-            </h1>
-            <p className="text-slate-200 text-xs leading-relaxed hidden sm:block">
-              {lang === 'th' 
-                ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที'
-                : 'Defeat lesson bosses together through collaborative problem solving and real-time peer tutoring.'}
-            </p>
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'โหมดห้องเรียนร่วมมือสู้บอส (Co-op Boss Raid & Peer Tutoring)' : 'Cooperative Classroom Boss Raid'}</span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
+                <span>{bossConfig.bossNameTh}</span>
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs leading-relaxed hidden sm:block">
+                {lang === 'th' 
+                  ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที'
+                  : 'Defeat lesson bosses together through collaborative problem solving and real-time peer tutoring.'}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {onExit && (
               <button
                 type="button"
                 onClick={onExit}
-                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-900/40 transition cursor-pointer active:scale-95"
+                className="btn-action-danger"
               >
-                <span>❌ ออกจากเกม</span>
+                <span>ออกจากเกม</span>
               </button>
             )}
 
@@ -243,9 +249,9 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsTeacherPanelOpen(!isTeacherPanelOpen)}
-                className="px-3.5 py-2 rounded-xl bg-slate-950/50 hover:bg-slate-950/70 text-white font-bold text-xs flex items-center gap-2 backdrop-blur-md border border-white/25 transition cursor-pointer"
+                className="btn-tool-tone"
               >
-                <SlidersHorizontal className="w-4 h-4" />
+                <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'ควบคุมบอส (ครู)' : 'Teacher Controls'}</span>
               </button>
             )}
@@ -253,7 +259,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             <button
               type="button"
               onClick={handleRestartBoss}
-              className="p-2 rounded-xl bg-slate-950/50 hover:bg-slate-950/70 border border-white/25 text-white transition cursor-pointer"
+              className="btn-tool-neutral"
               title="Restart Raid"
             >
               <RotateCcw className="w-4 h-4" />

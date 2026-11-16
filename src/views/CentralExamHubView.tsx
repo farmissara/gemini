@@ -36,6 +36,7 @@ import {
   UserRole,
 } from '../types';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
@@ -717,20 +718,25 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   };
 
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 ${getModuleTone('central_exam_hub')}`}>
       {/* Header Banner */}
-      <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)]">
-            <Sparkles className="w-4 h-4" />
-            <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ · {schoolName}</span>
+      <div className="app-page-header p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+            <BookOpen className="w-5 h-5" />
           </div>
-          <h2 className="text-xl font-extrabold text-[var(--color-text-title)]">
-            ศูนย์รับและสั่งซื้อชุดข้อสอบกลางเข้าโรงเรียน
-          </h2>
-          <p className="text-xs text-[var(--color-text-body)]">
-            ชุดข้อสอบที่กดรับฟรีหรือสั่งซื้อแล้ว จะถูกเพิ่มเข้าคลังข้อสอบของโรงเรียนสำหรับใช้สอน แข่ง EduBattle และออกสอบทันที (ปัจจุบันในคลังโรงเรียนมี {schoolQuestions.length} ข้อ)
-          </p>
+          <div className="space-y-1 min-w-0">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ · {schoolName}</span>
+            </div>
+            <h2 className="text-xl font-extrabold text-[var(--color-text-title)]">
+              ศูนย์รับและสั่งซื้อชุดข้อสอบกลางเข้าโรงเรียน
+            </h2>
+            <p className="text-xs text-[var(--color-text-body)]">
+              ชุดข้อสอบที่กดรับฟรีหรือสั่งซื้อแล้ว จะถูกเพิ่มเข้าคลังข้อสอบของโรงเรียนสำหรับใช้สอน แข่ง EduBattle และออกสอบทันที (ปัจจุบันในคลังโรงเรียนมี {schoolQuestions.length} ข้อ)
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -738,7 +744,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
             <button
               type="button"
               onClick={onOpenQuestionBankInEduBattle}
-              className="px-3.5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              className="btn-action-primary"
             >
               <Swords className="w-4 h-4" />
               <span>ไปที่คลังข้อสอบ & เกม EduBattle</span>

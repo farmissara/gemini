@@ -38,6 +38,7 @@ import {
 } from '../lib/centralExamBank';
 import { CentralExamPack, LearningStrandId, QuizQuestion, SchoolExamEntitlement } from '../types';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface SuperAdminCentralExamManagerProps {
   isDemoMode: boolean;
@@ -534,30 +535,34 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   };
 
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 ${getModuleTone('central_exam_hub')}`}>
       {/* Header & Action Buttons */}
-      <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--color-primary-text)]">
-            <BookOpen className="w-4 h-4" />
-            <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ (Central Exam Distribution)</span>
-            <span className="text-[var(--color-text-muted)] font-normal">
-              · {packs.length} ชุด · {totalQuestionsCount} ข้อ
-            </span>
+      <div className="app-page-header p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+            <BookOpen className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-extrabold text-[var(--color-text-title)]">
-            สร้าง นำเข้า ตั้งราคา (ฟรี / แบบซื้อ) และเผยแพร่ข้อสอบกลางสู่ทุกโรงเรียน
-          </h3>
-          <p className="text-xs text-[var(--color-text-body)]">
-            เมื่อ Super Admin กดเผยแพร่ชุดข้อสอบ ระบบจะส่ง Pop-up แจ้งเตือนข้อสอบใหม่ไปที่หน้าแอดมินโรงเรียนเพื่อกดรับฟรีหรือสั่งซื้อเข้าคลังโรงเรียนทันที
-          </p>
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--tone)]">
+              <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ (Central Exam Distribution)</span>
+              <span className="text-[var(--color-text-muted)] font-normal">
+                · {packs.length} ชุด · {totalQuestionsCount} ข้อ
+              </span>
+            </div>
+            <h3 className="text-base font-extrabold text-[var(--color-text-title)]">
+              สร้าง นำเข้า ตั้งราคา (ฟรี / แบบซื้อ) และเผยแพร่ข้อสอบกลางสู่ทุกโรงเรียน
+            </h3>
+            <p className="text-xs text-[var(--color-text-body)]">
+              เมื่อ Super Admin กดเผยแพร่ชุดข้อสอบ ระบบจะส่ง Pop-up แจ้งเตือนข้อสอบใหม่ไปที่หน้าแอดมินโรงเรียนเพื่อกดรับฟรีหรือสั่งซื้อเข้าคลังโรงเรียนทันที
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handleDownloadCsvTemplate}
-            className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            className="btn-tool-neutral"
           >
             <Download className="w-3.5 h-3.5" />
             <span>เทมเพลต CSV</span>
@@ -565,7 +570,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           <button
             type="button"
             onClick={() => setShowImportModal(true)}
-            className="px-3.5 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-800 dark:text-indigo-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            className="btn-tool-tone"
           >
             <Upload className="w-3.5 h-3.5" />
             <span>นำเข้า CSV / JSON</span>
@@ -573,7 +578,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           <button
             type="button"
             onClick={() => setShowPaymentSettingsModal(true)}
-            className="px-3.5 py-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+            className="btn-tool-tone"
           >
             <CreditCard className="w-3.5 h-3.5" />
             <span>ตั้งค่า QR PromptPay รับเงิน</span>
@@ -581,7 +586,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           <button
             type="button"
             onClick={() => setShowCreatePackModal(true)}
-            className="px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            className="btn-action-primary"
           >
             <Plus className="w-4 h-4" />
             <span>สร้างชุดข้อสอบกลางใหม่</span>

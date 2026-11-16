@@ -42,6 +42,7 @@ import { StaffOrganizationView } from './StaffOrganizationView';
 import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
+import { getModuleTone } from '../lib/moduleTheme';
 import {
   inviteTeacherOrParentAccount,
   listSchoolStaffParentAccounts,
@@ -561,11 +562,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header and Controls */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <GraduationCap className="w-4 h-4" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
           </h1>
@@ -573,28 +576,22 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
           </span>
 
-          <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 ml-1">
+          <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
             <button
               type="button"
               aria-pressed={staffPage === 'directory'}
+              data-active={staffPage === 'directory'}
               onClick={() => setStaffPage('directory')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
-                staffPage === 'directory'
-                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn inline-flex items-center gap-1.5"
             >
               <span>ทำเนียบบุคลากร</span>
             </button>
             <button
               type="button"
               aria-pressed={staffPage === 'organization'}
+              data-active={staffPage === 'organization'}
               onClick={() => setStaffPage('organization')}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
-                staffPage === 'organization'
-                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn inline-flex items-center gap-1.5"
             >
               <Building2 className="h-3 w-3" />
               <span>ผังองค์กร</span>
@@ -604,7 +601,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-1.5">
           <details className="relative">
-            <summary className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
+            <summary className="btn-tool-neutral list-none px-2.5 py-1.5">
               <span>{lang === 'th' ? 'เครื่องมือข้อมูล' : 'Data actions'}</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </summary>
@@ -616,9 +613,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     event.currentTarget.closest('details')?.removeAttribute('open');
                     onOpenImportExport();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
                   <span>{lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel'}</span>
                 </button>
               )}
@@ -628,9 +625,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   event.currentTarget.closest('details')?.removeAttribute('open');
                   handleExportCSV();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <Download className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                <Download className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
                 <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
               </button>
               {canPurgeSampleTeachers && onPurgeSampleTeachers && (
@@ -640,7 +637,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     event.currentTarget.closest('details')?.removeAttribute('open');
                     onPurgeSampleTeachers();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50 cursor-pointer"
                   title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -653,8 +650,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           {canManage && (
             <>
               <details className="relative">
-                <summary className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
-                  <Briefcase className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                <summary className="btn-tool-tone list-none px-2.5 py-1.5">
+                  <Briefcase className="h-3.5 w-3.5 tone-text" />
                   <span>{lang === 'th' ? 'ตั้งค่าและบัญชี' : 'Settings & Accounts'}</span>
                   <ChevronDown className="h-3.5 w-3.5" />
                 </summary>
@@ -666,9 +663,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       setShowAccountsPanel((prev) => !prev);
                       void refreshTeacherAccounts();
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Mail className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                    <Mail className="h-3.5 w-3.5 tone-text" />
                     <span>{lang === 'th' ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})` : `Teacher accounts (${teacherAccounts.length})`}</span>
                   </button>
                   <button
@@ -678,9 +675,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       setShowPositionConfigPanel((prev) => !prev);
                     }}
                     aria-expanded={showPositionConfigPanel}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Briefcase className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                    <Briefcase className="h-3.5 w-3.5 tone-text" />
                     <span>{lang === 'th' ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})` : `Staff positions (${configuredPositionOptions.length})`}</span>
                   </button>
                   <button
@@ -689,9 +686,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       event.currentTarget.closest('details')?.removeAttribute('open');
                       setShowStaffMetaModal(true);
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Tag className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                    <Tag className="h-3.5 w-3.5 tone-text" />
                     <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings'}</span>
                   </button>
                 </div>
@@ -699,7 +696,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-xs flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                className="btn-action-primary px-3 py-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>

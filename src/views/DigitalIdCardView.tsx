@@ -20,6 +20,7 @@ import { Student, School, AppLanguage, UserRole } from '../types';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
 import { BatchIdCardPrintModal } from '../components/modals/BatchIdCardPrintModal';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface DigitalIdCardViewProps {
   students: Student[];
@@ -56,16 +57,16 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   });
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('student_id_cards')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header text-[var(--color-text-title)]">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="p-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] shrink-0">
+          <span className="tone-chip w-7 h-7 rounded-lg shrink-0">
             <CreditCard className="w-4 h-4" />
           </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] flex items-center gap-2 truncate">
             <span className="truncate">{lang === 'th' ? 'บัตรประจำตัวดิจิทัล' : 'Virtual ID Card'}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] shrink-0">
+            <span className="text-[10px] px-2 py-0.5 rounded-full tone-chip shrink-0 font-bold">
               Smart NFC &amp; QR
             </span>
           </h1>
@@ -73,34 +74,31 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {/* Card Type Toggle */}
-          <div className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div className="seg-tab-group">
             <button
+              type="button"
+              data-active={cardType === 'student'}
               onClick={() => setCardType('student')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                cardType === 'student'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn"
             >
               {lang === 'th' ? 'บัตรนักเรียน' : 'Student Card'}
             </button>
             <button
+              type="button"
+              data-active={cardType === 'staff'}
               onClick={() => setCardType('staff')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                cardType === 'staff'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn"
             >
               {lang === 'th' ? 'บัตรครู/บุคลากร' : 'Staff Card'}
             </button>
           </div>
 
           <button
+            type="button"
             onClick={() => setShowPrintModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] transition cursor-pointer whitespace-nowrap"
+            className="btn-tool-tone px-2.5 py-1.5"
           >
-            <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+            <Printer className="w-3.5 h-3.5 tone-text" />
             <span>{lang === 'th' ? 'พิมพ์บัตร (A4)' : 'Print Sheet'}</span>
           </button>
         </div>

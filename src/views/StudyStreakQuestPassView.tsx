@@ -35,6 +35,7 @@ import {
   INITIAL_DAILY_MICRO_QUESTS 
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface StudyStreakQuestPassViewProps {
   lang?: AppLanguage;
@@ -171,7 +172,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
   const currentDailyQuest = dailyQuests[activeQuestIndex];
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('study_streak')}`}>
       {/* Toast Alert */}
       {redeemedPerkToast && (
         <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-emerald-500/50 flex items-center gap-2">
@@ -181,49 +182,54 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       )}
 
       {/* Top Banner with Flame Streak & Knowledge Token HUD */}
-      <div className="shrink-0 bg-gradient-to-r from-amber-950 via-orange-950 to-slate-900 text-white rounded-2xl p-3.5 sm:p-4 shadow-md border border-orange-600/40 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-900/70 border border-orange-400/40 text-orange-100 text-[11px] font-semibold">
-              <Flame className="w-3.5 h-3.5 text-orange-300 animate-pulse" />
-              <span>{lang === 'th' ? 'ระบบสตรีคความต่อเนื่อง & ร้านค้าสิทธิพิเศษในห้องเรียน' : 'Daily Study Streak & Season Battle Pass'}</span>
+      <div className="shrink-0 app-page-header p-3.5 sm:p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 max-w-xl">
+            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Flame className="w-5 h-5" />
             </div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              <span>{lang === 'th' ? 'Daily Streak & Classroom Quest Pass' : 'Daily Study Streak Pass'}</span>
-            </h1>
-            <p className="text-slate-200 text-xs leading-relaxed">
-              {lang === 'th' 
-                ? 'กระตุ้นพฤติกรรมรักการเรียนรู้ทุกวันด้วยภารกิจสั้น 3 นาที รักษาไฟสตรีค และนำเหรียญมาแลกสิทธิพิเศษจริง'
-                : 'Turn consistent learning into an habit with daily 3-minute micro-quests, flame streaks, and classroom perks.'}
-            </p>
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ระบบสตรีคความต่อเนื่อง & ร้านค้าสิทธิพิเศษในห้องเรียน' : 'Daily Study Streak & Season Battle Pass'}</span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
+                <span>{lang === 'th' ? 'Daily Streak & Classroom Quest Pass' : 'Daily Study Streak Pass'}</span>
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs leading-relaxed">
+                {lang === 'th' 
+                  ? 'กระตุ้นพฤติกรรมรักการเรียนรู้ทุกวันด้วยภารกิจสั้น 3 นาที รักษาไฟสตรีค และนำเหรียญมาแลกสิทธิพิเศษจริง'
+                  : 'Turn consistent learning into a habit with daily 3-minute micro-quests, flame streaks, and classroom perks.'}
+              </p>
+            </div>
           </div>
 
           {/* Player Stats Strip */}
           <div className="flex items-center gap-2 shrink-0">
             {/* Streak Counter */}
-            <div className="bg-orange-900/60 border border-orange-400/40 p-2.5 rounded-xl flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center font-bold">
-                <Flame className="w-4 h-4 fill-current text-yellow-300" />
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-2.5 rounded-xl flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold">
+                <Flame className="w-4 h-4 fill-current" />
               </div>
               <div>
-                <p className="text-[10px] font-semibold text-orange-100">{lang === 'th' ? 'สตรีคสะสม' : 'Streak'}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-yellow-300">{streakCount}</span>
-                  <span className="text-[10px] font-bold text-orange-100">วัน 🔥</span>
+                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">{lang === 'th' ? 'สตรีคสะสม' : 'Streak'}</p>
+                <div className="flex items-baseline gap-1 tabular-nums">
+                  <span className="text-lg font-black text-orange-600 dark:text-orange-400">{streakCount}</span>
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)]">วัน</span>
                 </div>
               </div>
             </div>
 
             {/* Tokens Balance */}
-            <div className="bg-amber-900/60 border border-yellow-400/40 p-2.5 rounded-xl flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
-                <Coins className="w-4 h-4 text-slate-950" />
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-2.5 rounded-xl flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
+                <Coins className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-semibold text-yellow-100">{lang === 'th' ? 'เหรียญความรู้' : 'Tokens'}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-amber-300">{tokens}</span>
-                  <span className="text-[10px]">🪙</span>
+                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">{lang === 'th' ? 'เหรียญความรู้' : 'Tokens'}</p>
+                <div className="flex items-baseline gap-1 tabular-nums">
+                  <span className="text-lg font-black text-amber-700 dark:text-amber-300">{tokens}</span>
+                  <span className="text-[10px] text-[var(--color-text-muted)]">Coins</span>
                 </div>
               </div>
             </div>
@@ -232,15 +238,12 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       </div>
 
       {/* Sub-tabs Navigation */}
-      <div className="shrink-0 flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+      <div className="shrink-0 seg-tab-group w-fit max-w-full">
         <button
           type="button"
+          data-active={activeTab === 'quest_pass'}
           onClick={() => setActiveTab('quest_pass')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-            activeTab === 'quest_pass'
-              ? 'bg-amber-400 border-amber-500 text-slate-950 shadow-xs'
-              : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
           <Zap className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? '1. เควสต์ประจำวัน & ซีซันพาส' : '1. Daily Quest & Pass'}</span>
@@ -248,12 +251,9 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
         <button
           type="button"
+          data-active={activeTab === 'perks_store'}
           onClick={() => setActiveTab('perks_store')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-            activeTab === 'perks_store'
-              ? 'bg-indigo-700 border-indigo-700 text-white shadow-xs'
-              : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
           <ShoppingBag className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? '2. ร้านค้าสิทธิพิเศษห้องเรียน (Classroom Perks)' : '2. Perks Store'}</span>

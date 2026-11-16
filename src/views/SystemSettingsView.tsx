@@ -36,6 +36,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, SchoolTier } from '../types';
+import { getModuleTone } from '../lib/moduleTheme';
 import {
   approveStudentAccountInSupabase,
   deleteStudentAccountRegistrationInSupabase,
@@ -533,61 +534,66 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   ];
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3.5">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-3.5 ${getModuleTone('system_settings')}`}>
       {/* Top Header Card */}
-      <div className="shrink-0 relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white shadow-md border border-emerald-700">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-600 text-[11px] font-semibold text-emerald-100">
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
-              <span>LINE Official Account & System Automation Settings</span>
+      <div className="shrink-0 app-page-header p-4 sm:p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Settings className="w-5 h-5" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-              {lang === 'th' ? 'ตั้งค่าระบบ & การแจ้งเตือน LINE' : 'System & LINE Notification Settings'}
-            </h1>
-            <p className="text-emerald-100 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              {lang === 'th' 
-                ? 'กำหนดค่าการเชื่อมต่อ LINE Messaging API, เลือกเหตุการณ์ที่ต้องการส่งแจ้งเตือนผู้ปกครอง (เข้าเรียน, ขาดเรียน, การบ้าน, ค่าเทอม, ห้องพยาบาล) พร้อมจำลองดูการ์ด Flex Message จริง'
-                : 'Configure LINE Messaging API keys, customize event notification triggers for parents, and preview real-time Flex Message cards.'}
-            </p>
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[11px] font-bold text-[var(--tone)]">
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>LINE Official Account & System Automation Settings</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ตั้งค่าระบบ & การแจ้งเตือน LINE' : 'System & LINE Notification Settings'}
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs sm:text-sm max-w-2xl leading-relaxed">
+                {lang === 'th' 
+                  ? 'กำหนดค่าการเชื่อมต่อ LINE Messaging API, เลือกเหตุการณ์ที่ต้องการส่งแจ้งเตือนผู้ปกครอง (เข้าเรียน, ขาดเรียน, การบ้าน, ค่าเทอม, ห้องพยาบาล) พร้อมจำลองดูการ์ด Flex Message จริง'
+                  : 'Configure LINE Messaging API keys, customize event notification triggers for parents, and preview real-time Flex Message cards.'}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={handleSave}
-              className="px-5 py-2.5 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50 text-xs font-bold flex items-center gap-2 shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="btn-action-primary px-5 py-2.5"
             >
-              <Save className="w-4 h-4 text-emerald-700" />
+              <Save className="w-4 h-4" />
               <span>{lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Settings'}</span>
             </button>
           </div>
         </div>
 
         {/* Quick Stats Strip */}
-        <div className="mt-5 pt-4 border-t border-white/20 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="mt-4 pt-3.5 border-t border-[var(--color-border)] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div>
-            <div className="text-emerald-200 text-[11px]">สถานะ LINE OA</div>
-            <div className="font-bold flex items-center gap-1.5 mt-0.5 text-white">
-              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+            <div className="text-[var(--color-text-muted)] text-[11px]">สถานะ LINE OA</div>
+            <div className="font-bold flex items-center gap-1.5 mt-0.5 text-[var(--color-text-title)]">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
               <span>เชื่อมต่อพร้อมใช้งาน</span>
             </div>
           </div>
           <div>
-            <div className="text-emerald-200 text-[11px]">นักเรียนที่ผูก LINE</div>
-            <div className="font-bold text-white mt-0.5">
+            <div className="text-[var(--color-text-muted)] text-[11px]">นักเรียนที่ผูก LINE</div>
+            <div className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
               {connectedCount} จาก {students.length} คน ({connectedPct}%)
             </div>
           </div>
           <div>
-            <div className="text-emerald-200 text-[11px]">เวลาตัดสาย / ขาด</div>
-            <div className="font-bold text-white mt-0.5">
+            <div className="text-[var(--color-text-muted)] text-[11px]">เวลาตัดสาย / ขาด</div>
+            <div className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
               {lineSettings.lateCutoffTime} น. / {lineSettings.absenceCutoffTime} น.
             </div>
           </div>
           <div>
-            <div className="text-emerald-200 text-[11px]">ความเร็วส่งแจ้งเตือน</div>
-            <div className="font-bold text-white mt-0.5">
+            <div className="text-[var(--color-text-muted)] text-[11px]">ความเร็วส่งแจ้งเตือน</div>
+            <div className="font-bold text-[var(--tone)] mt-0.5">
               Instant (&lt; 0.8 วินาที)
             </div>
           </div>
@@ -615,96 +621,75 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-[var(--color-border)] no-scrollbar">
+      <div className="shrink-0 seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
         <button
           type="button"
+          data-active={activeTab === 'line_events'}
           onClick={() => setActiveTab('line_events')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            activeTab === 'line_events'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <BellRing className="w-4 h-4" />
+          <BellRing className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'เหตุการณ์ที่ต้องแจ้งเตือน LINE' : 'Notification Events'}</span>
         </button>
 
         <button
           type="button"
+          data-active={activeTab === 'preview_simulator'}
           onClick={() => setActiveTab('preview_simulator')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            activeTab === 'preview_simulator'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <Smartphone className="w-4 h-4" />
+          <Smartphone className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'จำลองหน้าจอแชต LINE & Flex Message' : 'Live Flex Message Simulator'}</span>
         </button>
 
         <button
           type="button"
+          data-active={activeTab === 'line_connection'}
           onClick={() => setActiveTab('line_connection')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            activeTab === 'line_connection'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <MessageSquare className="w-4 h-4" />
+          <MessageSquare className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'การเชื่อมต่อ LINE Messaging API' : 'LINE API & Webhook'}</span>
         </button>
 
         <button
           type="button"
+          data-active={activeTab === 'subscribers'}
           onClick={() => setActiveTab('subscribers')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            activeTab === 'subscribers'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'รายชื่อผู้รับแจ้งเตือน (Subscribers)' : 'Subscribers Directory'}</span>
         </button>
 
         <button
           type="button"
+          data-active={activeTab === 'school_general'}
           onClick={() => setActiveTab('school_general')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            activeTab === 'school_general'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <Settings className="w-4 h-4" />
+          <Settings className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'ข้อมูลสถานศึกษา & สำรองข้อมูล' : 'General & Backup'}</span>
         </button>
 
         <button
           type="button"
+          data-active={activeTab === 'school_gps'}
           onClick={() => setActiveTab('school_gps')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-            activeTab === 'school_gps'
-              ? 'bg-amber-500 text-slate-950 shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <MapPin className="w-4 h-4" />
+          <MapPin className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'พิกัด GPS & Geofence ประตูโรงเรียน' : 'School GPS & Geofence'}</span>
         </button>
 
         {['admin', 'super_admin'].includes(currentRole) && (
           <button
             type="button"
+            data-active={activeTab === 'student_accounts'}
             onClick={() => setActiveTab('student_accounts')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-              activeTab === 'student_accounts'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
+            className="seg-tab-btn"
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5" />
             <span>อนุมัติ &amp; ผูกบัญชีนักเรียน</span>
           </button>
         )}
@@ -712,14 +697,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         {['admin', 'super_admin'].includes(currentRole) && (
           <button
             type="button"
+            data-active={activeTab === 'student_login_config'}
             onClick={() => setActiveTab('student_login_config')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-              activeTab === 'student_login_config'
-                ? 'bg-blue-700 text-white shadow-md'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
+            className="seg-tab-btn"
           >
-            <GraduationCap className="w-4 h-4 text-amber-300" />
+            <GraduationCap className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'รูปแบบล็อกอินนักเรียน & ลิงก์โรงเรียน' : 'Student Login & School Link'}</span>
           </button>
         )}
@@ -727,14 +709,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         {['admin', 'super_admin'].includes(currentRole) && (
           <button
             type="button"
+            data-active={activeTab === 'saas_audit'}
             onClick={() => setActiveTab('saas_audit')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition shrink-0 cursor-pointer ${
-              activeTab === 'saas_audit'
-                ? 'bg-[var(--color-primary)] text-white shadow-md'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-            }`}
+            className="seg-tab-btn"
           >
-            <Sliders className="w-4 h-4" />
+            <Sliders className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'แพ็กเกจโมดูล & Audit Log' : 'Modules & Audit Log'}</span>
           </button>
         )}

@@ -21,6 +21,7 @@ import { PagedList } from '../components/PagedList';
 import { addConsentForm } from '../lib/campusDataStore';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getAnnouncementDuplicateReasons } from '../lib/duplicateRecords';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -107,17 +108,21 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   });
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('announcements')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
-        <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-          <BellRing className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-          <span>ประกาศและข่าวสารโรงเรียน</span>
-        </h1>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <BellRing className="w-4 h-4 shrink-0" />
+          </span>
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
+            ประกาศและข่าวสารโรงเรียน
+          </h1>
+        </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <details className="relative">
-            <summary className="list-none flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold transition-all cursor-pointer whitespace-nowrap">
-              <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+            <summary className="btn-tool-tone list-none px-2.5 py-1.5">
+              <Sliders className="w-3.5 h-3.5 tone-text" />
               <span>เครื่องมือ</span>
             </summary>
             <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
@@ -129,7 +134,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 }}
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
               >
-                <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                <Sliders className="w-3.5 h-3.5 tone-text" />
                 <span>จัดการหมวดประกาศ</span>
               </button>
               <button
@@ -140,7 +145,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 }}
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>สร้างหนังสือขออนุญาตผู้ปกครอง</span>
               </button>
             </div>
@@ -151,7 +156,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               setAllowDuplicateConfirm(false);
               setShowComposeModal(true);
             }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+            className="btn-action-primary px-3 py-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Publish Broadcast</span>
@@ -167,24 +172,22 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       )}
 
       {/* Filter Tabs */}
-      <div className="shrink-0 p-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 overflow-x-auto">
+      <div className="shrink-0 p-2 toolbar-filter-zone flex flex-wrap items-center justify-between gap-2">
+        <div className="seg-tab-group overflow-x-auto no-scrollbar">
           {['all', 'students', 'parents', 'teachers'].map((aud) => (
             <button
               key={aud}
+              type="button"
+              data-active={filterAudience === aud}
               onClick={() => setFilterAudience(aud)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer border ${
-                filterAudience === aud
-                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
-                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-text-title)] border-[var(--color-border)]'
-              }`}
+              className="seg-tab-btn capitalize"
             >
               Target: {aud}
             </button>
           ))}
         </div>
 
-        <span className="text-xs text-[var(--color-text-muted)] shrink-0">
+        <span className="text-xs text-[var(--color-text-muted)] shrink-0 tabular-nums">
           Showing <strong className="text-[var(--color-text-title)]">{filteredAnnouncements.length}</strong> items
         </span>
       </div>

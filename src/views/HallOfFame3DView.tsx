@@ -21,6 +21,7 @@ import {
 import { HallOfFameTrophy, AppLanguage, School } from '../types';
 import { INITIAL_HALL_OF_FAME_TROPHIES } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface HallOfFame3DViewProps {
   lang?: AppLanguage;
@@ -354,25 +355,28 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className={`space-y-6 pb-12 ${getModuleTone('hall_of_fame')}`}>
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-amber-600/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-amber-500/10 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-900/70 border border-amber-400/40 text-amber-100 text-xs font-semibold">
-              <Trophy className="w-4 h-4 text-amber-300" />
-              <span>{lang === 'th' ? '3D Interactive Hall of Fame & Digital Certificates' : '3D Hall of Fame & Verifiable Certificates'}</span>
+      <div className="app-page-header p-5 sm:p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
+            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Trophy className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              {lang === 'th' ? 'หอเกียรติยศ 3 มิติ & เกียรติบัตรดิจิทัลตรวจสอบได้' : '3D Trophy Hall of Fame'}
-            </h1>
-            <p className="text-slate-200 text-sm leading-relaxed">
-              {lang === 'th' 
-                ? 'เชิดชูเกียรตินักเรียนผู้มีความเป็นเลิศทางวิชาการและทักษะรอบด้าน จัดแสดงถ้วยรางวัลสามมิติหมุนได้ 360 องศา พร้อมออกเกียรติบัตรดิจิทัลมี QR Code และรหัส Serial Number ยืนยันความถูกต้อง'
-                : 'Celebrate exceptional student achievements with interactive 3D trophies, 360-degree rotation, and cryptographically verifiable digital certificates.'}
-            </p>
+            <div className="space-y-1.5 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? '3D Interactive Hall of Fame & Digital Certificates' : '3D Hall of Fame & Verifiable Certificates'}</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--color-text-title)]">
+                {lang === 'th' ? 'หอเกียรติยศ 3 มิติ & เกียรติบัตรดิจิทัลตรวจสอบได้' : '3D Trophy Hall of Fame'}
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs sm:text-sm leading-relaxed">
+                {lang === 'th' 
+                  ? 'เชิดชูเกียรตินักเรียนผู้มีความเป็นเลิศทางวิชาการและทักษะรอบด้าน จัดแสดงถ้วยรางวัลสามมิติหมุนได้ 360 องศา พร้อมออกเกียรติบัตรดิจิทัลมี QR Code และรหัส Serial Number ยืนยันความถูกต้อง'
+                  : 'Celebrate exceptional student achievements with interactive 3D trophies, 360-degree rotation, and cryptographically verifiable digital certificates.'}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -380,28 +384,28 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
               <button
                 type="button"
                 onClick={onExit}
-                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-900/40 transition cursor-pointer active:scale-95"
+                className="btn-action-danger"
               >
-                <span>❌ ออกจากเกม</span>
+                <span>ออกจากเกม</span>
               </button>
             )}
 
-            <div className="bg-slate-950/45 backdrop-blur-md border border-white/25 p-4 rounded-xl flex items-center gap-4">
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-4 rounded-xl flex items-center gap-4">
               <div className="text-right">
-                <p className="text-xs text-amber-100 font-medium">
+                <p className="text-xs text-[var(--color-text-muted)] font-medium">
                   {lang === 'th' ? 'ถ้วยเกียรติยศทั้งหมด' : 'Total Trophies'}
                 </p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-amber-300">{trophies.length}</span>
-                  <span className="text-xs text-slate-200">{lang === 'th' ? 'รางวัล' : 'awards'}</span>
+                <div className="flex items-baseline gap-1 justify-end tabular-nums">
+                  <span className="text-3xl font-black text-[var(--tone)]">{trophies.length}</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">{lang === 'th' ? 'รางวัล' : 'awards'}</span>
                 </div>
-                <p className="text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5">
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5">
                   <CheckCircle2 className="w-3 h-3" />
                   {lang === 'th' ? 'ตรวจสอบได้ทุกใบ' : '100% Verifiable'}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-amber-900/60 border border-amber-400/50 flex items-center justify-center text-amber-300">
-                <Award className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                <Award className="w-5 h-5" />
               </div>
             </div>
           </div>

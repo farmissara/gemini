@@ -47,6 +47,7 @@ import { PagedList } from '../components/PagedList';
 import { getConsentForms, getConsentResponses, upsertConsentResponse } from '../lib/campusDataStore';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getStoredGradeAlerts } from '../lib/gradeNotifications';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface ParentPortalViewProps {
   schoolId?: string;
@@ -231,44 +232,44 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 max-w-5xl mx-auto w-full">
+    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 max-w-5xl mx-auto w-full`}>
       {/* Student Switcher & Guardian Profile Card */}
-      <div className="shrink-0 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
-        <div className="flex items-center gap-4">
+      <div className="app-page-header shrink-0 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
           <img
             src={student?.avatarUrl}
             alt={student?.firstNameEn}
-            className="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-500 shadow-lg"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-[var(--tone)] shadow-sm shrink-0"
           />
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-white">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
                 {lang === 'th'
                   ? `${student?.firstNameTh} ${student?.lastNameTh}`
                   : `${student?.firstNameEn} ${student?.lastNameEn}`}
               </h2>
-              <span className="font-mono text-xs px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-100 border border-indigo-400/50">
+              <span className="tone-chip font-mono text-xs px-2 py-0.5 rounded-md font-bold shrink-0">
                 {student?.studentIdNumber}
               </span>
             </div>
-            <p className="text-xs text-slate-200">
+            <p className="text-xs text-[var(--color-text-body)] mt-0.5">
               {student?.gradeLevel} • {student?.room}
             </p>
-            <p className="text-[11px] text-slate-300 mt-0.5">
+            <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 truncate">
               {lang === 'th' ? 'ผู้ปกครอง:' : 'Guardian:'} {student?.guardianName} ({student?.guardianRelation}) • {student?.guardianPhone}
             </p>
           </div>
         </div>
 
         {/* Student selector */}
-        <div className="flex flex-col items-start sm:items-end gap-1.5">
-          <label className="text-[11px] font-semibold text-slate-200">
+        <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+          <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
             {lang === 'th' ? 'เลือกลูก/นักเรียนในการดูแล:' : 'Select Student:'}
           </label>
           <select
             value={selectedStudentId}
             onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white font-medium"
+            className="px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold outline-none focus:ring-2 focus:ring-[var(--tone)]"
           >
             {students.map((s) => (
               <option key={s.id} value={s.id}>
@@ -280,64 +281,44 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Navigation Tabs in Parent Portal */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-3">
+      <div className="seg-tab-group shrink-0 overflow-x-auto max-w-full">
         <button
           type="button"
           onClick={() => setActivePortalTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activePortalTab === 'overview'
-              ? 'bg-indigo-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          data-active={activePortalTab === 'overview'}
+          className="seg-tab-btn px-3.5 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
         >
-          <ShieldCheck className="w-4 h-4" />
-          <span>ภาพรวม & บัตรนักเรียน</span>
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+          <span>ภาพรวม &amp; บัตรนักเรียน</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActivePortalTab('selfie_album')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activePortalTab === 'selfie_album'
-              ? 'bg-blue-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          data-active={activePortalTab === 'selfie_album'}
+          className="seg-tab-btn px-3.5 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
         >
-          <Camera className="w-4 h-4" />
-          <span>อัลบั้มภาพถ่ายเข้า-ออกโรงเรียน (Selfie Album)</span>
-          <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold text-[10px]">
-            {studentAttendance.filter(a => !!a.photoUrl).length}
-          </span>
+          <Camera className="w-3.5 h-3.5 shrink-0" />
+          <span>อัลบั้มภาพถ่ายเข้า-ออก ({studentAttendance.filter(a => !!a.photoUrl).length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActivePortalTab('leave_submission')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activePortalTab === 'leave_submission'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          data-active={activePortalTab === 'leave_submission'}
+          className="seg-tab-btn px-3.5 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
         >
-          <FileText className="w-4 h-4" />
-          <span>ยื่นใบลาให้ลูก</span>
-          {studentLeaveRequests.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-[10px]">
-              {studentLeaveRequests.length}
-            </span>
-          )}
+          <FileText className="w-3.5 h-3.5 shrink-0" />
+          <span>ยื่นใบลาให้ลูก{studentLeaveRequests.length > 0 ? ` (${studentLeaveRequests.length})` : ''}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActivePortalTab('consent_slips')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activePortalTab === 'consent_slips'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
-          }`}
+          data-active={activePortalTab === 'consent_slips'}
+          className="seg-tab-btn px-3.5 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
         >
-          <ShieldCheck className="w-4 h-4" />
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
           <span>หนังสือขออนุญาต ({consentForms.length})</span>
         </button>
       </div>
@@ -468,7 +449,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowPayModal(true)}
-                      className="w-full py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="btn-action-primary w-full py-2 text-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
                     >
                       <QrCode className="w-3.5 h-3.5" />
                       <span>ชำระผ่าน PromptPay QR Code</span>
@@ -524,7 +505,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenReportCard(student)}
-                      className="px-3.5 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                      className="btn-tool-tone px-3.5 py-2 text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0"
                     >
                       <Award className="w-4 h-4" />
                       <span>{summary?.hideGpaCalculations ? 'ดูผลประเมินรายปี' : 'ดูใบเกรด ปพ.1'}</span>
@@ -591,38 +572,37 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
             {/* Date Selector */}
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAlbumSelectedDate(todayStr)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  albumSelectedDate === todayStr ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
-                }`}
-              >
-                วันนี้
-              </button>
-              <button
-                type="button"
-                onClick={() => setAlbumSelectedDate(yesterdayStr)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  albumSelectedDate === yesterdayStr ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
-                }`}
-              >
-                เมื่อวาน
-              </button>
-              <button
-                type="button"
-                onClick={() => setAlbumSelectedDate(twoDaysAgoStr)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  albumSelectedDate === twoDaysAgoStr ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
-                }`}
-              >
-                2 วันก่อน
-              </button>
+              <div className="seg-tab-group">
+                <button
+                  type="button"
+                  onClick={() => setAlbumSelectedDate(todayStr)}
+                  data-active={albumSelectedDate === todayStr}
+                  className="seg-tab-btn px-3 py-1.5 text-xs whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  วันนี้
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAlbumSelectedDate(yesterdayStr)}
+                  data-active={albumSelectedDate === yesterdayStr}
+                  className="seg-tab-btn px-3 py-1.5 text-xs whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  เมื่อวาน
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAlbumSelectedDate(twoDaysAgoStr)}
+                  data-active={albumSelectedDate === twoDaysAgoStr}
+                  className="seg-tab-btn px-3 py-1.5 text-xs whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  2 วันก่อน
+                </button>
+              </div>
               <input
                 type="date"
                 value={albumSelectedDate}
                 onChange={(e) => e.target.value && setAlbumSelectedDate(e.target.value)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
               />
             </div>
           </div>
@@ -807,7 +787,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                className="btn-action-primary w-full py-3 text-xs flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>ส่งใบลาให้ครูประจำชั้น</span>
@@ -904,7 +884,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                               });
                               setConsentResponses(next);
                             }}
-                            className="px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 dark:text-rose-300 font-semibold hover:bg-rose-50 cursor-pointer"
+                            className="btn-action-danger px-3 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                           >
                             ไม่ยินยอม
                           </button>
@@ -920,7 +900,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                               });
                               setConsentResponses(next);
                             }}
-                            className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+                            className="btn-action-success px-3.5 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                           >
                             ลงชื่อยินยอม
                           </button>

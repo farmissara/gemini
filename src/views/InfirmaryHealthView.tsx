@@ -31,6 +31,7 @@ import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getInfirmaryDuplicateReasons } from '../lib/duplicateRecords';
 import { getLocalDateString } from '../lib/date';
+import { getModuleTone } from '../lib/moduleTheme';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -190,11 +191,13 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('infirmary')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Top Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <HeartPulse className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <HeartPulse className="w-4 h-4 shrink-0" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'ห้องพยาบาล & สุขภาพนักเรียน' : 'School Infirmary & Health'}
           </h1>
@@ -202,28 +205,28 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-1.5">
           {/* Subtabs switcher */}
-          <div className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div className="seg-tab-group overflow-x-auto no-scrollbar">
             <button
+              type="button"
+              data-active={infirmaryTab === 'visits'}
               onClick={() => setInfirmaryTab('visits')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                infirmaryTab === 'visits' ? 'bg-rose-700 text-white shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              className="seg-tab-btn"
             >
               1. รักษา ({visits.length})
             </button>
             <button
+              type="button"
+              data-active={infirmaryTab === 'beds'}
               onClick={() => setInfirmaryTab('beds')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                infirmaryTab === 'beds' ? 'bg-rose-700 text-white shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              className="seg-tab-btn"
             >
               2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/{bedOptions.length})
             </button>
             <button
+              type="button"
+              data-active={infirmaryTab === 'allergies'}
               onClick={() => setInfirmaryTab('allergies')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                infirmaryTab === 'allergies' ? 'bg-rose-700 text-white shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              className="seg-tab-btn"
             >
               3. แพ้ยา ({studentsWithAllergies.length})
             </button>
@@ -233,20 +236,21 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             <button
               type="button"
               onClick={() => setShowPresetModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
+              className="btn-tool-tone px-2.5 py-1.5"
             >
-              <Sliders className="w-3.5 h-3.5 text-rose-700 dark:text-rose-300" />
+              <Sliders className="w-3.5 h-3.5 tone-text" />
               <span>ตั้งค่าเตียง/ยา</span>
             </button>
           )}
 
           <button
+            type="button"
             onClick={() => {
               setAllowDuplicateConfirm(false);
               setVisitFormStep(1);
               setShowAddModal(true);
             }}
-            className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-rose-700 hover:bg-rose-800 text-white shadow-xs transition cursor-pointer whitespace-nowrap"
+            className="btn-action-primary px-3 py-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'บันทึกการรักษา' : 'New Visit'}</span>

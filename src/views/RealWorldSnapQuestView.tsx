@@ -21,6 +21,7 @@ import {
 import { PagedList } from '../components/PagedList';
 import { RealWorldSnapQuest, AppLanguage, UserRole, AuthUser, PortfolioItem } from '../types';
 import { INITIAL_REAL_WORLD_QUESTS } from '../data/innovativeFeaturesData';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface RealWorldSnapQuestViewProps {
   lang?: AppLanguage;
@@ -157,25 +158,28 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className={`space-y-5 pb-12 ${getModuleTone('realworld_quests')}`}>
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-emerald-600/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/70 border border-emerald-400/40 text-emerald-100 text-xs font-semibold">
-              <Camera className="w-4 h-4 text-emerald-300" />
-              <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • โหมดตัวอย่าง' : 'Real-World Quest Demo'}</span>
+      <div className="app-page-header p-5 sm:p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
+            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
+              <Camera className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span>{lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}</span>
-            </h1>
-            <p className="text-slate-200 text-sm leading-relaxed">
-              {lang === 'th' 
-                ? 'ลองเชื่อมบทเรียนกับสิ่งรอบตัวด้วยภาพตัวอย่าง ผลที่แสดงเป็นข้อมูลจำลอง ยังไม่มี AI ตรวจภาพจริงและไม่มีการยืนยันคะแนน'
-                : 'Try sample images to connect lessons to daily life. Results are simulated; no real AI verification or rewards are issued.'}
-            </p>
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • โหมดตัวอย่าง' : 'Real-World Quest Demo'}</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs sm:text-sm leading-relaxed">
+                {lang === 'th' 
+                  ? 'ลองเชื่อมบทเรียนกับสิ่งรอบตัวด้วยภาพตัวอย่าง ผลที่แสดงเป็นข้อมูลจำลอง ยังไม่มี AI ตรวจภาพจริงและไม่มีการยืนยันคะแนน'
+                  : 'Try sample images to connect lessons to daily life. Results are simulated; no real AI verification or rewards are issued.'}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -184,10 +188,10 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowTeacherAddQuest(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
+                className="btn-action-primary"
               >
                 <Plus className="w-4 h-4" />
-                <span>{lang === 'th' ? '+ ครูสั่งเควสต์ใหม่' : '+ Teacher Add Quest'}</span>
+                <span>{lang === 'th' ? 'ครูสั่งเควสต์ใหม่' : 'Teacher Add Quest'}</span>
               </button>
             )}
           </div>
@@ -195,12 +199,12 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-[var(--color-card)] p-4 rounded-xl border border-[var(--color-border)] shadow-xs">
-        <div className="flex items-center gap-2">
+      <div className="toolbar-filter-zone flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <span className="text-xs font-bold text-[var(--color-text-title)]">
             {lang === 'th' ? 'หมวดหมู่วิชา:' : 'Category:'}
           </span>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="seg-tab-group">
             {[
               { id: 'all', label: 'ทั้งหมด' },
               { id: 'biology', label: 'ชีววิทยา' },
@@ -211,12 +215,9 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <button
                 key={tab.id}
                 type="button"
+                data-active={selectedSubjectFilter === tab.id}
                 onClick={() => setSelectedSubjectFilter(tab.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer border ${
-                  selectedSubjectFilter === tab.id
-                    ? 'bg-emerald-700 border-emerald-700 text-white shadow-xs'
-                    : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                }`}
+                className="seg-tab-btn"
               >
                 {tab.label}
               </button>

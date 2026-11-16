@@ -16,6 +16,7 @@ import {
   ExternalLink,
   MessageSquare
 } from 'lucide-react';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface LmsClassroomViewProps {
   courses: Course[];
@@ -70,10 +71,13 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const progressPercent = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2 ${getModuleTone('courses')}`}>
       {/* Compact Classroom Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
+            <BookOpen className="w-4 h-4" />
+          </div>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? activeCourse?.titleTh : activeCourse?.titleEn}
           </h1>
@@ -90,7 +94,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
               <span>{submittedAlert}</span>
             </div>
           )}
-          <div className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs flex items-center gap-1.5">
+          <div className="px-2.5 py-1 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs flex items-center gap-1.5">
             <span className="text-[var(--color-text-muted)]">{lang === 'th' ? 'ความคืบหน้า:' : 'Progress:'}</span>
             <span className="text-emerald-700 dark:text-emerald-300 font-bold font-mono tabular-nums">{progressPercent}%</span>
           </div>
@@ -107,10 +111,10 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
               const firstL = lessons.find((l) => l.courseId === c.id);
               if (firstL) setSelectedLessonId(firstL.id);
             }}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
               selectedCourseId === c.id
-                ? 'bg-indigo-700 text-white shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
+                ? 'bg-[var(--tone-solid)] text-white border-[var(--tone-solid)] shadow-xs'
+                : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--tone-soft)] border-[var(--color-border)]'
             }`}
           >
             <span className="font-mono mr-1.5">{c.code}</span>
@@ -120,26 +124,20 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       </div>
 
       {/* Navigation Sub-tabs */}
-      <div className="shrink-0 flex items-center gap-2 text-xs">
+      <div className="shrink-0 seg-tab-group w-fit max-w-full overflow-x-auto no-scrollbar">
         <button
           data-guide-id="lms-lessons-tab"
+          data-active={activeTab === 'lessons'}
           onClick={() => setActiveTab('lessons')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border ${
-            activeTab === 'lessons'
-              ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
-              : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-          }`}
+          className="seg-tab-btn"
         >
           {lang === 'th' ? '📚 บทเรียนวิดีโอ & สื่อการสอน' : '📚 Video Lessons & Notes'}
         </button>
         <button
           data-guide-id="lms-homework-tab"
+          data-active={activeTab === 'assignments'}
           onClick={() => setActiveTab('assignments')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer border ${
-            activeTab === 'assignments'
-              ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
-              : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-          }`}
+          className="seg-tab-btn"
         >
           {lang === 'th' ? '📝 การบ้าน & ใบงานออนไลน์' : '📝 Assignments & Tasks'}
         </button>

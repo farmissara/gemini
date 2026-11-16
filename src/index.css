@@ -102,10 +102,17 @@
   }
 
   .app-page-header {
-    background: linear-gradient(135deg, var(--color-card), var(--color-card-subtle));
-    border: 1px solid var(--color-border);
+    background: linear-gradient(
+      112deg,
+      var(--tone-soft, var(--color-card)) 0%,
+      var(--color-card) 42%,
+      var(--color-card-subtle) 100%
+    );
+    border: 1px solid color-mix(in srgb, var(--tone, var(--color-border)) 24%, var(--color-border));
     border-radius: 0.875rem;
-    box-shadow: 0 2px 10px rgb(15 23 42 / 0.04);
+    box-shadow:
+      inset 0 2px 0 0 color-mix(in srgb, var(--tone, var(--color-primary)) 68%, transparent),
+      0 2px 10px rgb(15 23 42 / 0.04);
   }
 
   .table-comfortable tbody > tr > td {
@@ -124,30 +131,35 @@
 
 
 /* ========================================================
-   COLOR TONES (สีประจำหมวด ใช้กับไอคอน/การ์ด ให้มีสีสันแต่ไม่รก)
+   COLOR TONES (สีประจำหมวด & กลุ่มฟังก์ชันมาตรฐาน Light/Dark)
    ======================================================== */
 :root {
-  --tone-1: #2f5bea; --tone-1-soft: #e9efff;
-  --tone-2: #0e9f6e; --tone-2-soft: #e3f7ee;
-  --tone-3: #d97706; --tone-3-soft: #fdf2df;
-  --tone-4: #e0335f; --tone-4-soft: #fde9ee;
-  --tone-5: #7c4ddb; --tone-5-soft: #f1eafd;
-  --tone-6: #0891b2; --tone-6-soft: #e0f5fa;
+  --tone: var(--color-primary);
+  --tone-soft: var(--color-primary-light);
+  --tone-solid: var(--color-primary);
+  --tone-solid-hover: var(--color-primary-hover);
+
+  --tone-1: #2f5bea; --tone-1-soft: #e9efff; --tone-1-solid: #1d4ed8; --tone-1-solid-hover: #1e40af;
+  --tone-2: #047857; --tone-2-soft: #e3f7ee; --tone-2-solid: #047857; --tone-2-solid-hover: #065f46;
+  --tone-3: #b45309; --tone-3-soft: #fdf2df; --tone-3-solid: #b45309; --tone-3-solid-hover: #92400e;
+  --tone-4: #be123c; --tone-4-soft: #fde9ee; --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
+  --tone-5: #6d28d9; --tone-5-soft: #f1eafd; --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
+  --tone-6: #0e7490; --tone-6-soft: #e0f5fa; --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
 }
 .dark {
-  --tone-1: #8aa8ff; --tone-1-soft: rgb(47 91 234 / 0.22);
-  --tone-2: #4ade9f; --tone-2-soft: rgb(14 159 110 / 0.22);
-  --tone-3: #fbbf4d; --tone-3-soft: rgb(217 119 6 / 0.22);
-  --tone-4: #fb7f9c; --tone-4-soft: rgb(224 51 95 / 0.22);
-  --tone-5: #b69bff; --tone-5-soft: rgb(124 77 219 / 0.24);
-  --tone-6: #4fd3ef; --tone-6-soft: rgb(8 145 178 / 0.22);
+  --tone-1: #8aa8ff; --tone-1-soft: rgb(47 91 234 / 0.22); --tone-1-solid: #2563eb; --tone-1-solid-hover: #1d4ed8;
+  --tone-2: #4ade9f; --tone-2-soft: rgb(14 159 110 / 0.22); --tone-2-solid: #059669; --tone-2-solid-hover: #047857;
+  --tone-3: #fbbf4d; --tone-3-soft: rgb(217 119 6 / 0.22); --tone-3-solid: #b45309; --tone-3-solid-hover: #92400e;
+  --tone-4: #fb7f9c; --tone-4-soft: rgb(224 51 95 / 0.22); --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
+  --tone-5: #b69bff; --tone-5-soft: rgb(124 77 219 / 0.24); --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
+  --tone-6: #4fd3ef; --tone-6-soft: rgb(8 145 178 / 0.22); --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
 }
-.tone-1 { --tone: var(--tone-1); --tone-soft: var(--tone-1-soft); }
-.tone-2 { --tone: var(--tone-2); --tone-soft: var(--tone-2-soft); }
-.tone-3 { --tone: var(--tone-3); --tone-soft: var(--tone-3-soft); }
-.tone-4 { --tone: var(--tone-4); --tone-soft: var(--tone-4-soft); }
-.tone-5 { --tone: var(--tone-5); --tone-soft: var(--tone-5-soft); }
-.tone-6 { --tone: var(--tone-6); --tone-soft: var(--tone-6-soft); }
+.tone-1 { --tone: var(--tone-1); --tone-soft: var(--tone-1-soft); --tone-solid: var(--tone-1-solid); --tone-solid-hover: var(--tone-1-solid-hover); }
+.tone-2 { --tone: var(--tone-2); --tone-2-soft: var(--tone-2-soft); --tone-soft: var(--tone-2-soft); --tone-solid: var(--tone-2-solid); --tone-solid-hover: var(--tone-2-solid-hover); }
+.tone-3 { --tone: var(--tone-3); --tone-soft: var(--tone-3-soft); --tone-solid: var(--tone-3-solid); --tone-solid-hover: var(--tone-3-solid-hover); }
+.tone-4 { --tone: var(--tone-4); --tone-soft: var(--tone-4-soft); --tone-solid: var(--tone-4-solid); --tone-solid-hover: var(--tone-4-solid-hover); }
+.tone-5 { --tone: var(--tone-5); --tone-soft: var(--tone-5-soft); --tone-solid: var(--tone-5-solid); --tone-solid-hover: var(--tone-5-solid-hover); }
+.tone-6 { --tone: var(--tone-6); --tone-soft: var(--tone-6-soft); --tone-solid: var(--tone-6-solid); --tone-solid-hover: var(--tone-6-solid-hover); }
 
 @layer components {
   .tone-chip {
@@ -157,6 +169,7 @@
     flex-shrink: 0;
     background: var(--tone-soft);
     color: var(--tone);
+    border: 1px solid color-mix(in srgb, var(--tone) 24%, transparent);
   }
   .tone-text { color: var(--tone); }
   .tone-card {
@@ -166,9 +179,9 @@
   .tone-card::before {
     content: "";
     position: absolute;
-    inset: 0 auto 0 0;
-    width: 4px;
-    background: var(--tone);
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: color-mix(in srgb, var(--tone) 70%, transparent);
   }
   .tone-active {
     background: var(--tone-soft) !important;
@@ -179,6 +192,161 @@
       radial-gradient(circle at 100% 0%, var(--tone-5-soft), transparent 45%),
       radial-gradient(circle at 0% 100%, var(--tone-6-soft), transparent 50%),
       linear-gradient(120deg, var(--tone-1-soft), var(--color-card) 60%);
+  }
+
+  /* ── Standardized Toolbar Function Groups (60-30-10 Discipline) ── */
+  .toolbar-filter-zone {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
+  .btn-tool-neutral {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card);
+    color: var(--color-text-body);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+  .btn-tool-neutral:hover {
+    background-color: var(--color-card-subtle);
+    color: var(--color-text-title);
+  }
+  .btn-tool-neutral[data-active="true"] {
+    background-color: var(--tone-soft);
+    border-color: color-mix(in srgb, var(--tone) 45%, var(--color-border));
+    color: var(--tone);
+  }
+
+  .btn-tool-tone {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-border));
+    background-color: var(--color-card-subtle);
+    color: var(--color-text-title);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .btn-tool-tone:hover {
+    background-color: var(--tone-soft);
+    border-color: color-mix(in srgb, var(--tone) 48%, var(--color-border));
+  }
+
+  .btn-action-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    background-color: var(--tone-solid);
+    color: #ffffff;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+    transition: background-color 150ms ease, transform 120ms ease;
+  }
+  .btn-action-primary:hover {
+    background-color: var(--tone-solid-hover);
+  }
+  .btn-action-primary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-action-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    background-color: #047857;
+    color: #ffffff;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+    transition: background-color 150ms ease;
+  }
+  .btn-action-success:hover {
+    background-color: #065f46;
+  }
+
+  .btn-action-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid #fda4af;
+    background-color: #fff1f2;
+    color: #9f1239;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+  .btn-action-danger:hover {
+    background-color: #ffe4e6;
+  }
+  .dark .btn-action-danger {
+    border-color: #9f1239;
+    background-color: rgb(76 5 25 / 0.6);
+    color: #fecdd3;
+  }
+  .dark .btn-action-danger:hover {
+    background-color: rgb(136 19 55 / 0.75);
+  }
+
+  .seg-tab-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card-subtle);
+  }
+  .seg-tab-btn {
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+    color: var(--color-text-body);
+  }
+  .seg-tab-btn:hover {
+    background-color: var(--color-card);
+    color: var(--color-text-title);
+  }
+  .seg-tab-btn[data-active="true"] {
+    background-color: var(--tone-solid);
+    color: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
   }
 }
 

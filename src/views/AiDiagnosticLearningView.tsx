@@ -27,6 +27,7 @@ import {
   INITIAL_WEAKNESS_DIAGNOSTICS 
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
+import { getModuleTone } from '../lib/moduleTheme';
 
 interface AiDiagnosticLearningViewProps {
   lang?: AppLanguage;
@@ -157,43 +158,46 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className={`space-y-6 pb-12 ${getModuleTone('ai_diagnostic')}`}>
       {/* Top Banner / Header */}
-      <div className="bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-indigo-700/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/70 border border-indigo-400/40 text-indigo-100 text-xs font-semibold">
-              <BrainCircuit className="w-4 h-4 text-cyan-300" />
-              <span>{lang === 'th' ? 'ระบบ AI วิเคราะห์สมรรถนะรายบุคคล & ภารกิจซ่อมเสริม' : 'AI Adaptive Competency & Remedial Engine'}</span>
+      <div className="app-page-header p-5 sm:p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
+            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
+              <BrainCircuit className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              {lang === 'th' ? 'AI Diagnostic & Adaptive Learning 8 มิติ' : '8-Dimension AI Competency Radar'}
-            </h1>
-            <p className="text-slate-200 text-sm leading-relaxed">
-              {lang === 'th' 
-                ? 'ระบบประเมินสมรรถนะผู้เรียนรอบด้าน ตรวจจับจุดอ่อนที่ทำคะแนนตกต่ำ วิเคราะห์สาเหตุความเข้าใจคลาดเคลื่อน (Misconceptions) พร้อมจ่ายแบบฝึกหัดซ่อมเสริมอัตโนมัติรายบุคคล'
-                : 'Comprehensive competency assessment across 8 dimensions. Detects learning weaknesses, identifies cognitive misconceptions, and dispenses adaptive remedial quests.'}
-            </p>
+            <div className="space-y-1.5 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ระบบ AI วิเคราะห์สมรรถนะรายบุคคล & ภารกิจซ่อมเสริม' : 'AI Adaptive Competency & Remedial Engine'}</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--color-text-title)]">
+                {lang === 'th' ? 'AI Diagnostic & Adaptive Learning 8 มิติ' : '8-Dimension AI Competency Radar'}
+              </h1>
+              <p className="text-[var(--color-text-body)] text-xs sm:text-sm leading-relaxed">
+                {lang === 'th' 
+                  ? 'ระบบประเมินสมรรถนะผู้เรียนรอบด้าน ตรวจจับจุดอ่อนที่ทำคะแนนตกต่ำ วิเคราะห์สาเหตุความเข้าใจคลาดเคลื่อน (Misconceptions) พร้อมจ่ายแบบฝึกหัดซ่อมเสริมอัตโนมัติรายบุคคล'
+                  : 'Comprehensive competency assessment across 8 dimensions. Detects learning weaknesses, identifies cognitive misconceptions, and dispenses adaptive remedial quests.'}
+              </p>
+            </div>
           </div>
 
-          <div className="bg-slate-950/45 backdrop-blur-md border border-white/25 p-4 rounded-xl flex items-center gap-4 shrink-0">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-4 rounded-xl flex items-center gap-4 shrink-0">
             <div className="text-right">
-              <p className="text-xs text-indigo-100 font-medium">
+              <p className="text-xs text-[var(--color-text-muted)] font-medium">
                 {lang === 'th' ? 'คะแนนสมรรถนะเฉลี่ย' : 'Average Competency'}
               </p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-cyan-300">{avgScore}</span>
-                <span className="text-xs text-slate-200">/ 100</span>
+              <div className="flex items-baseline gap-1 justify-end tabular-nums">
+                <span className="text-3xl font-black text-[var(--tone)]">{avgScore}</span>
+                <span className="text-xs text-[var(--color-text-muted)]">/ 100</span>
               </div>
-              <p className="text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5">
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5 tabular-nums">
                 <TrendingUp className="w-3 h-3" />
                 {lang === 'th' ? `สูงกว่าเกณฑ์ +${avgScore - avgBenchmark} คะแนน` : `+${avgScore - avgBenchmark} above benchmark`}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-cyan-900/60 border border-cyan-400/50 flex items-center justify-center text-cyan-300">
-              <Zap className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+              <Zap className="w-5 h-5" />
             </div>
           </div>
         </div>

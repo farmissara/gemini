@@ -37,6 +37,7 @@ import {
   Award
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
+import { getModuleTone } from '../lib/moduleTheme';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 import { MeteorMathBlasterGame } from '../components/games/MeteorMathBlasterGame';
@@ -625,7 +626,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-slate-950 text-white select-none">
+    <div className={`w-full h-full min-h-0 flex flex-col overflow-hidden bg-slate-950 text-white select-none ${getModuleTone('games')}`}>
       {/* Mobile Top Arcade HUD */}
       {isMobile && (
         <header className="shrink-0 px-3 py-2 bg-slate-900/95 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between gap-2 z-20">
@@ -694,7 +695,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 aria-pressed={activeSubTab === id}
                 className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
                   activeSubTab === id
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/60'
+                    ? 'bg-[var(--tone-solid)] text-white shadow-md'
                     : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white'
                 }`}
               >

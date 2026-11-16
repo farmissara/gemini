@@ -448,21 +448,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('executive')}
-                  className="p-3.5 sm:p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50/90 via-blue-50/70 to-purple-50/70 dark:from-indigo-950/40 dark:via-blue-950/40 dark:to-purple-950/40 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                  className="tone-1 tone-card p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                  <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                     <Monitor className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h2 className="font-extrabold text-sm text-indigo-950 dark:text-indigo-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">แดชบอร์ดผู้บริหาร (Executive Monitor)</h2>
-                      <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-[9px] font-bold">ผอ. / บริหาร</span>
+                      <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">แดชบอร์ดผู้บริหาร (Executive Monitor)</h2>
+                      <span className="px-1.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-[9px] font-bold">ผอ. / บริหาร</span>
                     </div>
-                    <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80 mt-0.5">
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                       มาเรียน {execMetrics.attendanceRate}% • GPAX {execMetrics.avgGpa} • ป่วย {execMetrics.todayInfirmary}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                  <ChevronRight className="w-4 h-4 text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
                 </button>
               )}
 
@@ -470,37 +470,37 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('checkin')}
-                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
               >
-                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition-colors">เช็คชื่อเข้า-ออก (Check-in)</h2>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">เช็คชื่อเข้า-ออก (Check-in)</h2>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">GPS Geofence &amp; สแกนใบหน้า</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-text)] shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 2: Leave Request */}
               <button
                 type="button"
                 onClick={() => setActiveTab('leave')}
-                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-emerald-500 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group relative"
+                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group relative"
               >
                 {pendingLeavesCount > 0 && (
                   <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black shadow-xs">
                     {pendingLeavesCount}
                   </span>
                 )}
-                <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">ใบลาออนไลน์</h2>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">ใบลาออนไลน์</h2>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ลาป่วย / ลากิจ &amp; ติดตามสถานะ</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-emerald-600 dark:group-hover:text-emerald-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 3: Games Hub */}
@@ -511,32 +511,32 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   setActiveGameView('hub');
                   setGameHubPage(0);
                 }}
-                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-amber-500 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                className="tone-5 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
               >
-                <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                   <Gamepad2 className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">เกมส์ความรู้ &amp; เวิร์กช็อป 6 มิติ</h2>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">เกมส์ความรู้ &amp; เวิร์กช็อป 6 มิติ</h2>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-amber-600 dark:group-hover:text-amber-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Action 4: Virtual ID / Profile */}
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
-                className="p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-purple-500 text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
+                className="tone-4 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-xs cursor-pointer group"
               >
-                <div className="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
+                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">บัตรดิจิทัล &amp; โปรไฟล์</h2>
+                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">บัตรดิจิทัล &amp; โปรไฟล์</h2>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Virtual ID Card &amp; ผลการเรียน</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-purple-600 dark:group-hover:text-purple-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
               </>
@@ -1354,13 +1354,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 shadow-2xl safe-area-bottom">
         <div className="max-w-md mx-auto grid grid-cols-5 gap-1">
-          {/* 1. Home */}
+          {/* 1. Home (tone-1) */}
           <button
             type="button"
             onClick={() => setActiveTab('home')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`tone-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'home'
-                ? 'text-[var(--color-primary-text)] font-black'
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -1368,30 +1368,30 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <span className="text-[10px] font-semibold">หน้าหลัก</span>
           </button>
 
-          {/* 2. Checkin */}
+          {/* 2. Checkin (tone-2) */}
           <button
             type="button"
             onClick={() => setActiveTab('checkin')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+            className={`tone-2 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'checkin'
-                ? 'text-[var(--color-primary-text)] font-black'
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             {!todayCheckin && (
-              <span className="absolute top-1 right-4 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span className="absolute top-1 right-4 w-2 h-2 rounded-full bg-amber-500" />
             )}
             <Clock className="w-5 h-5 mb-0.5" />
             <span className="text-[10px] font-semibold">เช็คชื่อ</span>
           </button>
 
-          {/* 3. Leave Requests */}
+          {/* 3. Leave Requests (tone-2) */}
           <button
             type="button"
             onClick={() => setActiveTab('leave')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+            className={`tone-2 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'leave'
-                ? 'text-emerald-700 dark:text-emerald-300 font-black'
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -1404,14 +1404,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <span className="text-[10px] font-semibold">ใบลา</span>
           </button>
 
-          {/* 4. Executive (For Admin / Super Admin) or Games */}
+          {/* 4. Executive (tone-1) or Games (tone-5) */}
           {(currentRole === 'admin' || currentRole === 'super_admin') ? (
             <button
               type="button"
               onClick={() => setActiveTab('executive')}
-              className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`tone-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'executive'
-                  ? 'text-indigo-600 dark:text-indigo-400 font-black'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
@@ -1425,9 +1425,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 setActiveTab('games');
                 setActiveGameView('hub');
               }}
-              className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`tone-5 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'games'
-                  ? 'text-amber-700 dark:text-amber-300 font-black'
+                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
@@ -1436,13 +1436,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </button>
           )}
 
-          {/* 5. Profile */}
+          {/* 5. Profile (tone-4) */}
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`tone-4 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'text-purple-700 dark:text-purple-300 font-black'
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >

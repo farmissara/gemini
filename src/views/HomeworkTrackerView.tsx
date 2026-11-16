@@ -32,6 +32,7 @@ import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { addCalendarDays, getBangkokDateInputValue, getCalendarWeekStart } from '../lib/timetableCalendar';
 import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { getModuleTone } from '../lib/moduleTheme';
 
 const PaginatedTableRows = <T,>({
   items,
@@ -186,11 +187,13 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('homework')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <FileCheck2 className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <FileCheck2 className="w-4 h-4 shrink-0" />
+          </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'การบ้าน & ติดตามการส่งงาน' : 'Homework & Submissions'}
           </h1>
@@ -199,28 +202,28 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-1.5">
           {/* Subtabs Navigation */}
-          <div data-guide-id="homework-subtabs" className="flex p-0.5 bg-[var(--color-card-subtle)] rounded-xl border border-[var(--color-border)]">
+          <div data-guide-id="homework-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar">
             <button
+              type="button"
+              data-active={hwTab === 'submissions'}
               onClick={() => setHwTab('submissions')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                hwTab === 'submissions' ? 'bg-amber-400 text-slate-950 font-bold shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              className="seg-tab-btn"
             >
               1. ส่งงาน ({submissions.length})
             </button>
             <button
+              type="button"
+              data-active={hwTab === 'assignments'}
               onClick={() => setHwTab('assignments')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                hwTab === 'assignments' ? 'bg-amber-400 text-slate-950 font-bold shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              className="seg-tab-btn"
             >
               2. งานที่สั่ง ({assignments.length})
             </button>
             <button
+              type="button"
+              data-active={hwTab === 'pending'}
               onClick={() => setHwTab('pending')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                hwTab === 'pending' ? 'bg-amber-400 text-slate-950 font-bold shadow-xs' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
+              className="seg-tab-btn"
             >
               3. ค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
             </button>
@@ -230,19 +233,20 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             type="button"
             data-guide-id="homework-gcal-sync"
             onClick={() => setShowGoogleCalendarModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
+            className="btn-tool-tone px-2.5 py-1.5"
           >
-            <Calendar className="w-3.5 h-3.5 text-sky-600" />
+            <Calendar className="w-3.5 h-3.5 tone-text" />
             <span>{lang === 'th' ? 'ซิงค์ Calendar' : 'Calendar'}</span>
           </button>
 
           <button
+            type="button"
             data-guide-id="homework-submit-btn"
             onClick={() => {
               setAllowDuplicateConfirm(false);
               setShowSubmitModal(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs transition cursor-pointer whitespace-nowrap"
+            className="btn-action-primary px-3 py-1.5"
           >
             <UploadCloud className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'ส่งการบ้านใหม่' : 'Submit'}</span>

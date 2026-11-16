@@ -42,6 +42,7 @@ import {
 } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getTimetableDuplicateReasons } from '../lib/duplicateRecords';
+import { getModuleTone } from '../lib/moduleTheme';
 import {
   formatSlotTeachersDisplay,
   getSlotTeachers,
@@ -1105,28 +1106,27 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   );
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2">
+    <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Page heading and schedule controls */}
       <div className="shrink-0 px-3 py-2 app-page-header">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <Calendar className="w-4 h-4 shrink-0 text-[var(--color-primary-text)]" />
+            <span className="tone-chip w-7 h-7 rounded-lg">
+              <Calendar className="w-4 h-4 shrink-0" />
+            </span>
             <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
               ตารางเรียนและตารางสอน
             </h1>
             <ModuleTourTrigger moduleId="timetable" lang={lang} />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-            <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5">
+            <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="seg-tab-group max-w-full overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 aria-pressed={viewMode === 'classroom'}
+                data-active={viewMode === 'classroom'}
                 onClick={() => handleViewModeChange('classroom')}
-                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'classroom'
-                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-                }`}
+                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
               >
                 <Layers className="h-3.5 w-3.5" />
                 <span>ตารางห้อง</span>
@@ -1134,12 +1134,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <button
                 type="button"
                 aria-pressed={viewMode === 'calendar'}
+                data-active={viewMode === 'calendar'}
                 onClick={() => handleViewModeChange('calendar')}
-                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'calendar'
-                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-                }`}
+                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
               >
                 <Calendar className="h-3.5 w-3.5" />
                 <span>ปฏิทิน</span>
@@ -1147,12 +1144,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <button
                 type="button"
                 aria-pressed={viewMode === 'hours_criteria'}
+                data-active={viewMode === 'hours_criteria'}
                 onClick={() => handleViewModeChange('hours_criteria')}
-                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'hours_criteria'
-                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-                }`}
+                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 <span>เวลาเรียน 80%</span>
@@ -1160,17 +1154,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <button
                 type="button"
                 aria-pressed={viewMode === 'workload'}
+                data-active={viewMode === 'workload'}
                 onClick={() => handleViewModeChange('workload')}
-                className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'workload'
-                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] shadow-xs'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-                }`}
+                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
               >
                 <Users className="h-3.5 w-3.5" />
                 <span>ภาระงานครู</span>
                 {(lowWorkloadCount > 0 || highWorkloadCount > 0) && (
-                  <span className="rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white">
+                  <span className="rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-slate-950">
                     {lowWorkloadCount + highWorkloadCount}
                   </span>
                 )}
