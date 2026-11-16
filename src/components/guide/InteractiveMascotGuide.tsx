@@ -34,6 +34,7 @@ import {
   getSavedMascotCharacter,
   setSavedMascotCharacter,
 } from './MascotAvatar';
+import { BaanPakKruPlayyard } from './BaanPakKruPlayyard';
 import { useGuideTour } from './GuideTourContext';
 import { GuideModuleId } from '../modals/ModuleGuideModal';
 
@@ -134,13 +135,17 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
       ? 'ชาร์โคล'
       : mascotCharacter === 'mee'
       ? 'หมี'
-      : 'ชาร์โคล & หมี';
+      : mascotCharacter === 'duo'
+      ? 'ชาร์โคล & หมี'
+      : 'ชาร์โคล · หมี · จิ๊ดริ๊ด';
   const mascotDisplayNameEn =
     mascotCharacter === 'charcoal'
       ? 'Charcoal'
       : mascotCharacter === 'mee'
       ? 'Mee'
-      : 'Charcoal & Mee';
+      : mascotCharacter === 'duo'
+      ? 'Charcoal & Mee'
+      : 'Charcoal, Mee & JidRid';
 
   const openTimerRef = useRef<number | null>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -707,8 +712,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
           >
             {/* Card Header with Animated Mascot & Step Counter */}
             <div className="flex items-start gap-3">
-              <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] px-1.5 py-1 border border-[var(--color-border)] flex items-center justify-center">
-                <MascotAvatar mood={activeTourStep.mood} character={mascotCharacter} size={42} />
+              <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] px-2 py-1 border border-[var(--color-border)] flex items-center justify-center">
+                <MascotAvatar mood={activeTourStep.mood} character={mascotCharacter} running size={54} />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -846,8 +851,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
           }`}
         >
           <div className="flex items-start gap-2.5">
-            <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] px-1.5 py-1 border border-[var(--color-border)] flex items-center justify-center">
-              <MascotAvatar mood={renderedHover.topic.topic.mood} character={mascotCharacter} size={38} />
+            <div className="shrink-0 rounded-xl bg-[var(--color-primary-light)] px-2 py-1 border border-[var(--color-border)] flex items-center justify-center">
+              <MascotAvatar mood={renderedHover.topic.topic.mood} character={mascotCharacter} running size={50} />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -957,13 +962,14 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 <MascotAvatar
                   mood={activeDashboardEvent ? activeDashboardEvent.type : enabled ? 'celebrate' : 'happy'}
                   sleeping={!enabled && !activeDashboardEvent}
+                  running={enabled && !activeDashboardEvent}
                   character={mascotCharacter}
-                  size={40}
+                  size={56}
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-xs font-extrabold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? `${mascotDisplayNameTh} · สุนัขนำทางวิธีใช้` : `${mascotDisplayNameEn} · Guide Buddies`}
+                      {lang === 'th' ? `${mascotDisplayNameTh} · เพื่อนคู่คิดบ้านพักครู` : `${mascotDisplayNameEn} · Buddies`}
                     </h3>
                   </div>
                   <p className="text-[10px] text-[var(--color-text-muted)] truncate">
@@ -1043,12 +1049,23 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                 </button>
               </div>
 
-              {/* Mascot Buddy Selector: Duo / Charcoal / Mee */}
+              {/* Mascot Buddy Selector: Flock / Duo / Charcoal / Mee */}
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2 space-y-1.5">
                 <div className="text-[10px] font-bold text-[var(--color-text-muted)] px-0.5">
-                  {lang === 'th' ? 'เลือกน้องหมานำทาง' : 'Choose Guide Dog'}
+                  {lang === 'th' ? 'เลือกคู่หู & ฝูงลูกไก่จิ๊ดริ๊ด' : 'Choose Buddy Team'}
                 </div>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCharacter('flock')}
+                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition cursor-pointer whitespace-nowrap ${
+                      mascotCharacter === 'flock'
+                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-2xs'
+                        : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+                    }`}
+                  >
+                    {lang === 'th' ? 'ครบแก๊ง+จิ๊ดริ๊ด' : 'Full Squad'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleSelectCharacter('duo')}
@@ -1084,6 +1101,8 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   </button>
                 </div>
               </div>
+
+              <BaanPakKruPlayyard variant="drawer" lang={lang} />
 
               {/* Dedicated In-Module Student & Teacher Guide Switcher */}
               <div className="grid grid-cols-3 gap-1.5">
@@ -1410,8 +1429,9 @@ export const InteractiveMascotGuide: React.FC<InteractiveMascotGuideProps> = ({
                   <MascotAvatar
                     mood={dockMascotMood}
                     sleeping={dockMascotSleeping}
+                    running={!dockMascotSleeping}
                     character={mascotCharacter}
-                    size={38}
+                    size={54}
                   />
                   <div className="text-left pr-1">
                     <div className="text-[11px] font-extrabold text-[var(--color-text-title)] leading-tight whitespace-nowrap">

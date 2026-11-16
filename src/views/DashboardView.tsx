@@ -41,6 +41,7 @@ import {
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
+import { BaanPakKruPlayyard } from '../components/guide/BaanPakKruPlayyard';
 import { 
   Student, 
   Teacher,
@@ -696,6 +697,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </section>
             )}
+
+            {/* BaanPakKru Interactive Playyard: Charcoal, Mee & JidRid Chicks */}
+            <BaanPakKruPlayyard
+              variant="dashboard"
+              lang={lang}
+              initialMode={
+                isStaffUser && pendingLeaveCount === 0 && ungradedHomeworkCount === 0
+                  ? 'cheer'
+                  : 'chase'
+              }
+              statusNote={
+                isStaffUser && pendingLeaveCount === 0 && ungradedHomeworkCount === 0
+                  ? lang === 'th'
+                    ? 'งานค้างเช็คชื่อ-ใบลา-ตรวจงานวันนี้เรียบร้อยแล้ว! ชาร์โคล หมี และลูกไก่จิ๊ดริ๊ดมาฉลองให้คุณครูพักผ่อนครับ'
+                    : 'All caught up! Charcoal, Mee & JidRid chicks are cheering for your break.'
+                  : undefined
+              }
+            />
 
             {/* ==============================================================
                 MAIN 2-COLUMN WORKSPACE (50% / 50%)

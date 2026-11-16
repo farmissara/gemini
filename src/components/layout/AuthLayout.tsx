@@ -36,6 +36,7 @@ import {
   type SchoolLoginPortalInfo,
 } from '../../lib/authDb';
 import { PWAInstallButton } from '../PWAInstallButton';
+import { BaanPakKruPlayyard } from '../guide/BaanPakKruPlayyard';
 import heroImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
 interface AuthLayoutProps {
@@ -407,6 +408,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     referrerPolicy="no-referrer"
                   />
                 </div>
+
+                <BaanPakKruPlayyard variant="welcome" lang={lang} />
 
                 <div className="border-t border-[var(--color-border)] pt-3">
                   <div className="flex items-center justify-between gap-2">

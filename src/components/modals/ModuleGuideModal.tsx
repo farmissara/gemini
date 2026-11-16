@@ -811,8 +811,8 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         {/* Top Header */}
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-11 min-w-11 px-1.5 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
-              <MascotAvatar mood={isMascotGuideEnabled ? 'celebrate' : 'happy'} sleeping={!isMascotGuideEnabled} size={38} />
+            <div className="h-14 min-w-14 px-2 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
+              <MascotAvatar mood={isMascotGuideEnabled ? 'celebrate' : 'happy'} sleeping={!isMascotGuideEnabled} running={isMascotGuideEnabled} size={52} />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -916,7 +916,7 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <MascotAvatar mood="pointing" size={48} />
+                <MascotAvatar mood="pointing" running size={62} />
                 <div>
                   <h3 className="text-sm sm:text-base font-extrabold text-[var(--color-text-title)]">
                     {roleView === 'student'
