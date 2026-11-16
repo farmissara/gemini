@@ -23,11 +23,14 @@ import {
 } from '../lib/moeGrading';
 import {
   Award,
+  Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   FileText,
   GraduationCap,
   Search,
+  Sparkles,
   X,
 } from 'lucide-react';
 
@@ -814,6 +817,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
   const [homeroomComment, setHomeroomComment] = useState(
     'นักเรียนมีความตั้งใจในการเรียน สนใจใฝ่รู้ รับผิดชอบงานที่ได้รับมอบหมายสม่ำเสมอ อยู่ร่วมกับเพื่อนและปฏิบัติตามระเบียบของสถานศึกษาได้เป็นอย่างดี'
   );
+  const [commentCopied, setCommentCopied] = useState(false);
   const [attributeRatings, setAttributeRatings] = useState<Record<number, string>>({});
   const [readingRating, setReadingRating] = useState('ดีเยี่ยม (๓)');
   const [competencyRating, setCompetencyRating] = useState('ดีเยี่ยม (๓)');
@@ -922,6 +926,69 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
     const pct = (((present + late) / recs.length) * 100).toFixed(1) + '%';
     return { total: recs.length, present, late, leaveOrSick, absent, pct };
   }, [attendance, selectedStudent]);
+
+  const generateSmartHomeroomComment = (tone: 'auto' | 'praise' | 'supportive') => {
+    if (!selectedStudent) return;
+    const fullName = `${getStudentShortPrefixTh(selectedStudent)} ${selectedStudent.firstNameTh} ${selectedStudent.lastNameTh}`.trim();
+    const pctNum = parseFloat(attendanceStats.pct) || 100;
+    const gpaxNum = parseFloat(academicSummary.gpax) || 0;
+    const avgRaw = academicSummary.averageRawScore;
+
+    const scoredEntries = pp6CycleEntries
+      .map((entry) => {
+        const crs = studentCourses.find((c) => c.id === entry.grade.courseId);
+        return {
+          title: crs?.titleTh || crs?.code || '',
+          score: entry.grade.totalScore,
+          passed: entry.resolved.passed,
+        };
+      })
+      .filter((e) => e.title);
+    const bestSubjects = scoredEntries
+      .slice()
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 2)
+      .map((e) => e.title);
+    const weakSubjects = scoredEntries
+      .filter((e) => e.score < 60 || e.passed === false)
+      .slice(0, 2)
+      .map((e) => e.title);
+
+    const attendanceNote =
+      pctNum >= 95
+        ? `มีเวลาเรียนสม่ำเสมอและตรงเวลาเป็นอย่างดี (${attendanceStats.pct})`
+        : pctNum >= 85
+          ? `มาเรียนสม่ำเสมอ (${attendanceStats.pct}) ปฏิบัติตามกฎระเบียบได้ดี`
+          : `ควรเพิ่มความสม่ำเสมอในการมาเรียนให้เกินเกณฑ์ 80% (ปัจจุบัน ${attendanceStats.pct})`;
+
+    const academicPhrase = academicSummary.hideGpaCalculations
+      ? (avgRaw !== null ? `มีคะแนนประเมินเฉลี่ยรวม ${avgRaw}% (${pp6OverallFeedback.labelTh})` : 'อยู่ในระหว่างรวบรวมผลการประเมินรายปี')
+      : (gpaxNum >= 3.5
+          ? `มีผลสัมฤทธิ์ทางการเรียนดีเยี่ยม (GPA ${academicSummary.termGpa} / GPAX ${academicSummary.gpax})`
+          : gpaxNum >= 2.5
+            ? `มีผลสัมฤทธิ์ทางการเรียนอยู่ในเกณฑ์ดี (GPA ${academicSummary.termGpa})`
+            : `ควรเสริมการทบทวนบทเรียนและส่งงานให้ครบถ้วนต่อเนื่อง (GPA ${academicSummary.termGpa})`);
+
+    const resolvedTone =
+      tone === 'auto'
+        ? (weakSubjects.length > 0 || pctNum < 85 || (!academicSummary.hideGpaCalculations && gpaxNum > 0 && gpaxNum < 2.2)
+            ? 'supportive'
+            : 'praise')
+        : tone;
+
+    if (resolvedTone === 'praise') {
+      const strengthText = bestSubjects.length > 0 ? ` โดดเด่นเป็นพิเศษในรายวิชา${bestSubjects.join(' และ')}` : '';
+      setHomeroomComment(
+        `${fullName} ${academicPhrase}${strengthText} อีกทั้ง${attendanceNote} มีความรับผิดชอบและอยู่ร่วมกับเพื่อนได้อย่างเหมาะสม ขอชื่นชมและส่งเสริมให้พัฒนาศักยภาพอย่างต่อเนื่อง`
+      );
+      return;
+    }
+
+    const supportText = weakSubjects.length > 0 ? ` แนะนำให้ทบทวนเพิ่มเติมในรายวิชา${weakSubjects.join(' และ')} รวมถึงติดตามงานที่ค้างส่ง` : ' แนะนำให้จัดตารางทบทวนบทเรียนอย่างสม่ำเสมอ';
+    setHomeroomComment(
+      `${fullName} ${academicPhrase} และ${attendanceNote}${supportText} ทั้งนี้ครูประจำชั้นยินดีร่วมมือกับผู้ปกครองในการดูแลช่วยเหลือและให้กำลังใจผู้เรียนอย่างใกล้ชิด`
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -1360,10 +1427,50 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
               </div>
             </div>
 
-            <div className="border border-slate-600 p-3 rounded space-y-1.5 text-xs">
-              <label className="font-bold text-slate-900 block">ความคิดเห็นและข้อเสนอแนะของครูประจำชั้น:</label>
+            <div className="border border-slate-600 p-3 rounded space-y-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="font-bold text-slate-900 block">ความคิดเห็นและข้อเสนอแนะของครูประจำชั้น:</label>
+                <div className="print:hidden flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => generateSmartHomeroomComment('auto')}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-semibold cursor-pointer transition"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>ร่างอัตโนมัติจากข้อมูลจริง</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => generateSmartHomeroomComment('praise')}
+                    className="px-2 py-1 rounded-md border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-semibold cursor-pointer transition"
+                  >
+                    ชมเชย/ส่งเสริม
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => generateSmartHomeroomComment('supportive')}
+                    className="px-2 py-1 rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold cursor-pointer transition"
+                  >
+                    ให้กำลังใจ/เฝ้าระวัง
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        void navigator.clipboard.writeText(homeroomComment);
+                        setCommentCopied(true);
+                        setTimeout(() => setCommentCopied(false), 2000);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-semibold cursor-pointer transition"
+                  >
+                    {commentCopied ? <Check className="w-3 h-3 text-emerald-700" /> : <Copy className="w-3 h-3" />}
+                    <span>{commentCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                  </button>
+                </div>
+              </div>
               <textarea
-                rows={2}
+                rows={3}
                 value={homeroomComment}
                 onChange={(e) => setHomeroomComment(e.target.value)}
                 className="w-full text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded p-2 print:border-none print:bg-transparent print:p-0 resize-none"

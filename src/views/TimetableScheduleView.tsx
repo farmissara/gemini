@@ -26,9 +26,12 @@ import {
   ChevronDown,
   ChevronRight,
   FileSpreadsheet,
+  Send,
+  RefreshCw,
 } from 'lucide-react';
-import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
+import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
+import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   addCalendarDays,
@@ -91,6 +94,7 @@ interface TimetableScheduleViewProps {
     currentSemester: string,
     semesterOptions?: string[]
   ) => Promise<void>;
+  leaveRequests?: LeaveRequest[];
 }
 
 const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
@@ -160,6 +164,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onUpdateRoomOptions,
   onUpdateTeachingLoadThresholds,
   onUpdateAcademicPeriod,
+  leaveRequests = [],
 }) => {
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
@@ -213,8 +218,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     (slot.semester || currentSemester) === viewSemester
   ));
 
-  // Main view mode: classroom schedule, attendance-hours criteria, or staff workload summary.
-  const [viewMode, setViewMode] = useState<'classroom' | 'calendar' | 'hours_criteria' | 'workload'>('classroom');
+  // Main view mode: classroom schedule, attendance-hours criteria, staff workload summary, or substitute finder.
+  const [viewMode, setViewMode] = useState<'classroom' | 'calendar' | 'hours_criteria' | 'workload' | 'substitute'>('classroom');
   const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
   const [workloadStatusFilter, setWorkloadStatusFilter] = useState<'all' | 'scheduled' | 'unassigned' | 'low' | 'within' | 'high'>('all');
   const [workloadMinDraft, setWorkloadMinDraft] = useState(String(workloadMinPeriods));
@@ -224,6 +229,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => (
     getCalendarWeekStart(getBangkokDateInputValue())
   ));
+  const [subDate, setSubDate] = useState<string>(() => getBangkokDateInputValue());
+  const [subSelectedTeacher, setSubSelectedTeacher] = useState<string>('');
+  const [sentSubRequests, setSentSubRequests] = useState<Record<string, boolean>>({});
+  const [assigningSubSlotKey, setAssigningSubSlotKey] = useState<string | null>(null);
+  const [subNotice, setSubNotice] = useState<string | null>(null);
   const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
 
@@ -739,6 +749,175 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       || teacher.status === workloadStatusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Substitute teacher finder calculations
+  const todaySubDate = getBangkokDateInputValue();
+  const teacherLeavesToday = leaveRequests.filter(
+    (leave) =>
+      leave.userRole === 'teacher' &&
+      leave.status !== 'rejected' &&
+      leave.startDate <= todaySubDate &&
+      todaySubDate <= leave.endDate
+  );
+  const teacherLeavesOnSubDate = leaveRequests.filter(
+    (leave) =>
+      leave.userRole === 'teacher' &&
+      leave.status !== 'rejected' &&
+      leave.startDate <= subDate &&
+      subDate <= leave.endDate
+  );
+  const absentTeacherNameKeysOnSubDate = new Set(
+    teacherLeavesOnSubDate.map((leave) => normalizeTeacherName(leave.userName))
+  );
+  const parsedSubDate = new Date(`${subDate}T12:00:00`);
+  const subJsDay = Number.isNaN(parsedSubDate.getTime()) ? 1 : parsedSubDate.getDay();
+  const subWeekdayMap: Record<number, DayOfWeek> = {
+    1: 'mon',
+    2: 'tue',
+    3: 'wed',
+    4: 'thu',
+    5: 'fri',
+  };
+  const isSubWeekendDate = subJsDay === 0 || subJsDay === 6;
+  const subDayOfWeek: DayOfWeek = subWeekdayMap[subJsDay] || 'mon';
+  const subDayMeta = DAYS.find((day) => day.key === subDayOfWeek) || DAYS[0];
+
+  const subTeacherSelectableList = Array.from(
+    new Map(
+      [
+        ...teacherLeavesOnSubDate.map((leave) => leave.userName),
+        ...teacherWorkloadRows.filter((row) => row.periodCount > 0).map((row) => row.name),
+        ...teacherWorkloadRows.map((row) => row.name),
+      ]
+        .filter(Boolean)
+        .map((name) => [normalizeTeacherName(name), name] as const)
+    ).values()
+  );
+  const resolvedAbsentTeacher =
+    subSelectedTeacher && subTeacherSelectableList.includes(subSelectedTeacher)
+      ? subSelectedTeacher
+      : teacherLeavesOnSubDate[0]?.userName ||
+        teacherWorkloadRows.find((row) => row.periodCount > 0)?.name ||
+        subTeacherSelectableList[0] ||
+        '';
+  const resolvedAbsentTeacherLeave = teacherLeavesOnSubDate.find(
+    (leave) => normalizeTeacherName(leave.userName) === normalizeTeacherName(resolvedAbsentTeacher)
+  );
+  const absentTeacherSlotsOnDay = slots
+    .filter(
+      (slot) =>
+        slot.dayOfWeek === subDayOfWeek &&
+        Boolean(resolvedAbsentTeacher) &&
+        slotHasTeacher(slot, resolvedAbsentTeacher)
+    )
+    .sort((a, b) => a.periodNumber - b.periodNumber);
+
+  const findFreeSubstitutesForSlot = (targetSlot: TimetableSlot) => {
+    const slotCourse = courses.find(
+      (course) => course.code.toLowerCase() === targetSlot.courseCode.toLowerCase()
+    );
+    const targetDepartment = (slotCourse?.department || '').trim().toLowerCase();
+    const absentKey = normalizeTeacherName(resolvedAbsentTeacher);
+
+    return teacherWorkloadRows
+      .filter((candidate) => {
+        const candidateKey = normalizeTeacherName(candidate.name);
+        if (!candidateKey || candidateKey === absentKey) return false;
+        if (absentTeacherNameKeysOnSubDate.has(candidateKey)) return false;
+
+        const hasTimeOverlap = slots.some((existing) => {
+          if (existing.dayOfWeek !== subDayOfWeek) return false;
+          if (!slotHasTeacher(existing, candidate.name)) return false;
+          return Boolean(
+            getTimetableConflictDetails(
+              {
+                dayOfWeek: subDayOfWeek,
+                periodNumber: targetSlot.periodNumber,
+                startTime: targetSlot.startTime,
+                endTime: targetSlot.endTime,
+                teacherName: candidate.name,
+                coTeacherName: '',
+                room: '__sub_check__',
+                classRoom: '__sub_check__',
+              },
+              existing
+            )
+          );
+        });
+        return !hasTimeOverlap;
+      })
+      .map((candidate) => {
+        const candidateDept = (candidate.teacher?.department || '').trim().toLowerCase();
+        const sameDepartment = Boolean(targetDepartment && candidateDept && candidateDept === targetDepartment);
+        const alreadyCoTeacher =
+          Boolean(targetSlot.coTeacherName) &&
+          normalizeTeacherName(targetSlot.coTeacherName || '') === normalizeTeacherName(candidate.name);
+        return {
+          ...candidate,
+          sameDepartment,
+          alreadyCoTeacher,
+        };
+      })
+      .sort((a, b) => {
+        if (a.alreadyCoTeacher !== b.alreadyCoTeacher) return a.alreadyCoTeacher ? -1 : 1;
+        if (a.sameDepartment !== b.sameDepartment) return a.sameDepartment ? -1 : 1;
+        if (a.periodCount !== b.periodCount) return a.periodCount - b.periodCount;
+        return a.name.localeCompare(b.name, 'th');
+      });
+  };
+
+  const handleRequestSubstituteTeacher = async (
+    targetSlot: TimetableSlot,
+    candidateName: string
+  ) => {
+    const requestKey = `${targetSlot.id}::${normalizeTeacherName(candidateName)}`;
+    await sendEduVerseNotification({
+      title: `ขอสอนแทน · ${targetSlot.courseCode} คาบ ${targetSlot.periodNumber}`,
+      body: `เรียน ${candidateName} · ขอความอนุเคราะห์สอนแทน ${resolvedAbsentTeacher} วันที่ ${subDate} เวลา ${targetSlot.startTime}-${targetSlot.endTime} ห้อง ${targetSlot.classRoom}`,
+      category: 'system',
+      priority: 'urgent',
+      metadata: {
+        slotId: targetSlot.id,
+        date: subDate,
+        absentTeacher: resolvedAbsentTeacher,
+        substituteTeacher: candidateName,
+      },
+    });
+    setSentSubRequests((prev) => ({ ...prev, [requestKey]: true }));
+    setSubNotice(`ส่งแจ้งเตือนขอสอนแทนไปยัง ${candidateName} (คาบ ${targetSlot.periodNumber} · ${targetSlot.courseCode}) เรียบร้อยแล้ว`);
+    emitMascotDashboardEvent({
+      type: 'success',
+      titleTh: 'แจ้งขอสอนแทนแล้ว!',
+      titleEn: 'Substitute Request Sent',
+      messageTh: `ชาร์โคลส่งเรื่องถึง ${candidateName} คาบที่ ${targetSlot.periodNumber} (${targetSlot.classRoom}) ให้แล้วครับ`,
+      messageEn: `Sent substitute teaching request to ${candidateName} for Period ${targetSlot.periodNumber} (${targetSlot.classRoom}).`,
+    });
+  };
+
+  const handleAssignSubstituteToSlot = async (
+    targetSlot: TimetableSlot,
+    candidateName: string
+  ) => {
+    if (!onUpdateSlot) return;
+    const requestKey = `${targetSlot.id}::${normalizeTeacherName(candidateName)}`;
+    setAssigningSubSlotKey(requestKey);
+    try {
+      await onUpdateSlot({
+        ...targetSlot,
+        coTeacherName: candidateName,
+      });
+      setSubNotice(`กำหนด ${candidateName} เป็นครูสอนคู่/สอนแทนในคาบ ${targetSlot.periodNumber} (${targetSlot.courseCode}) เรียบร้อยแล้ว`);
+      emitMascotDashboardEvent({
+        type: 'success',
+        titleTh: 'อัปเดตครูสอนแทนลงตารางแล้ว',
+        titleEn: 'Substitute Assigned to Timetable',
+        messageTh: `${candidateName} ถูกเพิ่มเป็นครูสอนคู่/สอนแทนในคาบที่ ${targetSlot.periodNumber} แล้ว`,
+        messageEn: `${candidateName} assigned as substitute/co-teacher for Period ${targetSlot.periodNumber}.`,
+      });
+    } finally {
+      setAssigningSubSlotKey(null);
+    }
+  };
 
   // Check course auto-fill when course selector changes in Add Modal
   const handleSelectCourse = (courseId: string) => {
@@ -1296,6 +1475,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   </span>
                 )}
               </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === 'substitute'}
+                data-active={viewMode === 'substitute'}
+                onClick={() => handleViewModeChange('substitute')}
+                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>หาครูสอนแทน</span>
+                {teacherLeavesToday.length > 0 && (
+                  <span className="rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">
+                    {teacherLeavesToday.length}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
         </div>
@@ -1363,8 +1557,237 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </details>
       )}
 
-      {/* MAIN VIEW CONTENT: Grid Table OR Hours Criteria */}
-      {viewMode === 'workload' ? (
+      {/* MAIN VIEW CONTENT: Grid Table, Substitute Finder, Workload, or Hours Criteria */}
+      {viewMode === 'substitute' ? (
+        <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
+          <header className="shrink-0 border-b border-[var(--color-border)] p-4 space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-sm font-bold text-[var(--color-text-title)]">
+                  <RefreshCw className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>ระบบจัดหาครูสอนแทนอัตโนมัติ (1-Click Substitute Finder)</span>
+                </h2>
+                <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+                  คัดกรองเพื่อนครูที่ไม่มีคาบสอนซ้อนในเวลาเดียวกัน เรียงลำดับจากกลุ่มสาระเดียวกันและภาระคาบสอนน้อยที่สุดก่อน
+                </p>
+              </div>
+              {renderRoomAndTermControls(false)}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)]">
+                <span>วันที่ต้องการหาครูสอนแทน</span>
+                <input
+                  type="date"
+                  value={subDate}
+                  onChange={(e) => setSubDate(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </label>
+              <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)] sm:col-span-2">
+                <span>เลือกครูที่ลา / ติดภารกิจราชการ ({subDayMeta.th})</span>
+                <select
+                  value={resolvedAbsentTeacher}
+                  onChange={(e) => setSubSelectedTeacher(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+                >
+                  {subTeacherSelectableList.length === 0 ? (
+                    <option value="">ยังไม่มีรายชื่อครูในภาคเรียนนี้</option>
+                  ) : (
+                    subTeacherSelectableList.map((name) => {
+                      const isOnLeave = absentTeacherNameKeysOnSubDate.has(normalizeTeacherName(name));
+                      return (
+                        <option key={name} value={name}>
+                          {name}{isOnLeave ? ' · (แจ้งลาในวันที่เลือก)' : ''}
+                        </option>
+                      );
+                    })
+                  )}
+                </select>
+              </label>
+            </div>
+
+            {teacherLeavesOnSubDate.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-200">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span className="font-bold">ครูที่มีใบลาวันที่ {subDate}:</span>
+                {teacherLeavesOnSubDate.map((leave) => (
+                  <button
+                    key={leave.id}
+                    type="button"
+                    onClick={() => setSubSelectedTeacher(leave.userName)}
+                    className={`rounded-md border px-2 py-0.5 text-[10px] font-bold transition cursor-pointer ${
+                      normalizeTeacherName(leave.userName) === normalizeTeacherName(resolvedAbsentTeacher)
+                        ? 'border-amber-500 bg-amber-200/80 text-amber-950 dark:bg-amber-900 dark:text-amber-100'
+                        : 'border-amber-300 bg-white/80 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-black/20 dark:text-amber-200'
+                    }`}
+                  >
+                    {leave.userName} ({leave.status === 'approved' ? 'อนุมัติแล้ว' : 'รออนุมัติ'})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {isSubWeekendDate && (
+              <div className="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/80 dark:bg-sky-950/30 px-3 py-1.5 text-[11px] text-sky-900 dark:text-sky-200">
+                วันที่เลือกตรงกับวันเสาร์/อาทิตย์ ระบบจึงจำลองตารางสอนของ<strong>วันจันทร์</strong>ให้ตรวจเช็กคิวสอนแทนล่วงหน้า
+              </div>
+            )}
+
+            {subNotice && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
+                <span className="flex items-center gap-1.5 font-semibold">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  {subNotice}
+                </span>
+                <button type="button" onClick={() => setSubNotice(null)} className="text-xs font-bold px-1.5 cursor-pointer">✕</button>
+              </div>
+            )}
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+            {!resolvedAbsentTeacher ? (
+              <div className="p-8 text-center text-xs text-[var(--color-text-muted)]">
+                กรุณาเลือกครูที่ต้องการหาผู้สอนแทน หรือเพิ่มข้อมูลบุคลากรและตารางสอนก่อน
+              </div>
+            ) : absentTeacherSlotsOnDay.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-8 text-center space-y-1">
+                <CheckCircle className="h-8 w-8 mx-auto text-emerald-500 opacity-80" />
+                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                  {resolvedAbsentTeacher} ไม่มีคาบสอนใน{subDayMeta.th}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  ไม่ต้องจัดหาครูสอนแทนสำหรับวันนี้ (ช่วยลดภาระการประสานงานได้ทันที)
+                </p>
+              </div>
+            ) : (
+              absentTeacherSlotsOnDay.map((slot) => {
+                const freeCandidates = findFreeSubstitutesForSlot(slot);
+                const isLeaveSpecificOtherPeriod =
+                  resolvedAbsentTeacherLeave?.leaveScope === 'period_hourly' &&
+                  typeof resolvedAbsentTeacherLeave.periodNumber === 'number' &&
+                  resolvedAbsentTeacherLeave.periodNumber !== slot.periodNumber;
+                return (
+                  <div
+                    key={slot.id}
+                    className={`rounded-2xl border p-3.5 space-y-3 ${
+                      isLeaveSpecificOtherPeriod
+                        ? 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-75'
+                        : 'border-amber-200 dark:border-amber-800 bg-[var(--color-card)] shadow-2xs'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-amber-100 dark:bg-amber-950 px-2.5 py-1 text-xs font-bold text-amber-900 dark:text-amber-200">
+                          <Clock className="h-3.5 w-3.5" />
+                          คาบ {slot.periodNumber} ({slot.startTime}–{slot.endTime})
+                        </span>
+                        <span className="text-xs font-bold text-[var(--color-text-title)]">
+                          {slot.courseCode} · {slot.courseTitleTh}
+                        </span>
+                        <span className="rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-body)]">
+                          ห้อง {slot.classRoom} {slot.room ? `(${slot.room})` : ''}
+                        </span>
+                        {isLeaveSpecificOtherPeriod && (
+                          <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] text-[var(--color-text-muted)]">
+                            ใบลาขอเฉพาะคาบ {resolvedAbsentTeacherLeave?.periodNumber}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        พบครูว่าง {freeCandidates.length} ท่าน
+                      </span>
+                    </div>
+
+                    {freeCandidates.length === 0 ? (
+                      <p className="text-xs text-rose-700 dark:text-rose-300">
+                        ไม่มีครูว่างในคาบเวลานี้ (ครูทุกท่านมีคาบสอนซ้อนหรือติดวันลา)
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {freeCandidates.slice(0, 6).map((candidate) => {
+                          const requestKey = `${slot.id}::${normalizeTeacherName(candidate.name)}`;
+                          const isSent = Boolean(sentSubRequests[requestKey]);
+                          const isAssigning = assigningSubSlotKey === requestKey;
+                          return (
+                            <div
+                              key={candidate.name}
+                              className={`flex flex-col justify-between gap-2 rounded-xl border p-2.5 ${
+                                candidate.alreadyCoTeacher
+                                  ? 'border-emerald-400 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/30'
+                                  : candidate.sameDepartment
+                                    ? 'border-sky-200 bg-sky-50/50 dark:border-sky-800 dark:bg-sky-950/20'
+                                    : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="truncate text-xs font-bold text-[var(--color-text-title)]">
+                                    {candidate.name}
+                                  </span>
+                                  <span className="shrink-0 rounded-md bg-white/80 dark:bg-black/20 border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[var(--color-text-body)]">
+                                    {candidate.periodCount} คาบ/สัปดาห์
+                                  </span>
+                                </div>
+                                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
+                                  {candidate.alreadyCoTeacher && (
+                                    <span className="rounded bg-emerald-100 dark:bg-emerald-900 px-1.5 py-0.5 font-bold text-emerald-800 dark:text-emerald-200">
+                                      สอนคู่/แทนอยู่แล้ว
+                                    </span>
+                                  )}
+                                  {candidate.sameDepartment && (
+                                    <span className="rounded bg-sky-100 dark:bg-sky-900 px-1.5 py-0.5 font-bold text-sky-800 dark:text-sky-200">
+                                      กลุ่มสาระเดียวกัน
+                                    </span>
+                                  )}
+                                  {candidate.teacher?.department && (
+                                    <span className="truncate">{candidate.teacher.department}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[var(--color-border)]">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    void handleRequestSubstituteTeacher(slot, candidate.name);
+                                  }}
+                                  className={`flex-1 inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition cursor-pointer ${
+                                    isSent
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-[var(--color-primary)] text-white hover:opacity-95'
+                                  }`}
+                                >
+                                  <Send className="h-3 w-3" />
+                                  <span>{isSent ? 'ส่งแจ้งเตือนแล้ว ✓' : 'แจ้งขอสอนแทน'}</span>
+                                </button>
+                                {canEditTimetableSlots && onUpdateSlot && !candidate.alreadyCoTeacher && (
+                                  <button
+                                    type="button"
+                                    disabled={isAssigning}
+                                    onClick={() => {
+                                      void handleAssignSubstituteToSlot(slot, candidate.name);
+                                    }}
+                                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] disabled:opacity-50 cursor-pointer"
+                                    title="เพิ่มเป็นครูสอนคู่/สอนแทนในตารางสอนจริง"
+                                  >
+                                    <UserCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span>{isAssigning ? 'กำลังบันทึก...' : 'ลงตารางแทน'}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+      ) : viewMode === 'workload' ? (
         <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
           <header className="shrink-0 border-b border-[var(--color-border)] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">

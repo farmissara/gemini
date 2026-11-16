@@ -169,6 +169,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const pendingLeaveCount = leaveRequests.filter((l) => l.status === 'pending').length;
   const ungradedHomeworkCount = homeworkSubmissions.filter((h) => h.status === 'submitted' || h.status === 'late').length;
   const isStaffUser = !currentUser?.role || currentUser.role === 'teacher' || currentUser.role === 'admin' || currentUser.role === 'super_admin';
+  const checkedInStudentIdsToday = useMemo(() => {
+    const ids = new Set<string>();
+    attendance.forEach((rec) => {
+      if (rec.date === todayStr && rec.userType !== 'teacher' && rec.studentId) {
+        ids.add(rec.studentId);
+      }
+    });
+    return ids;
+  }, [attendance, todayStr]);
+  const uncheckedTodayCount = Math.max(0, students.filter((s) => s.status === 'active').length - checkedInStudentIdsToday.size);
+  const teacherLeavesTodayCount = useMemo(
+    () =>
+      leaveRequests.filter(
+        (req) =>
+          req.userRole === 'teacher' &&
+          req.status !== 'rejected' &&
+          req.startDate <= todayStr &&
+          req.endDate >= todayStr
+      ).length,
+    [leaveRequests, todayStr]
+  );
 
   // 3-Step Onboarding Checklist state
   const step1Done = students.length > 0 && courses.length > 0;
@@ -618,8 +639,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             )}
 
+            {/* Morning 3-Minute Teacher Digest (BaanPakKru Workload Relief Strip) */}
+            {isStaffUser && (
+              <section
+                aria-label={lang === 'th' ? 'สรุปงานเช้า 3 นาทีสำหรับครู' : 'Morning 3-Minute Teacher Digest'}
+                className="no-print frosted-card frosted-blue px-4 py-3 rounded-[var(--dash-card-radius)] flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+              >
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-950/70 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                        {lang === 'th' ? 'บ้านพักครู · สรุปงานเช้าใน 3 นาที' : 'BaanPakKru · Morning 3-Minute Digest'}
+                      </h2>
+                      <span className="text-[11px] font-semibold text-sky-800 dark:text-sky-300 tabular-nums">
+                        ({todayScheduledSlots.length} {lang === 'th' ? 'คาบวันนี้' : 'periods today'})
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                      {lang === 'th'
+                        ? `รอเช็คชื่อ ${uncheckedTodayCount} คน · ใบลารออนุมัติ ${pendingLeaveCount} รายการ · การบ้านรอตรวจ ${ungradedHomeworkCount} ชิ้น${teacherLeavesTodayCount > 0 ? ` · ครูลาวันนี้ ${teacherLeavesTodayCount} ท่าน` : ''}`
+                        : `${uncheckedTodayCount} unchecked · ${pendingLeaveCount} pending leaves · ${ungradedHomeworkCount} ungraded`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('attendance')}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition whitespace-nowrap"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'เช็คชื่อโฮมรูม (มาทุกคน)' : 'Quick Roll Call'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('homework')}
+                    className="px-2.5 py-1.5 rounded-lg bg-white/85 dark:bg-slate-800/80 border border-sky-200 dark:border-sky-800 text-[#1e293b] dark:text-slate-100 hover:bg-sky-50 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition whitespace-nowrap"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-purple-700 dark:text-purple-300" />
+                    <span>
+                      {lang === 'th' ? `ตรวจการบ้าน (${ungradedHomeworkCount})` : `Homework (${ungradedHomeworkCount})`}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('timetable')}
+                    className="px-2.5 py-1.5 rounded-lg bg-white/85 dark:bg-slate-800/80 border border-sky-200 dark:border-sky-800 text-[#1e293b] dark:text-slate-100 hover:bg-sky-50 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition whitespace-nowrap"
+                  >
+                    <Users className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
+                    <span>{lang === 'th' ? 'หาครูสอนแทน' : 'Substitute Finder'}</span>
+                  </button>
+                </div>
+              </section>
+            )}
+
             {/* ==============================================================
-                MAIN 2-COLUMN WORKSPACE (50% LEFT / 50% RIGHT)
+                MAIN 2-COLUMN WORKSPACE (50% / 50%)
                ============================================================== */}
             <div className="dashboard-print-grid dash-grid grid-cols-1 lg:grid-cols-2 items-start">
               {/* ──────────────────────────────────────────────────────────

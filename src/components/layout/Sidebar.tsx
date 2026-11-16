@@ -36,6 +36,7 @@ import {
   Pin,
   PanelLeftClose,
   PanelLeftOpen,
+  Coffee,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -119,6 +120,20 @@ export interface NavCategoryDef {
   items: NavItemDef[];
 }
 
+const FOCUS_TEACHER_TABS = new Set<NavTab>([
+  'dashboard',
+  'attendance',
+  'mobile_checkin',
+  'homework',
+  'gradebook',
+  'timetable',
+  'students',
+  'behavior_sdq',
+  'announcements',
+]);
+
+const SIDEBAR_FOCUS_STORAGE_KEY = 'baanpakkru_sidebar_focus_mode';
+
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   setCurrentTab,
@@ -136,6 +151,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const supportsFocusMode = currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (!supportsFocusMode) return false;
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem(SIDEBAR_FOCUS_STORAGE_KEY);
+      if (saved === '1') return true;
+      if (saved === '0') return false;
+    }
+    return currentRole === 'teacher';
+  });
+
+  useEffect(() => {
+    if (!supportsFocusMode) {
+      setFocusMode(false);
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem(SIDEBAR_FOCUS_STORAGE_KEY);
+      if (saved === '1') setFocusMode(true);
+      else if (saved === '0') setFocusMode(false);
+      else setFocusMode(currentRole === 'teacher');
+    }
+  }, [currentRole, supportsFocusMode]);
+
+  const toggleFocusMode = () => {
+    setFocusMode((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(SIDEBAR_FOCUS_STORAGE_KEY, next ? '1' : '0');
+        } catch {
+          // ignore storage failure
+        }
+      }
+      return next;
+    });
+  };
 
   // Master Categories Definition
   const categories: NavCategoryDef[] = useMemo(() => {
@@ -488,6 +540,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
       .filter((i): i is NavItemDef => Boolean(i));
   }, [categories, currentRole, featureFlags]);
 
+  const hiddenByFocusCount = useMemo(() => {
+    if (!supportsFocusMode || !focusMode) return 0;
+    const seen = new Set<NavTab>();
+    let hidden = 0;
+    categories.forEach((cat) => {
+      cat.items.forEach((item) => {
+        if (seen.has(item.id)) return;
+        if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags)) return;
+        seen.add(item.id);
+        if (!FOCUS_TEACHER_TABS.has(item.id) && item.id !== currentTab) {
+          hidden += 1;
+        }
+      });
+    });
+    return hidden;
+  }, [categories, currentRole, featureFlags, focusMode, supportsFocusMode, currentTab]);
+
   const toneOf = (id: NavTab) => getModuleTone(id);
   const pinnedIds = new Set(pinned.map(p => p.id));
 
@@ -522,13 +591,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   if (desktopCollapsed) {
     const visibleItems = categories.flatMap((cat) =>
-      cat.items.filter((i) => i.roles.includes(currentRole) && isTabEnabledByFeatureFlags(i.id, featureFlags))
+      cat.items.filter((i) =>
+        i.roles.includes(currentRole) &&
+        isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+        (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
+      )
     );
     const dedupedItems = Array.from(new Map(visibleItems.map((i) => [i.id, i])).values());
     return (
       <aside className="w-15 border-r border-[var(--color-border)] bg-white/85 dark:bg-[#151f32]/85 backdrop-blur-[10px] text-[#1e293b] dark:text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
         {onToggleDesktopCollapse && (
-          <div className="shrink-0 p-2 border-b border-[var(--color-border)] flex justify-center">
+          <div className="shrink-0 p-2 border-b border-[var(--color-border)] flex flex-col items-center gap-1.5">
             <button
               type="button"
               onClick={onToggleDesktopCollapse}
@@ -538,6 +611,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <PanelLeftOpen className="w-4 h-4" />
             </button>
+            {supportsFocusMode && (
+              <button
+                type="button"
+                onClick={toggleFocusMode}
+                aria-pressed={focusMode}
+                title={
+                  focusMode
+                    ? (lang === 'th' ? 'โหมดลดภาระครู (ซ่อนเมนูรอง) — คลิกเพื่อแสดงทั้งหมด' : 'Teacher Focus Mode ON — click to show all')
+                    : (lang === 'th' ? 'กำลังแสดงทุกเมนู — คลิกเพื่อเปิดโหมดลดภาระครู' : 'All menus shown — click for Teacher Focus Mode')
+                }
+                className={`w-10 h-8 rounded-lg border flex items-center justify-center cursor-pointer transition ${
+                  focusMode
+                    ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                    : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                <Coffee className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         )}
         <nav className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1 flex flex-col items-center">
@@ -601,6 +693,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
+      {supportsFocusMode && (
+        <div className="shrink-0 px-2.5 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/70 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={toggleFocusMode}
+            aria-pressed={focusMode}
+            className={`flex-1 flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+              focusMode
+                ? 'bg-sky-100/90 text-sky-900 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800'
+                : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+            }`}
+            title={
+              lang === 'th'
+                ? 'ซ่อนเมนูรอง/บริหารที่ไม่ใช้ประจำเพื่อให้ครูทำงานง่ายขึ้น (ยังคงค้นหาทุกเมนูได้)'
+                : 'Hide secondary/admin items for calmer daily teaching workflow'
+            }
+          >
+            <span className="flex items-center gap-1.5 min-w-0 truncate">
+              <Coffee className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">
+                {focusMode
+                  ? (lang === 'th' ? 'โหมดลดภาระครู' : 'Teacher Focus')
+                  : (lang === 'th' ? 'แสดงเมนูทั้งหมด' : 'All Menus')}
+              </span>
+            </span>
+            <span className="shrink-0 text-[10px] font-bold opacity-80">
+              {focusMode && hiddenByFocusCount > 0
+                ? (lang === 'th' ? `ซ่อน ${hiddenByFocusCount}` : `-${hiddenByFocusCount}`)
+                : (lang === 'th' ? 'ครบ' : 'All')}
+            </span>
+          </button>
+        </div>
+      )}
+
       <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2.5">
         {searchFilter.trim() ? (
           <div className="space-y-1">
@@ -623,7 +749,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
             {categories.map((cat) => {
               const items = cat.items.filter(
-                i => i.roles.includes(currentRole) && !pinnedIds.has(i.id) && isTabEnabledByFeatureFlags(i.id, featureFlags)
+                (i) =>
+                  i.roles.includes(currentRole) &&
+                  !pinnedIds.has(i.id) &&
+                  isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+                  (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
               );
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;

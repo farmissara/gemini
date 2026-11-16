@@ -3826,6 +3826,7 @@ export const App: React.FC = () => {
                       teachingLoadMaxPeriods: maxPeriods,
                     })}
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
+                    leaveRequests={leaveRequests}
                   />
                 )}
 
@@ -3961,6 +3962,8 @@ export const App: React.FC = () => {
                     timetableSlots={schoolTimetableSlots}
                     attendance={schoolAttendance}
                     periodAttendance={schoolPeriodAttendance}
+                    homeworkSubmissions={schoolHomeworkSubmissions}
+                    assignments={schoolAssignments}
                     onPracticeInAi={(topic) => {
                       setAdaptivePracticeTopic(topic);
                       navigateToAppTab('socratic_tutor');

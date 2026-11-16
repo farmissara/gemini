@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   filterAttendanceForUser,
@@ -190,7 +191,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     : [];
 
   // Filter logs by date range, class/room, course, and scope
-  const [attendanceViewMode, setAttendanceViewMode] = useState<'daily' | 'weekly'>('daily');
+  const [attendanceViewMode, setAttendanceViewMode] = useState<'daily' | 'weekly' | 'homeroom_rollcall'>('daily');
+  const [rollCallDate, setRollCallDate] = useState<string>(getLocalDateString());
+  const [rollCallRoom, setRollCallRoom] = useState<string>('all');
+  const [rollCallOverrides, setRollCallOverrides] = useState<Record<string, AttendanceStatus>>({});
+  const [isSavingRollCall, setIsSavingRollCall] = useState(false);
   const [selectedWeekDate, setSelectedWeekDate] = useState<string>(getLocalDateString());
   const [startDateFilter, setStartDateFilter] = useState(getLocalDateString());
   const [endDateFilter, setEndDateFilter] = useState(getLocalDateString());
@@ -220,6 +225,76 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     });
     return Array.from(rooms).sort((a, b) => a.localeCompare(b, 'th'));
   }, [scopedStudents, attendance]);
+
+  const effectiveRollCallRoom = rollCallRoom === 'all' ? (availableClasses[0] || 'all') : rollCallRoom;
+  const rollCallStudents = useMemo(() => {
+    const base = effectiveRollCallRoom === 'all'
+      ? scopedStudents
+      : scopedStudents.filter((s) => s.room === effectiveRollCallRoom);
+    return base.slice().sort((a, b) => a.studentIdNumber.localeCompare(b.studentIdNumber, 'th'));
+  }, [scopedStudents, effectiveRollCallRoom]);
+
+  const getDefaultRollCallStatus = (student: Student): { status: AttendanceStatus; source: 'recorded' | 'leave' | 'default' } => {
+    const existing = attendance.find(
+      (rec) => rec.date === rollCallDate && rec.studentId === student.id && rec.recordType !== 'check_out'
+    );
+    if (existing) return { status: existing.status, source: 'recorded' };
+    const approvedLeave = leaveRequests.find(
+      (req) =>
+        req.userRole === 'student' &&
+        req.status === 'approved' &&
+        (req.userId === student.id || req.userName === `${student.firstNameTh} ${student.lastNameTh}`) &&
+        req.startDate <= rollCallDate &&
+        req.endDate >= rollCallDate
+    );
+    if (approvedLeave) {
+      return {
+        status: approvedLeave.leaveType === 'sick' ? 'sick' : 'leave',
+        source: 'leave',
+      };
+    }
+    return { status: 'present', source: 'default' };
+  };
+
+  const handleSaveHomeroomRollCall = () => {
+    if (rollCallStudents.length === 0 || isSavingRollCall) return;
+    setIsSavingRollCall(true);
+    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const records: AttendanceRecord[] = rollCallStudents.map((stu, idx) => {
+      const resolved = rollCallOverrides[stu.id] || getDefaultRollCallStatus(stu).status;
+      return {
+        id: `roll-${rollCallDate}-${stu.id}-${Date.now()}-${idx}`,
+        schoolId: activeSchool?.id || stu.schoolId,
+        studentId: stu.id,
+        userType: 'student',
+        userName: `${stu.firstNameTh} ${stu.lastNameTh}`,
+        userRole: `นักเรียน (${stu.gradeLevel})`,
+        userAvatar: stu.avatarUrl,
+        userDepartmentOrRoom: stu.room,
+        recordType: 'check_in',
+        date: rollCallDate,
+        time: nowTime,
+        status: resolved,
+        checkinMethod: 'teacher_proxy',
+        remarks: `เช็คชื่อโฮมรูมห้อง ${stu.room} (${loggedInProfile.userName})`,
+        lineNotificationSent: stu.lineLinked && stu.lineNotifyEnabled,
+        recordedBy: loggedInProfile.userName,
+        recordedByRole: currentUser?.role || currentRole,
+      };
+    });
+    handleConfirmAttendanceImport(records);
+    setRollCallOverrides({});
+    setIsSavingRollCall(false);
+    const presentCount = records.filter((r) => r.status === 'present').length;
+    const exceptionCount = records.length - presentCount;
+    emitMascotDashboardEvent({
+      type: 'success',
+      titleTh: `บันทึกเช็คชื่อห้อง ${effectiveRollCallRoom} สำเร็จ`,
+      titleEn: `Saved roll call (${records.length})`,
+      messageTh: `บันทึกครบ ${records.length} คน (มาเรียน ${presentCount} คน · สาย/ลา/ขาด ${exceptionCount} คน) ในคลิกเดียว`,
+      messageEn: `Recorded ${records.length} students (${presentCount} present, ${exceptionCount} exceptions).`,
+    });
+  };
 
   const selectedCourseObj = useMemo(
     () => teacherFilteredCourses.find((c) => c.id === courseFilter) || null,
@@ -984,10 +1059,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {/* Daily vs Weekly (Mon-Fri) Toggle */}
+                {/* Daily vs Weekly vs Homeroom Roll-Call Toggle */}
                 <div
                   role="group"
-                  aria-label={lang === 'th' ? 'สลับมุมมองรายวันหรือรายสัปดาห์' : 'Switch between Daily and Weekly view'}
+                  aria-label={lang === 'th' ? 'สลับมุมมองรายวัน รายสัปดาห์ หรือเช็คชื่อโฮมรูม' : 'Switch attendance mode'}
                   className="seg-tab-group text-xs"
                 >
                   <button
@@ -1010,6 +1085,20 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{lang === 'th' ? 'รายสัปดาห์ (จ.–ศ.)' : 'Weekly (Mon–Fri)'}</span>
                   </button>
+                  {!isRestrictedViewer && (
+                    <button
+                      type="button"
+                      data-active={attendanceViewMode === 'homeroom_rollcall'}
+                      onClick={() => {
+                        if (classFilter !== 'all') setRollCallRoom(classFilter);
+                        setAttendanceViewMode('homeroom_rollcall');
+                      }}
+                      className="seg-tab-btn flex items-center gap-1"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>{lang === 'th' ? 'เช็คชื่อทั้งห้อง (มาทุกคน)' : 'Homeroom Roll Call'}</span>
+                    </button>
+                  )}
                 </div>
 
                 {!isRestrictedViewer && (
@@ -1176,7 +1265,155 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
             </div>
 
-            {attendanceViewMode === 'weekly' ? (
+            {attendanceViewMode === 'homeroom_rollcall' && !isRestrictedViewer ? (
+              <div className="space-y-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/70 bg-emerald-50/40 dark:bg-emerald-950/20 p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 dark:border-emerald-800/60 pb-2.5">
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>เช็คชื่อโฮมรูมด่วน — มาทุกคนเป็นค่าเริ่มต้น (ติ๊กเฉพาะคนขาด/สาย/ลา)</span>
+                    </h3>
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      ระบบดึงใบลาที่อนุมัติแล้วมาเติมให้อัตโนมัติ ลดเวลาเช็คชื่อเหลือไม่ถึง 30 วินาทีต่อห้อง
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      aria-label="เลือกห้องเช็คชื่อโฮมรูม"
+                      value={effectiveRollCallRoom}
+                      onChange={(e) => {
+                        setRollCallRoom(e.target.value);
+                        setRollCallOverrides({});
+                      }}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-semibold text-[var(--color-text-title)]"
+                    >
+                      {availableClasses.length === 0 ? (
+                        <option value="all">นักเรียนทั้งหมด</option>
+                      ) : (
+                        availableClasses.map((room) => (
+                          <option key={room} value={room}>
+                            ห้อง {room} ({scopedStudents.filter((s) => s.room === room).length} คน)
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <input
+                      type="date"
+                      aria-label="วันที่เช็คชื่อโฮมรูม"
+                      value={rollCallDate}
+                      onChange={(e) => {
+                        setRollCallDate(e.target.value);
+                        setRollCallOverrides({});
+                      }}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRollCallOverrides({})}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                    >
+                      รีเซ็ตค่าเริ่มต้น
+                    </button>
+                  </div>
+                </div>
+
+                {rollCallStudents.length === 0 ? (
+                  <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">
+                    ไม่พบรายชื่อนักเรียนในห้องที่เลือก
+                  </p>
+                ) : (
+                  <>
+                    <div className="max-h-96 overflow-y-auto divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                      {rollCallStudents.map((stu, idx) => {
+                        const def = getDefaultRollCallStatus(stu);
+                        const currentStatus = rollCallOverrides[stu.id] || def.status;
+                        const statusOptions: { value: AttendanceStatus; label: string; activeCls: string }[] = [
+                          { value: 'present', label: 'มาเรียน', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+                          { value: 'late', label: 'มาสาย', activeCls: 'bg-amber-500 text-slate-950 border-amber-500' },
+                          { value: 'sick', label: 'ลาป่วย', activeCls: 'bg-sky-600 text-white border-sky-600' },
+                          { value: 'leave', label: 'ลากิจ', activeCls: 'bg-indigo-600 text-white border-indigo-600' },
+                          { value: 'absent', label: 'ขาด', activeCls: 'bg-rose-600 text-white border-rose-600' },
+                        ];
+                        return (
+                          <div key={stu.id} className="px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-6 text-[11px] font-mono text-[var(--color-text-muted)] text-right shrink-0">
+                                {idx + 1}.
+                              </span>
+                              <img
+                                src={stu.avatarUrl}
+                                alt={stu.firstNameTh}
+                                className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-bold text-[var(--color-text-title)] truncate">
+                                  {stu.firstNameTh} {stu.lastNameTh}
+                                  {def.source === 'leave' && (
+                                    <span className="ml-1.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                                      (มีใบลาอนุมัติ)
+                                    </span>
+                                  )}
+                                  {def.source === 'recorded' && (
+                                    <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                      (เช็คแล้ว)
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                                  {stu.studentIdNumber} · {stu.room}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1 shrink-0">
+                              {statusOptions.map((opt) => {
+                                const selected = currentStatus === opt.value;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setRollCallOverrides((prev) => ({ ...prev, [stu.id]: opt.value }))}
+                                    className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer ${
+                                      selected
+                                        ? opt.activeCls
+                                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <div className="text-xs font-semibold text-[var(--color-text-body)] tabular-nums">
+                        {(() => {
+                          const resolvedList = rollCallStudents.map((s) => rollCallOverrides[s.id] || getDefaultRollCallStatus(s).status);
+                          const presentN = resolvedList.filter((st) => st === 'present').length;
+                          const lateN = resolvedList.filter((st) => st === 'late').length;
+                          const leaveN = resolvedList.filter((st) => st === 'sick' || st === 'leave').length;
+                          const absentN = resolvedList.filter((st) => st === 'absent').length;
+                          return `รวม ${rollCallStudents.length} คน: มาเรียน ${presentN} · สาย ${lateN} · ลา ${leaveN} · ขาด ${absentN}`;
+                        })()}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isSavingRollCall}
+                        onClick={handleSaveHomeroomRollCall}
+                        className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>บันทึกเช็คชื่อทั้งห้อง ({rollCallStudents.length} คน)</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : attendanceViewMode === 'weekly' ? (
               <WeeklyAttendanceGrid
                 students={scopedStudents}
                 attendance={scopedAttendance}
@@ -1303,7 +1540,29 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold">
+                {!isRestrictedViewer && onUpdateLeaveStatus && scopedLeaveRequests.some((r) => r.status === 'pending') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pending = scopedLeaveRequests.filter((r) => r.status === 'pending');
+                      pending.forEach((req) => {
+                        onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id] || 'อนุมัติแบบรวมรายการโดยครู/ผู้ดูแล');
+                      });
+                      emitMascotDashboardEvent({
+                        type: 'success',
+                        titleTh: `อนุมัติใบลาทั้งหมด ${pending.length} รายการ`,
+                        titleEn: `Approved ${pending.length} leave requests`,
+                        messageTh: 'อัปเดตสถานะในระบบเช็คชื่อประจำวันให้อัตโนมัติเรียบร้อยแล้ว',
+                        messageEn: 'Daily attendance leave statuses updated automatically.',
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>อนุมัติใบลาที่รอทั้งหมด ({scopedLeaveRequests.filter((r) => r.status === 'pending').length})</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setLeaveFilter('all')}

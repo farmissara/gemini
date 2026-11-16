@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   AdaptivePracticeTopic,
   AppLanguage,
+  Assignment,
   AttendanceRecord,
   AuthUser,
   Course,
   GradeRecord,
   GradingSystem,
+  HomeworkSubmission,
   PeriodAttendanceRecord,
   School,
   Student,
@@ -44,6 +46,7 @@ import {
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   ChartViewMode,
@@ -89,6 +92,8 @@ interface GradebookViewProps {
   timetableSlots?: TimetableSlot[];
   attendance?: AttendanceRecord[];
   periodAttendance?: PeriodAttendanceRecord[];
+  homeworkSubmissions?: HomeworkSubmission[];
+  assignments?: Assignment[];
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
   onOpenImportExport?: () => void;
   lang?: AppLanguage;
@@ -111,6 +116,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   timetableSlots = [],
   attendance = [],
   periodAttendance = [],
+  homeworkSubmissions = [],
+  assignments = [],
   onPracticeInAi,
   onOpenImportExport,
   lang = 'th',
@@ -137,6 +144,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [autoNotifyEnabled, setAutoNotifyEnabled] = useState(true);
   const [gradeAlertBanner, setGradeAlertBanner] = useState<{ message: string; detail?: string } | null>(null);
   const [showAddGradeForm, setShowAddGradeForm] = useState(false);
+  const [showBatchPastePanel, setShowBatchPastePanel] = useState(false);
+  const [batchPasteField, setBatchPasteField] = useState<'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore'>('midtermScore');
+  const [batchPasteText, setBatchPasteText] = useState('');
   const [newGradeStudentId, setNewGradeStudentId] = useState('');
   const [newMidtermScore, setNewMidtermScore] = useState(0);
   const [newFinalScore, setNewFinalScore] = useState(0);
@@ -570,6 +580,140 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       gradePoint: point,
     });
     scheduleDebouncedGradeAlert(nextGrade);
+  };
+
+  const courseAssignmentIds = new Set(
+    selectedCourse
+      ? assignments.filter((a) => a.courseId === selectedCourse.id).map((a) => a.id)
+      : []
+  );
+  const courseCodeNorm = selectedCourse?.code.trim().toLowerCase() || '';
+  const gradedCourseSubmissions = selectedCourse
+    ? homeworkSubmissions.filter(
+        (sub) =>
+          sub.status === 'graded' &&
+          typeof sub.score === 'number' &&
+          sub.maxScore > 0 &&
+          (courseAssignmentIds.has(sub.assignmentId) ||
+            (sub.courseCode && sub.courseCode.trim().toLowerCase() === courseCodeNorm))
+      )
+    : [];
+  const homeworkSyncMap = new Map<string, number>();
+  if (gradedCourseSubmissions.length > 0) {
+    const totalsByStudent = new Map<string, { earned: number; max: number }>();
+    gradedCourseSubmissions.forEach((sub) => {
+      const acc = totalsByStudent.get(sub.studentId) || { earned: 0, max: 0 };
+      acc.earned += Number(sub.score || 0);
+      acc.max += Number(sub.maxScore || 0);
+      totalsByStudent.set(sub.studentId, acc);
+    });
+    totalsByStudent.forEach((acc, stuId) => {
+      if (acc.max > 0) {
+        homeworkSyncMap.set(stuId, clampScore(Math.round((acc.earned / acc.max) * 20), 20));
+      }
+    });
+  }
+  const homeworkSyncCandidates = gradebookRows.filter(({ grade, student }) => {
+    const syncedScore = homeworkSyncMap.get(student.id);
+    return typeof syncedScore === 'number' && syncedScore !== grade.assignmentScore;
+  });
+
+  const handleSyncHomeworkScores = () => {
+    if (!selectedCourse || homeworkSyncCandidates.length === 0) return;
+    homeworkSyncCandidates.forEach(({ grade, student }) => {
+      const nextAssignment = homeworkSyncMap.get(student.id);
+      if (typeof nextAssignment === 'number') {
+        handleScoreChange(grade, 'assignmentScore', nextAssignment);
+      }
+    });
+    showAlertToast(
+      `ซิงค์คะแนนการบ้านเข้าวิชา ${selectedCourse.code} สำเร็จ ${homeworkSyncCandidates.length} คน`,
+      'คำนวณจากชิ้นงานที่ตรวจแล้วปรับสัดส่วนเป็นเต็ม 20 คะแนน'
+    );
+    emitMascotDashboardEvent({
+      type: 'success',
+      titleTh: `ซิงค์คะแนนการบ้าน ${homeworkSyncCandidates.length} คนสำเร็จ`,
+      titleEn: `Synced ${homeworkSyncCandidates.length} homework scores`,
+      messageTh: `นำคะแนนการบ้านที่ตรวจแล้วเข้าระบบปพ.5 วิชา ${selectedCourse.code} เรียบร้อย`,
+      messageEn: `Imported graded homework scores into ${selectedCourse.code}.`,
+    });
+  };
+
+  const batchMaxMap: Record<'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore', number> = {
+    midtermScore: 30,
+    finalScore: 40,
+    assignmentScore: 20,
+    quizScore: 10,
+  };
+
+  const parsedBatchUpdates = (() => {
+    const lines = batchPasteText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const maxScore = batchMaxMap[batchPasteField];
+    const updates: { grade: GradeRecord; student: Student; score: number }[] = [];
+    const seenGradeIds = new Set<string>();
+    const rowByStudentNum = new Map(
+      gradebookRows.map((row) => [row.student.studentIdNumber.trim().toLowerCase(), row] as const)
+    );
+
+    lines.forEach((line, idx) => {
+      const parts = line.split(/[\t,;]+/).map((p) => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        const key = parts[0].toLowerCase();
+        const rawScore = Number(parts[parts.length - 1]);
+        const match = rowByStudentNum.get(key) || gradebookRows.find(
+          (r) => `${r.student.firstNameTh} ${r.student.lastNameTh}`.toLowerCase() === key
+        );
+        if (match && Number.isFinite(rawScore) && !seenGradeIds.has(match.grade.id)) {
+          seenGradeIds.add(match.grade.id);
+          updates.push({
+            grade: match.grade,
+            student: match.student,
+            score: clampScore(rawScore, maxScore),
+          });
+        }
+      } else if (parts.length === 1) {
+        const rawScore = Number(parts[0]);
+        const targetRow = filteredGradebookRows[idx];
+        if (targetRow && Number.isFinite(rawScore) && !seenGradeIds.has(targetRow.grade.id)) {
+          seenGradeIds.add(targetRow.grade.id);
+          updates.push({
+            grade: targetRow.grade,
+            student: targetRow.student,
+            score: clampScore(rawScore, maxScore),
+          });
+        }
+      }
+    });
+    return updates;
+  })();
+
+  const handleApplyBatchPaste = () => {
+    if (parsedBatchUpdates.length === 0) return;
+    parsedBatchUpdates.forEach(({ grade, score }) => {
+      handleScoreChange(grade, batchPasteField, score);
+    });
+    const fieldLabels = {
+      midtermScore: 'กลางภาค',
+      finalScore: 'ปลายภาค',
+      assignmentScore: 'การบ้าน/ชิ้นงาน',
+      quizScore: 'แบบทดสอบย่อย',
+    } as const;
+    showAlertToast(
+      `วางคะแนนช่อง "${fieldLabels[batchPasteField]}" สำเร็จ ${parsedBatchUpdates.length} คน`,
+      selectedCourse ? `${selectedCourse.code} • คำนวณเกรดรวมให้อัตโนมัติแล้ว` : undefined
+    );
+    emitMascotDashboardEvent({
+      type: 'success',
+      titleTh: `วางคะแนนจาก Excel สำเร็จ ${parsedBatchUpdates.length} คน`,
+      titleEn: `Batch updated ${parsedBatchUpdates.length} scores`,
+      messageTh: `อัปเดตคะแนน${fieldLabels[batchPasteField]}และคำนวณเกรดให้อัตโนมัติทันที`,
+      messageEn: `Applied batch ${fieldLabels[batchPasteField]} scores.`,
+    });
+    setBatchPasteText('');
+    setShowBatchPastePanel(false);
   };
 
   const handleSpecialStatusChange = (grade: GradeRecord, status: 'auto' | 'ร' | 'มส.' | 'ผ' | 'มผ') => {
@@ -1474,14 +1618,115 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </span>
             </div>
 
-            <div className="text-[11px] text-[var(--color-text-muted)] hidden lg:block">
-              {isPrimaryCourse
-                ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
-                : getGradingScaleLegend(systemConfig.gradingSystem)}
+            <div className="flex flex-wrap items-center gap-1.5 print:hidden">
+              {homeworkSyncMap.size > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSyncHomeworkScores}
+                  disabled={homeworkSyncCandidates.length === 0}
+                  title="ดึงคะแนนชิ้นงานที่ตรวจแล้วในระบบ Homework Tracker มาใส่ช่อง Homework (เต็ม 20) อัตโนมัติ"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-100 disabled:text-emerald-800 dark:disabled:bg-emerald-950/50 dark:disabled:text-emerald-300 text-white text-[11px] font-bold cursor-pointer transition"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>
+                    {homeworkSyncCandidates.length > 0
+                      ? `ซิงค์คะแนนการบ้าน (${homeworkSyncCandidates.length} คน)`
+                      : `ซิงค์การบ้านครบแล้ว (${homeworkSyncMap.size})`}
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowBatchPastePanel((prev) => !prev)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition ${
+                  showBatchPastePanel
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
+                }`}
+              >
+                <FileSpreadsheet className="w-3 h-3" />
+                <span>วางคะแนนจาก Excel</span>
+              </button>
+              <span className="text-[11px] text-[var(--color-text-muted)] hidden xl:inline ml-1">
+                {isPrimaryCourse
+                  ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
+                  : getGradingScaleLegend(systemConfig.gradingSystem)}
+              </span>
             </div>
           </div>
 
           <div className="p-2.5 space-y-2.5">
+          {/* Batch Excel / Sheets Score Paste Panel */}
+          {showBatchPastePanel && (
+            <div className="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/30 p-3 space-y-2.5 text-xs print:hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-sky-700 dark:text-sky-300" />
+                    <span>วางคะแนนรวดเดียวจาก Excel / Google Sheets</span>
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    คัดลอกคอลัมน์คะแนนล้วน (เรียงตามตารางด้านล่าง {filteredGradebookRows.length} คน) หรือคัดลอกแบบ 2 คอลัมน์ &quot;รหัสนักเรียน [Tab] คะแนน&quot; มาวางได้ทันที
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBatchPastePanel(false)}
+                  className="text-[11px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                >
+                  ปิดหน้าต่าง
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2.5 items-start">
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="block text-[11px] font-semibold text-[var(--color-text-muted)] mb-1">ช่องคะแนนที่ต้องการวาง:</span>
+                    <select
+                      value={batchPasteField}
+                      onChange={(e) => setBatchPasteField(e.target.value as typeof batchPasteField)}
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)]"
+                    >
+                      <option value="midtermScore">กลางภาค (เต็ม 30)</option>
+                      <option value="finalScore">ปลายภาค (เต็ม 40)</option>
+                      <option value="assignmentScore">การบ้าน/ชิ้นงาน (เต็ม 20)</option>
+                      <option value="quizScore">แบบทดสอบย่อย (เต็ม 10)</option>
+                    </select>
+                  </label>
+                  <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                    จับคู่สำเร็จ: <strong className="text-emerald-700 dark:text-emerald-300">{parsedBatchUpdates.length}</strong> คน
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <textarea
+                    rows={4}
+                    value={batchPasteText}
+                    onChange={(e) => setBatchPasteText(e.target.value)}
+                    placeholder={`ตัวอย่างแบบที่ 1 (วางคอลัมน์คะแนน):\n24\n28\n19\n\nตัวอย่างแบบที่ 2 (รหัสนักเรียน คะแนน):\n${filteredGradebookRows[0]?.student.studentIdNumber || 'STU-001'}\t25`}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 font-mono text-xs text-[var(--color-text-title)] focus:outline-none focus:border-sky-500"
+                  />
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBatchPasteText('')}
+                      disabled={!batchPasteText}
+                      className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] disabled:opacity-40 cursor-pointer"
+                    >
+                      ล้างข้อความ
+                    </button>
+                    <button
+                      type="button"
+                      disabled={parsedBatchUpdates.length === 0}
+                      onClick={handleApplyBatchPaste}
+                      className="px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 disabled:opacity-45 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>นำเข้าคะแนน ({parsedBatchUpdates.length} คน)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Automated Grade Notification Confirmation Toast */}
           {gradeAlertBanner && (
             <div

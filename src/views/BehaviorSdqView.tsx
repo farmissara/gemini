@@ -19,8 +19,11 @@ import {
   Layers,
   Info,
   Sliders,
-  Trash2
+  Trash2,
+  Download,
+  Printer,
 } from 'lucide-react';
+import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { 
   Student, 
   BehaviorRecord, 
@@ -100,6 +103,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
   const [activeTab, setActiveTab] = useState<'merit' | 'sdq' | 'cct_poverty' | 'obec_care_steps'>('merit');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sdqStatusFilter, setSdqStatusFilter] = useState<'all' | 'normal' | 'risk' | 'problem'>('all');
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [showSdqModal, setShowSdqModal] = useState(false);
   const [showPresetModal, setShowPresetModal] = useState(false);
@@ -251,6 +255,120 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       label: lang === 'th' ? 'ทัณฑ์บน' : 'Probation',
       bg: 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
     };
+  };
+
+  const interpretSdqAssessment = (sdq: SdqAssessment) => {
+    const elevatedDomains: string[] = [];
+    if (sdq.emotionalScore >= 6) elevatedDomains.push('อารมณ์ (สูง)');
+    else if (sdq.emotionalScore === 5) elevatedDomains.push('อารมณ์ (เสี่ยง)');
+
+    if (sdq.conductScore >= 4) elevatedDomains.push('ความประพฤติ (สูง)');
+    else if (sdq.conductScore === 3) elevatedDomains.push('ความประพฤติ (เสี่ยง)');
+
+    if (sdq.hyperactivityScore >= 7) elevatedDomains.push('สมาธิ/อยู่ไม่นิ่ง (สูง)');
+    else if (sdq.hyperactivityScore === 6) elevatedDomains.push('สมาธิ/อยู่ไม่นิ่ง (เสี่ยง)');
+
+    if (sdq.peerScore >= 5) elevatedDomains.push('ความสัมพันธ์กับเพื่อน (สูง)');
+    else if (sdq.peerScore === 4) elevatedDomains.push('ความสัมพันธ์กับเพื่อน (เสี่ยง)');
+
+    if (sdq.prosocialScore <= 4) elevatedDomains.push('สัมพันธภาพทางสังคม (ควรเสริม)');
+
+    const focusSummary =
+      elevatedDomains.length > 0
+        ? `เด่นที่ควรดูแล: ${elevatedDomains.join(', ')}`
+        : sdq.prosocialScore >= 6
+          ? 'ปกติทุกด้าน · มีจุดแข็งด้านน้ำใจ/เข้าสังคม'
+          : 'ปกติทุกด้าน';
+
+    const recommendedAction =
+      sdq.overallStatus === 'problem'
+        ? 'ขั้นที่ 4 แก้ไข/ส่งต่อ: นัดพูดคุยผู้ปกครองและครูแนะแนว พร้อมจัดทำแผนช่วยเหลือรายบุคคล'
+        : sdq.overallStatus === 'risk'
+          ? 'ขั้นที่ 3 ป้องกัน: ให้คำปรึกษาเชิงบวกและติดตามพฤติกรรมใกล้ชิดทุก 2 สัปดาห์'
+          : 'ขั้นที่ 2 ส่งเสริม: ชมเชยจุดแข็งและจัดกิจกรรมโฮมรูมเชิงบวกต่อเนื่อง';
+
+    return {
+      elevatedDomains,
+      focusSummary,
+      recommendedAction,
+    };
+  };
+
+  const sdqNormalCount = sdqList.filter((item) => item.overallStatus === 'normal').length;
+  const sdqRiskCount = sdqList.filter((item) => item.overallStatus === 'risk').length;
+  const sdqProblemCount = sdqList.filter((item) => item.overallStatus === 'problem').length;
+  const uniqueSdqStudentCount = new Set(sdqList.map((item) => item.studentId)).size;
+  const sdqCoveragePct = students.length > 0 ? Math.min(100, Math.round((uniqueSdqStudentCount / students.length) * 100)) : 0;
+  const filteredSdqList = sdqList.filter((item) =>
+    sdqStatusFilter === 'all' ? true : item.overallStatus === sdqStatusFilter
+  );
+
+  const handleExportSdqCsv = () => {
+    const statusLabels: Record<SdqAssessment['overallStatus'], string> = {
+      normal: 'กลุ่มปกติ',
+      risk: 'กลุ่มเสี่ยง',
+      problem: 'กลุ่มมีปัญหา',
+    };
+    const escapeCsv = (val: string | number) => {
+      const text = String(val ?? '');
+      return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const headers = [
+      'ชื่อ-สกุลนักเรียน',
+      'ห้องเรียน',
+      'ปีการศึกษา',
+      'ภาคเรียน',
+      'ด้านอารมณ์ (/10)',
+      'ความประพฤติ (/10)',
+      'อยู่ไม่นิ่ง (/10)',
+      'ด้านเพื่อน (/10)',
+      'จุดแข็ง (/10)',
+      'รวมความยากลำบาก (/40)',
+      'สรุปผล',
+      'ประเด็นที่พบอัตโนมัติ',
+      'แนวทางดูแล สพฐ. 5 ขั้น',
+      'ผู้ประเมิน',
+      'วันที่ประเมิน',
+    ];
+    const rows = filteredSdqList.map((sdq) => {
+      const interpretation = interpretSdqAssessment(sdq);
+      return [
+        sdq.studentName,
+        sdq.studentRoom,
+        sdq.academicYear,
+        sdq.semester,
+        sdq.emotionalScore,
+        sdq.conductScore,
+        sdq.hyperactivityScore,
+        sdq.peerScore,
+        sdq.prosocialScore,
+        sdq.totalDifficultiesScore,
+        statusLabels[sdq.overallStatus],
+        interpretation.focusSummary,
+        interpretation.recommendedAction,
+        sdq.assessorName,
+        sdq.date,
+      ]
+        .map(escapeCsv)
+        .join(',');
+    });
+    const csvContent = `\uFEFF${[headers.map(escapeCsv).join(','), ...rows].join('\n')}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `SDQ_Summary_${academicYear}_${currentSemester}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    emitMascotDashboardEvent({
+      type: 'success',
+      titleTh: 'ส่งออกรายงาน SDQ แล้ว!',
+      titleEn: 'SDQ CSV Exported',
+      messageTh: `หมีจัดทำไฟล์สรุปผล SDQ พร้อมแนวทางดูแล ${filteredSdqList.length} รายการให้เรียบร้อย`,
+      messageEn: `Exported ${filteredSdqList.length} SDQ screening summaries with care recommendations.`,
+    });
   };
 
   return (
@@ -544,32 +662,150 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       {/* Tab 2: SDQ Screening */}
       {activeTab === 'sdq' && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden space-y-2.5">
-          {/* SDQ Guidelines Card */}
-          <div className="shrink-0 p-3 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-[var(--color-primary-text)] shrink-0 mt-0.5" />
-            <div className="text-xs space-y-0.5">
-              <h4 className="font-bold text-[var(--color-text-title)] text-[11px]">
-                {lang === 'th' ? 'เกณฑ์การแปลผลแบบประเมินพฤติกรรมเด็ก (SDQ ฉบับ สพฐ.)' : 'SDQ Assessment Benchmark'}
-              </h4>
-              <p className="text-[var(--color-text-body)] leading-relaxed text-[11px]">
-                แบบประเมิน SDQ ครอบคลุมพฤติกรรม 5 ด้าน (คะแนนความยากลำบาก 0-40):
-                <span className="text-emerald-800 dark:text-emerald-300 font-bold ml-1">กลุ่มปกติ (0-15)</span>,
-                <span className="text-amber-800 dark:text-amber-300 font-bold ml-1">กลุ่มเสี่ยง (16-19)</span>,
-                <span className="text-rose-800 dark:text-rose-300 font-bold ml-1">กลุ่มมีปัญหา (20-40)</span>
+          {/* Quick SDQ Summary Metrics */}
+          <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setSdqStatusFilter('all')}
+              className={`bg-[var(--color-card)] p-3 rounded-xl border text-left transition cursor-pointer ${
+                sdqStatusFilter === 'all'
+                  ? 'border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
+                  : 'border-[var(--color-border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[var(--color-text-muted)]">คัดกรองแล้ว ({sdqCoveragePct}%)</span>
+                <span className="p-1.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)]">
+                  <FileText className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <p className="text-lg font-bold text-[var(--color-text-title)] mt-1 tabular-nums">
+                {sdqList.length} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">รายการ</span>
               </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSdqStatusFilter('normal')}
+              className={`bg-[var(--color-card)] p-3 rounded-xl border text-left transition cursor-pointer ${
+                sdqStatusFilter === 'normal'
+                  ? 'border-emerald-500 ring-1 ring-emerald-500'
+                  : 'border-[var(--color-border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[var(--color-text-muted)]">กลุ่มปกติ (0–15)</span>
+                <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mt-1 tabular-nums">
+                {sdqNormalCount} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">คน</span>
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSdqStatusFilter('risk')}
+              className={`bg-[var(--color-card)] p-3 rounded-xl border text-left transition cursor-pointer ${
+                sdqStatusFilter === 'risk'
+                  ? 'border-amber-500 ring-1 ring-amber-500'
+                  : 'border-[var(--color-border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[var(--color-text-muted)]">กลุ่มเสี่ยง (16–19)</span>
+                <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <p className="text-lg font-bold text-amber-700 dark:text-amber-300 mt-1 tabular-nums">
+                {sdqRiskCount} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">คน</span>
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSdqStatusFilter('problem')}
+              className={`bg-[var(--color-card)] p-3 rounded-xl border text-left transition cursor-pointer ${
+                sdqStatusFilter === 'problem'
+                  ? 'border-rose-500 ring-1 ring-rose-500'
+                  : 'border-[var(--color-border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[var(--color-text-muted)]">กลุ่มมีปัญหา (20+)</span>
+                <span className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200">
+                  <HeartHandshake className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <p className="text-lg font-bold text-rose-700 dark:text-rose-300 mt-1 tabular-nums">
+                {sdqProblemCount} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">คน</span>
+              </p>
+            </button>
+          </div>
+
+          {/* SDQ Guidelines Card */}
+          <div className="shrink-0 p-3 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <Info className="w-4 h-4 text-[var(--color-primary-text)] shrink-0 mt-0.5" />
+              <div className="text-xs space-y-0.5">
+                <h4 className="font-bold text-[var(--color-text-title)] text-[11px]">
+                  {lang === 'th' ? 'แปลผลและแนะนำขั้นดูแล สพฐ. อัตโนมัติ (Auto-Interpreted SDQ)' : 'SDQ Assessment Benchmark'}
+                </h4>
+                <p className="text-[var(--color-text-body)] leading-relaxed text-[11px]">
+                  ระบบช่วยสรุปจุดที่ต้องเฝ้าระวังทั้ง 5 ด้านพร้อมแนวทางดูแล 5 ขั้นให้ทันที:
+                  <span className="text-emerald-800 dark:text-emerald-300 font-bold ml-1">ปกติ (0-15)</span>,
+                  <span className="text-amber-800 dark:text-amber-300 font-bold ml-1">เสี่ยง (16-19)</span>,
+                  <span className="text-rose-800 dark:text-rose-300 font-bold ml-1">มีปัญหา (20-40)</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 print:hidden">
+              <button
+                type="button"
+                onClick={handleExportSdqCsv}
+                disabled={filteredSdqList.length === 0}
+                className="btn-tool-tone px-2.5 py-1.5 text-xs disabled:opacity-40 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>ส่งออก CSV สรุป SDQ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="btn-tool-neutral px-2.5 py-1.5 text-xs cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>พิมพ์รายงาน</span>
+              </button>
             </div>
           </div>
 
           {/* SDQ Assessments List */}
           <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] shadow-xs flex flex-col overflow-hidden">
-            <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+            <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                <span>{lang === 'th' ? 'ผลการประเมิน SDQ รายบุคคล' : 'Individual SDQ Results'}</span>
+                <span>{lang === 'th' ? 'ผลการประเมินและคำแนะนำรายบุคคล' : 'Individual SDQ Results'}</span>
               </h3>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'ประเมินแล้ว' : 'Assessed'}: {sdqList.length} {lang === 'th' ? 'คน' : 'students'}
-              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="กรองผลประเมิน SDQ"
+                  value={sdqStatusFilter}
+                  onChange={(e) => setSdqStatusFilter(e.target.value as typeof sdqStatusFilter)}
+                  className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border)] focus:outline-none print:hidden"
+                >
+                  <option value="all">ทุกกลุ่ม ({sdqList.length})</option>
+                  <option value="normal">กลุ่มปกติ ({sdqNormalCount})</option>
+                  <option value="risk">กลุ่มเสี่ยง ({sdqRiskCount})</option>
+                  <option value="problem">กลุ่มมีปัญหา ({sdqProblemCount})</option>
+                </select>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'แสดง' : 'Showing'}: {filteredSdqList.length} {lang === 'th' ? 'รายการ' : 'items'}
+                </span>
+              </div>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
@@ -577,41 +813,47 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-title)] uppercase">
                     <th className="p-2.5">{lang === 'th' ? 'นักเรียน' : 'Student'}</th>
-                    <th className="p-2 text-center">{lang === 'th' ? 'ด้านอารมณ์' : 'Emotional'}</th>
-                    <th className="p-2 text-center">{lang === 'th' ? 'ความประพฤติ' : 'Conduct'}</th>
+                    <th className="p-2 text-center">{lang === 'th' ? 'อารมณ์' : 'Emotional'}</th>
+                    <th className="p-2 text-center">{lang === 'th' ? 'ประพฤติ' : 'Conduct'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'อยู่ไม่นิ่ง' : 'Hyperactivity'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'เพื่อน' : 'Peer'}</th>
                     <th className="p-2 text-center font-bold text-emerald-800 dark:text-emerald-300">{lang === 'th' ? 'จุดแข็ง' : 'Prosocial'}</th>
-                    <th className="p-2 text-center font-bold text-[var(--color-text-title)]">{lang === 'th' ? 'คะแนนรวม' : 'Total'}</th>
+                    <th className="p-2 text-center font-bold text-[var(--color-text-title)]">{lang === 'th' ? 'รวม' : 'Total'}</th>
                     <th className="p-2 text-center">{lang === 'th' ? 'ผลประเมิน' : 'Status'}</th>
+                    <th className="p-2.5 min-w-[220px]">{lang === 'th' ? 'แนวทางดูแลแนะนำ (อัตโนมัติ)' : 'Auto Care Plan'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  <PaginatedTableRows items={sdqList} colSpan={8} renderRow={(sdq) => {
+                  <PaginatedTableRows items={filteredSdqList} colSpan={9} renderRow={(sdq) => {
                     const statusConfig = {
                       normal: { label: 'กลุ่มปกติ', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' },
                       risk: { label: 'กลุ่มเสี่ยง', color: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' },
                       problem: { label: 'กลุ่มมีปัญหา', color: 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' }
                     }[sdq.overallStatus];
+                    const interpretation = interpretSdqAssessment(sdq);
 
                     return (
-                      <tr key={sdq.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                      <tr key={sdq.id} className="hover:bg-[var(--color-card-subtle)] transition align-top">
                         <td className="p-3">
                           <p className="font-bold text-[var(--color-text-title)]">{sdq.studentName}</p>
                           <p className="text-[10px] text-[var(--color-text-muted)]">{sdq.studentRoom} • ประเมินโดย {sdq.assessorName}</p>
                         </td>
-                        <td className="p-2 text-center font-mono text-[var(--color-text-body)]">{sdq.emotionalScore}/10</td>
-                        <td className="p-2 text-center font-mono text-[var(--color-text-body)]">{sdq.conductScore}/10</td>
-                        <td className="p-2 text-center font-mono text-[var(--color-text-body)]">{sdq.hyperactivityScore}/10</td>
-                        <td className="p-2 text-center font-mono text-[var(--color-text-body)]">{sdq.peerScore}/10</td>
+                        <td className={`p-2 text-center font-mono ${sdq.emotionalScore >= 6 ? 'font-bold text-rose-600 dark:text-rose-300' : 'text-[var(--color-text-body)]'}`}>{sdq.emotionalScore}/10</td>
+                        <td className={`p-2 text-center font-mono ${sdq.conductScore >= 4 ? 'font-bold text-rose-600 dark:text-rose-300' : 'text-[var(--color-text-body)]'}`}>{sdq.conductScore}/10</td>
+                        <td className={`p-2 text-center font-mono ${sdq.hyperactivityScore >= 7 ? 'font-bold text-rose-600 dark:text-rose-300' : 'text-[var(--color-text-body)]'}`}>{sdq.hyperactivityScore}/10</td>
+                        <td className={`p-2 text-center font-mono ${sdq.peerScore >= 5 ? 'font-bold text-rose-600 dark:text-rose-300' : 'text-[var(--color-text-body)]'}`}>{sdq.peerScore}/10</td>
                         <td className="p-2 text-center font-mono text-emerald-700 dark:text-emerald-300 font-bold">{sdq.prosocialScore}/10</td>
                         <td className="p-2 text-center font-mono font-bold text-sm text-[var(--color-primary-text)]">
                           {sdq.totalDifficultiesScore}/40
                         </td>
                         <td className="p-3 text-center">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusConfig.color}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${statusConfig.color}`}>
                             {statusConfig.label}
                           </span>
+                        </td>
+                        <td className="p-2.5 text-[11px] leading-snug">
+                          <p className="font-semibold text-[var(--color-text-title)]">{interpretation.focusSummary}</p>
+                          <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{interpretation.recommendedAction}</p>
                         </td>
                       </tr>
                     );
