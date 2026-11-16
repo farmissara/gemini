@@ -3625,6 +3625,7 @@ export const App: React.FC = () => {
                   <TimetableScheduleView
                     slots={schoolTimetableSlotsAllTerms}
                     courses={schoolCourses}
+                    assignments={schoolAssignments}
                     teachers={schoolTeachers}
                     students={schoolStudents}
                     onAddSlot={handleAddTimetableSlot}
@@ -3657,7 +3658,9 @@ export const App: React.FC = () => {
                     submissions={schoolHomeworkSubmissions}
                     students={schoolStudents}
                     courses={schoolCourses}
-                    assignments={assignments}
+                    assignments={schoolAssignments}
+                    schoolId={activeSchool.id}
+                    schoolName={activeSchool.nameTh}
                     onAddSubmission={handleAddHomeworkSubmission}
                     onGradeSubmission={handleGradeHomeworkSubmission}
                     lang={lang}
@@ -4018,9 +4021,12 @@ export const App: React.FC = () => {
           questions={schoolQuestions}
           courses={schoolCourses}
           grades={schoolGrades}
+          attendance={schoolAttendance}
           timetableSlots={schoolTimetableSlotsAllTerms}
           schoolPeriods={schoolPeriods}
           activeSchoolId={activeSchool.id}
+          academicYear={timetableAcademicYear}
+          semester={timetableSemester}
           lang={lang}
           initialTab={importExportInitialTab}
           onImportStudents={handleImportStudents}
@@ -4029,6 +4035,7 @@ export const App: React.FC = () => {
           onImportCourses={handleImportCourses}
           onImportEnrollment={handleImportEnrollment}
           onImportGrades={handleImportGrades}
+          onImportAttendance={handleBulkImportAttendance}
           onImportTimetableSlots={handleImportTimetableSlots}
           onClose={() => setShowImportExportModal(false)}
         />

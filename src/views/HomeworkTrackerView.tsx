@@ -27,6 +27,8 @@ import {
   Assignment
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
+import { addCalendarDays, getBangkokDateInputValue, getCalendarWeekStart } from '../lib/timetableCalendar';
 import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 
 const PaginatedTableRows = <T,>({
@@ -66,6 +68,8 @@ interface HomeworkTrackerViewProps {
   students: Student[];
   courses: Course[];
   assignments?: Assignment[];
+  schoolId?: string;
+  schoolName?: string;
   onAddSubmission: (sub: HomeworkSubmission) => void;
   onGradeSubmission: (id: string, score: number, feedback: string) => void;
   lang: AppLanguage;
@@ -77,6 +81,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   students,
   courses,
   assignments = [],
+  schoolId = 'sch-bkk-01',
+  schoolName = 'EduVerse School',
   onAddSubmission,
   onGradeSubmission,
   lang,
@@ -89,7 +95,9 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   
   // Modals
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [selectedSubForGrading, setSelectedSubForGrading] = useState<HomeworkSubmission | null>(null);
+  const calendarWeekStart = getCalendarWeekStart(getBangkokDateInputValue());
 
   // Submit modal form
   const [submitStudentId, setSubmitStudentId] = useState<string>(students[0]?.id || '');
@@ -214,6 +222,15 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
               3. งานค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowGoogleCalendarModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] transition cursor-pointer"
+          >
+            <Calendar className="w-3.5 h-3.5 text-sky-600" />
+            <span>{lang === 'th' ? 'ซิงค์กำหนดส่ง Google Calendar' : 'Sync to Google Calendar'}</span>
+          </button>
 
           <button
             onClick={() => {
@@ -628,6 +645,23 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {showGoogleCalendarModal && (
+        <GoogleCalendarSyncModal
+          slots={[]}
+          assignments={assignments}
+          courses={courses}
+          schoolId={schoolId}
+          schoolName={schoolName}
+          academicYear="2569"
+          semester="1"
+          filterLabel={lang === 'th' ? 'กำหนดส่งการบ้านและงานที่มอบหมาย' : 'Assignments & Homework Deadlines'}
+          defaultStartDate={calendarWeekStart}
+          defaultEndDate={addCalendarDays(calendarWeekStart, 90)}
+          calendarWeekStart={calendarWeekStart}
+          onClose={() => setShowGoogleCalendarModal(false)}
+        />
       )}
     </div>
   );

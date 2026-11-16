@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { User } from 'firebase/auth';
 import {
   AlertTriangle,
+  BookOpen,
   Calendar,
   CheckCircle2,
   Clock,
@@ -16,7 +17,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { TimetableSlot } from '../types';
+import { Assignment, Course, TimetableSlot } from '../types';
 import {
   addCalendarDays,
   buildTimetableIcs,
@@ -24,6 +25,7 @@ import {
 } from '../lib/timetableCalendar';
 import { parseSlotTeachersFromRaw } from '../lib/timetableTeachers';
 import {
+  autoSyncSchoolCalendar,
   deleteSyncedTimetableEvents,
   fetchGoogleCalendarEvents,
   fetchGoogleCalendars,
@@ -33,13 +35,15 @@ import {
   GoogleCalendarListItem,
   googleCalendarSignIn,
   googleCalendarSignOut,
+  listSyncedAssignmentEvents,
   listSyncedTimetableEvents,
   subscribeGoogleCalendarAuth,
-  syncTimetableSlotsToGoogleCalendar,
 } from '../lib/googleCalendar';
 
 interface GoogleCalendarSyncModalProps {
   slots: TimetableSlot[];
+  assignments?: Assignment[];
+  courses?: Course[];
   schoolId: string;
   schoolName: string;
   academicYear: string;
@@ -52,12 +56,14 @@ interface GoogleCalendarSyncModalProps {
 }
 
 type PendingConfirmation =
-  | { type: 'sync' }
+  | { type: 'sync'; syncSlotsCount: number; syncAssignmentsCount: number }
   | { type: 'delete'; eventIds: string[] }
   | null;
 
 export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = ({
   slots,
+  assignments = [],
+  courses = [],
   schoolId,
   schoolName,
   academicYear,
@@ -77,6 +83,13 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
   const [liveEvents, setLiveEvents] = useState<GoogleCalendarEventItem[]>([]);
   const [syncedEvents, setSyncedEvents] = useState<GoogleCalendarEventItem[]>([]);
 
+  const activeAssignments = useMemo(
+    () => assignments.filter((a) => a.status !== 'closed' && Boolean(a.dueDate)),
+    [assignments]
+  );
+
+  const [includeTimetable, setIncludeTimetable] = useState(slots.length > 0);
+  const [includeAssignments, setIncludeAssignments] = useState(activeAssignments.length > 0);
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
 
@@ -129,12 +142,15 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
         const weekEndIso = `${addCalendarDays(calendarWeekStart, 6)}T23:59:59+07:00`;
         const termKey = `${academicYear}-${semester}`;
 
-        const [events, synced] = await Promise.all([
+        const [events, syncedSlots, syncedAssigns] = await Promise.all([
           fetchGoogleCalendarEvents(token, targetId, weekStartIso, weekEndIso),
           listSyncedTimetableEvents(token, targetId, schoolId, termKey),
+          listSyncedAssignmentEvents(token, targetId, schoolId),
         ]);
         setLiveEvents(events);
-        setSyncedEvents(synced);
+        const deduped = new Map<string, GoogleCalendarEventItem>();
+        [...syncedSlots, ...syncedAssigns].forEach((ev) => deduped.set(ev.id, ev));
+        setSyncedEvents(Array.from(deduped.values()));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูล Google Calendar ได้';
         setErrorMsg(message);
@@ -197,26 +213,38 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
     setErrorMsg('');
     setStatusMsg('');
     try {
-      const result = await syncTimetableSlotsToGoogleCalendar({
+      const { timetableResult, assignmentResult } = await autoSyncSchoolCalendar({
         token: accessToken,
         calendarId: selectedCalendarId,
-        slots,
         schoolId,
+        slots: includeTimetable ? slots : [],
+        assignments: includeAssignments ? activeAssignments : [],
+        courses,
         startDateValue: startDate,
         endDateValue: endDate,
       });
 
-      const summaryParts = [
-        result.createdCount > 0 ? `สร้างใหม่ ${result.createdCount} คาบ` : '',
-        result.updatedCount > 0 ? `อัปเดต ${result.updatedCount} คาบ` : '',
-        result.skippedCount > 0 ? `ข้าม ${result.skippedCount} คาบ` : '',
-      ].filter(Boolean);
+      const summaryParts: string[] = [];
+      if (timetableResult) {
+        summaryParts.push(
+          `ตารางสอน (สร้าง ${timetableResult.createdCount}, อัปเดต ${timetableResult.updatedCount})`
+        );
+      }
+      if (assignmentResult) {
+        summaryParts.push(
+          `งานที่มอบหมาย (สร้าง ${assignmentResult.createdCount}, อัปเดต ${assignmentResult.updatedCount})`
+        );
+      }
+      const allErrors = [
+        ...(timetableResult?.errors || []),
+        ...(assignmentResult?.errors || []),
+      ];
 
-      if (result.errors.length > 0) {
-        setErrorMsg(`บางรายการซิงค์ไม่สำเร็จ: ${result.errors.slice(0, 3).join(', ')}`);
+      if (allErrors.length > 0) {
+        setErrorMsg(`บางรายการซิงค์ไม่สำเร็จ: ${allErrors.slice(0, 3).join(', ')}`);
       }
       setStatusMsg(
-        `ซิงค์ตารางเรียนไปยังปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}" สำเร็จ (${summaryParts.join(' · ') || 'ตรวจสอบแล้ว'})`
+        `ซิงค์ข้อมูลไปยังปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}" สำเร็จ (${summaryParts.join(' · ') || 'ตรวจสอบแล้ว'})`
       );
       setPendingConfirmation(null);
       await loadCalendarWorkspaceData(accessToken, selectedCalendarId);
@@ -237,7 +265,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
       if (result.errors.length > 0) {
         setErrorMsg(`ลบบางรายการไม่สำเร็จ: ${result.errors[0]}`);
       }
-      setStatusMsg(`ลบกิจกรรมตารางสอนที่เคยซิงค์ออกจากปฏิทินแล้ว ${result.deletedCount} รายการ`);
+      setStatusMsg(`ลบกิจกรรมที่เคยซิงค์จาก EduVerse ออกจากปฏิทินแล้ว ${result.deletedCount} รายการ`);
       setPendingConfirmation(null);
       await loadCalendarWorkspaceData(accessToken, selectedCalendarId);
     } catch (err) {
@@ -302,6 +330,9 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
     return `${dateLabel} · ${startTime}${endTime ? ` - ${endTime}` : ''}`;
   };
 
+  const targetSlotCount = includeTimetable ? slots.length : 0;
+  const targetAssignmentCount = includeAssignments ? activeAssignments.length : 0;
+
   return (
     <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
@@ -312,9 +343,9 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900">เชื่อมต่อ Google Calendar</h3>
+              <h3 className="text-lg font-bold text-slate-900">เชื่อมต่อและซิงค์ Google Calendar</h3>
               <p className="text-xs text-slate-500">
-                {filterLabel} · {slots.length} คาบ{coTaughtCount > 0 ? ` (มีสอนคู่ ${coTaughtCount} คาบ)` : ''}
+                {filterLabel} · ตารางสอน {slots.length} คาบ{coTaughtCount > 0 ? ` (สอนคู่ ${coTaughtCount})` : ''} · งานที่มอบหมาย {activeAssignments.length} งาน
               </p>
             </div>
           </div>
@@ -329,7 +360,6 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
         </div>
 
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
-          {/* Status & Error Alerts */}
           {errorMsg && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -354,11 +384,10 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                       : 'ยังไม่ได้เชื่อมต่อบัญชี Google'}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    เข้าสู่ระบบด้วย Google เพื่อซิงค์คาบเรียนแบบรายสัปดาห์และดูตารางกิจกรรมจริงจาก Google Calendar
+                    เข้าสู่ระบบด้วย Google เพื่อซิงค์ตารางเรียน/สอนแบบรายสัปดาห์ และกำหนดส่งการบ้านเข้าปฏิทินส่วนตัวอัตโนมัติ
                   </p>
                 </div>
 
-                {/* Official Google Sign-In Button Styling */}
                 <button
                   type="button"
                   onClick={handleSignIn}
@@ -437,7 +466,6 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                   </div>
                 </div>
 
-                {/* Target Calendar Picker */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
                     เลือกปฏิทิน Google Calendar ปลายทาง
@@ -462,7 +490,6 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
             )}
           </div>
 
-          {/* Sub-tabs */}
           {accessToken && (
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
               <button
@@ -474,7 +501,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                ซิงค์ตารางเรียนขึ้น Google Calendar
+                ซิงค์ตารางเรียนและงานที่มอบหมาย
               </button>
               <button
                 type="button"
@@ -490,57 +517,102 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
             </div>
           )}
 
-          {/* Sync Controls */}
           {(!accessToken || activeTab === 'sync') && (
             <div className="space-y-4">
+              {/* Sync Scope Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">วันเริ่มต้นภาคเรียน</label>
+                <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-blue-300">
                   <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none"
+                    type="checkbox"
+                    checked={includeTimetable}
+                    disabled={slots.length === 0}
+                    onChange={(e) => setIncludeTimetable(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">วันสิ้นสุดภาคเรียน</label>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">
+                      ซิงค์ตารางเรียน / ตารางสอน ({slots.length} คาบ)
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      กิจกรรมรายสัปดาห์ตลอดช่วงภาคเรียน รวมครูสอนคู่
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-blue-300">
                   <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none"
+                    type="checkbox"
+                    checked={includeAssignments}
+                    disabled={activeAssignments.length === 0}
+                    onChange={(e) => setIncludeAssignments(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600"
                   />
-                </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                      ซิงค์กำหนดส่งงาน/การบ้าน ({activeAssignments.length} งาน)
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      สร้างนัดหมายพร้อมแจ้งเตือนล่วงหน้าก่อนครบกำหนดส่ง
+                    </p>
+                  </div>
+                </label>
               </div>
+
+              {includeTimetable && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">วันเริ่มต้นภาคเรียน</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">วันสิ้นสุดภาคเรียน</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none"
+                    />
+                  </div>
+                </div>
+              )}
 
               {accessToken && (
                 <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-blue-950">
-                        พร้อมซิงค์ {slots.length} คาบเรียนแบบรายสัปดาห์ (Asia/Bangkok)
+                  <div>
+                    <p className="text-sm font-bold text-blue-950">
+                      พร้อมซิงค์: ตารางเรียน {targetSlotCount} คาบ + กำหนดส่งงาน {targetAssignmentCount} งาน (Asia/Bangkok)
+                    </p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      ระบบจะอัปเดตรายการที่เคยซิงค์ไว้แล้วอัตโนมัติ (ไม่สร้างซ้ำ) และแนบรายละเอียดวิชา/ครูสอนคู่
+                    </p>
+                    {syncedEvents.length > 0 && (
+                      <p className="text-[11px] font-bold text-slate-600 mt-1.5">
+                        พบกิจกรรมที่เคยซิงค์จาก EduVerse ในปฏิทินนี้แล้ว {syncedEvents.length} รายการ
                       </p>
-                      <p className="text-xs text-blue-700 mt-0.5">
-                        ระบบจะอัปเดตคาบที่เคยซิงค์ไว้แล้วอัตโนมัติ (ไม่สร้างซ้ำ) และแนบชื่อครูสอนคู่ในรายละเอียดกิจกรรม
-                      </p>
-                      {syncedEvents.length > 0 && (
-                        <p className="text-[11px] font-bold text-slate-600 mt-1.5">
-                          พบคาบที่เคยซิงค์จาก EduVerse ในภาคเรียนนี้แล้ว {syncedEvents.length} รายการ
-                        </p>
-                      )}
-                    </div>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-2.5">
                     <button
                       type="button"
-                      disabled={slots.length === 0 || isMutating || isLoadingData}
-                      onClick={() => setPendingConfirmation({ type: 'sync' })}
+                      disabled={(targetSlotCount === 0 && targetAssignmentCount === 0) || isMutating || isLoadingData}
+                      onClick={() =>
+                        setPendingConfirmation({
+                          type: 'sync',
+                          syncSlotsCount: targetSlotCount,
+                          syncAssignmentsCount: targetAssignmentCount,
+                        })
+                      }
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition"
                     >
                       <UploadCloud className="w-4 h-4" />
-                      ซิงค์ขึ้น Google Calendar ({slots.length} คาบ)
+                      ซิงค์ขึ้น Google Calendar ({targetSlotCount + targetAssignmentCount} รายการ)
                     </button>
 
                     {syncedEvents.length > 0 && (
@@ -556,35 +628,34 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                         className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 disabled:opacity-50 transition"
                       >
                         <Trash2 className="w-4 h-4" />
-                        ลบคาบที่เคยซิงค์ออก ({syncedEvents.length})
+                        ลบกิจกรรมที่เคยซิงค์ออก ({syncedEvents.length})
                       </button>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* ICS Fallback Section */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold text-slate-800">ส่งออกไฟล์ .ics (Apple Calendar / Outlook / นำเข้าด้วยตนเอง)</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    ดาวน์โหลดไฟล์มาตรฐานปฏิทินสากลรวมรายชื่อครูผู้สอนหลักและครูสอนคู่
-                  </p>
+              {slots.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">ส่งออกไฟล์ .ics (Apple Calendar / Outlook / นำเข้าด้วยตนเอง)</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      ดาวน์โหลดไฟล์มาตรฐานปฏิทินสากลรวมรายชื่อครูผู้สอนหลักและครูสอนคู่
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadIcsFallback}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    ดาวน์โหลด .ics
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={slots.length === 0}
-                  onClick={handleDownloadIcsFallback}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 shrink-0"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  ดาวน์โหลด .ics
-                </button>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Live Google Calendar Events Tab */}
           {accessToken && activeTab === 'events' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-slate-500">
@@ -606,7 +677,8 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
               ) : (
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                   {liveEvents.map((ev) => {
-                    const isEduverse = Boolean(ev.extendedProperties?.private?.eduverseSlotId);
+                    const isAssignment = ev.extendedProperties?.private?.eduverseItemType === 'assignment';
+                    const isEduverse = Boolean(ev.extendedProperties?.private?.eduverseSchoolId);
                     return (
                       <div
                         key={ev.id}
@@ -618,8 +690,12 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                               {ev.summary || '(ไม่มีหัวข้อ)'}
                             </p>
                             {isEduverse && (
-                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold">
-                                EduVerse
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  isAssignment ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'
+                                }`}
+                              >
+                                {isAssignment ? 'งานที่มอบหมาย' : 'ตารางสอน'}
                               </span>
                             )}
                           </div>
@@ -638,9 +714,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                           {ev.description && ev.description.includes('ครูสอนคู่:') && (
                             <p className="text-[11px] text-emerald-700 font-medium mt-1 inline-flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {ev.description
-                                .split('\n')
-                                .find((line) => line.startsWith('ครูสอนคู่:'))}
+                              {ev.description.split('\n').find((line) => line.startsWith('ครูสอนคู่:'))}
                             </p>
                           )}
                         </div>
@@ -664,7 +738,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
           )}
         </div>
 
-        {/* Explicit Confirmation Overlay Before Any Google Calendar Write/Delete */}
+        {/* Explicit Confirmation Dialog Before Any Mutating or Destructive Google Calendar Request */}
         {pendingConfirmation && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
@@ -686,12 +760,12 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                   <h4 className="text-base font-bold text-slate-900">
                     {pendingConfirmation.type === 'delete'
                       ? 'ยืนยันการลบกิจกรรมออกจาก Google Calendar'
-                      : 'ยืนยันการซิงค์ตารางเรียนขึ้น Google Calendar'}
+                      : 'ยืนยันการซิงค์ข้อมูลขึ้น Google Calendar'}
                   </h4>
                   <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                     {pendingConfirmation.type === 'delete'
                       ? `กำลังจะลบกิจกรรมที่ซิงค์จาก EduVerse จำนวน ${pendingConfirmation.eventIds.length} รายการ ออกจากปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}" การลบไม่สามารถกู้คืนได้`
-                      : `กำลังจะสร้าง/อัปเดตคาบเรียนรายสัปดาห์จำนวน ${slots.length} คาบ ลงในปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}" ช่วงวันที่ ${startDate} ถึง ${endDate}`}
+                      : `กำลังจะสร้างหรืออัปเดต ตารางเรียน ${pendingConfirmation.syncSlotsCount} คาบ และงานที่มอบหมาย ${pendingConfirmation.syncAssignmentsCount} งาน ลงในปฏิทิน "${selectedCalendar?.summary || selectedCalendarId}"`}
                   </p>
                 </div>
               </div>

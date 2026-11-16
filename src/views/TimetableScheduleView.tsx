@@ -26,7 +26,7 @@ import {
   ChevronRight,
   FileSpreadsheet,
 } from 'lucide-react';
-import { TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
+import { Assignment, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import {
   addCalendarDays,
@@ -54,6 +54,7 @@ import { TimetableImportExportModal } from '../components/modals/TimetableImport
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
   courses: Course[];
+  assignments?: Assignment[];
   teachers: Teacher[];
   students: Student[];
   onAddSlot: (slot: TimetableSlot) => Promise<void>;
@@ -125,6 +126,7 @@ const COLOR_CLASSES: Record<string, string> = {
 export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   slots: allTimetableSlots,
   courses,
+  assignments = [],
   teachers,
   students,
   onAddSlot,
@@ -2723,6 +2725,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       {showGoogleCalendarModal && (
         <GoogleCalendarSyncModal
           slots={activeSlots}
+          assignments={assignments}
+          courses={courses}
           schoolId={schoolId}
           schoolName={schoolName}
           academicYear={viewAcademicYear}

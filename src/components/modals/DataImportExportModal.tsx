@@ -1,53 +1,42 @@
-import React, { useState, useRef } from 'react';
-import { 
-  X, 
-  Download, 
-  Upload, 
-  FileSpreadsheet, 
-  Users, 
-  GraduationCap, 
-  BookOpen, 
-  CheckCircle2, 
-  AlertCircle, 
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  X,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  Users,
+  GraduationCap,
+  BookOpen,
+  CheckCircle2,
   FileText,
-  Sparkles,
-  ArrowDownToLine,
-  RefreshCw,
   Trash2,
-  Layers,
   Award,
   ShieldCheck,
-  FolderPlus,
   HeartPulse,
-  Send,
-  Check,
   FileCheck2,
   HelpCircle,
-  Calendar
+  Calendar,
+  Clock,
 } from 'lucide-react';
-import { Student, Teacher, QuizQuestion, Course, GradeRecord, AppLanguage, SdqAssessment, TimetableSlot, SchoolPeriodTime } from '../../types';
-import { getLocalDateString } from '../../lib/date';
 import {
-  getCourseDuplicateReasons,
-  getStudentDuplicateReasons,
-  getTeacherDuplicateReasons,
-} from '../../lib/duplicateRecords';
-import { calculateGrade } from '../../lib/schoolSettings';
-import { isSpecialMoeGrade } from '../../lib/moeGrading';
-import {
-  downloadTimetableTemplateCsv,
-  downloadTimetableTemplateXlsx,
-  exportTimetableCsv,
-  exportTimetableXlsx,
-  parseTimetableImportFile,
-} from '../../lib/timetableImportExport';
-import { formatSlotTeachersDisplay } from '../../lib/timetableTeachers';
+  AttendanceRecord,
+  AppLanguage,
+  Course,
+  GradeRecord,
+  QuizQuestion,
+  SchoolPeriodTime,
+  Student,
+  Teacher,
+  TimetableSlot,
+} from '../../types';
+import { SmartEntityMapperPanel } from './SmartEntityMapperPanel';
 
-export type ImportExportTab = 
+export type ImportExportTab =
   | 'students' // DMC ทะเบียนนักเรียน
   | 'teachers' // HRMS บุคลากร & DPA วิทยฐานะ
   | 'courses' // School MIS รายวิชา & หลักสูตร
   | 'grades' // School MIS ผลการเรียน ปพ.5
+  | 'attendance' // บันทึกการเช็คชื่อเข้าเรียน
   | 'enrollment' // ทะเบียนลงทะเบียนเรียน
   | 'cct' // CCT นักเรียนยากจน
   | 'sdq' // OBEC Care ดูแลช่วยเหลือนักเรียน & SDQ
@@ -62,9 +51,12 @@ interface DataImportExportModalProps {
   questions: QuizQuestion[];
   courses?: Course[];
   grades?: GradeRecord[];
+  attendance?: AttendanceRecord[];
   timetableSlots?: TimetableSlot[];
   schoolPeriods?: SchoolPeriodTime[];
   activeSchoolId?: string;
+  academicYear?: string;
+  semester?: string;
   lang: AppLanguage;
   onImportStudents: (newStudents: Student[]) => void;
   onImportTeachers: (newTeachers: Teacher[]) => Promise<void> | void;
@@ -72,68 +64,81 @@ interface DataImportExportModalProps {
   onImportCourses?: (newCourses: Course[]) => void;
   onImportEnrollment?: (courseId: string, studentIds: string[]) => void;
   onImportGrades?: (newGrades: GradeRecord[]) => void;
+  onImportAttendance?: (newAttendance: AttendanceRecord[]) => Promise<void> | void;
   onImportSdq?: (newSdq: any[]) => void;
   onImportTimetableSlots?: (slots: TimetableSlot[]) => Promise<void> | void;
   onClose: () => void;
   initialTab?: string;
 }
 
+const VALID_TABS: ImportExportTab[] = [
+  'students',
+  'teachers',
+  'courses',
+  'grades',
+  'attendance',
+  'cct',
+  'sdq',
+  'onet',
+  'pp3',
+  'timetable',
+  'questions',
+  'enrollment',
+];
+
 export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   students,
   teachers,
-  questions,
   courses = [],
   grades = [],
+  attendance = [],
   timetableSlots = [],
   schoolPeriods = [],
   activeSchoolId = 'sch-bkk-01',
-  lang,
+  academicYear = '2569',
+  semester = '1',
   onImportStudents,
   onImportTeachers,
-  onImportQuestions,
   onImportCourses,
-  onImportEnrollment,
   onImportGrades,
-  onImportSdq,
+  onImportAttendance,
   onImportTimetableSlots,
   onClose,
   initialTab = 'students',
 }) => {
   const [activeTab, setActiveTab] = useState<ImportExportTab>(
-    (initialTab === 'courses' || initialTab === 'teachers' || initialTab === 'grades' || initialTab === 'cct' || initialTab === 'sdq' || initialTab === 'onet' || initialTab === 'pp3' || initialTab === 'timetable' || initialTab === 'questions' || initialTab === 'enrollment')
-      ? initialTab as ImportExportTab
+    VALID_TABS.includes(initialTab as ImportExportTab)
+      ? (initialTab as ImportExportTab)
       : 'students'
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Hidden File Inputs
-  const studentFileRef = useRef<HTMLInputElement>(null);
-  const teacherFileRef = useRef<HTMLInputElement>(null);
-  const courseFileRef = useRef<HTMLInputElement>(null);
-  const gradeFileRef = useRef<HTMLInputElement>(null);
-  const enrollmentFileRef = useRef<HTMLInputElement>(null);
+  // Hidden File Inputs for specialized MOE formats
   const cctFileRef = useRef<HTMLInputElement>(null);
   const sdqFileRef = useRef<HTMLInputElement>(null);
   const onetFileRef = useRef<HTMLInputElement>(null);
   const pp3FileRef = useRef<HTMLInputElement>(null);
-  const timetableFileRef = useRef<HTMLInputElement>(null);
-  const questionFileRef = useRef<HTMLInputElement>(null);
 
-  // Preview States
-  const [previewStudents, setPreviewStudents] = useState<Student[]>([]);
-  const [previewTeachers, setPreviewTeachers] = useState<Teacher[]>([]);
-  const [previewCourses, setPreviewCourses] = useState<Course[]>([]);
-  const [previewGrades, setPreviewGrades] = useState<GradeRecord[]>([]);
-  const [previewEnrollments, setPreviewEnrollments] = useState<{ courseCode: string; studentId: string; studentName: string }[]>([]);
+  // Preview States for specialized MOE formats
   const [previewCct, setPreviewCct] = useState<any[]>([]);
   const [previewSdq, setPreviewSdq] = useState<any[]>([]);
   const [previewOnet, setPreviewOnet] = useState<any[]>([]);
   const [previewPp3, setPreviewPp3] = useState<any[]>([]);
-  const [previewTimetableSlots, setPreviewTimetableSlots] = useState<TimetableSlot[]>([]);
-  const [previewQuestions, setPreviewQuestions] = useState<QuizQuestion[]>([]);
 
-  // Page Numbers
-  const [page, setPage] = useState(0);
+  const mapperContext = useMemo(
+    () => ({
+      schoolId: activeSchoolId,
+      academicYear,
+      semester,
+      existingStudents: students,
+      existingTeachers: teachers,
+      existingCourses: courses,
+      schoolPeriods,
+    }),
+    [activeSchoolId, academicYear, semester, students, teachers, courses, schoolPeriods]
+  );
+
+  const exportContext = useMemo(() => ({ students, courses }), [students, courses]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -178,399 +183,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   };
 
   // ==========================================
-  // 1. DMC (STUDENTS)
-  // ==========================================
-  const handleStudentFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const rows = parseCSVLines(text);
-        if (rows.length < 2) {
-          showToast('ไฟล์ไม่มีข้อมูลหรือแถวไม่ถูกต้อง');
-          return;
-        }
-        const normalizeHeader = (value: string) => value.toLowerCase().replace(/[\s()_\-/.]/g, '');
-        const headers = rows[0].map(normalizeHeader);
-        const aliases = {
-          studentIdNumber: ['studentidnumber', 'studentid', 'รหัสประจำตัวstudentid', 'รหัสประจำตัว', 'รหัสนักเรียน'],
-          nationalId: ['nationalid', 'เลขบัตรประชาชน13หลักdmc', 'เลขบัตรประชาชน13หลัก', 'เลขประจำตัวประชาชน'],
-          firstNameTh: ['firstnameth', 'ชื่อไทย', 'ชื่อ'],
-          lastNameTh: ['lastnameth', 'นามสกุลไทย', 'นามสกุล'],
-          firstNameEn: ['firstnameen', 'ชื่อen', 'ชื่ออังกฤษ'],
-          lastNameEn: ['lastnameen', 'นามสกุลen', 'นามสกุลอังกฤษ'],
-          gender: ['gender', 'เพศ'],
-          dateOfBirth: ['dateofbirth', 'dob', 'วันเกิด', 'วันเดือนปีเกิด'],
-          gradeLevel: ['gradelevel', 'ระดับชั้น', 'ชั้น'],
-          room: ['room', 'ห้องเรียน', 'ห้อง'],
-          gpa: ['gpa', 'gpax', 'เกรดเฉลี่ย', 'เกรดเฉลี่ยสะสม'],
-          guardianName: ['guardianname', 'ชื่อผู้ปกครอง', 'ผู้ปกครอง'],
-          guardianRelation: ['guardianrelation', 'ความสัมพันธ์'],
-          guardianPhone: ['guardianphone', 'เบอร์โทรผู้ปกครอง', 'เบอร์โทร'],
-        };
-        const hasNamedHeaders = [...aliases.studentIdNumber, ...aliases.firstNameTh, ...aliases.gradeLevel, ...aliases.gpa]
-          .some((alias) => headers.includes(normalizeHeader(alias)));
-        const col = (field: keyof typeof aliases, fallback: number) => {
-          const idx = headers.findIndex((h) => aliases[field].some((alias) => normalizeHeader(alias) === h));
-          return idx >= 0 ? idx : hasNamedHeaders ? -1 : fallback;
-        };
-        const cols = {
-          studentIdNumber: col('studentIdNumber', 0),
-          nationalId: col('nationalId', 1),
-          firstNameTh: col('firstNameTh', 2),
-          lastNameTh: col('lastNameTh', 3),
-          firstNameEn: col('firstNameEn', 4),
-          lastNameEn: col('lastNameEn', 5),
-          gender: col('gender', 6),
-          dateOfBirth: col('dateOfBirth', 7),
-          gradeLevel: col('gradeLevel', 8),
-          room: col('room', 9),
-          gpa: col('gpa', 10),
-          guardianName: col('guardianName', 11),
-          guardianRelation: col('guardianRelation', 12),
-          guardianPhone: col('guardianPhone', 13),
-        };
-        const cell = (row: string[], index: number) => (index >= 0 ? row[index]?.trim() || '' : '');
-
-        const dataRows = rows.slice(1);
-        const imported: Student[] = dataRows.map((r, idx) => {
-          const stuId = cell(r, cols.studentIdNumber) || `STU-${Date.now()}-${idx + 1}`;
-          const natId = cell(r, cols.nationalId);
-          const fTh = cell(r, cols.firstNameTh);
-          const lTh = cell(r, cols.lastNameTh);
-          const fEn = cell(r, cols.firstNameEn) || fTh;
-          const lEn = cell(r, cols.lastNameEn) || lTh;
-          const rawGender = cell(r, cols.gender).toLowerCase();
-          const gender = (rawGender.includes('fe') || rawGender === 'หญิง' || rawGender === 'f') ? 'female' : 'male';
-          const dob = cell(r, cols.dateOfBirth) || '2008-01-01';
-          const grade = cell(r, cols.gradeLevel) || 'มัธยมศึกษาปีที่ 4 (M.4)';
-          const room = cell(r, cols.room) || 'ห้อง 401';
-          const rawGpaStr = cell(r, cols.gpa);
-          const parsedGpa = rawGpaStr !== '' ? Number(rawGpaStr) : NaN;
-          const gpa = Number.isFinite(parsedGpa)
-            ? Math.min(4, Math.max(0, Number(parsedGpa.toFixed(2))))
-            : 0;
-          const gName = cell(r, cols.guardianName);
-          const gRel = cell(r, cols.guardianRelation) || 'ผู้ปกครอง';
-          const gPhone = cell(r, cols.guardianPhone);
-          return {
-            id: `stu-dmc-${Date.now()}-${idx}`,
-            studentIdNumber: stuId,
-            nationalId: natId,
-            firstNameTh: fTh,
-            lastNameTh: lTh,
-            firstNameEn: fEn,
-            lastNameEn: lEn,
-            gender: gender as any,
-            dateOfBirth: dob,
-            gradeLevel: grade,
-            room: room,
-            status: 'active' as const,
-            avatarUrl: gender === 'female' 
-              ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' 
-              : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200',
-            gpa,
-            guardianName: gName,
-            guardianRelation: gRel,
-            guardianPhone: gPhone,
-            guardianEmail: '',
-            lineLinked: false,
-            lineNotifyEnabled: false,
-            enrolledDate: getLocalDateString(),
-          };
-        }).filter(s => s.firstNameTh || s.studentIdNumber);
-
-        if (imported.length === 0) {
-          showToast('ไม่พบข้อมูลนักเรียนที่ถูกต้องในไฟล์');
-          return;
-        }
-        setPage(0);
-        setPreviewStudents(imported);
-        showToast(`อ่านไฟล์สำเร็จ พบนักเรียน ${imported.length} คน พร้อมตรวจสอบ`);
-      } catch {
-        showToast('เกิดข้อผิดพลาดในการอ่านไฟล์');
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
-    e.target.value = '';
-  };
-
-  const handleExportStudents = () => {
-    const headers = ['รหัสประจำตัว (Student ID)', 'เลขบัตรประชาชน 13 หลัก (DMC)', 'ชื่อ (ไทย)', 'นามสกุล (ไทย)', 'ชื่อ (EN)', 'นามสกุล (EN)', 'เพศ', 'วันเกิด', 'ระดับชั้น', 'ห้องเรียน', 'GPAX', 'ชื่อผู้ปกครอง', 'ความสัมพันธ์', 'เบอร์โทรผู้ปกครอง'];
-    const rows = students.map(s => [
-      s.studentIdNumber,
-      s.nationalId || '',
-      `"${s.firstNameTh}"`,
-      `"${s.lastNameTh}"`,
-      `"${s.firstNameEn}"`,
-      `"${s.lastNameEn}"`,
-      s.gender,
-      s.dateOfBirth,
-      `"${s.gradeLevel}"`,
-      `"${s.room}"`,
-      s.gpa,
-      `"${s.guardianName}"`,
-      `"${s.guardianRelation}"`,
-      `"${s.guardianPhone}"`
-    ]);
-    downloadFile(`dmc_students_export_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
-    showToast('ส่งออกข้อมูลนักเรียน DMC สำเร็จ (CSV)');
-  };
-
-  const handleDownloadStudentTemplate = () => {
-    const headers = ['studentIdNumber', 'nationalId', 'firstNameTh', 'lastNameTh', 'firstNameEn', 'lastNameEn', 'gender', 'dateOfBirth', 'gradeLevel', 'room', 'gpa', 'guardianName', 'guardianRelation', 'guardianPhone'];
-    downloadFile('template_dmc_students.csv', headers.join(','));
-    showToast('ดาวน์โหลดแบบฟอร์ม DMC นักเรียนแล้ว');
-  };
-
-  const handleConfirmImportStudents = () => {
-    if (previewStudents.length === 0) return;
-    const duplicateReasons = getStudentDuplicateReasons(previewStudents, students);
-    if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
-    onImportStudents(previewStudents);
-    showToast(`นำเข้าข้อมูลนักเรียน ${previewStudents.length} คนเรียบร้อยแล้ว`);
-    setPreviewStudents([]);
-  };
-
-  // ==========================================
-  // 2. HRMS & DPA (TEACHERS)
-  // ==========================================
-  const handleTeacherFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const rows = parseCSVLines(text);
-        if (rows.length < 2) {
-          showToast('ไฟล์ไม่มีข้อมูลครู');
-          return;
-        }
-        const dataRows = rows.slice(1);
-        const imported: Teacher[] = dataRows.map((r, idx) => ({
-          id: `tch-hrms-${Date.now()}-${idx}`,
-          teacherIdNumber: r[0] || `TCH-${100 + idx}`,
-          fullNameTh: r[1] || '',
-          fullNameEn: r[2] || '',
-          positionTitle: r[22] || '',
-          reportsToTeacherId: r[23] || undefined,
-          gender: ((r[3] === 'female' || r[3] === 'หญิง') ? 'female' : 'male') as 'female' | 'male' | 'other',
-          email: r[4] || '',
-          phone: r[5] || '',
-          avatarUrl: '',
-          academicDegree: r[6] || '',
-          major: r[7] || '',
-          academicStanding: r[8] || '',
-          department: r[9] || '',
-          teacherLicenseNo: r[10] || '',
-          teachingSubjects: r[11] ? r[11].split(';').map((item) => item.trim()).filter(Boolean) : [],
-          homeroomClasses: r[12] ? r[12].split(';').map((item) => item.trim()).filter(Boolean) : [],
-          teachingGrades: r[15] ? r[15].split(';').map((item) => item.trim()).filter(Boolean) : [],
-          isSchoolAdmin: ['true', 'yes', 'ใช่'].includes((r[20] || '').trim().toLowerCase()),
-          teachingExperienceYears: r[13]?.trim() ? Number(r[13]) : undefined,
-          paScore: r[14]?.trim() ? Number(r[14]) : undefined,
-          otherSkills: r[16] ? r[16].split(';').map((item) => item.trim()).filter(Boolean) : [],
-          certifications: r[17] ? r[17].split(';').map((item) => item.trim()).filter(Boolean) : [],
-          selfDevelopmentPlan: r[18] || undefined,
-          lineUserId: r[19] || undefined,
-          lineLinked: ['true', 'yes', 'ใช่'].includes((r[21] || '').trim().toLowerCase()),
-          paPortfolio: [],
-        })).filter(t => t.fullNameTh);
-
-        setPage(0);
-        setPreviewTeachers(imported);
-        showToast(`อ่านไฟล์สำเร็จ พบข้อมูลครู HRMS ${imported.length} ท่าน`);
-      } catch {
-        showToast('เกิดข้อผิดพลาดในการอ่านไฟล์ครู');
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
-    e.target.value = '';
-  };
-
-  const handleExportTeachers = () => {
-    const headers = ['รหัสครู (HRMS)', 'ชื่อ-สกุล (ไทย)', 'ชื่อ-สกุล (EN)', 'เพศ', 'อีเมล', 'เบอร์โทร', 'วุฒิการศึกษา', 'วิชาเอก', 'วิทยฐานะ (DPA)', 'กลุ่มสาระฯ', 'เลขที่ใบอนุญาต', 'วิชาที่สอน', 'ห้องประจำชั้น', 'อายุราชการ (ปี)', 'คะแนน PA', 'ระดับชั้นที่สอน', 'ความสามารถพิเศษ', 'วุฒิบัตร/ใบรับรอง', 'แผนพัฒนาตนเอง', 'LINE User ID', 'ผู้ดูแลโรงเรียน', 'เชื่อมต่อ LINE', 'ตำแหน่งบุคลากร', 'รหัสผู้บังคับบัญชา'];
-    const rows = teachers.map(t => [
-      t.teacherIdNumber,
-      `"${t.fullNameTh}"`,
-      `"${t.fullNameEn}"`,
-      t.gender,
-      t.email,
-      t.phone,
-      `"${t.academicDegree}"`,
-      `"${t.major}"`,
-      `"${t.academicStanding}"`,
-      `"${t.department}"`,
-      t.teacherLicenseNo,
-      `"${t.teachingSubjects?.join(';') || ''}"`,
-      `"${t.homeroomClasses?.join(';') || ''}"`,
-      t.teachingExperienceYears ?? '',
-      t.paScore ?? '',
-      `"${t.teachingGrades?.join(';') || ''}"`,
-      `"${t.otherSkills?.join(';') || ''}"`,
-      `"${t.certifications?.join(';') || ''}"`,
-      `"${t.selfDevelopmentPlan || ''}"`,
-      t.lineUserId || '',
-      t.isSchoolAdmin ? 'true' : 'false',
-      t.lineLinked ? 'true' : 'false',
-      `"${t.positionTitle || ''}"`,
-      t.reportsToTeacherId || '',
-    ]);
-    downloadFile(`hrms_teachers_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
-    showToast('ส่งออกข้อมูลบุคลากร HRMS สำเร็จ (CSV)');
-  };
-
-  const handleDownloadTeacherTemplate = () => {
-    const headers = ['teacherIdNumber', 'fullNameTh', 'fullNameEn', 'gender', 'email', 'phone', 'academicDegree', 'major', 'academicStanding', 'department', 'teacherLicenseNo', 'teachingSubjects', 'homeroomClasses', 'teachingExperienceYears', 'paScore', 'teachingGrades', 'otherSkills', 'certifications', 'selfDevelopmentPlan', 'lineUserId', 'isSchoolAdmin', 'lineLinked', 'positionTitle', 'reportsToTeacherId'];
-    downloadFile('template_hrms_teachers.csv', headers.join(','));
-    showToast('ดาวน์โหลดแบบฟอร์มครู HRMS แล้ว');
-  };
-
-  const handleConfirmImportTeachers = async () => {
-    if (previewTeachers.length === 0) return;
-    const existingTeacherIds = new Set(teachers.map((teacher) => teacher.id));
-    const unresolvedManagerNames = previewTeachers
-      .filter((teacher) => teacher.reportsToTeacherId && !existingTeacherIds.has(teacher.reportsToTeacherId))
-      .map((teacher) => teacher.fullNameTh);
-    if (unresolvedManagerNames.length > 0) {
-      showToast(`นำเข้าไม่ได้: ไม่พบรหัสผู้บังคับบัญชาของ ${unresolvedManagerNames.join(', ')} ในทะเบียนโรงเรียนนี้`);
-      return;
-    }
-    const duplicateReasons = getTeacherDuplicateReasons(previewTeachers, teachers);
-    if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
-    try {
-      await onImportTeachers(previewTeachers);
-      showToast(`นำเข้าข้อมูลบุคลากร HRMS ${previewTeachers.length} ท่านเรียบร้อยแล้ว`);
-      setPreviewTeachers([]);
-    } catch (error) {
-      showToast(
-        error instanceof Error
-          ? `บันทึกข้อมูลครูไม่สำเร็จ: ${error.message}`
-          : 'บันทึกข้อมูลครูไม่สำเร็จ กรุณาลองอีกครั้ง'
-      );
-    }
-  };
-
-  // ==========================================
-  // 3. SCHOOL MIS (COURSES & GRADES / ปพ.5)
-  // ==========================================
-  const handleCourseFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const rows = parseCSVLines(text);
-        if (rows.length < 2) return;
-        const normalizeHeader = (value: string) => value.toLowerCase().replace(/[\s()]/g, '');
-        const headers = rows[0].map(normalizeHeader);
-        const aliases = {
-          code: ['code', 'รหัสวิชา'],
-          titleTh: ['titleth', 'ชื่อวิชาไทย', 'ชื่อไทย', 'ชื่อวิชา'],
-          titleEn: ['titleen', 'ชื่อวิชาen', 'ชื่ออังกฤษ'],
-          category: ['category', 'ประเภทวิชา', 'หมวดวิชา'],
-          credits: ['credits', 'หน่วยกิต'],
-          weeklyHours: ['weeklyhours', 'คาบ/สัปดาห์', 'ชั่วโมง/สัปดาห์'],
-          minAttendanceHours: ['minattendancehours', 'เกณฑ์80%ชม.'],
-          totalHours: ['totalhours', 'ชั่วโมงรวม/เทอม', 'ชั่วโมงรวมต่อภาคเรียน'],
-          teacherName: ['teachername', 'ครูผู้สอน'],
-          department: ['department', 'กลุ่มสาระฯ', 'กลุ่มสาระ'],
-          schedule: ['schedule', 'ตารางสอน'],
-          room: ['room', 'ห้องเรียน'],
-          description: ['description', 'คำอธิบาย'],
-        };
-        const hasNamedHeaders = [...aliases.code, ...aliases.titleTh, ...aliases.credits]
-          .some((alias) => headers.includes(normalizeHeader(alias)));
-        const column = (field: keyof typeof aliases, fallback: number) => {
-          const index = headers.findIndex((header) =>
-            aliases[field].some((alias) => normalizeHeader(alias) === header)
-          );
-          return index >= 0 ? index : hasNamedHeaders ? -1 : fallback;
-        };
-        const columns = {
-          code: column('code', 0),
-          titleTh: column('titleTh', 1),
-          titleEn: column('titleEn', 2),
-          category: column('category', 3),
-          credits: column('credits', 4),
-          weeklyHours: column('weeklyHours', 5),
-          minAttendanceHours: column('minAttendanceHours', 6),
-          totalHours: column('totalHours', 7),
-          teacherName: column('teacherName', 8),
-          department: column('department', 9),
-          schedule: column('schedule', 10),
-          room: column('room', 11),
-          description: column('description', 12),
-        };
-        const cell = (row: string[], index: number) => index >= 0 ? row[index]?.trim() || '' : '';
-        const number = (value: string, fallback: number) => {
-          if (!value) return fallback;
-          const parsed = Number(value.replace(/,/g, ''));
-          return Number.isFinite(parsed) ? parsed : fallback;
-        };
-        const dataRows = rows.slice(1);
-        const imported: Course[] = dataRows.map((row, idx) => {
-          const credits = number(cell(row, columns.credits), 1.5);
-          const weeklyHours = number(cell(row, columns.weeklyHours), Math.round(credits * 2));
-          const totalHours = number(cell(row, columns.totalHours), weeklyHours * 20);
-          const teacherName = cell(row, columns.teacherName);
-          return {
-            id: `crs-mis-${Date.now()}-${idx}`,
-            code: cell(row, columns.code) || `CRS-${idx}`,
-            titleTh: cell(row, columns.titleTh) || 'รายวิชา',
-            titleEn: cell(row, columns.titleEn) || 'Course',
-            category: cell(row, columns.category) || 'core',
-            credits,
-            weeklyHours,
-            minAttendanceHours: number(
-              cell(row, columns.minAttendanceHours),
-              Math.round(totalHours * 0.8)
-            ),
-            totalHours,
-            teacherName,
-            teacherEmail: teacherName
-              ? `${teacherName.replace(/\s+/g, '').toLowerCase()}@school.ac.th`
-              : 'teacher@school.ac.th',
-            department: cell(row, columns.department) || 'วิชาการ',
-            schedule: cell(row, columns.schedule) || 'จันทร์ 08:30-10:10',
-            room: cell(row, columns.room) || 'ห้อง 401',
-            academicYear: '2569',
-            semester: '1' as const,
-            enrolledStudentIds: [],
-            description: cell(row, columns.description),
-          };
-        }).filter(c => c.code && c.titleTh);
-
-        setPage(0);
-        setPreviewCourses(imported);
-        showToast(`อ่านไฟล์สำเร็จ พบรายวิชา School MIS ${imported.length} วิชา`);
-      } catch {
-        showToast('เกิดข้อผิดพลาดในการอ่านไฟล์หลักสูตร');
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
-    e.target.value = '';
-  };
-
-  const handleConfirmImportCourses = () => {
-    if (previewCourses.length === 0) return;
-    const duplicateReasons = getCourseDuplicateReasons(previewCourses, courses);
-    if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
-    if (onImportCourses) {
-      onImportCourses(previewCourses);
-      showToast(`บันทึกรายวิชาใหม่ ${previewCourses.length} วิชาเข้าสู่ระบบสำเร็จ!`);
-      setPreviewCourses([]);
-    }
-  };
-
-  // ==========================================
   // 4. CCT (นักเรียนยากจนพิเศษ)
   // ==========================================
   const handleCctFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -582,7 +194,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         const text = event.target?.result as string;
         const rows = parseCSVLines(text);
         if (rows.length < 2) return;
-        const imported = rows.slice(1).map((r, idx) => ({
+        const imported = rows.slice(1).map((r) => ({
           studentId: r[0],
           nationalId: r[1],
           studentName: r[2],
@@ -593,7 +205,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           transferStatus: r[7] || 'โอนสำเร็จ',
         })).filter(x => x.studentId || x.studentName);
 
-        setPage(0);
         setPreviewCct(imported);
         showToast(`อ่านไฟล์สำเร็จ พบคัดกรองทุนยากจน CCT ${imported.length} รายการ`);
       } catch {
@@ -632,7 +243,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           homeVisitStatus: r[12] || 'เยี่ยมบ้านเรียบร้อย',
         })).filter(x => x.studentId || x.studentName);
 
-        setPage(0);
         setPreviewSdq(imported);
         showToast(`อ่านไฟล์สำเร็จ พบผลคัดกรอง OBEC Care SDQ ${imported.length} คน`);
       } catch {
@@ -666,7 +276,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           eligibilityStatus: r[7] || 'มีสิทธิ์สอบ',
         })).filter(x => x.studentName || x.nationalId);
 
-        setPage(0);
         setPreviewOnet(imported);
         showToast(`อ่านไฟล์สำเร็จ พบบัญชีผู้มีสิทธิ์สอบ สทศ. O-NET ${imported.length} คน`);
       } catch {
@@ -702,7 +311,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
           graduationStatus: r[9] || '',
         })).filter(x => x.fullNameTh || x.studentIdNumber);
 
-        setPage(0);
         setPreviewPp3(imported);
         showToast(`อ่านไฟล์สำเร็จ พบรายชื่อ ปพ.3 ออนไลน์ ${imported.length} คน`);
       } catch {
@@ -826,7 +434,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                รองรับการนำเข้าไฟล์ CSV พร้อมตรวจสอบความถูกต้องของระบบราชการการศึกษาไทย
+                รองรับไฟล์ Excel (.xlsx/.xls) และ CSV พร้อมระบบจับคู่หัวคอลัมน์อัจฉริยะและรายงานแถวผิดพลาดรายบรรทัด
               </p>
             </div>
           </div>
@@ -843,7 +451,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         <div className="flex items-center border-b border-[var(--color-border)] px-4 bg-[var(--color-card-subtle)] gap-1 overflow-x-auto no-scrollbar text-xs font-bold">
           <button
             type="button"
-            onClick={() => { setActiveTab('students'); setPage(0); }}
+            onClick={() => setActiveTab('students')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'students'
                 ? 'border-blue-600 text-blue-600 bg-[var(--color-card)] rounded-t-xl'
@@ -856,7 +464,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('teachers'); setPage(0); }}
+            onClick={() => setActiveTab('teachers')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'teachers'
                 ? 'border-purple-600 text-purple-600 bg-[var(--color-card)] rounded-t-xl'
@@ -869,7 +477,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('courses'); setPage(0); }}
+            onClick={() => setActiveTab('courses')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'courses'
                 ? 'border-indigo-600 text-indigo-600 bg-[var(--color-card)] rounded-t-xl'
@@ -882,7 +490,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('grades'); setPage(0); }}
+            onClick={() => setActiveTab('grades')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'grades'
                 ? 'border-amber-600 text-amber-600 bg-[var(--color-card)] rounded-t-xl'
@@ -895,7 +503,33 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('cct'); setPage(0); }}
+            onClick={() => setActiveTab('attendance')}
+            className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'attendance'
+                ? 'border-sky-600 text-sky-600 bg-[var(--color-card)] rounded-t-xl'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Clock className="w-4 h-4 text-sky-600" />
+            <span>เช็คชื่อเข้าเรียน ({attendance.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('timetable')}
+            className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'timetable'
+                ? 'border-emerald-600 text-emerald-600 bg-[var(--color-card)] rounded-t-xl'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <span>ตารางเรียน/สอน ({timetableSlots.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('cct')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'cct'
                 ? 'border-rose-600 text-rose-600 bg-[var(--color-card)] rounded-t-xl'
@@ -908,7 +542,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('sdq'); setPage(0); }}
+            onClick={() => setActiveTab('sdq')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'sdq'
                 ? 'border-teal-600 text-teal-600 bg-[var(--color-card)] rounded-t-xl'
@@ -921,7 +555,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('onet'); setPage(0); }}
+            onClick={() => setActiveTab('onet')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'onet'
                 ? 'border-cyan-600 text-cyan-600 bg-[var(--color-card)] rounded-t-xl'
@@ -934,7 +568,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
 
           <button
             type="button"
-            onClick={() => { setActiveTab('pp3'); setPage(0); }}
+            onClick={() => setActiveTab('pp3')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'pp3'
                 ? 'border-orange-600 text-orange-600 bg-[var(--color-card)] rounded-t-xl'
@@ -944,405 +578,77 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             <FileText className="w-4 h-4 text-orange-600" />
             <span>ปพ.3 ออนไลน์</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('timetable'); setPage(0); }}
-            className={`py-3 px-3 border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'timetable'
-                ? 'border-emerald-600 text-emerald-600 bg-[var(--color-card)] rounded-t-xl'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <Calendar className="w-4 h-4 text-emerald-600" />
-            <span>ตารางเรียน/สอน ({timetableSlots.length})</span>
-          </button>
         </div>
 
         {/* Modal Scrollable Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* TAB 1: DMC STUDENTS */}
           {activeTab === 'students' && (
-            <div className="space-y-6">
-              {renderUploadBox(
-                'DMC ทะเบียนนักเรียน',
-                'เลือกไฟล์ CSV จากระบบ DMC สพฐ. เพื่อนำเข้าข้อมูลนักเรียน เลข 13 หลัก และผู้ปกครอง',
-                studentFileRef,
-                handleStudentFileUpload,
-                handleDownloadStudentTemplate,
-                undefined,
-                handleExportStudents,
-                'blue'
-              )}
-
-              {previewStudents.length > 0 && (
-                <div className="p-4 rounded-2xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-blue-100">
-                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                      <span>ตรวจสอบข้อมูลนักเรียนที่จะนำเข้า ({previewStudents.length} คน)</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewStudents([])}
-                        className="text-xs text-rose-600 hover:underline flex items-center gap-1 font-bold cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>ล้างพรีวิว</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="table-comfortable w-full text-xs text-left">
-                      <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
-                        <tr>
-                          <th className="px-3 py-2">รหัสนักเรียน</th>
-                          <th className="px-3 py-2">ชื่อ - นามสกุล</th>
-                          <th className="px-3 py-2">ระดับชั้น / ห้อง</th>
-                          <th className="px-3 py-2 text-right">GPAX นำเข้า</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewStudents.slice(page * 5, (page + 1) * 5).map((s, idx) => {
-                          const code = (s.studentIdNumber || s.id).trim();
-                          return (
-                            <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
-                              <td className="px-3 py-2 font-mono font-bold text-blue-600">{code}</td>
-                              <td className="px-3 py-2 font-bold">{s.firstNameTh} {s.lastNameTh}</td>
-                              <td className="px-3 py-2">{s.gradeLevel} ({s.room})</td>
-                              <td className="px-3 py-2 text-right font-mono">
-                                {s.gpa > 0 ? s.gpa.toFixed(2) : <span className="text-[var(--color-text-muted)]">0.00 (ยังไม่ระบุ)</span>}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={handleConfirmImportStudents}
-                      className="px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันนำเข้านักเรียน {previewStudents.length} คน</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <SmartEntityMapperPanel
+              entity="students"
+              subtitle="นำเข้าทะเบียนนักเรียน DMC (รองรับจับคู่คอลัมน์เอง ตรวจสอบเลข 13 หลัก/GPA และรายงานแถวที่ผิดพลาด)"
+              existingRecords={students}
+              context={mapperContext}
+              exportContext={exportContext}
+              onImportValid={(recs) => onImportStudents(recs as Student[])}
+              onToast={showToast}
+            />
           )}
 
           {/* TAB 2: HRMS TEACHERS */}
           {activeTab === 'teachers' && (
-            <div className="space-y-6">
-              {renderUploadBox(
-                'HRMS & DPA บุคลากร',
-                'เลือกไฟล์ CSV ทะเบียนครู ตำแหน่ง กลุ่มสาระฯ และข้อมูลวิทยฐานะ ว.PA',
-                teacherFileRef,
-                handleTeacherFileUpload,
-                handleDownloadTeacherTemplate,
-                undefined,
-                handleExportTeachers,
-                'purple'
-              )}
-
-              {previewTeachers.length > 0 && (
-                <div className="p-4 rounded-2xl border border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-950/30 space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2 text-sm font-bold text-purple-900 dark:text-purple-100">
-                      <CheckCircle2 className="w-4 h-4 text-purple-600" />
-                      <span>ตรวจสอบข้อมูลครู HRMS ({previewTeachers.length} ท่าน)</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewTeachers([])}
-                        className="text-xs text-rose-600 hover:underline flex items-center gap-1 font-bold cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>ล้างพรีวิว</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="table-comfortable w-full text-xs text-left">
-                      <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
-                        <tr>
-                          <th className="px-3 py-2">รหัสบุคลากร</th>
-                          <th className="px-3 py-2">ชื่อ - สกุล</th>
-                          <th className="px-3 py-2">กลุ่มสาระฯ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewTeachers.slice(page * 5, (page + 1) * 5).map((t, idx) => {
-                          const code = (t.teacherIdNumber || t.id).trim();
-                          return (
-                            <tr key={idx} className="hover:bg-[var(--color-card-subtle)]">
-                              <td className="px-3 py-2 font-mono font-bold text-purple-600">{code}</td>
-                              <td className="px-3 py-2 font-bold">{t.fullNameTh}</td>
-                              <td className="px-3 py-2">{t.department}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleConfirmImportTeachers()}
-                      className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันนำเข้าครู {previewTeachers.length} ท่าน</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <SmartEntityMapperPanel
+              entity="teachers"
+              subtitle="นำเข้าทะเบียนครูและบุคลากร HRMS พร้อมกลุ่มสาระฯ วิทยฐานะ และห้องที่ปรึกษา"
+              existingRecords={teachers}
+              context={mapperContext}
+              exportContext={exportContext}
+              onImportValid={async (recs) => {
+                await onImportTeachers(recs as Teacher[]);
+              }}
+              onToast={showToast}
+            />
           )}
 
           {/* TAB 3: SCHOOL MIS COURSES */}
           {activeTab === 'courses' && (
-            <div className="space-y-6">
-              {renderUploadBox(
-                'School MIS หลักสูตร & รายวิชา',
-                'เลือกไฟล์ CSV รายวิชา รหัสวิชา หน่วยกิต และเกณฑ์เวลาเรียน 80% ปพ.5',
-                courseFileRef,
-                handleCourseFileUpload,
-                () => {
-                  downloadFile('template_mis_courses.csv', 'code,titleTh,titleEn,category,credits,weeklyHours,minAttendanceHours,totalHours,teacherName,department');
-                },
-                () => {
-                  setPreviewCourses([
-                    {
-                      id: `crs-${Date.now()}`,
-                      code: 'ว30201',
-                      titleTh: 'ฟิสิกส์เพิ่มเติม 1',
-                      titleEn: 'Advanced Physics 1',
-                      category: 'core',
-                      credits: 1.5,
-                      weeklyHours: 3,
-                      minAttendanceHours: 48,
-                      totalHours: 60,
-                      teacherName: 'ดร.ชาญชัย เกียรติสกุล',
-                      teacherEmail: 'chanchai@school.ac.th',
-                      department: 'วิทยาศาสตร์และเทคโนโลยี',
-                      schedule: 'จันทร์ 08:30-10:10',
-                      room: 'ห้อง 401',
-                      academicYear: '2569',
-                      semester: '1',
-                      enrolledStudentIds: [],
-                      description: 'กลศาสตร์และการเคลื่อนที่แนวตรง',
-                    }
-                  ]);
-                },
-                () => {
-                  const headers = [
-                    'รหัสวิชา', 'ชื่อวิชา (ไทย)', 'ชื่อวิชา (EN)', 'ประเภทวิชา', 'หน่วยกิต',
-                    'ชั่วโมง/สัปดาห์', 'เกณฑ์ 80% (ชม.)', 'ชั่วโมงรวม/เทอม', 'ครูผู้สอน',
-                    'กลุ่มสาระฯ', 'ตารางสอน', 'ห้องเรียน', 'คำอธิบาย',
-                  ];
-                  const rows = courses.map(c => [
-                    c.code, `"${c.titleTh}"`, `"${c.titleEn}"`, c.category, c.credits,
-                    c.weeklyHours ?? '', c.minAttendanceHours ?? '', c.totalHours ?? '',
-                    `"${c.teacherName}"`, `"${c.department}"`, `"${c.schedule}"`,
-                    `"${c.room}"`, `"${c.description}"`,
-                  ]);
-                  downloadFile(`mis_courses_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
-                },
-                'indigo'
-              )}
-
-              {previewCourses.length > 0 && (
-                <div className="p-4 rounded-2xl border border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-indigo-900 dark:text-indigo-100">ตรวจสอบรายวิชา School MIS ({previewCourses.length} วิชา)</span>
-                    <button type="button" onClick={() => setPreviewCourses([])} className="text-xs text-rose-600 font-bold">ล้างพรีวิว</button>
-                  </div>
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={handleConfirmImportCourses}
-                      className="px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันบันทึกรายวิชา {previewCourses.length} วิชา</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <SmartEntityMapperPanel
+              entity="courses"
+              subtitle="นำเข้ารายวิชา รหัสวิชา หน่วยกิต และครูผู้สอน (รองรับจับคู่คอลัมน์ไฟล์ Excel/CSV ภายนอก)"
+              existingRecords={courses}
+              context={mapperContext}
+              exportContext={exportContext}
+              onImportValid={(recs) => onImportCourses?.(recs as Course[])}
+              onToast={showToast}
+            />
           )}
 
           {/* TAB 4: SCHOOL MIS GRADES & ปพ.5 */}
           {activeTab === 'grades' && (
-            <div className="space-y-6">
-              {renderUploadBox(
-                'School MIS คะแนน & ปพ.5',
-                'เลือกไฟล์ CSV คะแนนเก็บกลางภาค ปลายภาค และการตัดเกรด ปพ.5 (รองรับ ร, มส., ผ, มผ)',
-                gradeFileRef,
-                (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (event) => {
-                    try {
-                      const text = event.target?.result as string;
-                      const rows = parseCSVLines(text);
-                      if (rows.length < 2) {
-                        showToast('ไฟล์ไม่มีข้อมูลคะแนน');
-                        return;
-                      }
-                      const studentByNumber = new Map(
-                        students.map((s) => [s.studentIdNumber.trim().toLowerCase(), s])
-                      );
-                      const studentById = new Map(students.map((s) => [s.id.trim().toLowerCase(), s]));
-                      const courseByCode = new Map(courses.map((c) => [c.code.trim().toLowerCase(), c]));
-                      const courseById = new Map(courses.map((c) => [c.id.trim().toLowerCase(), c]));
+            <SmartEntityMapperPanel
+              entity="grades"
+              subtitle="นำเข้าคะแนนกลางภาค ปลายภาค คะแนนเก็บ และเกรด ปพ.5 (ตรวจสอบช่วงคะแนน 0–100 และรหัสนักเรียน/วิชา)"
+              existingRecords={grades}
+              context={mapperContext}
+              exportContext={exportContext}
+              onImportValid={(recs) => onImportGrades?.(recs as GradeRecord[])}
+              onToast={showToast}
+            />
+          )}
 
-                      const imported: GradeRecord[] = [];
-                      rows.slice(1).forEach((r, idx) => {
-                        const stuRef = (r[0] || '').trim().toLowerCase();
-                        const crsRef = (r[1] || '').trim().toLowerCase();
-                        const matchedStu = studentByNumber.get(stuRef) || studentById.get(stuRef);
-                        const matchedCrs = courseByCode.get(crsRef) || courseById.get(crsRef);
-                        if (!matchedStu || !matchedCrs) return;
-
-                        const midtermScore = Math.min(30, Math.max(0, Number(r[2]) || 0));
-                        const finalScore = Math.min(40, Math.max(0, Number(r[3]) || 0));
-                        const assignmentScore = Math.min(20, Math.max(0, Number(r[4]) || 0));
-                        const quizScore = Math.min(10, Math.max(0, Number(r[5]) || 0));
-                        const rawTotal = Number(r[6]);
-                        const totalScore = Number.isFinite(rawTotal) && r[6]?.trim() !== ''
-                          ? Math.min(100, Math.max(0, rawTotal))
-                          : Math.min(100, midtermScore + finalScore + assignmentScore + quizScore);
-                        const rawLetter = (r[7] || '').trim();
-                        const calculated = calculateGrade(totalScore, 'thai');
-                        const letterGrade = isSpecialMoeGrade(rawLetter) ? rawLetter : calculated.letter;
-                        const gradePoint = isSpecialMoeGrade(rawLetter) ? 0 : calculated.point;
-
-                        imported.push({
-                          id: `grd-imp-${Date.now()}-${idx}`,
-                          schoolId: activeSchoolId,
-                          studentId: matchedStu.id,
-                          courseId: matchedCrs.id,
-                          academicYear: matchedCrs.academicYear || '2569',
-                          semester: matchedCrs.semester || '1',
-                          midtermScore,
-                          finalScore,
-                          assignmentScore,
-                          quizScore,
-                          totalScore,
-                          letterGrade,
-                          gradePoint,
-                        });
-                      });
-
-                      if (imported.length === 0) {
-                        showToast('ไม่พบรายการที่จับคู่รหัสนักเรียนและรหัสวิชาในระบบได้');
-                        return;
-                      }
-                      setPage(0);
-                      setPreviewGrades(imported);
-                      showToast(`อ่านไฟล์คะแนน ปพ.5 สำเร็จ พบ ${imported.length} รายการ`);
-                    } catch {
-                      showToast('อ่านไฟล์คะแนน ปพ.5 ไม่สำเร็จ');
-                    }
-                  };
-                  reader.readAsText(file, 'UTF-8');
-                  e.target.value = '';
-                },
-                () => {
-                  downloadFile('template_mis_grades.csv', 'studentIdNumber,courseCode,midtermScore,finalScore,assignmentScore,quizScore,totalScore,letterGrade');
-                  showToast('ดาวน์โหลดแบบฟอร์ม ปพ.5 แล้ว');
-                },
-                undefined,
-                () => {
-                  const headers = ['studentIdNumber', 'courseCode', 'midtermScore', 'finalScore', 'assignmentScore', 'quizScore', 'totalScore', 'letterGrade', 'gradePoint'];
-                  const rows = grades.map((g) => {
-                    const stu = students.find((s) => s.id === g.studentId);
-                    const crs = courses.find((c) => c.id === g.courseId);
-                    return [
-                      stu?.studentIdNumber || g.studentId,
-                      crs?.code || g.courseId,
-                      g.midtermScore,
-                      g.finalScore,
-                      g.assignmentScore,
-                      g.quizScore,
-                      g.totalScore,
-                      `"${g.letterGrade}"`,
-                      g.gradePoint,
-                    ];
-                  });
-                  downloadFile(`mis_grades_export_${getLocalDateString()}.csv`, [headers.join(','), ...rows.map((r) => r.join(','))].join('\n'));
-                  showToast('ส่งออกผลคะแนน ปพ.5 แล้ว');
-                },
-                'amber'
-              )}
-
-              {previewGrades.length > 0 && (
-                <div className="p-4 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-amber-900 dark:text-amber-100">
-                      ตรวจสอบผลคะแนน ปพ.5 ({previewGrades.length} รายการ)
-                    </span>
-                    <button type="button" onClick={() => setPreviewGrades([])} className="text-xs text-rose-600 font-bold cursor-pointer">
-                      ล้างพรีวิว
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="table-comfortable w-full text-xs text-left">
-                      <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
-                        <tr>
-                          <th className="px-3 py-2">รหัสนักเรียน</th>
-                          <th className="px-3 py-2">รหัสวิชา</th>
-                          <th className="px-3 py-2 text-center">คะแนนรวม</th>
-                          <th className="px-3 py-2 text-center">เกรด</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewGrades.slice(0, 8).map((g, idx) => {
-                          const stu = students.find((s) => s.id === g.studentId);
-                          const crs = courses.find((c) => c.id === g.courseId);
-                          return (
-                            <tr key={idx}>
-                              <td className="px-3 py-2 font-mono">{stu?.studentIdNumber || g.studentId}</td>
-                              <td className="px-3 py-2 font-mono">{crs?.code || g.courseId}</td>
-                              <td className="px-3 py-2 text-center font-mono font-bold">{g.totalScore}</td>
-                              <td className="px-3 py-2 text-center font-mono font-bold">{g.letterGrade}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onImportGrades) {
-                          onImportGrades(previewGrades);
-                          showToast(`นำเข้าคะแนน ปพ.5 จำนวน ${previewGrades.length} รายการสำเร็จ!`);
-                          setPreviewGrades([]);
-                        }
-                      }}
-                      className="px-5 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันนำเข้าคะแนน {previewGrades.length} รายการ</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* TAB 4.5: ATTENDANCE */}
+          {activeTab === 'attendance' && (
+            <SmartEntityMapperPanel
+              entity="attendance"
+              subtitle="นำเข้าบันทึกการเช็คชื่อเข้าเรียน-ออก (รองรับวันที่ รูปแบบ Excel/CSV และสถานะมาเรียน/สาย/ขาด/ป่วย/ลา)"
+              existingRecords={attendance}
+              context={mapperContext}
+              exportContext={exportContext}
+              onImportValid={async (recs) => {
+                await onImportAttendance?.(recs as AttendanceRecord[]);
+              }}
+              onToast={showToast}
+            />
           )}
 
           {/* TAB 5: CCT POVERTY */}
@@ -1579,183 +885,19 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             </div>
           )}
 
-          {/* TAB 9: ตารางเรียนและตารางสอน (รองรับครูสอนคู่ + Excel/CSV) */}
+          {/* TAB 9: ตารางเรียนและตารางสอน (รองรับครูสอนคู่ + Excel/CSV + Custom Mapping) */}
           {activeTab === 'timetable' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/30 flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
-                      <Calendar className="w-4 h-4 text-emerald-600" />
-                      <span>นำเข้าตารางเรียน / ตารางสอน</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      รองรับไฟล์ Excel (.xlsx/.xls) และ CSV พร้อมคอลัมน์ครูผู้สอนหลักและครูสอนคู่
-                    </p>
-                  </div>
-                  <input
-                    ref={timetableFileRef}
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const res = await parseTimetableImportFile(file, {
-                          schoolId: activeSchoolId,
-                          academicYear: '2569',
-                          semester: '1',
-                          schoolPeriods,
-                        });
-                        setPreviewTimetableSlots(res.slots);
-                        showToast(
-                          res.slots.length > 0
-                            ? `อ่านตารางเรียนได้ ${res.slots.length} คาบ${res.skippedRows > 0 ? ` (ข้าม ${res.skippedRows} แถว)` : ''}`
-                            : 'ไม่พบรายการคาบเรียนที่ถูกต้องในไฟล์'
-                        );
-                      } catch {
-                        showToast('อ่านไฟล์ตารางเรียนไม่สำเร็จ');
-                      } finally {
-                        e.target.value = '';
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => timetableFileRef.current?.click()}
-                    className="w-full py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer transition"
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>เลือกไฟล์ Excel / CSV</span>
-                  </button>
-                </div>
-
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                      <span>ดาวน์โหลดแม่แบบ (รวมครูสอนคู่)</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ตัวอย่างตารางสอนที่มีทั้งแบบสอนเดี่ยวและสอนคู่
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => downloadTimetableTemplateXlsx()}
-                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Excel</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => downloadTimetableTemplateCsv()}
-                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>CSV</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text-title)]">
-                      <Download className="w-4 h-4 text-blue-600" />
-                      <span>ส่งออกตารางปัจจุบัน ({timetableSlots.length} คาบ)</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                      ส่งออกตารางเรียนทั้งหมดพร้อมข้อมูลครูผู้สอนหลักและครูสอนคู่
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      disabled={timetableSlots.length === 0}
-                      onClick={() => exportTimetableXlsx(timetableSlots)}
-                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Excel</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={timetableSlots.length === 0}
-                      onClick={() => exportTimetableCsv(timetableSlots)}
-                      className="py-2 px-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>CSV</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {previewTimetableSlots.length > 0 && (
-                <div className="p-4 rounded-2xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/30 space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-900 dark:text-emerald-100">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>ตรวจสอบคาบเรียนที่จะนำเข้า ({previewTimetableSlots.length} คาบ)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewTimetableSlots([])}
-                      className="text-xs text-rose-600 hover:underline font-bold flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>ล้างพรีวิว</span>
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto max-h-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-[var(--color-card-subtle)] font-bold text-[10px] text-[var(--color-text-muted)] uppercase">
-                        <tr>
-                          <th className="px-3 py-2">วัน / คาบ</th>
-                          <th className="px-3 py-2">รายวิชา</th>
-                          <th className="px-3 py-2">ห้องเรียน</th>
-                          <th className="px-3 py-2">ครูผู้สอน (หลัก / คู่)</th>
-                          <th className="px-3 py-2">สถานที่</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--color-border)]">
-                        {previewTimetableSlots.slice(0, 25).map((slot) => (
-                          <tr key={slot.id}>
-                            <td className="px-3 py-2 whitespace-nowrap font-semibold">
-                              {slot.dayOfWeek.toUpperCase()} · คาบ {slot.periodNumber} ({slot.startTime}-{slot.endTime})
-                            </td>
-                            <td className="px-3 py-2">{slot.courseCode} · {slot.courseTitleTh}</td>
-                            <td className="px-3 py-2 font-bold">{slot.classRoom}</td>
-                            <td className="px-3 py-2">{formatSlotTeachersDisplay(slot)}</td>
-                            <td className="px-3 py-2">{slot.room}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!onImportTimetableSlots) return;
-                        await onImportTimetableSlots(previewTimetableSlots);
-                        showToast(`นำเข้าตารางเรียน ${previewTimetableSlots.length} คาบเข้าสู่ระบบสำเร็จ!`);
-                        setPreviewTimetableSlots([]);
-                      }}
-                      className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer transition"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>ยืนยันนำเข้า {previewTimetableSlots.length} คาบเรียน</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <SmartEntityMapperPanel
+              entity="timetable"
+              subtitle="นำเข้าตารางเรียนและตารางสอน (รองรับครูผู้สอนหลัก ครูสอนคู่ และการจับคู่หัวคอลัมน์เอง)"
+              existingRecords={timetableSlots}
+              context={mapperContext}
+              exportContext={exportContext}
+              onImportValid={async (recs) => {
+                await onImportTimetableSlots?.(recs as TimetableSlot[]);
+              }}
+              onToast={showToast}
+            />
           )}
         </div>
 
@@ -1763,7 +905,7 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
         <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
             <HelpCircle className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span>รองรับไฟล์ .csv ทุกระบบราชการ พร้อมระบบแปลงภาษาไทย UTF-8 อัตโนมัติ</span>
+            <span>รองรับไฟล์ .xlsx, .xls และ .csv พร้อมระบบจับคู่คอลัมน์และรายงานแถวผิดพลาดรายบรรทัด</span>
           </div>
           <button
             type="button"

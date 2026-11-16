@@ -8,7 +8,7 @@ import {
   User,
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { DayOfWeek, TimetableSlot } from '../types';
+import { Assignment, Course, DayOfWeek, TimetableSlot } from '../types';
 import { parseSlotTeachersFromRaw } from './timetableTeachers';
 
 export const GOOGLE_CALENDAR_SCOPES = [
@@ -365,6 +365,182 @@ export async function syncTimetableSlotsToGoogleCalendar(params: {
   }
 
   return { createdCount, updatedCount, skippedCount, errors };
+}
+
+export async function listSyncedAssignmentEvents(
+  token: string,
+  calendarId: string,
+  schoolId: string
+): Promise<GoogleCalendarEventItem[]> {
+  const params = new URLSearchParams({
+    maxResults: '250',
+    singleEvents: 'false',
+  });
+  params.append('privateExtendedProperty', `eduverseSchoolId=${schoolId}`);
+  params.append('privateExtendedProperty', 'eduverseItemType=assignment');
+  const data = await calendarFetch<{ items?: GoogleCalendarEventItem[] }>(
+    `/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
+    token
+  );
+  return (data.items || []).filter((item) => item.status !== 'cancelled');
+}
+
+function normalizeAssignmentDueDate(dueDateRaw: string): { startIso: string; endIso: string } | null {
+  const trimmed = (dueDateRaw || '').trim();
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (dateOnly) {
+    return {
+      startIso: `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T16:00:00+07:00`,
+      endIso: `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T17:00:00+07:00`,
+    };
+  }
+  const dateTime = /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/.exec(trimmed);
+  if (dateTime) {
+    const [, y, m, d, hhStr, mmStr] = dateTime;
+    const startHh = Number(hhStr);
+    const startMm = Number(mmStr);
+    const endTotalMin = Math.min(23 * 60 + 59, startHh * 60 + startMm + 60);
+    const endHh = String(Math.floor(endTotalMin / 60)).padStart(2, '0');
+    const endMm = String(endTotalMin % 60).padStart(2, '0');
+    return {
+      startIso: `${y}-${m}-${d}T${hhStr}:${mmStr}:00+07:00`,
+      endIso: `${y}-${m}-${d}T${endHh}:${endMm}:00+07:00`,
+    };
+  }
+  return null;
+}
+
+export async function syncAssignmentsToGoogleCalendar(params: {
+  token: string;
+  calendarId: string;
+  assignments: Assignment[];
+  courses?: Course[];
+  schoolId: string;
+}): Promise<SyncTimetableResult> {
+  const { token, calendarId, assignments, courses = [], schoolId } = params;
+  const courseMap = new Map(courses.map((c) => [c.id, c]));
+  const existingEvents = await listSyncedAssignmentEvents(token, calendarId, schoolId);
+  const existingByAssignmentId = new Map<string, string>();
+  existingEvents.forEach((ev) => {
+    const asgId = ev.extendedProperties?.private?.eduverseAssignmentId;
+    if (asgId) {
+      existingByAssignmentId.set(asgId, ev.id);
+    }
+  });
+
+  let createdCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
+  const errors: string[] = [];
+
+  for (const assignment of assignments) {
+    const parsedDue = normalizeAssignmentDueDate(assignment.dueDate);
+    if (!parsedDue || assignment.status === 'closed') {
+      skippedCount += 1;
+      continue;
+    }
+
+    const course = courseMap.get(assignment.courseId);
+    const courseCode = assignment.courseCode || course?.code || '';
+    const courseName = course?.titleTh || course?.titleEn || '';
+
+    const startEnd = {
+      start: { dateTime: parsedDue.startIso, timeZone: 'Asia/Bangkok' },
+      end: { dateTime: parsedDue.endIso, timeZone: 'Asia/Bangkok' },
+    };
+
+    const descriptionLines = [
+      courseCode || courseName ? `รายวิชา: ${[courseCode, courseName].filter(Boolean).join(' - ')}` : '',
+      `ชื่องาน: ${assignment.titleTh || assignment.titleEn}`,
+      `คะแนนเต็ม: ${assignment.maxScore ?? assignment.points ?? 10} คะแนน`,
+      `กำหนดส่ง: ${assignment.dueDate}`,
+      assignment.description ? `รายละเอียด: ${assignment.description}` : '',
+      'ซิงค์อัตโนมัติจาก EduVerse',
+    ].filter(Boolean);
+
+    const body = {
+      summary: `📝 กำหนดส่งงาน${courseCode ? ` [${courseCode}]` : ''}: ${assignment.titleTh || assignment.titleEn}`,
+      description: descriptionLines.join('\n'),
+      ...startEnd,
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 24 * 60 },
+          { method: 'popup', minutes: 120 },
+        ],
+      },
+      extendedProperties: {
+        private: {
+          eduverseSchoolId: schoolId,
+          eduverseItemType: 'assignment',
+          eduverseAssignmentId: assignment.id,
+        },
+      },
+    };
+
+    const existingEventId = existingByAssignmentId.get(assignment.id);
+    try {
+      if (existingEventId) {
+        await calendarFetch(
+          `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(existingEventId)}`,
+          token,
+          { method: 'PATCH', body: JSON.stringify(body) }
+        );
+        updatedCount += 1;
+      } else {
+        await calendarFetch(
+          `/calendars/${encodeURIComponent(calendarId)}/events`,
+          token,
+          { method: 'POST', body: JSON.stringify(body) }
+        );
+        createdCount += 1;
+      }
+    } catch (err) {
+      errors.push(`${assignment.titleTh || assignment.id}: ${err instanceof Error ? err.message : 'ไม่สำเร็จ'}`);
+    }
+  }
+
+  return { createdCount, updatedCount, skippedCount, errors };
+}
+
+export async function autoSyncSchoolCalendar(params: {
+  token: string;
+  calendarId: string;
+  schoolId: string;
+  slots?: TimetableSlot[];
+  assignments?: Assignment[];
+  courses?: Course[];
+  startDateValue: string;
+  endDateValue: string;
+}): Promise<{
+  timetableResult: SyncTimetableResult | null;
+  assignmentResult: SyncTimetableResult | null;
+}> {
+  const { token, calendarId, schoolId, slots, assignments, courses, startDateValue, endDateValue } = params;
+  const timetableResult =
+    slots && slots.length > 0
+      ? await syncTimetableSlotsToGoogleCalendar({
+          token,
+          calendarId,
+          slots,
+          schoolId,
+          startDateValue,
+          endDateValue,
+        })
+      : null;
+
+  const assignmentResult =
+    assignments && assignments.length > 0
+      ? await syncAssignmentsToGoogleCalendar({
+          token,
+          calendarId,
+          assignments,
+          courses,
+          schoolId,
+        })
+      : null;
+
+  return { timetableResult, assignmentResult };
 }
 
 export async function deleteSyncedTimetableEvents(
