@@ -38,7 +38,8 @@ import {
   Calendar,
   ChevronRight,
   ShieldCheck,
-  Compass
+  Compass,
+  Upload
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import {
@@ -52,6 +53,8 @@ import {
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
+import { AttendanceImportModal } from '../components/modals/AttendanceImportModal';
+import { AttendanceMonthlyTrendLineChart } from '../components/AttendanceMonthlyTrendLineChart';
 import { PeriodQrGeneratorPanel } from '../components/PeriodQrGeneratorPanel';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
@@ -105,6 +108,7 @@ interface AttendanceViewProps {
     method?: AttendanceRecord['checkinMethod'],
     extra?: any
   ) => void;
+  onBulkImportAttendance?: (records: AttendanceRecord[]) => void;
   onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
@@ -126,6 +130,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   currentRole = 'student',
   lang = 'th',
   onRecordAttendance,
+  onBulkImportAttendance,
   onUpdateLeaveStatus,
   onUpdateCampusGates,
   onSaveCampusGates,
@@ -152,6 +157,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
   const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'period_qr' | 'school_gps'>('gate_scanner');
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [importSuccessNotice, setImportSuccessNotice] = useState<string | null>(null);
 
   // Scanner state (Staff must enter Student ID before check-in; Students only see themselves)
   const [scannerStudentIdInput, setScannerStudentIdInput] = useState<string>('');
@@ -558,6 +565,32 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleConfirmAttendanceImport = (records: AttendanceRecord[]) => {
+    if (records.length === 0) return;
+    if (onBulkImportAttendance) {
+      onBulkImportAttendance(records);
+    } else {
+      records.forEach((rec) => {
+        onRecordAttendance(rec.studentId, rec.status, rec.remarks || 'นำเข้าจาก Excel/CSV', rec.checkinMethod, {
+          recordType: rec.recordType,
+          date: rec.date,
+          userName: rec.userName,
+          userRole: rec.userRole,
+          userAvatar: rec.userAvatar,
+          userDepartmentOrRoom: rec.userDepartmentOrRoom,
+          recordedBy: rec.recordedBy,
+          recordedByRole: rec.recordedByRole,
+        });
+      });
+    }
+    setImportSuccessNotice(
+      lang === 'th'
+        ? `นำเข้าข้อมูลการเข้าเรียนสำเร็จ ${records.length} รายการเรียบร้อยแล้ว`
+        : `Successfully imported ${records.length} attendance records.`
+    );
+    setTimeout(() => setImportSuccessNotice(null), 6000);
+  };
+
   const filteredLeaveRequests = scopedLeaveRequests.filter(req => {
     if (leaveFilter === 'all') return true;
     return req.status === leaveFilter;
@@ -883,6 +916,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {!isRestrictedViewer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    title="นำเข้าบันทึกการเข้าเรียนจากไฟล์ Excel (.xlsx) หรือ CSV สำหรับห้องเรียนขนาดใหญ่"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Import Excel/CSV</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleExportDailyCsv}
@@ -894,6 +938,22 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </button>
               </div>
             </div>
+
+            {importSuccessNotice && (
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  {importSuccessNotice}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setImportSuccessNotice(null)}
+                  className="opacity-70 hover:opacity-100 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Filter Component: Date Range + Class/Room + Course */}
             <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5 text-xs">
@@ -1071,6 +1131,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </div>
           </div>
         </div>
+
+          {/* Monthly Attendance Trends Recharts LineChart */}
+          <div className="mt-5">
+            <AttendanceMonthlyTrendLineChart
+              attendance={scopedAttendance}
+              students={scopedStudents}
+              lang={lang}
+              selectedRoom={classFilter}
+            />
+          </div>
       </div>
       )}
 
@@ -1209,7 +1279,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {!isRestrictedViewer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(true)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    <span>นำเข้า Excel/CSV</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleExportDailyCsv}
@@ -1228,6 +1308,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </button>
               </div>
             </div>
+
+            <AttendanceMonthlyTrendLineChart
+              attendance={scopedAttendance}
+              students={scopedStudents}
+              lang={lang}
+              selectedRoom={classFilter}
+            />
 
             {/* Monthly Summary Table Preview */}
             <div className="space-y-3">
@@ -1390,6 +1477,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         currentUser={currentUser}
         onRecordAttendance={onRecordAttendance}
         lang={lang}
+      />
+
+      {/* Excel / CSV Attendance Batch Import Modal */}
+      <AttendanceImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        students={students}
+        existingAttendance={attendance}
+        schoolId={activeSchool?.id || currentUser?.schoolId || 'school-1'}
+        currentUser={currentUser}
+        lang={lang}
+        initialRoomFilter={classFilter}
+        onConfirmImport={handleConfirmAttendanceImport}
       />
     </div>
   );

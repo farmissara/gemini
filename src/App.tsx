@@ -1717,6 +1717,52 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleBulkImportAttendance = (records: AttendanceRecord[]) => {
+    if (records.length === 0) return;
+    const taggedRecords: AttendanceRecord[] = records.map((rec) => ({
+      ...rec,
+      schoolId: rec.schoolId || activeSchool.id,
+    }));
+
+    setAttendance((prev) => [...taggedRecords, ...prev]);
+
+    const bonusByStudent = new Map<string, { present: number; late: number }>();
+    for (const rec of taggedRecords) {
+      if (rec.recordType === 'check_out') continue;
+      if (rec.status !== 'present' && rec.status !== 'late') continue;
+      const entry = bonusByStudent.get(rec.studentId) || { present: 0, late: 0 };
+      if (rec.status === 'present') entry.present += 1;
+      else entry.late += 1;
+      bonusByStudent.set(rec.studentId, entry);
+    }
+
+    if (bonusByStudent.size > 0) {
+      setPlayerScores((prev) =>
+        prev.map((p) => {
+          const bonus =
+            bonusByStudent.get(p.studentId || '') ||
+            bonusByStudent.get(p.userId) ||
+            (p.userId === 'usr-student' ? bonusByStudent.get('stu-1') : undefined);
+          if (!bonus) return p;
+          return {
+            ...p,
+            attendanceDays: (p.attendanceDays ?? 0) + bonus.present + bonus.late,
+            attendanceStreak: (p.attendanceStreak ?? p.streak) + bonus.present,
+            exp: p.exp + bonus.present * 35 + bonus.late * 15,
+            gems: p.gems + bonus.present * 5 + bonus.late * 2,
+          };
+        })
+      );
+    }
+
+    sendEduVerseNotification({
+      title: '📥 นำเข้าข้อมูลการเข้าเรียนสำเร็จ',
+      body: `นำเข้าบันทึกการเช็คชื่อจำนวน ${taggedRecords.length} รายการจากไฟล์ Excel/CSV เรียบร้อยแล้ว`,
+      category: 'attendance',
+      tag: `att-import-${Date.now()}`,
+    });
+  };
+
   const handleRecordPeriodAttendance = (records: PeriodAttendanceRecord[]) => {
     const taggedRecords = records.map((r) => ({ ...r, schoolId: activeSchool.id }));
     setPeriodAttendance((prev) => {
@@ -3501,6 +3547,7 @@ export const App: React.FC = () => {
                     currentRole={currentRole}
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
+                    onBulkImportAttendance={handleBulkImportAttendance}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
                     onUpdateCampusGates={handleUpdateCampusGates}
                     onSaveCampusGates={handleSaveCampusGates}
