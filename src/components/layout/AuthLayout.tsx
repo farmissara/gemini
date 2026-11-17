@@ -44,6 +44,7 @@ import {
 } from '../../lib/webAuthn';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
+import { THAI_PROVINCES } from '../../data/thaiProvinces';
 import heroImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
 interface AuthLayoutProps {
@@ -90,6 +91,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [schoolNameEn, setSchoolNameEn] = useState('');
   const [schoolType, setSchoolType] = useState<School['type']>('public');
   const [province, setProvince] = useState('');
+  const [isCustomProvince, setIsCustomProvince] = useState(false);
   const [phone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -285,8 +287,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     if (!schoolNameTh.trim() || !province.trim()) {
       setError(
         lang === 'th'
-          ? 'กรุณากรอกชื่อโรงเรียน (ภาษาไทย) และจังหวัดที่ตั้งก่อนดำเนินการต่อ'
-          : 'Please enter the Thai school name and province before continuing.'
+          ? isCustomProvince
+            ? 'กรุณากรอกชื่อโรงเรียน (ภาษาไทย) และระบุประเทศหรือเมืองที่ตั้งก่อนดำเนินการต่อ'
+            : 'กรุณากรอกชื่อโรงเรียน (ภาษาไทย) และเลือกจังหวัดที่ตั้งก่อนดำเนินการต่อ'
+          : isCustomProvince
+            ? 'Please enter the Thai school name and specify the country or city before continuing.'
+            : 'Please enter the Thai school name and select a province before continuing.'
       );
       return;
     }
@@ -860,16 +866,51 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             </label>
 
                             <label className="block text-xs font-bold text-[var(--color-text-title)]">
-                              {lang === 'th' ? 'จังหวัดที่ตั้ง' : 'Province'}
+                              {lang === 'th' ? 'จังหวัด / พื้นที่ตั้ง' : 'Province / Location'}
+                              <select
+                                required
+                                value={isCustomProvince ? '__OTHER__' : province}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '__OTHER__') {
+                                    setIsCustomProvince(true);
+                                    setProvince('');
+                                  } else {
+                                    setIsCustomProvince(false);
+                                    setProvince(val);
+                                  }
+                                }}
+                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                              >
+                                <option value="">{lang === 'th' ? '-- เลือกจังหวัด --' : '-- Select Location --'}</option>
+                                {(lang === 'en'
+                                  ? [...THAI_PROVINCES].sort((a, b) => a.en.localeCompare(b.en))
+                                  : THAI_PROVINCES
+                                ).map((prov) => (
+                                  <option key={prov.th} value={prov.th}>
+                                    {lang === 'th' ? prov.th : prov.en}
+                                  </option>
+                                ))}
+                                <option value="__OTHER__">
+                                  {lang === 'th' ? 'ต่างประเทศ / อื่นๆ (ระบุเอง)' : 'International / Other (Specify)'}
+                                </option>
+                              </select>
+                            </label>
+                          </div>
+
+                          {isCustomProvince && (
+                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                              {lang === 'th' ? 'ระบุประเทศ / เมือง / รัฐที่ตั้งสถานศึกษา' : 'Country / City / State'}
                               <input
                                 required
+                                maxLength={100}
                                 value={province}
                                 onChange={(e) => setProvince(e.target.value)}
-                                placeholder={lang === 'th' ? 'เช่น กรุงเทพฯ' : 'e.g. Bangkok'}
+                                placeholder={lang === 'th' ? 'เช่น สิงคโปร์, โตเกียว (ญี่ปุ่น), London (UK)' : 'e.g. Singapore, Tokyo (Japan), London (UK)'}
                                 className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
                               />
                             </label>
-                          </div>
+                          )}
 
                           <button
                             type="button"
