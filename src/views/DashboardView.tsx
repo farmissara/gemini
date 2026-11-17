@@ -38,7 +38,8 @@ import {
   ListChecks,
   TrendingUp,
   Activity,
-  LayoutGrid
+  LayoutGrid,
+  MoreHorizontal
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
@@ -72,7 +73,6 @@ import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsP
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
 import { GradeLevelAnalyticsChart } from '../components/GradeLevelAnalyticsChart';
 import { D3DailyAttendanceLineChart } from '../components/D3DailyAttendanceLineChart';
-import { PriorityActionWidget } from '../components/PriorityActionWidget';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 
@@ -443,32 +443,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Clean Monochrome Top Bar & Mode Switcher */}
-      <div className="no-print shrink-0 saas-card px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <BarChart3 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-          <div className="min-w-0">
-            <h1 className="type-page-title truncate">
-              {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
-            </h1>
-            <p className="type-meta truncate">
-              {lang === 'th'
-                ? `ปีการศึกษา ${systemConfig.academicYear} · ${formatSemesterLabel(systemConfig.currentSemester)}`
-                : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
-            </p>
-          </div>
+      {/* Clean Apple/Linear Top Bar: Title + 2 Primary Tabs + Overflow Menu */}
+      <div className="no-print shrink-0 saas-card px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="type-page-title truncate">
+            {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
+          </h1>
+          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && (
+            <button
+              type="button"
+              onClick={() => setDashboardTab('overview')}
+              className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+            >
+              ← {lang === 'th' ? 'ภาพรวมวันนี้' : 'Today'}
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 flex-wrap justify-between sm:justify-end">
-          <div data-guide-id="dashboard-subtabs" className="seg-tab-group w-full sm:w-auto max-w-full flex! flex-wrap! sm:inline-flex! gap-0.5">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto min-w-0 justify-between sm:justify-end">
+          <div data-guide-id="dashboard-subtabs" className="seg-tab-group inline-flex gap-0.5">
             <button
               type="button"
               data-active={dashboardTab === 'overview'}
               onClick={() => setDashboardTab('overview')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
+              className="seg-tab-btn"
             >
-              <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'วันนี้' : 'Today'}</span>
+              {lang === 'th' ? 'ภาพรวมวันนี้' : 'Today'}
             </button>
 
             <button
@@ -476,47 +476,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               data-guide-id={dashboardTab !== 'insights' ? 'dashboard-charts' : undefined}
               data-active={dashboardTab === 'insights'}
               onClick={() => setDashboardTab('insights')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
+              className="seg-tab-btn"
             >
-              <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'วิเคราะห์' : 'Insights'}</span>
-            </button>
-
-            <button
-              type="button"
-              data-active={dashboardTab === 'live_attendance'}
-              onClick={() => setDashboardTab('live_attendance')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
-            >
-              <Camera className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
-              <span className={`font-mono text-[11px] tabular-nums ${
-                dashboardTab === 'live_attendance'
-                  ? 'text-white/90'
-                  : 'text-[var(--color-text-muted)]'
-              }`}>
-                ({displayRecords.length})
-              </span>
-            </button>
-
-            <button
-              type="button"
-              data-active={dashboardTab === 'innovative_hub'}
-              onClick={() => setDashboardTab('innovative_hub')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
-            </button>
-
-            <button
-              type="button"
-              data-active={dashboardTab === 'announcements'}
-              onClick={() => setDashboardTab('announcements')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
-            >
-              <BellRing className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'ประกาศ' : 'News'}</span>
+              {lang === 'th' ? 'รายงาน/กราฟ' : 'Reports & Charts'}
             </button>
           </div>
 
@@ -526,254 +488,215 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               data-guide-id="dashboard-focus-toggle"
               aria-pressed={isFocusMode}
               onClick={handleToggleFocus}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0"
-              title={lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode'}
-              aria-label={lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode'}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <Minimize2 className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
             </button>
           ) : (
-            <div className="saas-control-group shrink-0">
-              <button
-                type="button"
-                onClick={handleToggleFocus}
-                data-guide-id="dashboard-focus-toggle"
-                className="btn-icon-tool"
-                title={lang === 'th' ? 'โหมดโฟกัส (ขยายพื้นที่งาน)' : 'Focus Mode'}
-                aria-label={lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}
+            <details className="relative shrink-0">
+              <summary
+                className="btn-icon-tool list-none cursor-pointer [&::-webkit-details-marker]:hidden"
+                aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'More views & tools'}
+                title={lang === 'th' ? 'เมนูเพิ่มเติม' : 'More'}
               >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  emitMascotDashboardEvent({
-                    type: 'success',
-                    titleTh: 'เตรียมพิมพ์แดชบอร์ดพร้อมแล้ว',
-                    titleEn: 'Dashboard Print Ready',
-                    messageTh: 'จัดหน้าสำหรับพิมพ์รายงาน PDF เรียบร้อย — ชาร์โคล & หมีเอาใจช่วย!',
-                    messageEn: 'Print layout prepared for administrative PDF export.',
-                  });
-                  window.print();
-                }}
-                className="btn-icon-tool"
-                title={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
-                aria-label={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
-              >
-                <Printer className="w-4 h-4" />
-              </button>
-
-              {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
+                <MoreHorizontal className="w-4 h-4" />
+              </summary>
+              <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
                 <button
                   type="button"
-                  onClick={() => onNavigate('executive_monitor')}
-                  className="hidden md:inline-flex btn-icon-tool"
-                  title={lang === 'th' ? 'เปิดโหมดจอทีวี / ผู้อำนวยการ' : 'Open Director / TV Monitor'}
-                  aria-label={lang === 'th' ? 'เปิดโหมดจอทีวี / ผู้อำนวยการ' : 'Open Director / TV Monitor'}
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    setDashboardTab('live_attendance');
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
-                  <Monitor className="w-4 h-4" />
+                  <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
+                  <span className="font-mono text-xs text-[var(--color-text-muted)]">{displayRecords.length}</span>
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    setDashboardTab('innovative_hub');
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    setDashboardTab('announcements');
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors'}</span>
+                </button>
+                {showOnboardingCard && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      setDrawerMode('onboarding');
+                    }}
+                    className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ตั้งค่าโรงเรียน' : 'School Setup'}</span>
+                    <span className="font-mono text-xs text-[var(--color-text-muted)]">{completedOnboardingCount}/3</span>
+                  </button>
+                )}
+                {unclaimedCentralPacksCount > 0 && currentUser?.role === 'admin' && onOpenCentralExamPopup && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      onOpenCentralExamPopup();
+                    }}
+                    className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-amber-700 dark:text-amber-300 hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" />{lang === 'th' ? 'รับข้อสอบกลาง' : 'Exam Packs'}</span>
+                    <span className="font-mono text-xs">{unclaimedCentralPacksCount}</span>
+                  </button>
+                )}
+                <div className="my-1 border-t border-[var(--color-border)]" />
+                <button
+                  type="button"
+                  data-guide-id="dashboard-focus-toggle"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    handleToggleFocus();
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    window.print();
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF'}</span>
+                </button>
+                {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open');
+                      onNavigate('executive_monitor');
+                    }}
+                    className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Monitor className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    <span>{lang === 'th' ? 'โหมดจอทีวี / ผอ.' : 'Director Monitor'}</span>
+                  </button>
+                )}
+              </div>
+            </details>
           )}
         </div>
       </div>
 
       {/* Main Tab Panels Container */}
       <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1 pb-16 dash-scroll-stack">
-        {/* TAB 1: DAILY ACTION WORKSPACE (Executive Strip + 50/50 Neutral Workspace) */}
+        {/* TAB 1: DAILY OVERVIEW (3 KPIs + Max 5 Rows per Pane) */}
         {dashboardTab === 'overview' && (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
-            {/* Slim 1-Line Contextual Alert Bar (Exam Pack or Setup Drawer trigger) */}
-            {!isFocusMode && (
-              (unclaimedCentralPacksCount > 0 && (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher')) || showOnboardingCard
-            ) && (
-              <div className="no-print saas-alert-bar text-xs">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
-                  {unclaimedCentralPacksCount > 0 && (!currentUser?.role || currentUser.role === 'admin' || currentUser.role === 'teacher') && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <BookOpen className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span className="font-semibold text-[var(--color-text-title)] truncate">
-                        {lang === 'th'
-                          ? `มีข้อสอบกลาง ${unclaimedCentralPacksCount} ชุดรอรับ`
-                          : `${unclaimedCentralPacksCount} central exam packs waiting`}
-                      </span>
-                      {currentUser?.role === 'admin' && onOpenCentralExamPopup && (
-                        <button
-                          type="button"
-                          onClick={onOpenCentralExamPopup}
-                          className="text-[var(--color-primary-text)] font-bold hover:underline cursor-pointer whitespace-nowrap"
-                        >
-                          {lang === 'th' ? 'รับข้อสอบ' : 'Claim'}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('central_exam_hub')}
-                        className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-semibold cursor-pointer whitespace-nowrap"
-                      >
-                        {lang === 'th' ? 'คลังข้อสอบ' : 'Exam Hub'} →
-                      </button>
-                    </div>
-                  )}
-
-                  {showOnboardingCard && (
-                    <button
-                      type="button"
-                      onClick={() => setDrawerMode('onboarding')}
-                      className="inline-flex items-center gap-1.5 text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-semibold cursor-pointer"
-                    >
-                      <ListChecks className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                      <span>
-                        {lang === 'th'
-                          ? `ตั้งค่าโรงเรียน (${completedOnboardingCount}/3 ขั้นตอน)`
-                          : `School setup (${completedOnboardingCount}/3)`}
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {showOnboardingCard && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOnboardingDismissed(true);
-                      if (typeof window !== 'undefined') {
-                        window.localStorage.setItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`, '1');
-                      }
-                    }}
-                    className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] p-1 rounded-md cursor-pointer"
-                    title={lang === 'th' ? 'ซ่อนแถบตั้งค่า' : 'Dismiss'}
-                    aria-label={lang === 'th' ? 'ซ่อนแถบตั้งค่า' : 'Dismiss'}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* 1-ROW EXECUTIVE KPI STRIP (Single-elevation, hairline divided, neutral monochrome) */}
+            {/* STRICTLY 3 LARGE KPI CELLS */}
             <section
               data-guide-id="dashboard-kpis"
               aria-label={lang === 'th' ? 'สรุปตัวชี้วัดสำคัญประจำวัน' : 'Daily Executive KPIs'}
               className="saas-kpi-strip print-avoid-break"
             >
-              <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[var(--color-border)]">
-                {/* KPI 1: On-Time & Students */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+                {/* KPI 1: On-Time Rate */}
                 <button
                   type="button"
                   onClick={() => onNavigate('attendance')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-1"
-                  title={lang === 'th' ? 'เปิดระบบเช็คชื่อประจำวัน' : 'Open Attendance'}
+                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta truncate flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>{lang === 'th' ? 'มาตรงเวลา' : 'On-Time'} · {selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate}</span>
+                    <span className="type-meta">
+                      {lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}
                     </span>
                     <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                   </div>
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-baseline gap-2.5">
                     <span className="type-kpi tabular-nums">{onTimePercent}%</span>
                     <span className="type-meta tabular-nums">
-                      ({presentCount}/{totalForDate}) · {totalStudents} {lang === 'th' ? 'นร.' : 'stu'}
+                      {presentCount}/{totalForDate} {lang === 'th' ? 'คน' : 'checked'}
                     </span>
                   </div>
                 </button>
 
-                {/* KPI 2: Pending Leaves & Today Periods */}
+                {/* KPI 2: Actionable Pending Items */}
                 <button
                   type="button"
-                  onClick={() => onNavigate('attendance')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-1"
-                  title={lang === 'th' ? 'ตรวจสอบและอนุมัติใบลา' : 'Review Pending Leaves'}
+                  onClick={() => onNavigate(pendingLeaveCount > 0 ? 'attendance' : 'homework')}
+                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta truncate flex items-center gap-1.5">
-                      <FileCheck2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span>{lang === 'th' ? 'ใบลารออนุมัติ / คาบ' : 'Leaves & Slots'}</span>
+                    <span className="type-meta">
+                      {lang === 'th' ? 'รอดำเนินการ' : 'Pending Actions'}
                     </span>
                     <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`type-kpi tabular-nums ${pendingLeaveCount > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
-                      {pendingLeaveCount}
+                  <div className="flex items-baseline gap-2.5">
+                    <span className={`type-kpi tabular-nums ${(pendingLeaveCount + ungradedHomeworkCount) > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
+                      {pendingLeaveCount + ungradedHomeworkCount}
                     </span>
                     <span className="type-meta tabular-nums">
                       {lang === 'th'
-                        ? `รอตรวจ · ${todayScheduledSlots.length} คาบ${teacherLeavesTodayCount > 0 ? ` · ครูลา ${teacherLeavesTodayCount}` : ''}`
-                        : `pending · ${todayScheduledSlots.length} slots${teacherLeavesTodayCount > 0 ? ` · ${teacherLeavesTodayCount} staff leave` : ''}`}
+                        ? `ใบลา ${pendingLeaveCount} · การบ้าน ${ungradedHomeworkCount}`
+                        : `${pendingLeaveCount} leaves · ${ungradedHomeworkCount} hw`}
                     </span>
                   </div>
                 </button>
 
-                {/* KPI 3: Homework & Unchecked */}
-                <button
-                  type="button"
-                  onClick={() => onNavigate('homework')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-1"
-                  title={lang === 'th' ? 'ไปยังหน้าตรวจการบ้าน' : 'Open Homework Grading'}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta truncate flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                      <span>{lang === 'th' ? 'การบ้าน / รอเช็ค' : 'Homework / Pending'}</span>
-                    </span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="type-kpi tabular-nums">{ungradedHomeworkCount}</span>
-                    <span className="type-meta tabular-nums">
-                      {lang === 'th'
-                        ? `รอตรวจ · รอเช็ค ${uncheckedTodayCount} คน`
-                        : `to grade · ${uncheckedTodayCount} unchecked`}
-                    </span>
-                  </div>
-                </button>
-
-                {/* KPI 4: Guardian LINE & Tuition (Opens Slide-Over Drawer) */}
+                {/* KPI 3: Guardian LINE Coverage */}
                 <button
                   type="button"
                   onClick={() => setDrawerMode('guardian_line')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-1"
-                  title={lang === 'th' ? 'เปิดดูรายละเอียด LINE ผู้ปกครองและค่าเทอม' : 'Inspect Guardian LINE & Tuition'}
+                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta truncate flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>{lang === 'th' ? 'LINE & ค่าเทอม' : 'LINE & Tuition'}</span>
+                    <span className="type-meta">
+                      {lang === 'th' ? 'LINE ผู้ปกครอง' : 'Guardian LINE'}
                     </span>
                     <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                   </div>
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-baseline gap-2.5">
                     <span className="type-kpi tabular-nums">{linePercent}%</span>
                     <span className="type-meta tabular-nums">
-                      LINE · {lang === 'th' ? `ค่าเทอม ${collectionRate}%` : `Tuition ${collectionRate}%`}
+                      {lineConnectedCount}/{totalStudents} {lang === 'th' ? 'ครอบครัว' : 'families'}
                     </span>
                   </div>
                 </button>
               </div>
             </section>
 
-            {/* MAIN 2-PANE ACTION WORKSPACE (50% / 50%, strictly 1 unified saas-card per column) */}
-            <div className={`dashboard-print-grid relative dash-grid grid-cols-1 ${isFocusMode ? 'lg:grid-cols-[0.9fr_1.1fr]' : 'lg:grid-cols-2'} items-stretch`}>
-              {/* LEFT PANE: Gate Check-ins & Live Status */}
+            {/* MAIN 2-PANE ACTION WORKSPACE (Max 5 clean rows per card) */}
+            <div className="dashboard-print-grid relative dash-grid grid-cols-1 lg:grid-cols-2 items-stretch">
+              {/* LEFT PANE: Recent Check-ins (Max 5 rows) */}
               <section
-                aria-label={lang === 'th' ? 'รายการเช็คชื่อเข้า-ออกล่าสุด' : 'Recent Gate Check-ins'}
+                aria-label={lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins'}
                 className="saas-card flex flex-col justify-between min-w-0 print-avoid-break overflow-hidden"
               >
                 <div>
                   <div className="saas-card-header">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <UserCheck className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                      <h2 className="type-section-title truncate">
-                        {lang === 'th' ? 'เช็คชื่อล่าสุด & ประตูโรงเรียน' : 'Recent Gate Check-ins'}
-                      </h2>
-                    </div>
+                    <h2 className="type-section-title truncate">
+                      {lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins'}
+                    </h2>
 
-                    <div className="no-print flex items-center gap-2 shrink-0">
+                    <div className="no-print flex items-center gap-3 shrink-0">
                       <div className="saas-control-group type-meta">
                         <button
                           type="button"
@@ -798,74 +721,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
                         </button>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setDashboardTab('live_attendance')}
+                        className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap"
+                      >
+                        {lang === 'th' ? 'ดูทั้งหมด →' : 'View all →'}
+                      </button>
                     </div>
                   </div>
 
-                  {/* Punctuality Thin Progress Strip */}
-                  <div className="px-4 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-1.5">
-                    <div className="flex flex-wrap items-center justify-between gap-2 type-meta">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                          {lang === 'th' ? `ตรงเวลา ${presentCount} (${onTimePercent}%)` : `On-time ${presentCount} (${onTimePercent}%)`}
-                        </span>
-                        <span className="font-semibold text-amber-700 dark:text-amber-300 tabular-nums">
-                          {lang === 'th' ? `มาสาย ${lateCount} (${latePercent}%)` : `Late ${lateCount} (${latePercent}%)`}
-                        </span>
-                      </div>
-                      <span className="tabular-nums">
-                        {lang === 'th' ? `เข้า ${checkInsCount} · ออก ${checkOutsCount}` : `In ${checkInsCount} · Out ${checkOutsCount}`}
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden flex">
-                      <div className="h-full bg-emerald-600 transition-all duration-300" style={{ width: `${onTimePercent}%` }} />
-                      <div className="h-full bg-amber-500 transition-all duration-300" style={{ width: `${latePercent}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Clean Hairline List */}
                   <div className="saas-card-body">
                     {displayRecords.length === 0 ? (
-                      <div className="py-8 text-center space-y-2.5">
+                      <div className="py-10 text-center space-y-3">
                         <p className="type-meta">
-                          {lang === 'th' ? `ยังไม่มีบันทึกเช็คชื่อวันที่ ${selectedDate}` : `No check-in logs for ${selectedDate}`}
+                          {lang === 'th' ? `ยังไม่มีรายการวันที่ ${selectedDate}` : `No check-ins for ${selectedDate}`}
                         </p>
                         <button
                           type="button"
                           onClick={() => onNavigate('mobile_checkin')}
-                          className="btn-action-primary px-3 py-1.5 mx-auto"
+                          className="btn-action-primary px-4 py-2 mx-auto"
                         >
-                          <Camera className="w-3.5 h-3.5" />
-                          <span>{lang === 'th' ? 'เปิดเช็คชื่อมือถือ' : 'Open Mobile Check-in'}</span>
+                          <span>{lang === 'th' ? 'เปิดเช็คชื่อมือถือ' : 'Open Check-in'}</span>
                         </button>
                       </div>
                     ) : (
                       <div className="divide-y divide-[var(--color-border)]">
-                        {displayRecords.slice(0, isFocusMode ? 8 : 6).map((rec) => (
+                        {displayRecords.slice(0, 5).map((rec) => (
                           <button
                             key={rec.id}
                             type="button"
                             onClick={() => openPhotoRecord(rec)}
-                            className="print-keep w-full py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2.5 text-left cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-1.5 -mx-1.5 transition"
+                            className="print-keep w-full py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0">
                               <img
                                 src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                                 alt={rec.userName || 'User'}
                                 referrerPolicy="no-referrer"
                                 className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                               />
-                              <div className="min-w-0">
-                                <div className="type-card-title truncate">
-                                  {rec.userName}
-                                </div>
-                                <div className="type-meta truncate tabular-nums">
-                                  {rec.userDepartmentOrRoom || rec.userRole} · {rec.time} {lang === 'th' ? 'น.' : ''}
-                                  {rec.location?.distanceMeters !== undefined ? ` · ${rec.location.distanceMeters} ม.` : ''}
-                                </div>
-                              </div>
+                              <span className="type-card-title truncate">{rec.userName}</span>
+                              <span className="type-meta truncate hidden sm:inline tabular-nums">
+                                · {rec.userDepartmentOrRoom || rec.userRole} · {rec.time}
+                              </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0">
                               <span
                                 className={`type-meta font-semibold ${
                                   rec.status === 'present'
@@ -885,173 +787,107 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     )}
                   </div>
                 </div>
-
-                {/* Clean Card Footer */}
-                <div className="no-print px-4 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2 type-meta">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setDashboardTab('live_attendance')}
-                      className="font-semibold text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <span>{lang === 'th' ? `เช็คชื่อสด (${displayRecords.length})` : `Live Feed (${displayRecords.length})`}</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDrawerMode('guardian_line')}
-                      className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-text-title)] cursor-pointer"
-                    >
-                      {lang === 'th' ? `LINE ${linePercent}% · ค่าเทอม` : `LINE ${linePercent}% · Billing`}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDashboardTab('insights')}
-                    className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'ดูกราฟวิเคราะห์' : 'View Insights'}</span>
-                  </button>
-                </div>
               </section>
 
-              {/* RIGHT PANE: Unified Today's Desk + Priority Actions */}
+              {/* RIGHT PANE: Actionable Items (Strictly Max 5 Rows) */}
               <section
                 data-guide-id="dashboard-today-desk"
-                aria-label={lang === 'th' ? 'โต๊ะงานวันนี้และรายการเร่งด่วน' : 'Today’s Desk & Priority Actions'}
+                aria-label={lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items'}
                 className="saas-card flex flex-col justify-between min-w-0 print-avoid-break overflow-hidden"
               >
                 <div>
                   <div className="saas-card-header">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <ClipboardList className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                      <h2 className="type-section-title truncate">
-                        {isStaffUser
-                          ? (lang === 'th' ? 'โต๊ะงานวันนี้ & รายการเร่งด่วน' : "Today's Desk & Actions")
-                          : (lang === 'th' ? 'ตารางเรียน & งานวันนี้' : 'My Academic Desk')}
-                      </h2>
-                    </div>
-                    <span className="type-meta tabular-nums shrink-0">{todayStr}</span>
-                  </div>
-
-                  {/* 3 Clean Action Rows */}
-                  <div className="px-4 py-2 divide-y divide-[var(--color-border)] border-b border-[var(--color-border)]">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('timetable')}
-                      className="print-keep w-full py-2 flex items-center justify-between gap-2.5 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-1.5 -mx-1.5 cursor-pointer transition"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Calendar className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                        <div className="min-w-0">
-                          <div className="type-card-title">{lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable'}</div>
-                          <div className="type-meta truncate">
-                            {todayScheduledSlots.length > 0
-                              ? todayScheduledSlots.slice(0, 2).map((s) => `${s.courseCode} (${s.classRoom})`).join(' · ')
-                              : (lang === 'th' ? 'ไม่มีคาบสอนวันนี้' : 'No classes scheduled')}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="type-label font-bold tabular-nums shrink-0 inline-flex items-center gap-1">
-                        {todayScheduledSlots.length} {lang === 'th' ? 'คาบ' : 'slots'}
-                        <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      </span>
-                    </button>
-
+                    <h2 className="type-section-title truncate">
+                      {lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items'}
+                    </h2>
                     <button
                       type="button"
                       onClick={() => onNavigate('attendance')}
-                      className="print-keep w-full py-2 flex items-center justify-between gap-2.5 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-1.5 -mx-1.5 cursor-pointer transition"
+                      className="no-print type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <FileCheck2 className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                        <div className="min-w-0">
-                          <div className="type-card-title">{lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves'}</div>
-                          <div className="type-meta truncate">
-                            {pendingLeaveCount > 0
-                              ? (lang === 'th' ? 'รอการตรวจสอบ' : 'Requires review')
-                              : (lang === 'th' ? 'ครบถ้วนแล้ว' : 'All reviewed')}
-                          </div>
-                        </div>
-                      </div>
-                      <span className={`type-label font-bold tabular-nums shrink-0 inline-flex items-center gap-1 ${pendingLeaveCount > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
-                        {pendingLeaveCount} {lang === 'th' ? 'รายการ' : 'items'}
-                        <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('homework')}
-                      className="print-keep w-full py-2 flex items-center justify-between gap-2.5 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-1.5 -mx-1.5 cursor-pointer transition"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <BookOpen className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                        <div className="min-w-0">
-                          <div className="type-card-title">{lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade'}</div>
-                          <div className="type-meta truncate">
-                            {ungradedHomeworkCount > 0
-                              ? (lang === 'th' ? 'รอให้คะแนน' : 'Awaiting score')
-                              : (lang === 'th' ? 'ตรวจครบแล้ว' : 'All caught up')}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="type-label font-bold tabular-nums shrink-0 inline-flex items-center gap-1">
-                        {ungradedHomeworkCount} {lang === 'th' ? 'ชิ้น' : 'items'}
-                        <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      </span>
+                      {lang === 'th' ? 'เช็คชื่อ →' : 'Attendance →'}
                     </button>
                   </div>
 
-                  {/* Embedded Priority Action List (zero nested border) */}
-                  {isStaffUser && (
-                    <PriorityActionWidget
-                      embedded
-                      students={students}
-                      courses={courses}
-                      attendance={attendance}
-                      periodAttendance={periodAttendance}
-                      leaveRequests={leaveRequests}
-                      homeworkSubmissions={homeworkSubmissions}
-                      assignments={assignments}
-                      schoolId={school?.id || currentUser?.schoolId}
-                      lang={lang}
-                      onNavigate={onNavigate}
-                      onSelectStudent={onSelectStudent}
-                      compact={!isFocusMode}
-                    />
-                  )}
-                </div>
+                  <div className="saas-card-body">
+                    {(() => {
+                      const actionRows: Array<{
+                        id: string;
+                        label: string;
+                        value: string;
+                        urgent?: boolean;
+                        onClick: () => void;
+                      }> = [];
 
-                {/* Staff Quick Links Footer */}
-                <div className="no-print px-4 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2 type-meta">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('attendance')}
-                      className="font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                    >
-                      {lang === 'th' ? 'เช็คชื่อโฮมรูม' : 'Quick Roll Call'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('timetable')}
-                      className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-text-title)] cursor-pointer"
-                    >
-                      {lang === 'th' ? 'หาครูสอนแทน' : 'Substitute Finder'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('gradebook')}
-                      className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-text-title)] cursor-pointer"
-                    >
-                      {lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'}
-                    </button>
+                      if (pendingLeaveCount > 0) {
+                        actionRows.push({
+                          id: 'leaves',
+                          label: lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves',
+                          value: `${pendingLeaveCount} ${lang === 'th' ? 'รายการ' : 'items'}`,
+                          urgent: true,
+                          onClick: () => onNavigate('attendance'),
+                        });
+                      }
+                      if (ungradedHomeworkCount > 0) {
+                        actionRows.push({
+                          id: 'homework',
+                          label: lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade',
+                          value: `${ungradedHomeworkCount} ${lang === 'th' ? 'ชิ้น' : 'items'}`,
+                          urgent: true,
+                          onClick: () => onNavigate('homework'),
+                        });
+                      }
+                      if (isStaffUser && uncheckedTodayCount > 0) {
+                        actionRows.push({
+                          id: 'unchecked',
+                          label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
+                          value: `${uncheckedTodayCount} ${lang === 'th' ? 'คน' : 'students'}`,
+                          onClick: () => onNavigate('attendance'),
+                        });
+                      }
+                      if (teacherLeavesTodayCount > 0) {
+                        actionRows.push({
+                          id: 'staff-leave',
+                          label: lang === 'th' ? 'ครูลาวันนี้ (หาครูสอนแทน)' : 'Staff on Leave Today',
+                          value: `${teacherLeavesTodayCount} ${lang === 'th' ? 'คน' : 'staff'}`,
+                          onClick: () => onNavigate('timetable'),
+                        });
+                      }
+                      actionRows.push({
+                        id: 'timetable',
+                        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable',
+                        value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
+                        onClick: () => onNavigate('timetable'),
+                      });
+                      if (actionRows.length < 5) {
+                        actionRows.push({
+                          id: 'gradebook',
+                          label: lang === 'th' ? 'บันทึกคะแนน ปพ.5' : 'Gradebook',
+                          value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                          onClick: () => onNavigate('gradebook'),
+                        });
+                      }
+
+                      return (
+                        <div className="divide-y divide-[var(--color-border)]">
+                          {actionRows.slice(0, 5).map((row) => (
+                            <button
+                              key={row.id}
+                              type="button"
+                              onClick={row.onClick}
+                              className="print-keep w-full py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 cursor-pointer transition"
+                            >
+                              <span className="type-card-title truncate">{row.label}</span>
+                              <span className={`type-meta font-semibold tabular-nums shrink-0 inline-flex items-center gap-1.5 ${row.urgent ? 'text-amber-700 dark:text-amber-300' : ''}`}>
+                                {row.value}
+                                <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <span className="tabular-nums">
-                    {courses.length} {lang === 'th' ? 'วิชา' : 'courses'} · {teachers.length} {lang === 'th' ? 'ครู' : 'staff'}
-                  </span>
                 </div>
               </section>
             </div>

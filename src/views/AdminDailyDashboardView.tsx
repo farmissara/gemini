@@ -112,6 +112,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   const [section, setSection] = useState<DailySection>('attendance');
   const [attFilter, setAttFilter] = useState<AttendanceFilter>('all');
   const [attQuery, setAttQuery] = useState('');
+  const [showAllStudents, setShowAllStudents] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [previewSlipInvoice, setPreviewSlipInvoice] = useState<TuitionInvoice | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -320,59 +321,61 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
     return lang === 'th' ? 'ระบบ' : 'System';
   };
 
+  const visibleAttendanceStudents = showAllStudents
+    ? filteredAttendanceStudents
+    : filteredAttendanceStudents.slice(0, 5);
+
   return (
-    <div className="flex flex-col gap-3.5 py-1 animate-in fade-in duration-200">
+    <div className="flex flex-col gap-5 py-1 animate-in fade-in duration-150">
       {toast && (
         <div
           role="status"
-          className="px-3.5 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2 shadow-sm"
+          className="px-4 py-3 rounded-xl bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2"
         >
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{toast}</span>
         </div>
       )}
 
-      {/* 1. COMPACT DAILY HEADER */}
-      <section className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
+      {/* 1. CLEAN APPLE/LINEAR MOBILE HEADER (Title only + 1 Primary CTA) */}
+      <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums truncate">
-              {todayStr} · {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-            </p>
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] mt-0.5 truncate">
-              {lang === 'th' ? 'งานแอดมินวันนี้' : "Today's Admin Tasks"}
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'งานวันนี้' : "Today's Tasks"}
+          </h1>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {onOpenCheckin && (
-              <button
-                type="button"
-                onClick={onOpenCheckin}
-                className="min-h-[44px] px-3.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <QrCode className="w-4 h-4 shrink-0" />
-                <span>{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
-              </button>
-            )}
+          <div className="flex items-center gap-2 shrink-0">
             {onOpenQuickHub && (
               <button
                 type="button"
                 onClick={onOpenQuickHub}
-                aria-label={lang === 'th' ? 'ปรับข้อมูลด่วน' : 'Quick Edit'}
-                className="min-h-[44px] min-w-[44px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                aria-label={lang === 'th' ? 'แก้ไขด่วน' : 'Quick Edit'}
+                className="min-h-[44px] min-w-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer"
               >
-                <Edit3 className="w-4 h-4 shrink-0" />
-                <span className="hidden sm:inline">{lang === 'th' ? 'แก้ไขด่วน' : 'Quick Edit'}</span>
+                <Edit3 className="w-4 h-4" />
               </button>
             )}
           </div>
         </div>
 
-        {/* 2. UNIFIED TRIAGE KPI STRIP (1-Row hairline divided, acts directly as section switcher) */}
+        {onOpenCheckin && (
+          <button
+            type="button"
+            onClick={onOpenCheckin}
+            className="w-full min-h-[54px] px-5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-base font-semibold flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-2.5">
+              <QrCode className="w-5 h-5 shrink-0" />
+              <span>{lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check-in'}</span>
+            </span>
+            <ArrowRight className="w-5 h-5 shrink-0" />
+          </button>
+        )}
+
+        {/* 2. UNIFIED 3-CELL SECTION SWITCHER */}
         <div
           role="tablist"
-          aria-label={lang === 'th' ? 'หมวดงานแอดมินรายวัน' : 'Daily Admin Sections'}
+          aria-label={lang === 'th' ? 'หมวดงานรายวัน' : 'Daily Sections'}
           className="saas-kpi-strip grid grid-cols-3 divide-x divide-[var(--color-border)]"
         >
           <button
@@ -384,16 +387,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
             <span className={`text-[11px] font-semibold truncate ${section === 'attendance' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
-              {lang === 'th' ? 'เช็คชื่อวันนี้' : 'Attendance'}
+              {lang === 'th' ? 'เช็คชื่อ' : 'Attendance'}
             </span>
-            <div className="flex items-baseline justify-between gap-1 mt-1">
-              <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)]">
-                {attendanceMetrics.present + attendanceMetrics.late}/{attendanceMetrics.total}
-              </span>
-              <span className="text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {attendanceMetrics.rate}%
-              </span>
-            </div>
+            <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)] mt-1">
+              {attendanceMetrics.rate}%
+            </span>
           </button>
 
           <button
@@ -405,22 +403,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
             <span className={`text-[11px] font-semibold truncate ${section === 'leaves' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
-              {lang === 'th' ? 'นักเรียนที่ลา' : 'Leaves'}
+              {lang === 'th' ? 'ลาวันนี้' : 'Leaves'}
             </span>
-            <div className="flex items-baseline justify-between gap-1 mt-1">
-              <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)]">
-                {activeLeavesToday.length}
-              </span>
-              <span
-                className={`text-[11px] font-semibold tabular-nums ${
-                  pendingLeaves.length > 0
-                    ? 'text-amber-700 dark:text-amber-400'
-                    : 'text-[var(--color-text-muted)]'
-                }`}
-              >
-                {lang === 'th' ? `รอ ${pendingLeaves.length}` : `${pendingLeaves.length} pending`}
-              </span>
-            </div>
+            <span className={`text-lg font-bold tabular-nums mt-1 ${pendingLeaves.length > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-[var(--color-text-title)]'}`}>
+              {activeLeavesToday.length + pendingLeaves.length}
+            </span>
           </button>
 
           <button
@@ -432,16 +419,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
             <span className={`text-[11px] font-semibold truncate ${section === 'approvals' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
-              {lang === 'th' ? 'คำขออนุมัติ' : 'Approvals'}
+              {lang === 'th' ? 'อนุมัติ' : 'Approvals'}
             </span>
-            <div className="flex items-baseline justify-between gap-1 mt-1">
-              <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)]">
-                {totalPendingApprovals}
-              </span>
-              <span className="text-[11px] font-semibold tabular-nums text-[var(--color-primary-text)]">
-                {lang === 'th' ? 'รายการ' : 'items'}
-              </span>
-            </div>
+            <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)] mt-1">
+              {totalPendingApprovals}
+            </span>
           </button>
         </div>
       </section>
@@ -450,21 +432,26 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
       {/* TAB 1: TODAY'S ATTENDANCE LIST                                        */}
       {/* ===================================================================== */}
       {section === 'attendance' && (
-        <section className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
+        <section className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-              <span>{lang === 'th' ? 'รายการเช็คชื่อวันนี้' : "Today's Attendance"}</span>
+            <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+              {lang === 'th' ? 'เช็คชื่อวันนี้' : "Today's Attendance"}
             </h2>
-            <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
-              {lang === 'th'
-                ? `มา ${attendanceMetrics.present} · สาย ${attendanceMetrics.late} · รอเช็ค ${attendanceMetrics.unchecked}`
-                : `${attendanceMetrics.present} present · ${attendanceMetrics.late} late · ${attendanceMetrics.unchecked} pending`}
-            </span>
+            {filteredAttendanceStudents.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllStudents((prev) => !prev)}
+                className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                {showAllStudents
+                  ? (lang === 'th' ? 'ย่อเหลือ 5' : 'Show 5')
+                  : (lang === 'th' ? `ดูทั้งหมด (${filteredAttendanceStudents.length})` : `All (${filteredAttendanceStudents.length})`)}
+              </button>
+            )}
           </div>
 
           {/* Search & Status Filter */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -530,11 +517,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-border)]">
-              {filteredAttendanceStudents.map((stu) => {
+              {visibleAttendanceStudents.map((stu) => {
                 const rec = todayStudentRecordMap.get(stu.id);
                 const statusText = !rec
                   ? lang === 'th'
-                    ? 'ยังไม่เช็คชื่อ'
+                    ? 'ยังไม่เช็ค'
                     : 'Pending'
                   : rec.status === 'present'
                   ? lang === 'th'
@@ -563,36 +550,33 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                 return (
                   <div
                     key={stu.id}
-                    className="py-2.5 flex items-center justify-between gap-2.5 min-h-[64px]"
+                    className="py-3.5 flex items-center justify-between gap-3 min-h-[58px]"
                   >
                     <button
                       type="button"
                       onClick={() => setSelectedStudent(stu)}
-                      className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer py-1"
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
                     >
                       <img
                         src={stu.avatarUrl}
                         alt={`${stu.firstNameTh} ${stu.lastNameTh}`}
                         referrerPolicy="no-referrer"
-                        className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0 bg-[var(--color-card-subtle)]"
+                        className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)] shrink-0 bg-[var(--color-card-subtle)]"
                       />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                          {stu.firstNameTh} {stu.lastNameTh}
-                        </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums mt-0.5">
-                          {stu.studentIdNumber} · {stu.gradeLevel}/{stu.room}
-                          {rec ? ` · ${rec.time} · ${formatCheckinMethod(rec.checkinMethod)}` : ''}
-                        </p>
-                      </div>
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] truncate">
+                        {stu.firstNameTh} {stu.lastNameTh}
+                      </span>
+                      <span className="text-xs text-[var(--color-text-muted)] truncate shrink-0">
+                        {stu.gradeLevel}/{stu.room}
+                      </span>
                     </button>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {!rec ? (
                         <button
                           type="button"
                           onClick={() => handleQuickMarkAttendance(stu, 'present')}
-                          className="min-h-[44px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                          className="min-h-[40px] px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap"
                         >
                           <Check className="w-3.5 h-3.5 shrink-0" />
                           <span>{lang === 'th' ? 'เช็คเข้า' : 'Check in'}</span>
@@ -601,9 +585,9 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                         <button
                           type="button"
                           onClick={() => setSelectedStudent(stu)}
-                          className="min-h-[44px] px-2.5 rounded-xl hover:bg-[var(--color-card-subtle)] flex items-center gap-1 cursor-pointer"
+                          className="min-h-[40px] px-2 rounded-xl hover:bg-[var(--color-card-subtle)] flex items-center gap-1.5 cursor-pointer"
                         >
-                          <span className={`text-xs font-bold whitespace-nowrap ${statusTone}`}>
+                          <span className={`text-xs font-semibold whitespace-nowrap ${statusTone}`}>
                             {statusText}
                           </span>
                           <ArrowRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />

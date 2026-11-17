@@ -41,7 +41,8 @@ import {
   Fingerprint,
   Lock,
   KeyRound,
-  Trash2
+  Trash2,
+  MoreHorizontal
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -343,7 +344,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
   const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
   const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
-  const [homePage, setHomePage] = useState(0);
   const [gameHubPage, setGameHubPage] = useState(0);
   const [profilePage, setProfilePage] = useState(0);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
@@ -422,92 +422,104 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none">
-      {/* ======================================================== */}
-      {/* 1. COMPACT TOP MOBILE HEADER (Capped for <=15% sticky chrome) */}
-      {/* ======================================================== */}
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md flex flex-col transition-colors">
-        <div className="px-3.5 py-2 flex items-center justify-between gap-2 min-h-[52px]">
+      {/* 1. CLEAN SINGLE-ROW APPLE/LINEAR MOBILE HEADER */}
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md transition-colors">
+        <div className="px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <BaanPakKruLogo size={24} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm text-[var(--color-text-title)] tracking-tight truncate">
-                  BaanPakKru
-                </span>
-                <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
-                  · {currentRole === 'super_admin'
-                    ? (lang === 'th' ? 'แม่ข่าย' : 'Master')
-                    : currentRole === 'admin'
-                    ? (lang === 'th' ? 'แอดมิน' : 'Admin')
-                    : currentRole === 'teacher'
-                    ? (lang === 'th' ? 'ครู' : 'Teacher')
-                    : currentRole === 'parent'
-                    ? (lang === 'th' ? 'ผู้ปกครอง' : 'Parent')
-                    : (lang === 'th' ? 'นักเรียน' : 'Student')}
-                </span>
-              </div>
-              {onOpenSchoolSwitcher && currentRole === 'super_admin' ? (
-                <button
-                  type="button"
-                  onClick={onOpenSchoolSwitcher}
-                  className="text-[11px] text-[var(--color-primary-text)] font-medium truncate max-w-[170px] flex items-center gap-1 hover:underline cursor-pointer"
-                >
-                  <Building2 className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
-                </button>
-              ) : (
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate max-w-[170px]">
-                  {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-                </p>
-              )}
-            </div>
+            {onOpenSchoolSwitcher && currentRole === 'super_admin' ? (
+              <button
+                type="button"
+                onClick={onOpenSchoolSwitcher}
+                className="text-sm font-bold text-[var(--color-text-title)] truncate hover:underline cursor-pointer"
+              >
+                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
+              </button>
+            ) : (
+              <span className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={onSwitchToDesktopMode}
-              className="min-h-[38px] flex items-center gap-1 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
-              title={lang === 'th' ? 'สลับเป็นมุมมองคอมพิวเตอร์' : 'Switch to Desktop'}
-            >
-              <Laptop className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              <span>{lang === 'th' ? 'คอม' : 'PC'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-              className="min-h-[38px] inline-flex items-center gap-1 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
-              title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
-            >
-              <span>{lang === 'th' ? 'TH' : 'EN'}</span>
-            </button>
-
             {onOpenNotifications && (
               <button
                 type="button"
                 onClick={onOpenNotifications}
-                className="relative min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
-                title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
+                className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                aria-label={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
               >
-                <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600" />
                 )}
               </button>
             )}
+
+            <details className="relative">
+              <summary
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] list-none cursor-pointer [&::-webkit-details-marker]:hidden"
+                aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'Menu'}
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </summary>
+              <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    onSwitchToDesktopMode();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Laptop className="w-4 h-4 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    setLang(lang === 'th' ? 'en' : 'th');
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ภาษา' : 'Language'}</span>
+                  <span className="font-mono text-xs text-[var(--color-text-muted)]">{lang.toUpperCase()}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    setThemePalette(isLight ? 'sapphire' : 'light_sky');
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  {isLight ? <Moon className="w-4 h-4 text-[var(--color-text-muted)]" /> : <Sun className="w-4 h-4 text-[var(--color-text-muted)]" />}
+                  <span>{isLight ? (lang === 'th' ? 'โหมดกลางคืน' : 'Dark Mode') : (lang === 'th' ? 'โหมดสว่าง' : 'Light Mode')}</span>
+                </button>
+                <div className="my-1 border-t border-[var(--color-border)]" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                    onLogout();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
+                </button>
+              </div>
+            </details>
           </div>
         </div>
       </header>
 
-      {/* ======================================================== */}
-      {/* 2. MAIN ACTIVE VIEW CONTAINER */}
-      {/* ======================================================== */}
-      <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-3.5 sm:p-4 overflow-y-auto">
+      {/* 2. MAIN ACTIVE VIEW CONTAINER (Generous spacing, 1 task per screen) */}
+      <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-5 sm:p-6 overflow-y-auto">
         <ViewErrorBoundary
-          resetKey={`${activeTab}:${activeGameView}:${homePage}:${profilePage}`}
+          resetKey={`${activeTab}:${activeGameView}:${profilePage}`}
           lang={lang}
           viewName={`mobile:${activeTab}`}
           onBackHome={() => {
@@ -515,9 +527,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             setActiveTab('home');
           }}
         >
-        {/* TAB A: ROLE-FIRST HOME / MOBILE BRIEFING */}
+        {/* TAB A: ROLE-FIRST HOME (Clean, Zero Subtitle Clutter, Large Primary CTA) */}
         {activeTab === 'home' && (
-          <div className="flex flex-col gap-3.5 py-1 animate-in fade-in duration-200">
+          <div className="flex flex-col gap-5 py-1 animate-in fade-in duration-150">
             {currentRole === 'super_admin' ? (
               <MobileSuperAdminHub
                 schools={schools}
@@ -552,360 +564,145 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               />
             ) : (
               <>
-            {homePage === 0 && (
-              <>
-            {/* Welcome & Persona Card (Role-aware) */}
-            <div className="rounded-2xl p-4 border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums truncate">
-                  {todayStr} · {activeSchool.nameTh}
-                </p>
-                <h1 className="text-base font-bold text-[var(--color-text-title)] mt-0.5 truncate">
-                  {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
-                </h1>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">
-                  {currentRole === 'teacher'
-                    ? (lang === 'th' ? 'อาจารย์ประจำวิชา' : 'Teacher')
-                    : currentRole === 'student'
-                    ? (ownStudent
-                        ? (lang === 'th' ? `ชั้น ${ownStudent.gradeLevel}/${ownStudent.room}` : `Grade ${ownStudent.gradeLevel}/${ownStudent.room}`)
-                        : (lang === 'th' ? 'บัญชีนักเรียน' : 'Student'))
-                    : currentRole === 'parent'
-                    ? (ownStudent
-                        ? (lang === 'th' ? `ผู้ปกครองของ ${ownStudent.firstNameTh} (${ownStudent.gradeLevel}/${ownStudent.room})` : `Parent of ${ownStudent.firstNameEn}`)
-                        : (lang === 'th' ? 'พอร์ทัลผู้ปกครอง' : 'Parent Portal'))
-                    : (lang === 'th' ? 'ผู้บริหารโรงเรียน' : 'School Admin')}
-                </p>
-              </div>
-
-              {currentRole === 'student' && (
-                <div className="text-right shrink-0">
-                  <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 tabular-nums">
-                    <Flame className="w-3.5 h-3.5 shrink-0" />
-                    <span>{currentScore.exp} EXP</span>
-                  </div>
+                {/* Minimal Apple Greeting Header (Title only, zero subtitle clutter) */}
+                <div className="pt-1 pb-1">
+                  <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-title)] truncate">
+                    {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
+                  </h1>
                 </div>
-              )}
-            </div>
 
-            {/* Role-Specific Quick Core Actions */}
-            <div className="grid grid-cols-1 gap-2.5">
-              {/* TEACHER: Executive Monitor */}
-              {currentRole === 'teacher' && (
+                {/* 1 Large Primary Action Button */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('executive')}
-                  className="tone-1 tone-card p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
+                  onClick={() => setActiveTab('checkin')}
+                  className="w-full min-h-[56px] px-5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-base flex items-center justify-between transition active:scale-[0.99] cursor-pointer"
                 >
-                  <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-                    <Monitor className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                      {lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
-                    </h2>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
-                      มาเรียน {execMetrics.attendanceRate}% · GPAX {execMetrics.avgGpa} · ป่วย {execMetrics.todayInfirmary}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[var(--tone)] shrink-0" />
-                </button>
-              )}
-
-              {/* PARENT: Child Daily Summary Card */}
-              {currentRole === 'parent' && (
-                <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'สถานะบุตรหลานวันนี้' : "Child's Status Today"}
-                    </h2>
-                    <span className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)]">
-                      GPA {ownStudent ? ownStudent.gpa.toFixed(2) : '-'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)]">
-                      <p className="text-[10px] text-[var(--color-text-muted)]">{lang === 'th' ? 'เข้าเรียนวันนี้' : 'Attendance'}</p>
-                      <p className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-                        {todayCheckin ? `${todayCheckin.time} น.` : (lang === 'th' ? 'ยังไม่เช็คอิน' : 'Not checked in')}
-                      </p>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)]">
-                      <p className="text-[10px] text-[var(--color-text-muted)]">{lang === 'th' ? 'ใบแจ้งหนี้ค้างชำระ' : 'Pending Invoices'}</p>
-                      <p className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-                        {invoices.filter((i) => (!ownStudent || i.studentId === ownStudent.id) && i.status !== 'paid').length} {lang === 'th' ? 'รายการ' : 'items'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action 1: Check-in */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('checkin')}
-                className="tone-2 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
-              >
-                <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                  <span>
                     {currentRole === 'teacher'
-                      ? (lang === 'th' ? 'เช็คชื่อเข้าสอน / แทนนักเรียน' : 'Period & Class Check-in')
+                      ? (lang === 'th' ? 'เช็คชื่อเข้าสอน' : 'Class Check-in')
                       : currentRole === 'parent'
-                      ? (lang === 'th' ? 'ประวัติการมาเรียนบุตรหลาน' : 'Child Attendance Log')
+                      ? (lang === 'th' ? 'ดูเวลาเข้า-ออกบุตรหลาน' : 'Child Attendance')
                       : (lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check-in & Out')}
-                  </h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                    {currentRole === 'parent'
-                      ? (lang === 'th' ? 'ตรวจสอบเวลาเข้า-ออกประตูโรงเรียน' : 'Gate arrival & departure records')
-                      : (lang === 'th' ? 'เซลฟี่ GPS · แตะบัตร NFC · สแกนรายคาบ' : 'Selfie GPS · NFC Tap · Period QR')}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
-              </button>
-
-              {/* Action 2: Leave Request */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('leave')}
-                className="tone-2 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group relative min-h-[64px]"
-              >
-                <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                    {currentRole === 'teacher'
-                      ? (lang === 'th' ? 'ใบลาออนไลน์' : 'Leave Requests')
-                      : (lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Submit Leave')}
-                  </h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
-                    {pendingLeavesCount > 0
-                      ? (lang === 'th' ? `รอตรวจ ${pendingLeavesCount} รายการ` : `${pendingLeavesCount} pending`)
-                      : (lang === 'th' ? 'ลาป่วย · ลากิจ · ติดตามสถานะ' : 'Sick / Personal leave')}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
-              </button>
-
-              {/* TEACHER: Direct Jump to Desktop Gradebook & Timetable */}
-              {currentRole === 'teacher' && onJumpToDesktopTab && (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onJumpToDesktopTab('gradebook')}
-                    className="min-h-[52px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
-                  >
-                    <span className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'กรอกคะแนน' : 'Gradebook'}
-                    </span>
-                    <Laptop className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onJumpToDesktopTab('timetable')}
-                    className="min-h-[52px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
-                  >
-                    <span className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ตารางสอน' : 'Timetable'}
-                    </span>
-                    <Calendar className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                  </button>
-                </div>
-              )}
-
-              {/* STUDENT & TEACHER: Games Hub */}
-              {(currentRole === 'student' || currentRole === 'teacher') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('games');
-                    setActiveGameView('hub');
-                    setGameHubPage(0);
-                  }}
-                  className="tone-5 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
-                >
-                  <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-                    <Gamepad2 className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                      {lang === 'th' ? 'เกมส์ความรู้ & แล็บจำลอง' : 'Learning Games & Labs'}
-                    </h2>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      {lang === 'th' ? '3D Battle · ตีบอส · แล็บวิชาเรียน' : '3D Battle · Boss Raid · Subject Labs'}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
+                  </span>
+                  <ChevronRight className="w-5 h-5 shrink-0" />
                 </button>
-              )}
 
-              {/* PARENT: Announcements */}
-              {currentRole === 'parent' && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('announcements')}
-                  className="tone-3 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
-                >
-                  <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-                    <BellRing className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                      {lang === 'th' ? 'ประกาศโรงเรียน' : 'School Announcements'}
-                    </h2>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
-                      {announcements.length} {lang === 'th' ? 'ประกาศล่าสุด' : 'announcements'}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
-                </button>
-              )}
+                {/* Single-line Clean List Rows (Zero explanatory subtitles, generous breathing room) */}
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                  {currentRole === 'teacher' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('executive')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {execMetrics.attendanceRate}%
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
 
-              {/* Action 4: Virtual ID / Profile */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('profile')}
-                className="tone-4 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
-              >
-                <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                    {lang === 'th' ? 'บัตรดิจิทัล & ตั้งค่า' : 'Digital ID & Settings'}
-                  </h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                    {lang === 'th' ? 'บัตรนักเรียน · FaceID · ข้อมูลบัญชี' : 'ID Card · Biometrics · Account'}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
-              </button>
-            </div>
-              </>
-            )}
-
-            {homePage === 1 && (
-              <>
-            {/* Today's Daily Status Strip */}
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] flex flex-wrap items-center justify-between gap-1.5">
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                  <span>สรุปสถานะประจำวัน</span>
-                </span>
-                <span className="text-[var(--color-text-muted)] font-mono text-[10px]">{todayStr}</span>
-              </h2>
-
-              <div className="space-y-2 text-xs">
-                {/* Attendance Status */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {todayCheckin ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-bold text-[var(--color-text-title)]">การเช็คชื่อเข้าโรงเรียน</p>
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {todayCheckin 
-                          ? `เช็คอินแล้วเวลา ${todayCheckin.time} น.` 
-                          : 'ยังไม่พบข้อมูลเช็คชื่อวันนี้'}
-                      </p>
+                  {currentRole === 'parent' && (
+                    <div className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'เช็คอินวันนี้' : 'Today'}
+                      </span>
+                      <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)]">
+                        {todayCheckin ? `${todayCheckin.time} น.` : (lang === 'th' ? 'ยังไม่เช็คอิน' : 'Pending')}
+                      </span>
                     </div>
-                  </div>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setActiveTab('checkin')}
-                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+                    onClick={() => setActiveTab('leave')}
+                    className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                   >
-                    {todayCheckin ? 'ดูรายละเอียด' : 'เช็คอินเลย'}
+                    <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}
+                    </span>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                      {pendingLeavesCount > 0 ? `${pendingLeavesCount}` : ''}
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
                   </button>
-                </div>
 
-                {/* Homework Count */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-bold text-[var(--color-text-title)]">การบ้านและงานค้าง</p>
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {pendingHomeworkCount > 0 
-                          ? `มีงานที่ยังไม่ส่ง ${pendingHomeworkCount} ชิ้น` 
-                          : 'ไม่มีการบ้านค้าง ส่งครบทุกวิชาแล้ว!'}
-                      </p>
-                    </div>
-                  </div>
+                  {currentRole === 'teacher' && onJumpToDesktopTab && (
+                    <button
+                      type="button"
+                      onClick={() => onJumpToDesktopTab('gradebook')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'กรอกคะแนน ปพ.5' : 'Gradebook'}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                    </button>
+                  )}
+
+                  {currentRole === 'student' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('homework')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'การบ้านและงานค้าง' : 'Homework'}
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {pendingHomeworkCount > 0 ? pendingHomeworkCount : ''}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
+
+                  {(currentRole === 'student' || currentRole === 'teacher') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('games');
+                        setActiveGameView('hub');
+                        setGameHubPage(0);
+                      }}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'เกมส์ความรู้ & แล็บจำลอง' : 'Learning Games & Labs'}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                    </button>
+                  )}
+
+                  {currentRole === 'parent' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('announcements')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements'}
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {announcements.length}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setActiveTab('homework')}
-                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                    onClick={() => setActiveTab('profile')}
+                    className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                   >
-                    ตรวจงาน
+                    <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                      {lang === 'th' ? 'บัตรดิจิทัล & ตั้งค่า' : 'Digital ID & Settings'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* School Announcements Section */}
-            {announcements.length > 0 && (
-              <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                    <Bell className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                    <span>ข่าวสารและประกาศโรงเรียน</span>
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('announcements')}
-                    className="text-[11px] text-[var(--color-primary-text)] font-semibold hover:underline cursor-pointer"
-                  >
-                    ดูทั้งหมด
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {announcements.slice(0, 2).map((a) => (
-                    <div key={a.id} className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs">
-                      <p className="font-bold text-[var(--color-text-title)] line-clamp-1">{a.title}</p>
-                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">{a.content}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-              </>
-            )}
-
-            <nav aria-label="หน้าหลัก" className="flex items-center justify-between gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setHomePage(0)}
-                className={`min-h-[40px] rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
-                  homePage === 0
-                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
-                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-                }`}
-              >
-                ภาพรวม (หน้า 1)
-              </button>
-              <div aria-live="polite" className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)]">
-                {homePage + 1} / 2
-              </div>
-              <button
-                type="button"
-                onClick={() => setHomePage(1)}
-                className={`min-h-[40px] rounded-xl px-3 py-1.5 text-xs font-bold transition border cursor-pointer ${
-                  homePage === 1
-                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
-                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-                }`}
-              >
-                สรุปวันนี้ (หน้า 2)
-              </button>
-            </nav>
               </>
             )}
           </div>
@@ -1778,179 +1575,98 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         </ViewErrorBoundary>
       </main>
 
-      {/* ======================================================== */}
-      {/* 3. ROLE-ADAPTIVE MOBILE BOTTOM NAVIGATION BAR (THUMB ZONE) */}
-      {/* ======================================================== */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-1.5 py-1 shadow-2xl safe-area-bottom">
-        <div className="max-w-md mx-auto grid grid-cols-5 gap-1">
-          {/* SLOT 1: HOME (All roles) */}
+      {/* 3. CLEAN APPLE/LINEAR 4-TAB BOTTOM NAVIGATION */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-1 safe-area-bottom">
+        <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+          {/* SLOT 1: HOME */}
           <button
             type="button"
             onClick={() => setActiveTab('home')}
-            className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'home'
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                ? 'text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             {currentRole === 'super_admin' ? <ShieldCheck className="w-5 h-5 mb-0.5" /> : <Home className="w-5 h-5 mb-0.5" />}
-            <span className="text-[10px] font-semibold truncate max-w-full">
+            <span className="text-[11px] truncate max-w-full">
               {currentRole === 'super_admin'
                 ? (lang === 'th' ? 'แม่ข่าย' : 'Master')
-                : currentRole === 'parent'
-                ? (lang === 'th' ? 'บุตรหลาน' : 'Child')
                 : (lang === 'th' ? 'หน้าหลัก' : 'Home')}
             </span>
           </button>
 
-          {/* SLOT 2: ROLE-SPECIFIC PRIMARY WORKSPACE */}
+          {/* SLOT 2: CHECK-IN (All roles) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('checkin')}
+            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              activeTab === 'checkin' || activeTab === 'leave'
+                ? 'text-[var(--color-primary-text)] font-bold'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <Clock className="w-5 h-5 mb-0.5" />
+            <span className="text-[11px] truncate max-w-full">
+              {currentRole === 'parent' ? (lang === 'th' ? 'มาเรียน' : 'Logs') : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
+            </span>
+          </button>
+
+          {/* SLOT 3: ROLE PRIMARY ACTION */}
           {currentRole === 'admin' ? (
             <button
               type="button"
               onClick={() => setActiveTab('admin_quick')}
-              className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
                 activeTab === 'admin_quick'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               {(pendingLeavesCount + invoices.filter((i) => i.slipStatus === 'pending_review').length) > 0 && (
-                <span className="absolute top-1 right-3 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black tabular-nums">
-                  {pendingLeavesCount + invoices.filter((i) => i.slipStatus === 'pending_review').length}
-                </span>
+                <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-600" />
               )}
               <Edit3 className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'จัดการด่วน' : 'Quick Edit'}</span>
+              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'จัดการด่วน' : 'Manage'}</span>
             </button>
           ) : currentRole === 'super_admin' ? (
             <button
               type="button"
               onClick={() => setActiveTab('super_schools')}
-              className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'super_schools'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Building2 className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setActiveTab('checkin')}
-              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
-                activeTab === 'checkin'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Clock className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">
-                {currentRole === 'parent' ? (lang === 'th' ? 'มาเรียน' : 'Logs') : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
-              </span>
-            </button>
-          )}
-
-          {/* SLOT 3: CHECKIN (Admin) / EXECUTIVE (Super Admin) / LEAVE (Teacher, Student, Parent) */}
-          {currentRole === 'admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('checkin')}
-              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'checkin'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Clock className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
-            </button>
-          ) : currentRole === 'super_admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('executive')}
-              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'executive'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Monitor className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'ภาพรวม' : 'Monitor'}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setActiveTab('leave')}
-              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
-                activeTab === 'leave'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {pendingLeavesCount > 0 && (
-                <span className="absolute top-1 right-3 px-1 rounded-full bg-rose-700 text-white text-[9px] font-black tabular-nums">
-                  {pendingLeavesCount}
-                </span>
-              )}
-              <FileText className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'ใบลา' : 'Leave'}</span>
-            </button>
-          )}
-
-          {/* SLOT 4: ROLE SECONDARY DESTINATION */}
-          {currentRole === 'admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('executive')}
-              className={`tone-1 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'executive'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Monitor className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'มอนิเตอร์' : 'MIS'}</span>
-            </button>
-          ) : currentRole === 'super_admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('checkin')}
-              className={`tone-2 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'checkin'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Clock className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
+              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
             </button>
           ) : currentRole === 'teacher' ? (
             <button
               type="button"
               onClick={() => setActiveTab('homework')}
-              className={`tone-5 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'homework'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <BookOpen className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'การบ้าน' : 'Tasks'}</span>
+              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'การบ้าน' : 'Tasks'}</span>
             </button>
           ) : currentRole === 'parent' ? (
             <button
               type="button"
               onClick={() => setActiveTab('announcements')}
-              className={`tone-3 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'announcements'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <BellRing className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'ประกาศ' : 'News'}</span>
+              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'ประกาศ' : 'News'}</span>
             </button>
           ) : (
             <button
@@ -1959,32 +1675,30 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 setActiveTab('games');
                 setActiveGameView('hub');
               }}
-              className={`tone-5 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'games'
-                  ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                  ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <Gamepad2 className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-semibold truncate max-w-full">{lang === 'th' ? 'เกมส์' : 'Arcade'}</span>
+              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'เกมส์' : 'Arcade'}</span>
             </button>
           )}
 
-          {/* SLOT 5: PROFILE & SETTINGS (All roles) */}
+          {/* SLOT 4: ACCOUNT / SETTINGS */}
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`tone-4 min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-black'
+                ? 'text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             <User className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] font-semibold truncate max-w-full">
-              {currentRole === 'admin' || currentRole === 'super_admin'
-                ? (lang === 'th' ? 'ตั้งค่า' : 'Settings')
-                : (lang === 'th' ? 'โปรไฟล์' : 'Profile')}
+            <span className="text-[11px] truncate max-w-full">
+              {lang === 'th' ? 'บัญชี' : 'Account'}
             </span>
           </button>
         </div>

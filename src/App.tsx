@@ -98,7 +98,6 @@ import {
 import type { DuplicateRecordReport, DuplicateRecordTarget } from './lib/duplicateRecords';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
-import { QuickActionDock } from './components/layout/QuickActionDock';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
 import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
@@ -132,10 +131,6 @@ import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
 import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
 import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
-import {
-  InteractiveMascotGuide,
-  emitMascotDashboardEvent,
-} from './components/guide/InteractiveMascotGuide';
 import { GuideTourProvider } from './components/guide/GuideTourContext';
 import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
@@ -176,7 +171,7 @@ import {
   setBiometricSoftLock,
   verifyBiometricPasskey,
 } from './lib/webAuthn';
-import { LayoutDashboard, QrCode, Gamepad2, Briefcase, Users, X, User, Sparkles, AlertTriangle, Check, Copy, Database, Fingerprint, Lock, LogOut } from 'lucide-react';
+import { LayoutDashboard, QrCode, Briefcase, X, User, Check, Copy, Database, Fingerprint, Lock, LogOut } from 'lucide-react';
 
 const EMPTY_SCHOOL: School = {
   id: '',
@@ -576,21 +571,6 @@ export const App: React.FC = () => {
   }, [currentUser?.id, activeSchool.id, isDemoMode]);
 
   const unclaimedCentralPacks = getUnclaimedPublishedPacks(centralExamPacks, schoolExamEntitlements);
-
-  // Auto-open pop-up notification for School Admin whenever newly published central packs exist
-  useEffect(() => {
-    if (!currentUser || currentRole !== 'admin' || programMode !== 'school_erp') {
-      return;
-    }
-    if (unclaimedCentralPacks.length === 0) {
-      setShowCentralExamPopup(false);
-      return;
-    }
-    const sig = buildCentralExamSignature(unclaimedCentralPacks);
-    if (!hasSeenCentralExamPopup(activeSchool.id, sig)) {
-      setShowCentralExamPopup(true);
-    }
-  }, [currentUser?.id, currentRole, programMode, activeSchool.id, centralExamPacks, schoolExamEntitlements]);
 
   // Filter items by active school
   const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
@@ -3375,158 +3355,12 @@ export const App: React.FC = () => {
         focusMode={focusMode}
         onToggleFocusMode={() => setFocusMode((prev) => !prev)}
       />}
-      {!useImmersiveGameLayout && isDemoMode && (
-        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2">
-          <span>{lang === 'th' ? 'โหมดทดลองใช้งาน · ข้อมูลบันทึกเฉพาะในเบราว์เซอร์' : 'Demo mode · Saved in browser session only'}</span>
-        </div>
-      )}
       {!useImmersiveGameLayout && dataSyncError && (
-        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
+        <div role="alert" className="shrink-0 mx-4 sm:mx-6 mt-2 px-3.5 py-2 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
           <span className="truncate">{lang === 'th' ? 'ซิงก์ข้อมูลไม่สำเร็จ:' : 'Sync error:'} {dataSyncError}</span>
           <button type="button" onClick={() => setDataSyncError(null)} aria-label="Close error" className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
         </div>
       )}
-      {!useImmersiveGameLayout && !focusMode && (() => {
-        const hasOrphanGrades = orphanedGrades.length > 0;
-        const hasSchemaWarnings = dataSyncWarnings.length > 0;
-        const hasDuplicates = isDataReady && !isDemoMode && !dismissedDuplicateWarning && ['admin', 'super_admin'].includes(currentRole) && duplicateRecordGroupCount > 0;
-        if (!hasOrphanGrades && !hasSchemaWarnings && !hasDuplicates) return null;
-
-        return (
-          <section className="shrink-0 mx-3 mt-1 overflow-hidden rounded-xl border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
-            <div role="status" className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-[11px]">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span className="truncate font-medium">
-                  {[
-                    hasSchemaWarnings
-                      ? (lang === 'th' ? `อัปเดตฐานข้อมูล (${dataSyncWarnings.length})` : `DB migration (${dataSyncWarnings.length})`)
-                      : null,
-                    hasOrphanGrades
-                      ? (lang === 'th' ? `ผลการเรียนค้างซิงก์ ${orphanedGrades.length} รายการ` : `${orphanedGrades.length} orphaned grades`)
-                      : null,
-                    hasDuplicates
-                      ? (lang === 'th' ? `ข้อมูลซ้ำ ${duplicateRecordGroupCount} กลุ่ม` : `${duplicateRecordGroupCount} duplicate groups`)
-                      : null,
-                  ].filter(Boolean).join(' · ')}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                {hasSchemaWarnings && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleCopyMigrationSql}
-                      className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
-                    >
-                      {copiedMigrationSql ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอกแล้ว' : 'Copied') : (lang === 'th' ? 'คัดลอก SQL' : 'Copy SQL')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSchemaMigrationModal(true)}
-                      className="px-2 py-1 rounded-md border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-amber-950 dark:text-amber-100 font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
-                    >
-                      <Database className="w-3 h-3" />
-                      <span>{lang === 'th' ? 'วิธีรัน' : 'Steps'}</span>
-                    </button>
-                  </>
-                )}
-                {hasOrphanGrades && ['admin', 'super_admin'].includes(currentRole) && (
-                  <button
-                    type="button"
-                    onClick={() => void handleCleanupOrphanGrades()}
-                    disabled={isCleaningOrphanedGrades}
-                    className="px-2 py-1 rounded-md bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-semibold text-[11px] cursor-pointer whitespace-nowrap"
-                  >
-                    {isCleaningOrphanedGrades ? (lang === 'th' ? 'กำลังลบ...' : 'Cleaning...') : (lang === 'th' ? 'ล้างเกรดค้าง' : 'Clean grades')}
-                  </button>
-                )}
-                {hasDuplicates && (
-                  <button
-                    type="button"
-                    onClick={() => setShowDuplicateDetails((open) => !open)}
-                    aria-expanded={showDuplicateDetails}
-                    className="rounded-md border border-amber-400 bg-white/80 px-2 py-1 text-[11px] font-semibold hover:bg-white dark:border-amber-600 dark:bg-slate-900/50 dark:hover:bg-slate-900 cursor-pointer whitespace-nowrap"
-                  >
-                    {showDuplicateDetails ? (lang === 'th' ? 'ซ่อนรายการซ้ำ' : 'Hide') : (lang === 'th' ? 'ตรวจข้อมูลซ้ำ' : 'Inspect')}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (hasSchemaWarnings) setDataSyncWarnings([]);
-                    if (hasDuplicates) setDismissedDuplicateWarning(true);
-                  }}
-                  aria-label={lang === 'th' ? 'ปิดการแจ้งเตือน' : 'Dismiss warning'}
-                  className="p-1 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {hasDuplicates && showDuplicateDetails && (
-              <div className="max-h-[55vh] space-y-2 overflow-y-auto border-t border-amber-200 p-3 dark:border-amber-800">
-                {duplicateReports.map((report) => {
-                  const reportGroupCount = report.checks.reduce((sum, check) => sum + check.groups.length, 0);
-                  return (
-                    <section key={report.target} className="rounded-lg border border-amber-200 bg-white/70 p-3 dark:border-amber-800 dark:bg-slate-950/40">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <h3 className="text-xs font-bold">{report.module}</h3>
-                          <p className="text-[10px]">{reportGroupCount} กลุ่มที่ต้องตรวจสอบ</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (report.programMode) setProgramMode(report.programMode);
-                            navigateToAppTab(report.target);
-                          }}
-                          className="rounded-lg bg-amber-700 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer"
-                        >
-                          ไปหน้า{report.module}
-                        </button>
-                      </div>
-                      <p className="mt-2 text-[10px] leading-relaxed">{report.guidance}</p>
-                      <div className="mt-2 space-y-1.5">
-                        {report.checks.map((check) => (
-                          <details key={check.label} className="rounded-md border border-amber-200 bg-white/60 px-2.5 py-2 dark:border-amber-900 dark:bg-slate-950/30">
-                            <summary className="cursor-pointer text-[10px] font-semibold">
-                              {check.label} · {check.groups.length} กลุ่ม
-                            </summary>
-                            <ul className="mt-2 space-y-2">
-                              {check.groups.slice(0, 25).map((group, index) => (
-                                <li key={`${group.value}-${index}`} className="rounded-md bg-amber-50/80 p-2 text-[10px] dark:bg-amber-950/30">
-                                  <p className="font-bold">ค่าที่ซ้ำ: {group.value || 'ไม่ระบุ'}</p>
-                                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                                    {group.records.slice(0, 5).map((record, recordIndex) => (
-                                      <li key={`${record}-${recordIndex}`}>{record}</li>
-                                    ))}
-                                  </ul>
-                                  {group.records.length > 5 && (
-                                    <p className="mt-1 text-[9px] opacity-75">และอีก {group.records.length - 5} ระเบียน</p>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                            {check.groups.length > 25 && (
-                              <p className="mt-2 text-[9px]">
-                                แสดง 25 จาก {check.groups.length} กลุ่ม · ใช้ปุ่มไปยังหน้า{report.module} เพื่อค้นหารายการที่เหลือ
-                              </p>
-                            )}
-                          </details>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        );
-      })()}
 
       {/* Mobile Drawer Overlay and Sidebar */}
       {!useImmersiveGameLayout && isMobileMenuOpen && (
@@ -3594,8 +3428,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'app-workspace p-1.5 sm:p-2 pb-28 md:pb-16 overflow-y-auto'}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : focusMode ? 'max-w-none mx-auto' : 'max-w-[1680px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'app-workspace p-4 sm:p-6 lg:p-8 pb-24 md:pb-10 overflow-y-auto'}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : focusMode ? 'max-w-none mx-auto' : 'max-w-[1440px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1">
                 <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-100 truncate">
@@ -4237,23 +4071,23 @@ export const App: React.FC = () => {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar - Clean, Subtle & Ergonomic */}
+      {/* Mobile Bottom Navigation Bar - Clean 4-item Apple-style bar */}
       {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && !useImmersiveGameLayout && (
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)] border-t border-[var(--color-border)] px-2 py-1.5 flex items-center justify-around shadow-sm">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-3 py-1.5 grid grid-cols-4 gap-1">
         <button
           type="button"
           onClick={() => {
             setProgramMode('school_erp');
             setCurrentTab('dashboard');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+          className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'dashboard'
-              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              ? 'text-[var(--color-primary-text)] font-semibold'
+              : 'text-[var(--color-text-muted)]'
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
-          <span>แดชบอร์ด</span>
+          <span>หน้าหลัก</span>
         </button>
 
         <button
@@ -4262,10 +4096,10 @@ export const App: React.FC = () => {
             setProgramMode('school_erp');
             setCurrentTab('attendance');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+          className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'attendance'
-              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              ? 'text-[var(--color-primary-text)] font-semibold'
+              : 'text-[var(--color-text-muted)]'
           }`}
         >
           <QrCode className="w-5 h-5" />
@@ -4276,28 +4110,12 @@ export const App: React.FC = () => {
           type="button"
           onClick={() => {
             setProgramMode('school_erp');
-            setCurrentTab('games');
-          }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-            programMode === 'school_erp' && currentTab === 'games'
-              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-          }`}
-        >
-          <Gamepad2 className="w-5 h-5" />
-          <span>ล่าสมบัติ</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setProgramMode('school_erp');
             setCurrentTab('portfolio');
           }}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+          className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'portfolio'
-              ? 'text-[var(--color-primary-text)] font-bold bg-[var(--color-primary-light)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              ? 'text-[var(--color-primary-text)] font-semibold'
+              : 'text-[var(--color-text-muted)]'
           }`}
         >
           <Briefcase className="w-5 h-5" />
@@ -4307,10 +4125,10 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowProfileModal(true)}
-          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-medium transition text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+          className="min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition text-[var(--color-text-muted)] cursor-pointer"
         >
-          <User className="w-5 h-5 text-[var(--color-primary-text)]" />
-          <span>โปรไฟล์</span>
+          <User className="w-5 h-5" />
+          <span>บัญชี</span>
         </button>
       </nav>
       )}
@@ -4582,71 +4400,6 @@ export const App: React.FC = () => {
           setShowCentralExamPopup(false);
         }}
       />
-
-      {/* Persistent Contextual Quick Action Floating Dock */}
-      {!useImmersiveGameLayout && (
-        <QuickActionDock
-          programMode={programMode}
-          currentTab={currentTab}
-          currentRole={currentRole}
-          isSuperAdminSchoolView={isSuperAdminSchoolView}
-          lang={lang}
-          focusMode={focusMode}
-          onToggleFocusMode={() => setFocusMode((prev) => !prev)}
-          onNavigateTab={(tab) => {
-            setProgramMode('school_erp');
-            navigateToAppTab(tab);
-          }}
-          onSetProgramMode={setProgramMode}
-          onOpenImportExport={
-            currentRole !== 'super_admin' || isSuperAdminSchoolView
-              ? (initialTab) => {
-                  if (initialTab) setImportExportInitialTab(initialTab);
-                  setShowImportExportModal(true);
-                }
-              : undefined
-          }
-          onOpenNotifications={
-            currentRole !== 'super_admin' || isSuperAdminSchoolView
-              ? () => setShowNotificationModal(true)
-              : undefined
-          }
-          pendingLeaveCount={schoolLeaveRequests.filter((l) => l.status === 'pending').length}
-          ungradedHomeworkCount={
-            schoolHomeworkSubmissions.filter((h) => h.status === 'submitted' || h.status === 'late').length
-          }
-          unreadNotifCount={unreadNotifCount}
-          showMobileBottomNav={currentRole !== 'super_admin' || isSuperAdminSchoolView}
-        />
-      )}
-
-      {/* Interactive Cartoon Mascot Hover Navigator & In-Module Guide */}
-      {!useImmersiveGameLayout && (
-        <InteractiveMascotGuide
-          enabled={isMascotGuideEnabled}
-          onToggleEnabled={(next) => handleToggleMascotGuide(next)}
-          currentRole={currentRole}
-          currentTab={currentTab}
-          programMode={programMode}
-          lang={lang}
-          students={schoolStudents}
-          courses={schoolCourses}
-          grades={schoolGrades}
-          attendance={schoolAttendance}
-          currentUser={currentUser}
-          gradingSystem={systemConfig.gradingSystem}
-          academicYear={timetableAcademicYear}
-          currentSemester={timetableSemester}
-          onOpenStudentProfile={(student) => setSelectedStudentForProfile(student)}
-          onNavigateTab={(tab) => navigateToAppTab(tab)}
-          onOpenFullGuide={(opts) => {
-            if (opts?.moduleId) setGuideModalInitialModule(opts.moduleId);
-            setGuideModalInitialRoleView(opts?.roleTab);
-            setShowGuideModal(true);
-          }}
-          focusMode={focusMode}
-        />
-      )}
 
       {/* Offline Status Connectivity Banner */}
       <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />

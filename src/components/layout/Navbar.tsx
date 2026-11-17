@@ -1,29 +1,24 @@
 import React from 'react';
-import { UserRole, SystemConfig, AppProgramMode, AppLanguage, AppTheme, School, AuthUser, ThemePalette } from '../../types';
-import { 
-  GraduationCap, 
-  Building2, 
-  Globe, 
-  LogOut, 
+import { UserRole, SystemConfig, AppProgramMode, AppLanguage, AppTheme, School, AuthUser, ThemePalette, Course, GradeRecord, Student, Teacher } from '../../types';
+import {
+  Building2,
+  Globe,
+  LogOut,
   ChevronDown,
   Sun,
   Moon,
-  Laptop,
   Smartphone,
   Menu,
   HelpCircle,
   FileSpreadsheet,
-  Sparkles,
   Bell,
-  SlidersHorizontal,
-  Compass,
   Maximize2,
-  Minimize2
+  Minimize2,
+  User,
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
-import { Course, GradeRecord, Student, Teacher } from '../../types';
 
 interface NavbarProps {
   currentTab?: string;
@@ -69,6 +64,11 @@ interface NavbarProps {
   onToggleFocusMode?: () => void;
 }
 
+const buildInitialsAvatar = (name?: string) => {
+  const ch = encodeURIComponent(((name || 'U').trim().charAt(0) || 'U').toUpperCase());
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="%23e2e8f0"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="700" fill="%23334155">${ch}</text></svg>`;
+};
+
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   currentUser,
@@ -88,11 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleMobileMenu,
   onOpenProfile,
   onOpenGuide,
-  onOpenLoginGuide,
-  isMascotGuideEnabled,
-  onToggleMascotGuide,
   onOpenImportExport,
-  onOpenOnboardingTutor,
   onSwitchToMobileMode,
   unreadCount = 0,
   onOpenNotifications,
@@ -111,107 +107,97 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const roleLabelMap: Record<UserRole, { th: string; en: string }> = {
     super_admin: { th: 'ผู้ดูแลระบบแม่ข่าย', en: 'Super Admin' },
-    admin: { th: 'ผู้บริหารโรงเรียน', en: 'Principal / Admin' },
-    teacher: { th: 'อาจารย์ผู้สอน', en: 'Teacher' },
+    admin: { th: 'ผู้บริหารโรงเรียน', en: 'Admin' },
+    teacher: { th: 'อาจารย์', en: 'Teacher' },
     student: { th: 'นักเรียน', en: 'Student' },
     parent: { th: 'ผู้ปกครอง', en: 'Parent' },
   };
 
+  const displayName =
+    currentUser?.fullNameTh ||
+    currentUser?.fullNameEn ||
+    currentUser?.email?.split('@')[0] ||
+    'User';
+
   return (
-    <header className="border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-2.5 sm:px-3.5 py-1 shadow-xs transition-colors w-full max-w-full">
-      {/* Single-Row Top Bar: Brand, Program Mode, Search, and User Controls */}
-      <div className="flex items-center justify-between gap-2 w-full min-w-0">
-        {/* Left: Mobile Menu Trigger + BaanPakKru Logo + School Switcher */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
-          {onToggleMobileMenu && (
-            <button
-              type="button"
-              onClick={onToggleMobileMenu}
-              className="lg:hidden p-1.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer shrink-0"
-              title="เปิดเมนู"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-          )}
+    <header className="h-14 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-6 w-full max-w-full">
+      {/* Zone 1: Brand + School Context */}
+      <div className="flex items-center gap-3 min-w-0 shrink-0">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer shrink-0"
+            aria-label={lang === 'th' ? 'เปิดเมนู' : 'Open menu'}
+          >
+            <Menu className="w-4.5 h-4.5" />
+          </button>
+        )}
 
-          <div className="flex items-center gap-1.5 shrink-0" title="BaanPakKru">
-            <BaanPakKruLogo size={26} />
-            <span className="font-extrabold text-sm tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
-              BaanPakKru
-            </span>
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <BaanPakKruLogo size={24} />
+          <span className="font-bold text-sm tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
+            BaanPakKru
+          </span>
+        </div>
 
-          {/* School Switcher */}
-          {canAccessSchoolOperations && (
+        {canAccessSchoolOperations && (
+          <>
+            <span className="hidden sm:inline text-[var(--color-border)] select-none">/</span>
             <button
               type="button"
               data-guide-id="nav-school-switcher"
               onClick={onOpenSchoolSwitcher}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-[11px] font-medium transition min-w-0 max-w-[115px] sm:max-w-[155px] cursor-pointer"
-              title={lang === 'th' ? 'สลับโรงเรียน / วิทยาเขต' : 'Switch School / Campus'}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-xs font-medium transition min-w-0 max-w-[140px] sm:max-w-[200px] cursor-pointer"
+              title={lang === 'th' ? 'สลับโรงเรียน' : 'Switch School'}
             >
-              {activeSchool.logoUrl ? (
-                <img src={activeSchool.logoUrl} alt={`โลโก้${activeSchool.nameTh}`} className="w-3.5 h-3.5 rounded-xs object-contain bg-white shrink-0" />
-              ) : (
-                <Building2 className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
-              )}
-              <span className="truncate">
-                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-              </span>
-              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)] shrink-0" />
+              <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
             </button>
-          )}
-        </div>
+          </>
+        )}
+      </div>
 
-        {/* Center: Inline Program Mode Switcher (Desktop) & Quick Search */}
+      {/* Zone 2: Clean Single-Line Navigation Links (Desktop) */}
+      {canAccessSchoolOperations && !focusMode && (
+        <nav
+          aria-label={lang === 'th' ? 'โหมดระบบ' : 'Workspace modes'}
+          className="hidden md:flex items-center gap-6 text-xs font-medium shrink-0"
+        >
+          {(
+            [
+              { id: 'school_erp', th: 'บริหารโรงเรียน', en: 'School SIS' },
+              { id: 'lms_classroom', th: 'ห้องเรียน LMS', en: 'Virtual LMS' },
+              { id: 'parent_portal', th: 'ผู้ปกครอง', en: 'Parent Portal' },
+            ] as const
+          ).map((mode) => {
+            const active = programMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                data-guide-id={`nav-program-${mode.id}`}
+                onClick={() => setProgramMode(mode.id)}
+                className={`relative py-4 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                  active
+                    ? 'text-[var(--color-text-title)] font-semibold'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                <span>{lang === 'th' ? mode.th : mode.en}</span>
+                {active && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-primary)] rounded-full" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
+      {/* Zone 3: Search + Alerts + Unified Account Menu */}
+      <div className="flex items-center gap-2 shrink-0">
         {canAccessSchoolOperations && (
-          <div className="hidden md:flex flex-1 items-center justify-center gap-1.5 min-w-0 px-1">
-            {!focusMode && (
-              <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
-                <button
-                  type="button"
-                  data-guide-id="nav-program-school_erp"
-                  onClick={() => setProgramMode('school_erp')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                    programMode === 'school_erp'
-                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  <Building2 className="w-3 h-3 shrink-0" />
-                  <span>{lang === 'th' ? 'บริหารโรงเรียน' : 'School SIS'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  data-guide-id="nav-program-lms_classroom"
-                  onClick={() => setProgramMode('lms_classroom')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                    programMode === 'lms_classroom'
-                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  <Laptop className="w-3 h-3 shrink-0" />
-                  <span>{lang === 'th' ? 'ห้องเรียน LMS' : 'Virtual LMS'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  data-guide-id="nav-program-parent_portal"
-                  onClick={() => setProgramMode('parent_portal')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
-                    programMode === 'parent_portal'
-                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                      : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  <Smartphone className="w-3 h-3 shrink-0" />
-                  <span>{lang === 'th' ? 'ผู้ปกครอง' : 'Parent Portal'}</span>
-                </button>
-              </div>
-            )}
-
+          <div className="hidden xl:block">
             <UnifiedNavbarSearch
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -231,291 +217,229 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right Controls: Exit Focus (when active), Notifications, Unified Settings/Menu Dropdown, Profile, Logout */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {focusMode && onToggleFocusMode && (
-            <button
-              type="button"
-              onClick={onToggleFocusMode}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0"
-              title={lang === 'th' ? 'ออกจากโหมดโฟกัส (Ctrl+Shift+F)' : 'Exit Focus Mode (Ctrl+Shift+F)'}
-            >
-              <Minimize2 className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'}</span>
-            </button>
-          )}
-
-          {/* Notification Center Trigger (collapsed in Focus Mode) */}
-          {!focusMode && onOpenNotifications && (
-            <button
-              type="button"
-              data-guide-id="nav-notifications"
-              onClick={onOpenNotifications}
-              className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer"
-              title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
-            >
-              <Bell className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[15px] h-3.5 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          <details
-            data-guide-id="nav-tools-menu"
-            className="relative"
-            onClick={(event) => {
-              if (event.target instanceof Element && event.target.closest('button:not([data-keep-open])')) {
-                event.currentTarget.removeAttribute('open');
-              }
-            }}
+        {focusMode && onToggleFocusMode && (
+          <button
+            type="button"
+            onClick={onToggleFocusMode}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0"
           >
-            <summary
-              aria-label={lang === 'th' ? 'เปิดเมนูและตั้งค่า' : 'Open menu and preferences'}
-              className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-[11px] font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-primary-light)] whitespace-nowrap"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-              <span className="hidden sm:inline">{lang === 'th' ? 'เมนู' : 'Menu'}</span>
-              <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
-            </summary>
-            <div className="absolute right-0 top-full z-50 mt-1.5 max-h-[75vh] w-64 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-lg space-y-1">
-              {/* Quick Preferences Section */}
-              <div className="px-2 pt-1 pb-2 border-b border-[var(--color-border)] space-y-2">
-                <div className="text-[10px] font-semibold text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'ตั้งค่าการแสดงผล' : 'Preferences'}
-                </div>
+            <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'}</span>
+          </button>
+        )}
 
-                {/* Eye-Care Theme Switcher */}
-                <div data-guide-id="nav-theme-toggle" className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-[var(--color-text-body)]">
-                    {lang === 'th' ? 'ธีมสี' : 'Theme'}
-                  </span>
-                  <div className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-                    <button
-                      type="button"
-                      data-keep-open
-                      onClick={() => setThemePalette('light_warm')}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
-                        isLight ? 'bg-[var(--color-card)] text-amber-700 shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                      }`}
-                    >
-                      <Sun className="w-3 h-3" />
-                      <span>{lang === 'th' ? 'สว่าง' : 'Light'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      data-keep-open
-                      onClick={() => setThemePalette('sapphire')}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
-                        !isLight ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                      }`}
-                    >
-                      <Moon className="w-3 h-3" />
-                      <span>{lang === 'th' ? 'มืด' : 'Dark'}</span>
-                    </button>
-                  </div>
-                </div>
+        {!focusMode && onOpenNotifications && (
+          <button
+            type="button"
+            data-guide-id="nav-notifications"
+            onClick={onOpenNotifications}
+            className="relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+            aria-label={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
+            title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600" />
+            )}
+          </button>
+        )}
 
-                {/* Language Switcher */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-[var(--color-text-body)]">
-                    {lang === 'th' ? 'ภาษา' : 'Language'}
-                  </span>
-                  <button
-                    type="button"
-                    data-guide-id="nav-lang-toggle"
-                    data-keep-open
-                    onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
-                  >
-                    <Globe className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
-                    <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
-                  </button>
-                </div>
+        {/* Unified Account & Preferences Menu */}
+        <details
+          data-guide-id="nav-tools-menu"
+          className="relative"
+          onClick={(event) => {
+            if (event.target instanceof Element && event.target.closest('button:not([data-keep-open])')) {
+              event.currentTarget.removeAttribute('open');
+            }
+          }}
+        >
+          <summary
+            aria-label={lang === 'th' ? 'บัญชีและการตั้งค่า' : 'Account & preferences'}
+            className="flex list-none cursor-pointer items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--color-card-subtle)] transition whitespace-nowrap"
+          >
+            <img
+              src={currentUser?.avatarUrl || buildInitialsAvatar(displayName)}
+              alt={displayName}
+              referrerPolicy="no-referrer"
+              className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+            />
+            <span className="hidden sm:inline text-xs font-medium text-[var(--color-text-title)] truncate max-w-[110px]">
+              {displayName.split(' ')[0]}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+          </summary>
 
-                {onToggleFocusMode && (
-                  <button
-                    type="button"
-                    data-guide-id="nav-focus-toggle"
-                    aria-pressed={focusMode}
-                    onClick={onToggleFocusMode}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      {focusMode ? (
-                        <Minimize2 className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
-                      ) : (
-                        <Maximize2 className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-                      )}
-                      <span>{lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}</span>
-                    </span>
-                    <span className={`text-[11px] font-semibold ${focusMode ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--color-text-muted)]'}`}>
-                      {focusMode ? (lang === 'th' ? 'เปิด' : 'ON') : (lang === 'th' ? 'ปิด' : 'OFF')}
-                    </span>
-                  </button>
-                )}
-
-                {!focusMode && (
-                  <div className="pt-0.5">
-                    <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-1.5 text-[11px]" />
-                  </div>
-                )}
-              </div>
-
-              {onToggleMascotGuide && (
-                <button
-                  type="button"
-                  data-guide-id="nav-guide-toggle"
-                  onClick={onToggleMascotGuide}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <Compass className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
-                    <span>{lang === 'th' ? 'ตัวการ์ตูนนำทาง' : 'Mascot Guide'}</span>
-                  </span>
-                  <span className={`text-[11px] font-semibold ${isMascotGuideEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
-                    {isMascotGuideEnabled ? (lang === 'th' ? 'เปิด' : 'ON') : (lang === 'th' ? 'ปิด' : 'OFF')}
-                  </span>
-                </button>
-              )}
-              {onSwitchToMobileMode && (
-                <button
-                  type="button"
-                  onClick={onSwitchToMobileMode}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Smartphone className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
-                  <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
-                </button>
-              )}
-              {canAccessSchoolOperations && onOpenGuide && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onOpenGuide('student')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <GraduationCap className="h-4 w-4 text-blue-700 dark:text-blue-300" />
-                    <span>{lang === 'th' ? 'คู่มือนักเรียน' : 'Student Guide'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOpenGuide('teacher')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                    <span>{lang === 'th' ? 'คู่มือคุณครู' : 'Teacher Guide'}</span>
-                  </button>
-                </>
-              )}
-              {currentTab !== 'students' && currentTab !== 'teachers' && currentTab !== 'courses'
-                && canAccessSchoolOperations
-                && onOpenImportExport
-                && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
-                  <button
-                    type="button"
-                    onClick={onOpenImportExport}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <FileSpreadsheet className="h-4 w-4 text-indigo-700 dark:text-indigo-300" />
-                    <span>{lang === 'th' ? 'นำเข้า/ส่งออกข้อมูล' : 'Import / Export'}</span>
-                  </button>
-                )}
-              {canAccessSchoolOperations && onOpenOnboardingTutor && (
-                <button
-                  type="button"
-                  onClick={onOpenOnboardingTutor}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Sparkles className="h-4 w-4 text-purple-700 dark:text-purple-300" />
-                  <span>{lang === 'th' ? 'ติวเตอร์ระบบ' : 'System Tutor'}</span>
-                </button>
-              )}
+          <div className="absolute right-0 top-full z-50 mt-2 max-h-[80vh] w-64 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-lg space-y-1">
+            <div className="px-2.5 py-2 border-b border-[var(--color-border)]">
+              <p className="text-xs font-semibold text-[var(--color-text-title)] truncate">{displayName}</p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {roleLabelMap[currentRole]?.[lang] || currentRole}
+              </p>
             </div>
-          </details>
 
-          {/* User Profile & Logout */}
-          <div className="flex items-center gap-1 pl-1 border-l border-[var(--color-border)]">
-            <button
-              type="button"
-              data-guide-id="nav-profile"
-              onClick={onOpenProfile}
-              aria-label={lang === 'th' ? 'เปิดโปรไฟล์' : 'Open profile'}
-              className="flex items-center gap-1.5 p-0.5 pr-1 rounded-lg hover:bg-[var(--color-card-subtle)] transition text-left group cursor-pointer"
-              title={lang === 'th' ? 'โปรไฟล์ & ผลงาน' : 'Profile & Portfolio'}
-            >
-              <img
-                src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
-                alt="Profile"
-                className="w-6 h-6 rounded-full object-cover border border-[var(--color-border)] shrink-0"
-              />
-              <div className="hidden xl:block text-left text-[11px] leading-tight">
-                <div className="font-bold text-[var(--color-text-title)] truncate max-w-[96px]">
-                  {currentUser?.fullNameTh?.split(' ')[0] || currentUser?.email?.split('@')[0]}
-                </div>
-                <div className="text-[10px] text-[var(--color-text-muted)] leading-none">
-                  {roleLabelMap[currentRole]?.[lang] || currentRole}
+            {onOpenProfile && (
+              <button
+                type="button"
+                data-guide-id="nav-profile"
+                onClick={onOpenProfile}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <User className="h-4 w-4 text-[var(--color-text-muted)]" />
+                <span>{lang === 'th' ? 'โปรไฟล์ของฉัน' : 'My Profile'}</span>
+              </button>
+            )}
+
+            {/* Mobile Mode Switcher (replaces extra 2nd navbar row on small screens) */}
+            {canAccessSchoolOperations && (
+              <div className="md:hidden px-2 py-1.5 border-t border-[var(--color-border)] space-y-1">
+                <p className="text-[11px] font-medium text-[var(--color-text-muted)] px-1">
+                  {lang === 'th' ? 'โหมดใช้งาน' : 'Workspace'}
+                </p>
+                {(
+                  [
+                    { id: 'school_erp', th: 'บริหารโรงเรียน', en: 'School SIS' },
+                    { id: 'lms_classroom', th: 'ห้องเรียน LMS', en: 'Virtual LMS' },
+                    { id: 'parent_portal', th: 'ผู้ปกครอง', en: 'Parent Portal' },
+                  ] as const
+                ).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setProgramMode(m.id)}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer ${
+                      programMode === m.id
+                        ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
+                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                    }`}
+                  >
+                    <span>{lang === 'th' ? m.th : m.en}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="px-2.5 py-2 border-t border-[var(--color-border)] space-y-2">
+              <div data-guide-id="nav-theme-toggle" className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-[var(--color-text-body)]">
+                  {lang === 'th' ? 'ธีมสี' : 'Theme'}
+                </span>
+                <div className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+                  <button
+                    type="button"
+                    data-keep-open
+                    onClick={() => setThemePalette('light_warm')}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium cursor-pointer ${
+                      isLight ? 'bg-[var(--color-card)] text-[var(--color-text-title)]' : 'text-[var(--color-text-muted)]'
+                    }`}
+                  >
+                    <Sun className="w-3 h-3" />
+                    <span>{lang === 'th' ? 'สว่าง' : 'Light'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-keep-open
+                    onClick={() => setThemePalette('sapphire')}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium cursor-pointer ${
+                      !isLight ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-muted)]'
+                    }`}
+                  >
+                    <Moon className="w-3 h-3" />
+                    <span>{lang === 'th' ? 'มืด' : 'Dark'}</span>
+                  </button>
                 </div>
               </div>
-            </button>
 
-            <button
-              type="button"
-              onClick={onLogout}
-              className="p-1.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800 dark:border-rose-700 dark:bg-rose-950 dark:hover:bg-rose-900 dark:text-rose-200 transition shrink-0 cursor-pointer"
-              title={lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-[var(--color-text-body)]">
+                  {lang === 'th' ? 'ภาษา' : 'Language'}
+                </span>
+                <button
+                  type="button"
+                  data-guide-id="nav-lang-toggle"
+                  data-keep-open
+                  onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-[11px] font-semibold cursor-pointer"
+                >
+                  <Globe className="w-3 h-3" />
+                  <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
+                </button>
+              </div>
+            </div>
+
+            {onToggleFocusMode && (
+              <button
+                type="button"
+                data-guide-id="nav-focus-toggle"
+                aria-pressed={focusMode}
+                onClick={onToggleFocusMode}
+                className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                  <span>{lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}</span>
+                </span>
+                <span className="text-[11px] text-[var(--color-text-muted)]">
+                  {focusMode ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            )}
+
+            {onSwitchToMobileMode && (
+              <button
+                type="button"
+                onClick={onSwitchToMobileMode}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <Smartphone className="h-4 w-4 text-[var(--color-text-muted)]" />
+                <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
+              </button>
+            )}
+
+            {currentTab !== 'students' && currentTab !== 'teachers' && currentTab !== 'courses'
+              && canAccessSchoolOperations
+              && onOpenImportExport
+              && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                <button
+                  type="button"
+                  onClick={onOpenImportExport}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'นำเข้า / ส่งออก' : 'Import / Export'}</span>
+                </button>
+              )}
+
+            {canAccessSchoolOperations && onOpenGuide && (
+              <button
+                type="button"
+                onClick={() => onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher')}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <HelpCircle className="h-4 w-4 text-[var(--color-text-muted)]" />
+                <span>{lang === 'th' ? 'คู่มือการใช้งาน' : 'User Guide'}</span>
+              </button>
+            )}
+
+            {!focusMode && (
+              <div className="pt-1 border-t border-[var(--color-border)]">
+                <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-1.5 text-[11px]" />
+              </div>
+            )}
+
+            <div className="pt-1 border-t border-[var(--color-border)]">
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
+              </button>
+            </div>
           </div>
-        </div>
+        </details>
       </div>
-
-      {/* Compact Program Mode Switcher on Small Screens Only (hidden during Focus Mode) */}
-      {canAccessSchoolOperations && !focusMode && (
-        <div className="md:hidden mt-1.5 pt-1.5 border-t border-[var(--color-border)] flex items-center justify-center overflow-x-auto no-scrollbar w-full">
-          <div className="inline-flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0">
-            <button
-              type="button"
-              onClick={() => setProgramMode('school_erp')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition shrink-0 cursor-pointer ${
-                programMode === 'school_erp'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)]'
-              }`}
-            >
-              <Building2 className="w-3 h-3 shrink-0" />
-              <span>{lang === 'th' ? 'บริหารโรงเรียน' : 'School SIS'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setProgramMode('lms_classroom')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition shrink-0 cursor-pointer ${
-                programMode === 'lms_classroom'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)]'
-              }`}
-            >
-              <Laptop className="w-3 h-3 shrink-0" />
-              <span>{lang === 'th' ? 'ห้องเรียน LMS' : 'Virtual LMS'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setProgramMode('parent_portal')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition shrink-0 cursor-pointer ${
-                programMode === 'parent_portal'
-                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-body)]'
-              }`}
-            >
-              <Smartphone className="w-3 h-3 shrink-0" />
-              <span>{lang === 'th' ? 'ผู้ปกครอง' : 'Parent Portal'}</span>
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };

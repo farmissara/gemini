@@ -563,21 +563,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
     const Icon = item.icon;
     const isActive = currentTab === item.id;
-    const tone = toneOf(item.id);
     return (
       <button
         key={item.id}
         type="button"
         data-nav-tab={item.id}
         onClick={() => { setCurrentTab(item.id); onClick?.(); }}
-        className={`${tone} w-full flex min-h-10 items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-[12px] transition cursor-pointer ${
+        className={`w-full flex min-h-9 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
           isActive
-            ? 'tone-active font-semibold'
+            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
-        <span className="flex items-center gap-2 truncate">
-          <span className="tone-chip w-5 h-5 rounded-md"><Icon className="w-3.5 h-3.5" /></span>
+        <span className="flex items-center gap-2.5 truncate">
+          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
         </span>
         {item.badge && !/^\d+$/.test(String(item.badge)) && (
@@ -599,7 +598,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
     const dedupedItems = Array.from(new Map(visibleItems.map((i) => [i.id, i])).values());
     return (
-      <aside className="w-15 border-r border-[var(--color-border)] bg-white/85 dark:bg-[#151f32]/85 backdrop-blur-[10px] text-[#1e293b] dark:text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+      <aside className="w-15 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
         {onToggleDesktopCollapse && (
           <div className="shrink-0 p-2 border-b border-[var(--color-border)] flex flex-col items-center gap-1.5">
             <button
@@ -636,7 +635,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {dedupedItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
-            const tone = toneOf(item.id);
             return (
               <button
                 key={item.id}
@@ -645,10 +643,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setCurrentTab(item.id)}
                 title={lang === 'th' ? item.labelTh : item.labelEn}
                 aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                className={`${tone} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                   isActive
-                    ? 'tone-active ring-1 ring-[var(--color-primary)]/40'
-                    : 'text-[#1e293b] dark:text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -664,7 +662,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-60 border-r border-[var(--color-border)] bg-white/85 dark:bg-[#151f32]/85 backdrop-blur-[10px] text-[#1e293b] dark:text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+    <aside className="w-60 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
       <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex items-center gap-1.5" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -758,10 +756,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
               const CategoryIcon = cat.icon;
-              const catTone = getCategoryTone(cat.id);
               const isActiveCategory = cat.id === activeCatId;
               return (
-                <div key={cat.id} className={`${catTone} space-y-1`}>
+                <div key={cat.id} className="space-y-1">
                   <button
                     type="button"
                     aria-expanded={!isCollapsed}
@@ -773,22 +770,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setCollapsed((previous) => ({ ...previous, [cat.id]: true }));
                       }
                     }}
-                    className={`w-full flex min-h-9 items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
+                    className={`w-full flex min-h-9 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
                       isActiveCategory
-                        ? 'tone-active border-transparent'
+                        ? 'text-[var(--color-text-title)]'
                         : !isCollapsed
-                          ? 'border-transparent bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
-                          : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+                          ? 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
+                          : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="tone-chip w-5 h-5 rounded-md"><CategoryIcon className="h-3.5 w-3.5" /></span>
+                      <CategoryIcon className="h-3.5 w-3.5 text-[var(--color-text-muted)] shrink-0" />
                       <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
-                      <span className="shrink-0 text-[10px] font-medium tabular-nums opacity-75">
-                        · {items.length}
-                      </span>
                     </span>
-                    {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+                    {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />}
                   </button>
                   {!isCollapsed && (
                     <div id={`sidebar-category-${cat.id}`} className="space-y-1 pl-1">
