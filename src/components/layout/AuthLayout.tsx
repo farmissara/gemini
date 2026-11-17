@@ -6,17 +6,12 @@ import {
   ArrowRight,
   BookOpen,
   Building2,
-  Calendar,
   CheckCircle2,
-  CreditCard,
   Eye,
   EyeOff,
-  FileText,
   Fingerprint,
-  Gamepad2,
   Globe,
   GraduationCap,
-  HeartPulse,
   Info,
   KeyRound,
   Lock,
@@ -27,7 +22,6 @@ import {
   Send,
   ShieldCheck,
   Sun,
-  UserCheck,
   Users,
   X,
 } from 'lucide-react';
@@ -61,8 +55,6 @@ interface AuthLayoutProps {
   themePalette?: ThemePalette;
   setThemePalette?: (palette: ThemePalette) => void;
 }
-
-type ShowcaseRole = 'admin' | 'teacher' | 'student' | 'parent';
 
 function getAuthErrorMessage(message: string, lang: AppLanguage): string {
   if (/error sending confirmation email|could not resend confirmation email|confirmation email|rate limit/i.test(message)) {
@@ -102,9 +94,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Below-the-fold interactive role preview
-  const [showcaseRole, setShowcaseRole] = useState<ShowcaseRole>('teacher');
 
   // Forgot Password Modal
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -453,95 +442,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
 
-  const roleShowcaseData: Record<
-    ShowcaseRole,
-    {
-      labelTh: string;
-      labelEn: string;
-      headlineTh: string;
-      headlineEn: string;
-      summaryTh: string;
-      summaryEn: string;
-      kpis: Array<{ labelTh: string; labelEn: string; value: string; noteTh: string; noteEn: string }>;
-      highlights: Array<{ titleTh: string; titleEn: string; descTh: string; descEn: string }>;
-    }
-  > = {
-    admin: {
-      labelTh: 'ผู้บริหาร',
-      labelEn: 'Administrator',
-      headlineTh: 'เห็นภาพรวมทั้งโรงเรียนในหน้าเดียว ทั้งสถิติมาเรียน ความเสี่ยง และงานอนุมัติ',
-      headlineEn: 'One executive console for school attendance, early warnings, and approvals',
-      summaryTh: 'รวมรายงานสถิติประจำวัน ตรวจจับผู้เรียนเสี่ยงขาดเรียน และอนุมัติสิทธิ์บุคลากรโดยไม่ต้องเปิดหลายไฟล์',
-      summaryEn: 'Unifies daily attendance metrics, student risk alerts, and staff governance in one calm workspace.',
-      kpis: [
-        { labelTh: 'มาตรงเวลาวันนี้', labelEn: 'On-Time Rate', value: '96.4%', noteTh: 'ประตูหลัก + คาบเรียน', noteEn: 'Gate & period sync' },
-        { labelTh: 'ใบลารออนุมัติ', labelEn: 'Pending Approvals', value: '3', noteTh: 'จัดครูสอนแทนทันที', noteEn: 'Quick substitute routing' },
-        { labelTh: 'เชื่อมต่อผู้ปกครอง', labelEn: 'Family Reach', value: '94%', noteTh: 'แจ้งเตือน LINE อัตโนมัติ', noteEn: 'Automated alerts' },
-      ],
-      highlights: [
-        { titleTh: 'สรุปเช้า + จอมอนิเตอร์ผู้บริหาร', titleEn: 'Morning Brief & TV Monitor', descTh: 'ดูแนวโน้มรายระดับชั้นและสั่งพิมพ์รายงานได้ทันที', descEn: 'Inspect grade-level trends and print board reports.' },
-        { titleTh: 'ตรวจจับคาบสอนชนอัตโนมัติ', titleEn: 'Conflict-Free Timetables', descTh: 'เตือนเมื่อครูหรือห้องเรียนถูกจัดซ้อนในคาบเดียวกัน', descEn: 'Instant double-booking prevention for rooms and teachers.' },
-        { titleTh: 'คุมสิทธิ์นโยบายรายโรงเรียน', titleEn: 'Granular School Policies', descTh: 'เปิด-ปิดสิทธิ์ครู นักเรียน และผู้ปกครองแบบเรียลไทม์', descEn: 'Toggle permissions across roles cleanly in one settings hub.' },
-      ],
-    },
-    teacher: {
-      labelTh: 'คุณครู',
-      labelEn: 'Teacher',
-      headlineTh: 'เช็คชื่อรายคาบ ตรวจการบ้าน และกรอกคะแนน ปพ.5 จบในเวิร์กโฟลว์เดียว',
-      headlineEn: 'Take period attendance, review homework, and update ปพ.5 grades faster',
-      summaryTh: 'ลดงานเอกสารซ้ำซ้อน ออก QR เช็คชื่อประจำคาบ และซิงค์คะแนนสอบอัตโนมัติเข้าสมุดคะแนนกลาง',
-      summaryEn: 'Eliminate duplicate spreadsheets with per-period QR check-ins and automated gradebook totals.',
-      kpis: [
-        { labelTh: 'คาบสอนวันนี้', labelEn: 'Classes Today', value: '4', noteTh: 'คาบถัดไป 10:20 น.', noteEn: 'Next period 10:20' },
-        { labelTh: 'การบ้านรอตรวจ', labelEn: 'To Review', value: '12', noteTh: 'ส่งตรงเวลา 92%', noteEn: '92% on-time' },
-        { labelTh: 'ความพร้อม ปพ.5', labelEn: 'Gradebook Sync', value: '100%', noteTh: 'คำนวณเกรดอัตโนมัติ', noteEn: 'Auto GPA & score' },
-      ],
-      highlights: [
-        { titleTh: 'สร้าง QR เช็คชื่อประจำคาบใน 1 คลิก', titleEn: '1-Click Period QR Check-in', descTh: 'ป้องกันสแกนซ้ำและบันทึกเวลาเข้าเรียนเข้าห้องทันที', descEn: 'Time-bound tokens sync directly to classroom logs.' },
-        { titleTh: 'โหมดครูด่วนบนมือถือ', titleEn: 'Mobile Quick Gradebook', descTh: 'ดูตารางสอนวันนี้และเช็คคะแนนระหว่างเดินสอนได้สะดวก', descEn: 'Check today’s periods and update marks from any phone.' },
-        { titleTh: 'คัดกรอง SDQ และบันทึกพฤติกรรม', titleEn: 'SDQ & Student Care Notes', descTh: 'ติดตามสุขภาวะนักเรียนและส่งต่อห้องพยาบาลอย่างเป็นระบบ', descEn: 'Track student well-being and coordinate with school clinic.' },
-      ],
-    },
-    student: {
-      labelTh: 'นักเรียน',
-      labelEn: 'Student',
-      headlineTh: 'เข้าสู่ระบบด้วยรหัสนักเรียน ดูตารางเรียน ส่งการบ้าน และทบทวนบทเรียน',
-      headlineEn: 'Sign in with Student ID for classes, assignments, and self-paced labs',
-      summaryTh: 'เห็นเฉพาะตารางเรียน คะแนน และงานของตัวเองอย่างเป็นส่วนตัว พร้อมบัตรนักเรียนดิจิทัลบนมือถือ',
-      summaryEn: 'Private personal workspace showing your own classes, grades, assignments, and digital ID card.',
-      kpis: [
-        { labelTh: 'คาบเรียนวันนี้', labelEn: 'Today’s Periods', value: '6', noteTh: 'แจ้งเตือนห้องเรียนถัดไป', noteEn: 'Room alerts ready' },
-        { labelTh: 'สถิติมาตรงเวลา', labelEn: 'On-Time Streak', value: '98%', noteTh: 'ปลดล็อกเหรียญความสม่ำเสมอ', noteEn: 'Attendance milestone' },
-        { labelTh: 'งานที่ได้รับมอบหมาย', labelEn: 'Open Tasks', value: '2', noteTh: 'ส่งไฟล์ผ่านมือถือได้ทันที', noteEn: 'Mobile upload ready' },
-      ],
-      highlights: [
-        { titleTh: 'เช็คชื่อด้วย QR และพิกัดโรงเรียน', titleEn: 'QR & Campus Geofence Check-in', descTh: 'สแกนเข้าประตูหรือเข้าคาบเรียนได้รวดเร็วเมื่อโรงเรียนเปิดสิทธิ์', descEn: 'Fast campus verification when enabled by your school.' },
-        { titleTh: 'สมุดพกและเกรดเฉลี่ยส่วนตัว', titleEn: 'Personal Academic Summary', descTh: 'ตรวจสอบคะแนนเก็บ รายวิชา และประวัติผลการเรียนย้อนหลัง', descEn: 'Inspect course scores and term GPA progress privately.' },
-        { titleTh: 'คลังข้อสอบและห้องแล็บ 3D', titleEn: 'Interactive Labs & Practice', descTh: 'ฝึกทำแบบทดสอบตามรายวิชาพร้อมตรวจคำตอบและแนวคิด', descEn: 'Subject-matched practice banks and interactive simulations.' },
-      ],
-    },
-    parent: {
-      labelTh: 'ผู้ปกครอง',
-      labelEn: 'Parent',
-      headlineTh: 'ติดตามเวลาเข้า-ออกโรงเรียน ผลการเรียน และใบแจ้งค่าเทอมบุตรหลาน',
-      headlineEn: 'Follow daily campus check-ins, grades, and tuition notices for your child',
-      summaryTh: 'มั่นใจทุกวันด้วยบันทึกเวลาเข้าประตูโรงเรียน ประกาศสำคัญ และใบเสร็จดิจิทัลในขอบเขตบุตรหลานเท่านั้น',
-      summaryEn: 'Peace of mind with verified arrival logs, school announcements, and scoped family billing.',
-      kpis: [
-        { labelTh: 'เวลาเข้าโรงเรียนวันนี้', labelEn: 'Arrival Today', value: '07:42', noteTh: 'ตรงเวลา · ประตูหลัก', noteEn: 'On-time · Main Gate' },
-        { labelTh: 'การลาและสุขภาพ', labelEn: 'Care & Leaves', value: 'ปกติ', noteTh: 'ส่งคำขอลาออนไลน์ได้', noteEn: 'Online leave requests' },
-        { labelTh: 'ค่าเล่าเรียนภาคเรียน', labelEn: 'Term Tuition', value: 'ชำระแล้ว', noteTh: 'ดาวน์โหลดใบเสร็จทันที', noteEn: 'Digital receipt ready' },
-      ],
-      highlights: [
-        { titleTh: 'ข้อมูลจำกัดเฉพาะบุตรหลาน (PDPA)', titleEn: 'Strict Child-Only Privacy', descTh: 'แยกข้อมูลนักเรียนคนอื่นออกอย่างสมบูรณ์เพื่อความปลอดภัยสูงสุด', descEn: 'Isolated access showing only your linked student profiles.' },
-        { titleTh: 'แจ้งเตือนเข้า-ออกและผลคะแนน', titleEn: 'Arrival & Grade Updates', descTh: 'รับทราบเวลาถึงโรงเรียนและพัฒนาการด้านการเรียนอย่างต่อเนื่อง', descEn: 'Stay informed about attendance habits and term results.' },
-        { titleTh: 'ชำระค่าเล่าเรียนผ่าน PromptPay QR', titleEn: 'PromptPay Tuition & Receipts', descTh: 'ตรวจสอบยอดค้างชำระและเก็บหลักฐานใบเสร็จไว้ในพอร์ทัล', descEn: 'Clear fee breakdowns with downloadable school receipts.' },
-      ],
-    },
-  };
-
-  const activeShowcase = roleShowcaseData[showcaseRole];
-
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
       {/* Unified Top Bar */}
@@ -552,15 +452,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <span>BaanPakKru</span>
             <span className="hidden xs:inline text-xs font-semibold text-[var(--color-text-muted)]">· บ้านพักครู</span>
           </a>
-
-          <nav aria-label={lang === 'th' ? 'นำทางหน้าแรก' : 'Landing navigation'} className="hidden md:flex items-center gap-6 text-xs font-semibold text-[var(--color-text-muted)]">
-            <a href="#roles-showcase" className="hover:text-[var(--color-text-title)] transition-colors">
-              {lang === 'th' ? 'ภาพรวมตามบทบาท' : 'Role Workspace'}
-            </a>
-            <a href="#platform-overview" className="hover:text-[var(--color-text-title)] transition-colors">
-              {lang === 'th' ? 'ความสามารถหลัก' : 'Core Modules'}
-            </a>
-          </nav>
 
           <div className="flex items-center gap-2 shrink-0">
             <PWAInstallButton lang={lang} variant="nav" className="h-9" />
@@ -588,13 +479,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 flex flex-col">
         {/* ===================================================================== */}
         {/* ABOVE THE FOLD: ARCHITECTURAL EDITORIAL SPLIT HERO + AUTH WORKSPACE  */}
         {/* ===================================================================== */}
         <section
           id="portal-auth"
-          className="editorial-grid-surface border-b border-[var(--color-border)]"
+          className="editorial-grid-surface flex-1"
         >
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
             {/* Compact Mobile Headline (Visible before form on mobile, integrated on lg+) */}
@@ -1150,194 +1041,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </div>
           </div>
         </section>
-
-        {/* ===================================================================== */}
-        {/* BELOW THE FOLD 1: INTERACTIVE 4-ROLE WORKSPACE PREVIEW                */}
-        {/* ===================================================================== */}
-        <section
-          id="roles-showcase"
-          className="border-b border-[var(--color-border)] bg-[var(--color-card)] py-10 sm:py-14"
-        >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div className="space-y-1.5 max-w-2xl">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-primary-text)]">
-                  {lang === 'th' ? 'ออกแบบตามบทบาทจริงในสถานศึกษา' : 'Role-Tailored Experience'}
-                </p>
-                <h2 className="text-2xl font-extrabold tracking-tight text-[var(--color-text-title)] sm:text-3xl">
-                  {lang === 'th'
-                    ? 'หน้าจอหลังเข้าสู่ระบบปรับตามหน้าที่ของผู้ใช้ทุกคน'
-                    : 'A focused workspace built for each school role'}
-                </h2>
-              </div>
-
-              {/* Same seg-tab-group control used inside DashboardView */}
-              <div className="seg-tab-group inline-flex gap-0.5 self-start md:self-auto overflow-x-auto max-w-full">
-                {(['admin', 'teacher', 'student', 'parent'] as ShowcaseRole[]).map((roleKey) => (
-                  <button
-                    key={roleKey}
-                    type="button"
-                    data-active={showcaseRole === roleKey}
-                    onClick={() => setShowcaseRole(roleKey)}
-                    className="seg-tab-btn"
-                  >
-                    {lang === 'th' ? roleShowcaseData[roleKey].labelTh : roleShowcaseData[roleKey].labelEn}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Unified Preview Frame Sharing Dashboard's Morning Brief + KPI Strip Grammar */}
-            <div className="saas-card overflow-hidden">
-              <div className="morning-brief-strip rounded-none border-0 border-b border-[var(--color-border)] p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="space-y-1.5 max-w-2xl">
-                  <div className="text-[11px] font-bold text-[var(--color-primary-text)]">
-                    {lang === 'th' ? `มุมมอง: ${activeShowcase.labelTh}` : `Workspace View: ${activeShowcase.labelEn}`}
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? activeShowcase.headlineTh : activeShowcase.headlineEn}
-                  </h3>
-                  <p className="text-xs sm:text-[13px] text-[var(--color-text-body)] leading-relaxed">
-                    {lang === 'th' ? activeShowcase.summaryTh : activeShowcase.summaryEn}
-                  </p>
-                </div>
-                <a
-                  href="#portal-auth"
-                  className="btn-action-primary px-4 py-2.5 self-start lg:self-auto shrink-0"
-                >
-                  <span>{lang === 'th' ? 'เข้าสู่ระบบเพื่อใช้งาน' : 'Sign in to workspace'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </a>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)] border-b border-[var(--color-border)]">
-                {activeShowcase.kpis.map((kpi) => (
-                  <div key={kpi.labelEn} className="p-5 space-y-1.5">
-                    <div className="type-meta">{lang === 'th' ? kpi.labelTh : kpi.labelEn}</div>
-                    <div className="flex items-baseline gap-2.5">
-                      <span className="type-kpi">{kpi.value}</span>
-                      <span className="type-meta">{lang === 'th' ? kpi.noteTh : kpi.noteEn}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[var(--color-border)] bg-[var(--color-card-subtle)]">
-                {activeShowcase.highlights.map((hl) => (
-                  <div key={hl.titleEn} className="p-5 space-y-1">
-                    <div className="type-card-title flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>{lang === 'th' ? hl.titleTh : hl.titleEn}</span>
-                    </div>
-                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed pl-5.5">
-                      {lang === 'th' ? hl.descTh : hl.descEn}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===================================================================== */}
-        {/* BELOW THE FOLD 2: CORE SCHOOL MODULES GRID                            */}
-        {/* ===================================================================== */}
-        <section
-          id="platform-overview"
-          className="bg-[var(--color-canvas)] py-10 sm:py-14"
-        >
-          <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl space-y-1.5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-primary-text)]">
-                {lang === 'th' ? 'ครบเครื่องงานสถานศึกษา' : 'Complete School Suite'}
-              </p>
-              <h2 className="text-2xl font-extrabold tracking-tight text-[var(--color-text-title)] text-balance sm:text-3xl">
-                {lang === 'th'
-                  ? 'เครื่องมือสำคัญของโรงเรียนในที่เดียว'
-                  : 'Essential school tools, all in one place'}
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                {
-                  id: 'academics',
-                  tone: 'tone-1',
-                  icon: BookOpen,
-                  title: lang === 'th' ? 'งานวิชาการ & สมุดคะแนน ปพ.5' : 'Academics & Gradebook',
-                  description: lang === 'th' ? 'จัดการรายวิชา คลังข้อสอบกลาง และคำนวณ GPA/ปพ.1 ได้ตรงตามหลักสูตร' : 'Courses, exam banks, and official GPA transcript summaries',
-                },
-                {
-                  id: 'attendance',
-                  tone: 'tone-2',
-                  icon: UserCheck,
-                  title: lang === 'th' ? 'เช็คชื่อ QR, NFC และ GPS' : 'QR, NFC & GPS Attendance',
-                  description: lang === 'th' ? 'รองรับทั้งเช็คชื่อหน้าประตู รายคาบ และสรุปผู้ขาดเรียนรายวันทันที' : 'Gate & per-period attendance with instant daily alerts',
-                },
-                {
-                  id: 'timetable',
-                  tone: 'tone-6',
-                  icon: Calendar,
-                  title: lang === 'th' ? 'ตารางสอนไร้คาบชน' : 'Conflict-Free Timetable',
-                  description: lang === 'th' ? 'ตรวจจับครูสอนซ้ำและห้องเรียนซ้อนอัตโนมัติพร้อมปฏิทินรายวัน' : 'Automatic teacher & room conflict detection and daily view',
-                },
-                {
-                  id: 'student-care',
-                  tone: 'tone-4',
-                  icon: HeartPulse,
-                  title: lang === 'th' ? 'ดูแลนักเรียน ห้องพยาบาล & SDQ' : 'Student Care & SDQ',
-                  description: lang === 'th' ? 'แบบประเมินพฤติกรรม SDQ และบันทึกการรับบริการห้องพยาบาลอย่างเป็นระบบ' : 'Confidential SDQ screening and campus clinic logging',
-                },
-                {
-                  id: 'digital-id',
-                  tone: 'tone-3',
-                  icon: CreditCard,
-                  title: lang === 'th' ? 'บัตรนักเรียนดิจิทัล & การเงิน' : 'Digital ID & Tuition Billing',
-                  description: lang === 'th' ? 'บัตรประจำตัวพร้อม QR บนมือถือ แจ้งยอดค่าเทอมและออกใบเสร็จออนไลน์' : 'Mobile student ID cards paired with PromptPay fee receipts',
-                },
-                {
-                  id: 'interactive-learning',
-                  tone: 'tone-5',
-                  icon: Gamepad2,
-                  title: lang === 'th' ? 'ห้องทดลอง & เกมประลองความรู้' : 'Labs & Interactive Practice',
-                  description: lang === 'th' ? 'กระตุ้นการมีส่วนร่วมในห้องเรียนด้วยห้องแล็บจำลองและควิซแข่งขัน' : 'Engage students with virtual labs and team quiz modes',
-                },
-              ].map((item) => (
-                <article
-                  key={item.id}
-                  className={`saas-card tone-card ${item.tone} p-5 flex items-start gap-4 transition hover:border-[var(--color-primary)]`}
-                >
-                  <span className="tone-chip h-11 w-11 rounded-xl shrink-0">
-                    <item.icon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 space-y-1">
-                    <h3 className="text-sm font-bold text-[var(--color-text-title)]">{item.title}</h3>
-                    <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">{item.description}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
       </main>
-
-      {/* Quiet Minimal Footer */}
-      <footer className="border-t border-[var(--color-border)] bg-[var(--color-card)] py-5 text-xs text-[var(--color-text-muted)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span className="font-semibold text-[var(--color-text-title)]">BaanPakKru · บ้านพักครู</span>
-            <span>·</span>
-            <span>{lang === 'th' ? 'ระบบช่วยลดภาระงานคุณครูและบริหารสถานศึกษา © 2026' : 'School Operations & Teacher Relief Platform © 2026'}</span>
-          </div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              {lang === 'th' ? 'มาตรฐานข้อมูลสถานศึกษา PDPA' : 'School PDPA Isolation'}
-            </span>
-          </div>
-        </div>
-      </footer>
 
       {/* Modal: Forgot / Reset Password (Privacy-Safe, No Personal Admin Email Leak) */}
       {showForgotPasswordModal && (
