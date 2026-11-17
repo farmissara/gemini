@@ -21,8 +21,6 @@ import {
   CheckCircle2, 
   Clock, 
   AlertCircle, 
-  Send, 
-  MessageSquare, 
   Filter,
   Camera,
   RefreshCw,
@@ -36,16 +34,12 @@ import {
   MapPin,
   Eye,
   Calendar,
-  ChevronRight,
-  ShieldCheck,
-  Compass,
   Upload
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
-import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { useQuickActionListener } from '../lib/quickActionEvents';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
-import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
+import { getModuleTone } from '../lib/moduleTheme';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -761,25 +755,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     return req.status === leaveFilter;
   });
 
-  const attendanceGroup = getModuleGroupMeta('attendance');
+  const pendingLeaveCount = scopedLeaveRequests.filter((r) => r.status === 'pending').length;
 
   return (
-    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-2`}>
-      {/* Compact Top Header */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex items-center gap-2">
-          <span className="tone-chip w-6 h-6 rounded-lg">
-            <QrCode className="w-3.5 h-3.5 shrink-0" />
+    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3`}>
+      {/* Compact SaaS Top Header */}
+      <div className="shrink-0 px-3.5 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
+        <div className="min-w-0 flex items-center gap-2.5">
+          <span className="tone-chip w-7 h-7 rounded-lg">
+            <QrCode className="w-4 h-4 shrink-0" />
           </span>
-          <div className="min-w-0 flex items-baseline gap-2">
-            <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
-              การเข้าเรียน &amp; สแกนประตู
-            </h1>
-            <span className="hidden xl:inline module-category-kicker">
-              {lang === 'th' ? attendanceGroup.labelTh : attendanceGroup.labelEn}
-            </span>
-          </div>
-          <ModuleTourTrigger moduleId="attendance" lang={lang} />
+          <h1 className="type-page-title truncate">
+            การเข้าเรียน &amp; สแกนประตู
+          </h1>
         </div>
 
         {/* Subtabs Navigation */}
@@ -790,20 +778,22 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               data-active={activeTab === 'gate_scanner'}
               onClick={() => setActiveTab('gate_scanner')}
               className="seg-tab-btn"
+              title="สแกนบัตรหน้าประตูและดูบันทึกเวลาแบบเรียลไทม์"
             >
-              1. สแกนประตู
+              สแกนประตู
             </button>
             <button
               type="button"
               data-active={activeTab === 'leave_approval'}
               onClick={() => setActiveTab('leave_approval')}
-              className="seg-tab-btn flex items-center gap-1"
+              className="seg-tab-btn flex items-center gap-1.5"
+              title="ตรวจสอบและอนุมัติคำขอลาออนไลน์"
             >
               <FileText className="w-3.5 h-3.5 shrink-0" />
-              <span>{isRestrictedViewer ? '2. ใบลาของฉัน' : '2. อนุมัติใบลา'}</span>
-              {scopedLeaveRequests.filter(r => r.status === 'pending').length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px] tabular-nums">
-                  {scopedLeaveRequests.filter(r => r.status === 'pending').length}
+              <span>{isRestrictedViewer ? 'ใบลาของฉัน' : 'อนุมัติใบลา'}</span>
+              {pendingLeaveCount > 0 && (
+                <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
+                  ({pendingLeaveCount})
                 </span>
               )}
             </button>
@@ -811,20 +801,22 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               type="button"
               data-active={activeTab === 'export_reports'}
               onClick={() => setActiveTab('export_reports')}
-              className="seg-tab-btn flex items-center gap-1"
+              className="seg-tab-btn flex items-center gap-1.5"
+              title="สรุปรายงานสถิติและส่งออกไฟล์ Excel/CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-              <span>3. ส่งออก</span>
+              <span>ส่งออกรายงาน</span>
             </button>
             {isAdminUser && (
               <button
                 type="button"
                 data-active={activeTab === 'period_qr'}
                 onClick={() => setActiveTab('period_qr')}
-                className="seg-tab-btn flex items-center gap-1"
+                className="seg-tab-btn flex items-center gap-1.5"
+                title="สร้างรหัส QR เช็คชื่อประจำคาบเรียน"
               >
                 <QrCode className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? '4. QR รายคาบ' : '4. Period QR'}</span>
+                <span>{lang === 'th' ? 'QR รายคาบ' : 'Period QR'}</span>
               </button>
             )}
             {!isRestrictedViewer && (
@@ -832,10 +824,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 type="button"
                 data-active={activeTab === 'school_gps'}
                 onClick={() => setActiveTab('school_gps')}
-                className="seg-tab-btn flex items-center gap-1"
+                className="seg-tab-btn flex items-center gap-1.5"
+                title="ตั้งค่าพิกัด GPS และรัศมีประตูโรงเรียน"
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'GPS' : 'GPS'}</span>
+                <span>GPS</span>
               </button>
             )}
           </div>
@@ -846,9 +839,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             data-guide-id="attendance-rapid-scanner"
             onClick={() => setShowRapidScannerModal(true)}
             className="btn-action-primary px-3 py-1.5"
+            title="เปิดโหมดกล้องสแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>สแกนรัว 1วิ/คน</span>
+            <span>สแกนรัว</span>
           </button>
         </nav>
       </div>
@@ -857,219 +851,216 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}
       {/* ========================================================================= */}
       {activeTab === 'gate_scanner' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           {/* Scanner Card: Students see ONLY their own locked pass; Teachers enter Student ID first */}
-          <div data-guide-id="attendance-scanner-box" className="p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
-            <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-              <Camera className="w-4 h-4 text-[var(--color-primary-text)]" />
-              <span>
-                {isRestrictedViewer
-                  ? 'เช็คชื่อผ่านประตูด้วยบัญชีของคุณ'
-                  : 'ศูนย์สแกนประตู & เช็คชื่อประจำจุด'}
-              </span>
-            </h2>
+          <div data-guide-id="attendance-scanner-box" className="saas-card text-[var(--color-text-body)]">
+            <div className="saas-card-header">
+              <h2 className="type-section-title flex items-center gap-2">
+                <Camera className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span>
+                  {isRestrictedViewer
+                    ? 'เช็คชื่อด้วยบัญชีของคุณ'
+                    : 'จุดสแกนประตู'}
+                </span>
+              </h2>
+            </div>
 
-            {/* Operator Identification & Quick Self Check-in */}
-            {!isRestrictedViewer && (
-              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                    ผู้ปฏิบัติงาน / บัญชีปัจจุบัน
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
-                    {currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'เจ้าหน้าที่'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
+            <div className="saas-card-body space-y-4">
+              {/* Operator Identification & Quick Self Check-in (hairline-separated, single elevation) */}
+              {!isRestrictedViewer && (
+                <div className="pb-3.5 border-b border-[var(--color-border)] flex items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
                       src={loggedInProfile.avatarUrl}
                       alt={loggedInProfile.userName}
-                      className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                      className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
                     />
                     <div className="min-w-0">
-                      <p className="font-bold text-[var(--color-text-title)] truncate text-xs">{loggedInProfile.userName}</p>
-                      <p className="text-[10px] text-[var(--color-text-muted)] truncate">{loggedInProfile.userRoleLabel}</p>
+                      <p className="type-card-title truncate">{loggedInProfile.userName}</p>
+                      <p className="type-meta truncate">
+                        {currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'เจ้าหน้าที่'} · {loggedInProfile.userRoleLabel}
+                      </p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleSelfCheckIn}
                     disabled={isSelfCheckingIn}
-                    className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
-                    title="บันทึกเวลาเข้าโรงเรียน/ปฏิบัติหน้าที่สำหรับตัวคุณเอง"
+                    className="btn-action-success px-2.5 py-1.5 shrink-0 disabled:opacity-50"
+                    title="บันทึกเวลาเข้าโรงเรียน/ปฏิบัติหน้าที่สำหรับบัญชีของคุณ"
+                    aria-label="เช็คชื่อบัญชีฉัน"
                   >
                     {isSelfCheckingIn ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                    <span>เช็คชื่อบัญชีฉัน</span>
+                    <span>เช็คชื่อฉัน</span>
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="space-y-3 text-xs">
-              {isRestrictedViewer ? (
-                matchedScannerStudent && (
-                  <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center gap-3">
-                    <img
-                      src={matchedScannerStudent.avatarUrl}
-                      alt={matchedScannerStudent.firstNameTh}
-                      className="w-10 h-10 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-bold text-[var(--color-text-title)] truncate">
-                        {matchedScannerStudent.firstNameTh} {matchedScannerStudent.lastNameTh}
-                      </p>
-                      <p className="text-[11px] text-[var(--color-text-muted)] font-mono truncate">
-                        รหัส: {matchedScannerStudent.studentIdNumber} • {matchedScannerStudent.room}
-                      </p>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <div className="space-y-1.5 pt-1 border-t border-[var(--color-border)]">
-                  <label className="text-[var(--color-text-body)] font-bold block">
-                    สแกนเช็คชื่อให้นักเรียน (กรอกรหัส Student ID) <span className="text-rose-700 dark:text-rose-300">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={scannerStudentIdInput}
-                    onChange={(e) => setScannerStudentIdInput(e.target.value)}
-                    placeholder={`เช่น ${students[0]?.studentIdNumber || 'ED-6901'}`}
-                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono text-xs"
-                  />
-                  {students.length > 0 && (
-                    <p className="text-[10px] text-[var(--color-text-muted)]">
-                      ตัวอย่าง: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
-                    </p>
-                  )}
-                  {trimmedScannerId && matchedScannerStudent && (
-                    <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 flex items-center gap-2.5">
+              <div className="space-y-3 type-body">
+                {isRestrictedViewer ? (
+                  matchedScannerStudent && (
+                    <div className="pb-3 border-b border-[var(--color-border)] flex items-center gap-3">
                       <img
                         src={matchedScannerStudent.avatarUrl}
                         alt={matchedScannerStudent.firstNameTh}
-                        className="w-8 h-8 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shrink-0"
+                        className="w-10 h-10 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
                       />
                       <div className="min-w-0">
-                        <p className="font-bold text-emerald-950 dark:text-emerald-100 truncate">
+                        <p className="type-card-title truncate">
                           {matchedScannerStudent.firstNameTh} {matchedScannerStudent.lastNameTh}
                         </p>
-                        <p className="text-[10px] text-emerald-800 dark:text-emerald-200 font-mono">
-                          ยืนยันรหัส {matchedScannerStudent.studentIdNumber} • {matchedScannerStudent.room}
+                        <p className="type-meta font-mono truncate">
+                          {matchedScannerStudent.studentIdNumber} · {matchedScannerStudent.room}
                         </p>
                       </div>
                     </div>
-                  )}
-                  {trimmedScannerId && !matchedScannerStudent && (
-                    <p className="text-[11px] text-rose-700 dark:text-rose-300 font-semibold">
-                      ไม่พบนักเรียนรหัส "{trimmedScannerId}" กรุณาตรวจสอบอีกครั้ง
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="text-[var(--color-text-body)] font-semibold block mb-1">สถานะการเข้าเรียน:</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                >
-                  <option value="present">ตรงเวลา (Present)</option>
-                  <option value="late">มาสาย (Late)</option>
-                  <option value="absent">ขาดเรียน (Absent)</option>
-                  <option value="sick">ลาป่วย (Sick Leave)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[var(--color-text-body)] font-semibold block mb-1">จุดประตู:</label>
-                <input
-                  type="text"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                />
-              </div>
-
-              {scannerDupReasons.length > 0 && (
-                <div className="p-2.5 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 text-[11px] flex items-center gap-1.5 font-semibold">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 shrink-0" />
-                  <span>{scannerDupReasons.join(', ')} (หากสแกนซ้ำจะเป็นการบันทึกซ้ำ)</span>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleSimulateScan}
-                disabled={isScanning || !matchedScannerStudent}
-                className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:bg-[var(--color-card-subtle)] disabled:text-[var(--color-text-muted)] disabled:border disabled:border-[var(--color-border)] disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
-              >
-                {isScanning ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>กำลังประมวลผลเซนเซอร์...</span>
-                  </>
+                  )
                 ) : (
-                  <>
-                    <QrCode className="w-4 h-4" />
-                    <span>{isRestrictedViewer ? 'สแกนบัตรของฉัน' : 'สแกนเช็คชื่อให้นักเรียน'}</span>
-                  </>
+                  <div className="space-y-1.5">
+                    <label className="type-label block">
+                      รหัสนักเรียน <span className="text-rose-600 dark:text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={scannerStudentIdInput}
+                      onChange={(e) => setScannerStudentIdInput(e.target.value)}
+                      placeholder={`เช่น ${students[0]?.studentIdNumber || 'ED-6901'}`}
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono type-body"
+                    />
+                    {students.length > 0 && !trimmedScannerId && (
+                      <p className="type-meta">
+                        ตัวอย่าง: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
+                      </p>
+                    )}
+                    {trimmedScannerId && matchedScannerStudent && (
+                      <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center gap-2.5">
+                        <img
+                          src={matchedScannerStudent.avatarUrl}
+                          alt={matchedScannerStudent.firstNameTh}
+                          className="w-8 h-8 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="type-card-title text-emerald-950 dark:text-emerald-100 truncate">
+                            {matchedScannerStudent.firstNameTh} {matchedScannerStudent.lastNameTh}
+                          </p>
+                          <p className="type-meta text-emerald-800 dark:text-emerald-200 font-mono">
+                            {matchedScannerStudent.studentIdNumber} · {matchedScannerStudent.room}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {trimmedScannerId && !matchedScannerStudent && (
+                      <p className="type-meta text-rose-700 dark:text-rose-300 font-semibold">
+                        ไม่พบนักเรียนรหัส "{trimmedScannerId}"
+                      </p>
+                    )}
+                  </div>
                 )}
-              </button>
 
-              {scannerResult && (
-                <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                  <span>{scannerResult}</span>
+                <div>
+                  <label className="type-label block mb-1">สถานะ</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] type-body"
+                  >
+                    <option value="present">ตรงเวลา</option>
+                    <option value="late">มาสาย</option>
+                    <option value="absent">ขาดเรียน</option>
+                    <option value="sick">ลาป่วย</option>
+                  </select>
                 </div>
-              )}
+
+                <div>
+                  <label className="type-label block mb-1">จุดประตู / หมายเหตุ</label>
+                  <input
+                    type="text"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] type-body"
+                  />
+                </div>
+
+                {scannerDupReasons.length > 0 && (
+                  <div className="p-2.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 type-meta flex items-center gap-1.5 font-semibold">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300 shrink-0" />
+                    <span>{scannerDupReasons.join(', ')}</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSimulateScan}
+                  disabled={isScanning || !matchedScannerStudent}
+                  className="w-full py-2.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:bg-[var(--color-card-subtle)] disabled:text-[var(--color-text-muted)] disabled:border disabled:border-[var(--color-border)] disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  {isScanning ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="w-4 h-4" />
+                      <span>{isRestrictedViewer ? 'สแกนบัตรของฉัน' : 'บันทึกเช็คชื่อ'}</span>
+                    </>
+                  )}
+                </button>
+
+                {scannerResult && (
+                  <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 type-meta font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                    <span>{scannerResult}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Realtime Attendance Logs & Filter Component */}
-          <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>
-                    บันทึกการเข้า-ออกโรงเรียน (
+          <div className="lg:col-span-2 saas-card text-[var(--color-text-body)]">
+            <div className="saas-card-header">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="type-section-title flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                    <span>บันทึกการเข้า-ออก</span>
+                  </h2>
+                  <span className="type-meta">
+                    ·{' '}
                     {startDateFilter && endDateFilter
                       ? startDateFilter === endDateFilter
                         ? startDateFilter
-                        : `${startDateFilter} ถึง ${endDateFilter}`
+                        : `${startDateFilter} – ${endDateFilter}`
                       : startDateFilter
                         ? `ตั้งแต่ ${startDateFilter}`
                         : endDateFilter
                           ? `ถึง ${endDateFilter}`
-                          : 'ทุกวันที่'}
-                    )
+                          : 'ทุกวันที่'}{' '}
+                    · {displayedFilteredLogs.length} รายการ
                   </span>
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">พบ {displayedFilteredLogs.length} รายการ</span>
-                  {!isRestrictedViewer && (
-                    <div className="seg-tab-group text-[11px]">
-                      <button
-                        type="button"
-                        data-active={logScopeFilter === 'all'}
-                        onClick={() => setLogScopeFilter('all')}
-                        className="seg-tab-btn px-2 py-0.5 text-[11px]"
-                      >
-                        ทั้งหมด ({filteredLogs.length})
-                      </button>
-                      <button
-                        type="button"
-                        data-active={logScopeFilter === 'mine'}
-                        onClick={() => setLogScopeFilter('mine')}
-                        className="seg-tab-btn px-2 py-0.5 text-[11px]"
-                      >
-                        เฉพาะบัญชีฉัน ({filteredLogs.filter(a => a.studentId === loggedInProfile.targetId || a.userName === loggedInProfile.userName || (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))).length})
-                      </button>
-                    </div>
-                  )}
                 </div>
+                {!isRestrictedViewer && (
+                  <div className="seg-tab-group mt-1.5">
+                    <button
+                      type="button"
+                      data-active={logScopeFilter === 'all'}
+                      onClick={() => setLogScopeFilter('all')}
+                      className="seg-tab-btn px-2 py-0.5 text-[11px]"
+                    >
+                      ทั้งหมด ({filteredLogs.length})
+                    </button>
+                    <button
+                      type="button"
+                      data-active={logScopeFilter === 'mine'}
+                      onClick={() => setLogScopeFilter('mine')}
+                      className="seg-tab-btn px-2 py-0.5 text-[11px]"
+                    >
+                      เฉพาะฉัน ({filteredLogs.filter(a => a.studentId === loggedInProfile.targetId || a.userName === loggedInProfile.userName || (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))).length})
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1077,7 +1068,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 <div
                   role="group"
                   aria-label={lang === 'th' ? 'สลับมุมมองรายวัน รายสัปดาห์ หรือเช็คชื่อโฮมรูม' : 'Switch attendance mode'}
-                  className="seg-tab-group text-xs"
+                  className="seg-tab-group"
                 >
                   <button
                     type="button"
@@ -1095,9 +1086,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       setAttendanceViewMode('weekly');
                     }}
                     className="seg-tab-btn flex items-center gap-1"
+                    title="ดูสรุปการเข้าเรียนรายสัปดาห์ (จันทร์–ศุกร์)"
                   >
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'รายสัปดาห์ (จ.–ศ.)' : 'Weekly (Mon–Fri)'}</span>
+                    <span>{lang === 'th' ? 'รายสัปดาห์' : 'Weekly'}</span>
                   </button>
                   {!isRestrictedViewer && (
                     <button
@@ -1108,116 +1100,120 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         setAttendanceViewMode('homeroom_rollcall');
                       }}
                       className="seg-tab-btn flex items-center gap-1"
+                      title="เช็คชื่อโฮมรูมทั้งห้องในคลิกเดียว"
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>{lang === 'th' ? 'เช็คชื่อทั้งห้อง (มาทุกคน)' : 'Homeroom Roll Call'}</span>
+                      <span>{lang === 'th' ? 'โฮมรูม' : 'Homeroom'}</span>
                     </button>
                   )}
                 </div>
 
-                {!isRestrictedViewer && (
+                {/* Compact Icon Action Group with Descriptive Tooltips */}
+                <div className="saas-control-group">
+                  {!isRestrictedViewer && (
+                    <button
+                      type="button"
+                      onClick={() => setShowImportModal(true)}
+                      className="btn-icon-tool"
+                      title="นำเข้าบันทึกการเข้าเรียนจาก Excel / CSV"
+                      aria-label="นำเข้าบันทึกการเข้าเรียนจาก Excel หรือ CSV"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setShowImportModal(true)}
-                    className="btn-tool-tone px-3 py-1.5"
-                    title="นำเข้าบันทึกการเข้าเรียนจากไฟล์ Excel (.xlsx) หรือ CSV สำหรับห้องเรียนขนาดใหญ่"
+                    onClick={() => handleExportDailyCsv()}
+                    className="btn-icon-tool text-emerald-700 dark:text-emerald-300"
+                    title="ดาวน์โหลดรายงานเข้า-ออกเป็นไฟล์ CSV (UTF-8)"
+                    aria-label="ดาวน์โหลดรายงานเข้า-ออกเป็นไฟล์ CSV"
                   >
-                    <Upload className="w-3.5 h-3.5 tone-text" />
-                    <span>Import Excel/CSV</span>
+                    <Download className="w-3.5 h-3.5" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleExportDailyCsv()}
-                  className="btn-action-success px-3 py-1.5"
-                  title="ส่งออกรายงานการเข้าเรียนประจำวัน/ช่วงวันที่ที่กรองเป็นไฟล์ CSV พร้อมชื่อนักเรียนและสถานะ"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download CSV</span>
-                </button>
+                </div>
               </div>
             </div>
 
-            {importSuccessNotice && (
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  {importSuccessNotice}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setImportSuccessNotice(null)}
-                  className="opacity-70 hover:opacity-100 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            {/* Filter Component: Functional Groups (Date Range vs Room & Course/Teacher) */}
-            <div className="toolbar-filter-zone space-y-2 text-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="fn-group-tone w-full lg:w-auto">
-                  <span className="fn-group-label">
-                    <Filter className="w-3 h-3" />
-                    <span>ช่วงวันที่</span>
+            <div className="saas-card-body space-y-4">
+              {importSuccessNotice && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 type-meta font-semibold flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    {importSuccessNotice}
                   </span>
-                  <div className="flex flex-wrap items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDatePreset('today')}
-                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
-                    >
-                      วันนี้
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDatePreset('7d')}
-                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
-                    >
-                      7 วัน
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDatePreset('month')}
-                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
-                    >
-                      เดือนนี้
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyQuickDatePreset('all')}
-                      className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--tone-soft)] text-[11px] font-semibold cursor-pointer"
-                    >
-                      ทั้งหมด
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setImportSuccessNotice(null)}
+                    className="opacity-70 hover:opacity-100 cursor-pointer"
+                    aria-label="ปิดการแจ้งเตือน"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Filter Component: Clean Grouped Controls */}
+              <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-[var(--color-border)]">
+                <div className="saas-control-group">
+                  <span className="px-1.5 type-meta flex items-center gap-1" title="ช่วงวันที่">
+                    <Filter className="w-3 h-3 text-[var(--color-primary-text)]" />
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('today')}
+                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                  >
+                    วันนี้
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('7d')}
+                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                  >
+                    7 วัน
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('month')}
+                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                  >
+                    เดือนนี้
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickDatePreset('all')}
+                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                  >
+                    ทั้งหมด
+                  </button>
+                </div>
+
+                <div className="saas-control-group">
                   <input
                     type="date"
                     aria-label="ตั้งแต่วันที่"
                     value={startDateFilter}
                     onChange={(e) => setStartDateFilter(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] tabular-nums"
                   />
-                  <span className="text-[11px] text-[var(--color-text-muted)]">ถึง</span>
+                  <span className="type-meta px-0.5">–</span>
                   <input
                     type="date"
                     aria-label="ถึงวันที่"
                     value={endDateFilter}
                     onChange={(e) => setEndDateFilter(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)]"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] tabular-nums"
                   />
                 </div>
 
-                <div className="fn-group flex-1">
-                  <span className="fn-group-label text-[var(--color-text-muted)]">ห้องเรียน &amp; วิชา/ครู</span>
+                <div className="saas-control-group flex-1 min-w-[220px]">
                   <select
                     aria-label="กรองตามห้องเรียน"
                     value={classFilter}
                     onChange={(e) => setClassFilter(e.target.value)}
-                    className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
                   >
-                    <option value="all">ทุกห้องเรียน ({availableClasses.length})</option>
+                    <option value="all">ทุกห้อง ({availableClasses.length})</option>
                     {availableClasses.map((room) => (
                       <option key={room} value={room}>
                         {room}
@@ -1238,12 +1234,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         }
                       }
                     }}
-                    className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[180px]"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[160px]"
                   >
-                    <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                    <option value="all">ครูทุกคน ({courseTeacherOptions.length})</option>
                     {courseTeacherOptions.map((opt) => (
                       <option key={opt.key} value={opt.key}>
-                        {opt.label} ({opt.count} วิชา)
+                        {opt.label} ({opt.count})
                       </option>
                     ))}
                   </select>
@@ -1252,12 +1248,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     aria-label="กรองตามรายวิชา"
                     value={courseFilter}
                     onChange={(e) => setCourseFilter(e.target.value)}
-                    className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[200px]"
+                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[180px]"
                   >
                     <option value="all">
                       {teacherFilter === 'all'
-                        ? 'ทุกรายวิชา (เช็คชื่อประตูรวม)'
-                        : `ทุกวิชาของครูที่เลือก (${teacherFilteredCourses.length})`}
+                        ? 'ทุกรายวิชา'
+                        : `วิชาครู (${teacherFilteredCourses.length})`}
                     </option>
                     {teacherFilteredCourses.map((course) => (
                       <option key={course.id} value={course.id}>
@@ -1270,260 +1266,266 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     <button
                       type="button"
                       onClick={handleResetLogFilters}
-                      className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                      className="btn-icon-tool text-rose-600 dark:text-rose-300"
+                      title="รีเซ็ตตัวกรองเป็นค่าเริ่มต้น"
+                      aria-label="รีเซ็ตตัวกรองเป็นค่าเริ่มต้น"
                     >
-                      รีเซ็ต
+                      <RefreshCw className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
               </div>
-            </div>
 
-            {attendanceViewMode === 'homeroom_rollcall' && !isRestrictedViewer ? (
-              <div className="space-y-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/70 bg-emerald-50/40 dark:bg-emerald-950/20 p-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 dark:border-emerald-800/60 pb-2.5">
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>เช็คชื่อโฮมรูมด่วน — มาทุกคนเป็นค่าเริ่มต้น (ติ๊กเฉพาะคนขาด/สาย/ลา)</span>
-                    </h3>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      ระบบดึงใบลาที่อนุมัติแล้วมาเติมให้อัตโนมัติ ลดเวลาเช็คชื่อเหลือไม่ถึง 30 วินาทีต่อห้อง
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      aria-label="เลือกห้องเช็คชื่อโฮมรูม"
-                      value={effectiveRollCallRoom}
-                      onChange={(e) => {
-                        setRollCallRoom(e.target.value);
-                        setRollCallOverrides({});
-                      }}
-                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-semibold text-[var(--color-text-title)]"
-                    >
-                      {availableClasses.length === 0 ? (
-                        <option value="all">นักเรียนทั้งหมด</option>
-                      ) : (
-                        availableClasses.map((room) => (
-                          <option key={room} value={room}>
-                            ห้อง {room} ({scopedStudents.filter((s) => s.room === room).length} คน)
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <input
-                      type="date"
-                      aria-label="วันที่เช็คชื่อโฮมรูม"
-                      value={rollCallDate}
-                      onChange={(e) => {
-                        setRollCallDate(e.target.value);
-                        setRollCallOverrides({});
-                      }}
-                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setRollCallOverrides({})}
-                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] font-semibold text-[var(--color-text-body)] cursor-pointer"
-                    >
-                      รีเซ็ตค่าเริ่มต้น
-                    </button>
-                  </div>
-                </div>
-
-                {rollCallStudents.length === 0 ? (
-                  <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">
-                    ไม่พบรายชื่อนักเรียนในห้องที่เลือก
-                  </p>
-                ) : (
-                  <>
-                    <div className="max-h-96 overflow-y-auto divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                      {rollCallStudents.map((stu, idx) => {
-                        const def = getDefaultRollCallStatus(stu);
-                        const currentStatus = rollCallOverrides[stu.id] || def.status;
-                        const statusOptions: { value: AttendanceStatus; label: string; activeCls: string }[] = [
-                          { value: 'present', label: 'มาเรียน', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
-                          { value: 'late', label: 'มาสาย', activeCls: 'bg-amber-500 text-slate-950 border-amber-500' },
-                          { value: 'sick', label: 'ลาป่วย', activeCls: 'bg-sky-600 text-white border-sky-600' },
-                          { value: 'leave', label: 'ลากิจ', activeCls: 'bg-indigo-600 text-white border-indigo-600' },
-                          { value: 'absent', label: 'ขาด', activeCls: 'bg-rose-600 text-white border-rose-600' },
-                        ];
-                        return (
-                          <div key={stu.id} className="px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="w-6 text-[11px] font-mono text-[var(--color-text-muted)] text-right shrink-0">
-                                {idx + 1}.
-                              </span>
-                              <img
-                                src={stu.avatarUrl}
-                                alt={stu.firstNameTh}
-                                className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
-                              />
-                              <div className="min-w-0">
-                                <div className="font-bold text-[var(--color-text-title)] truncate">
-                                  {stu.firstNameTh} {stu.lastNameTh}
-                                  {def.source === 'leave' && (
-                                    <span className="ml-1.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
-                                      (มีใบลาอนุมัติ)
-                                    </span>
-                                  )}
-                                  {def.source === 'recorded' && (
-                                    <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                      (เช็คแล้ว)
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                                  {stu.studentIdNumber} · {stu.room}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-1 shrink-0">
-                              {statusOptions.map((opt) => {
-                                const selected = currentStatus === opt.value;
-                                return (
-                                  <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => setRollCallOverrides((prev) => ({ ...prev, [stu.id]: opt.value }))}
-                                    className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer ${
-                                      selected
-                                        ? opt.activeCls
-                                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                                    }`}
-                                  >
-                                    {opt.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
+              {attendanceViewMode === 'homeroom_rollcall' && !isRestrictedViewer ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[var(--color-border)]">
+                    <div>
+                      <h3 className="type-card-title flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span>เช็คชื่อโฮมรูมด่วน</span>
+                      </h3>
+                      <p className="type-meta">
+                        ตั้งค่ามาทุกคนเป็นค่าเริ่มต้น และดึงใบลาอนุมัติแล้วให้อัตโนมัติ
+                      </p>
                     </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                      <div className="text-xs font-semibold text-[var(--color-text-body)] tabular-nums">
-                        {(() => {
-                          const resolvedList = rollCallStudents.map((s) => rollCallOverrides[s.id] || getDefaultRollCallStatus(s).status);
-                          const presentN = resolvedList.filter((st) => st === 'present').length;
-                          const lateN = resolvedList.filter((st) => st === 'late').length;
-                          const leaveN = resolvedList.filter((st) => st === 'sick' || st === 'leave').length;
-                          const absentN = resolvedList.filter((st) => st === 'absent').length;
-                          return `รวม ${rollCallStudents.length} คน: มาเรียน ${presentN} · สาย ${lateN} · ลา ${leaveN} · ขาด ${absentN}`;
-                        })()}
-                      </div>
+                    <div className="saas-control-group">
+                      <select
+                        aria-label="เลือกห้องเช็คชื่อโฮมรูม"
+                        value={effectiveRollCallRoom}
+                        onChange={(e) => {
+                          setRollCallRoom(e.target.value);
+                          setRollCallOverrides({});
+                        }}
+                        className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-card)] font-semibold text-[var(--color-text-title)]"
+                      >
+                        {availableClasses.length === 0 ? (
+                          <option value="all">นักเรียนทั้งหมด</option>
+                        ) : (
+                          availableClasses.map((room) => (
+                            <option key={room} value={room}>
+                              ห้อง {room} ({scopedStudents.filter((s) => s.room === room).length})
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      <input
+                        type="date"
+                        aria-label="วันที่เช็คชื่อโฮมรูม"
+                        value={rollCallDate}
+                        onChange={(e) => {
+                          setRollCallDate(e.target.value);
+                          setRollCallOverrides({});
+                        }}
+                        className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] tabular-nums"
+                      />
                       <button
                         type="button"
-                        disabled={isSavingRollCall}
-                        onClick={handleSaveHomeroomRollCall}
-                        className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                        onClick={() => setRollCallOverrides({})}
+                        className="btn-icon-tool"
+                        title="รีเซ็ตค่าเริ่มต้นทั้งหมด"
+                        aria-label="รีเซ็ตค่าเริ่มต้นทั้งหมด"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>บันทึกเช็คชื่อทั้งห้อง ({rollCallStudents.length} คน)</span>
+                        <RefreshCw className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </>
-                )}
-              </div>
-            ) : attendanceViewMode === 'weekly' ? (
-              <WeeklyAttendanceGrid
-                students={scopedStudents}
-                attendance={scopedAttendance}
-                periodAttendance={periodAttendance}
-                leaveRequests={scopedLeaveRequests}
-                selectedWeekDate={selectedWeekDate}
-                onChangeWeekDate={setSelectedWeekDate}
-                selectedCourse={selectedCourseObj}
-                classFilter={classFilter}
-                lang={lang}
-                onSyncDateRangeToWeek={(monIso, friIso) => {
-                  setStartDateFilter(monIso);
-                  setEndDateFilter(friIso);
-                  handleExportDailyCsv({ start: monIso, end: friIso });
-                }}
-              />
-            ) : (
-              <div className="divide-y divide-[var(--color-border)]">
-                {displayedFilteredLogs.length === 0 ? (
-                  <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">
-                    {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
-                  </p>
-                ) : (
-                  <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
-                    const student = students.find(s => s.id === log.studentId);
-                    const name = log.userName || (student ? `${student.firstNameTh} ${student.lastNameTh}` : log.studentId);
-                    const photoSrc = log.photoUrl || log.userAvatar || student?.avatarUrl;
-                    const isMyRecord = log.studentId === loggedInProfile.targetId ||
-                      log.userName === loggedInProfile.userName ||
-                      (currentUser && (log.studentId === currentUser.id || log.studentId === currentUser.studentRecordId));
+                  </div>
 
-                    return (
-                      <div key={log.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-3">
-                          <div 
-                            onClick={() => log.photoUrl && setSelectedPhotoModal(log)}
-                            className={`relative w-10 h-10 rounded-xl overflow-hidden bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0 ${
-                              log.photoUrl ? 'cursor-pointer ring-2 ring-[var(--color-primary)]/50 hover:opacity-90' : ''
-                            }`}
-                          >
-                            <img src={photoSrc} alt={name} className="w-full h-full object-cover" />
-                            {log.photoUrl && (
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100">
-                                <Eye className="w-3.5 h-3.5" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-[var(--color-text-title)]">{name}</span>
-                              {isMyRecord && (
-                                <span className="px-1.5 py-0.2 rounded-sm bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[9px] border border-emerald-300 dark:border-emerald-700">
-                                  บัญชีของคุณ
+                  {rollCallStudents.length === 0 ? (
+                    <p className="type-meta py-6 text-center">
+                      ไม่พบรายชื่อนักเรียนในห้องที่เลือก
+                    </p>
+                  ) : (
+                    <>
+                      <div className="max-h-96 overflow-y-auto divide-y divide-[var(--color-border)]">
+                        {rollCallStudents.map((stu, idx) => {
+                          const def = getDefaultRollCallStatus(stu);
+                          const currentStatus = rollCallOverrides[stu.id] || def.status;
+                          const statusOptions: { value: AttendanceStatus; label: string; activeCls: string }[] = [
+                            { value: 'present', label: 'มา', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+                            { value: 'late', label: 'สาย', activeCls: 'bg-amber-500 text-slate-950 border-amber-500' },
+                            { value: 'sick', label: 'ป่วย', activeCls: 'bg-sky-600 text-white border-sky-600' },
+                            { value: 'leave', label: 'กิจ', activeCls: 'bg-indigo-600 text-white border-indigo-600' },
+                            { value: 'absent', label: 'ขาด', activeCls: 'bg-rose-600 text-white border-rose-600' },
+                          ];
+                          return (
+                            <div key={stu.id} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="w-5 type-meta font-mono text-right shrink-0">
+                                  {idx + 1}.
                                 </span>
-                              )}
-                              {log.recordType === 'check_out' ? (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold">ออก</span>
-                              ) : (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">เข้า</span>
-                              )}
-                              <span className="text-[var(--color-text-muted)] font-mono text-[11px]">({log.studentId})</span>
+                                <img
+                                  src={stu.avatarUrl}
+                                  alt={stu.firstNameTh}
+                                  className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <div className="type-card-title truncate">
+                                    {stu.firstNameTh} {stu.lastNameTh}
+                                    {def.source === 'leave' && (
+                                      <span className="ml-1.5 type-meta text-sky-700 dark:text-sky-300 font-semibold">
+                                        · ลาอนุมัติ
+                                      </span>
+                                    )}
+                                    {def.source === 'recorded' && (
+                                      <span className="ml-1.5 type-meta text-emerald-700 dark:text-emerald-300 font-semibold">
+                                        · เช็คแล้ว
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="type-meta font-mono">
+                                    {stu.studentIdNumber} · {stu.room}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1 shrink-0">
+                                {statusOptions.map((opt) => {
+                                  const selected = currentStatus === opt.value;
+                                  return (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      onClick={() => setRollCallOverrides((prev) => ({ ...prev, [stu.id]: opt.value }))}
+                                      className={`px-2 py-1 rounded-md border text-[11px] font-bold transition cursor-pointer ${
+                                        selected
+                                          ? opt.activeCls
+                                          : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                                      }`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <div className="text-[11px] text-[var(--color-text-muted)]">
-                              เวลา {log.time} น. • {log.location?.geofenceZoneName || log.remarks || 'สแกนประตู'}
-                              {log.location?.distanceMeters !== undefined && ` (GPS ${log.location.distanceMeters} ม.)`}
-                              {log.recordedBy && ` • บันทึกโดย: ${log.recordedBy}`}
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+                        <div className="type-label tabular-nums">
+                          {(() => {
+                            const resolvedList = rollCallStudents.map((s) => rollCallOverrides[s.id] || getDefaultRollCallStatus(s).status);
+                            const presentN = resolvedList.filter((st) => st === 'present').length;
+                            const lateN = resolvedList.filter((st) => st === 'late').length;
+                            const leaveN = resolvedList.filter((st) => st === 'sick' || st === 'leave').length;
+                            const absentN = resolvedList.filter((st) => st === 'absent').length;
+                            return `${rollCallStudents.length} คน · มา ${presentN} · สาย ${lateN} · ลา ${leaveN} · ขาด ${absentN}`;
+                          })()}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isSavingRollCall}
+                          onClick={handleSaveHomeroomRollCall}
+                          className="btn-action-success px-4 py-2 disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>บันทึกทั้งห้อง ({rollCallStudents.length})</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : attendanceViewMode === 'weekly' ? (
+                <WeeklyAttendanceGrid
+                  students={scopedStudents}
+                  attendance={scopedAttendance}
+                  periodAttendance={periodAttendance}
+                  leaveRequests={scopedLeaveRequests}
+                  selectedWeekDate={selectedWeekDate}
+                  onChangeWeekDate={setSelectedWeekDate}
+                  selectedCourse={selectedCourseObj}
+                  classFilter={classFilter}
+                  lang={lang}
+                  onSyncDateRangeToWeek={(monIso, friIso) => {
+                    setStartDateFilter(monIso);
+                    setEndDateFilter(friIso);
+                    handleExportDailyCsv({ start: monIso, end: friIso });
+                  }}
+                />
+              ) : (
+                <div className="divide-y divide-[var(--color-border)]">
+                  {displayedFilteredLogs.length === 0 ? (
+                    <p className="type-meta py-8 text-center">
+                      {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
+                    </p>
+                  ) : (
+                    <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
+                      const student = students.find(s => s.id === log.studentId);
+                      const name = log.userName || (student ? `${student.firstNameTh} ${student.lastNameTh}` : log.studentId);
+                      const photoSrc = log.photoUrl || log.userAvatar || student?.avatarUrl;
+                      const isMyRecord = log.studentId === loggedInProfile.targetId ||
+                        log.userName === loggedInProfile.userName ||
+                        (currentUser && (log.studentId === currentUser.id || log.studentId === currentUser.studentRecordId));
+
+                      return (
+                        <div key={log.id} className="py-2.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              onClick={() => log.photoUrl && setSelectedPhotoModal(log)}
+                              title={log.photoUrl ? 'คลิกเพื่อดูรูปถ่ายเช็คชื่อ' : undefined}
+                              className={`relative w-9 h-9 rounded-lg overflow-hidden bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0 ${
+                                log.photoUrl ? 'cursor-pointer ring-2 ring-[var(--color-primary)]/40 hover:opacity-90' : ''
+                              }`}
+                            >
+                              <img src={photoSrc} alt={name} className="w-full h-full object-cover" />
+                              {log.photoUrl && (
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100">
+                                  <Eye className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-1.5">
+                                <span className="type-card-title truncate">{name}</span>
+                                <span className="type-meta">
+                                  · {log.recordType === 'check_out' ? 'ออก' : 'เข้า'} · <span className="font-mono">{log.studentId}</span>
+                                  {isMyRecord && <span className="text-emerald-700 dark:text-emerald-300 font-semibold"> · บัญชีคุณ</span>}
+                                </span>
+                              </div>
+                              <div className="type-meta truncate">
+                                {log.time} น. · {log.location?.geofenceZoneName || log.remarks || 'สแกนประตู'}
+                                {log.location?.distanceMeters !== undefined && ` · GPS ${log.location.distanceMeters} ม.`}
+                                {log.recordedBy && ` · โดย ${log.recordedBy}`}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="text-right">
-                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                            log.status === 'present' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
-                            log.status === 'late' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                          }`}>
-                            {log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}
-                          </span>
+                          <div className="text-right shrink-0">
+                            <span className={`inline-flex items-center gap-1 type-label ${
+                              log.status === 'present'
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : log.status === 'late'
+                                  ? 'text-amber-700 dark:text-amber-300'
+                                  : 'text-rose-700 dark:text-rose-300'
+                            }`}>
+                              {log.status === 'present' ? (
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              ) : log.status === 'late' ? (
+                                <Clock className="w-3.5 h-3.5" />
+                              ) : (
+                                <AlertCircle className="w-3.5 h-3.5" />
+                              )}
+                              <span>{log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}</span>
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }} />
-                )}
-              </div>
-            )}
+                      );
+                    }} />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
           {/* 30-Day Check-in Heatmap (Peak Times & Popular Entry Gates) */}
-          <div className="mt-5">
-            <AttendanceCheckinHeatmap
-              attendance={scopedAttendance}
-              campusGates={campusGates}
-              lang={lang}
-            />
-          </div>
+          <AttendanceCheckinHeatmap
+            attendance={scopedAttendance}
+            campusGates={campusGates}
+            lang={lang}
+          />
 
           {/* Monthly Attendance Trends Recharts LineChart */}
           <div className="mt-5">
@@ -1542,15 +1544,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'leave_approval' && (
         <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
-          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
+          <div className="saas-card text-[var(--color-text-body)]">
+            <div className="saas-card-header">
               <div>
-                <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>ระบบพิจารณาและอนุมัติใบลาออนไลน์</span>
+                <h2 className="type-section-title flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>พิจารณาและอนุมัติใบลาออนไลน์</span>
                 </h2>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  เมื่ออนุมัติใบลา ระบบจะปรับสถานะในระบบเช็คชื่อประจำวันให้เป็น 'ลาป่วย' หรือ 'ลากิจ' โดยอัตโนมัติ
+                <p className="type-meta mt-0.5">
+                  เมื่ออนุมัติ ระบบจะอัปเดตสถานะเช็คชื่อประจำวันให้อัตโนมัติ
                 </p>
               </div>
 
@@ -1571,106 +1573,115 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         messageEn: 'Daily attendance leave statuses updated automatically.',
                       });
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                    className="btn-action-success px-3 py-1.5"
+                    title="อนุมัติคำขอลาที่รอดำเนินการทั้งหมดพร้อมกัน"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>อนุมัติใบลาที่รอทั้งหมด ({scopedLeaveRequests.filter((r) => r.status === 'pending').length})</span>
+                    <span>อนุมัติทั้งหมด ({scopedLeaveRequests.filter((r) => r.status === 'pending').length})</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setLeaveFilter('all')}
-                  className={`py-1 border-b-2 transition cursor-pointer ${leaveFilter === 'all' ? 'border-[var(--color-primary)] text-[var(--color-text-title)] font-bold' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:underline'}`}
+                  className={`py-1 border-b-2 transition cursor-pointer ${leaveFilter === 'all' ? 'border-[var(--color-primary)] text-[var(--color-text-title)] font-bold' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'}`}
                 >
                   ทั้งหมด ({scopedLeaveRequests.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setLeaveFilter('pending')}
-                  className={`py-1 border-b-2 transition cursor-pointer ${leaveFilter === 'pending' ? 'border-amber-600 dark:border-amber-400 text-amber-800 dark:text-amber-300 font-bold' : 'border-transparent text-[var(--color-text-muted)] hover:text-amber-800 dark:hover:text-amber-300 hover:underline'}`}
+                  className={`py-1 border-b-2 transition cursor-pointer ${leaveFilter === 'pending' ? 'border-amber-600 dark:border-amber-400 text-amber-800 dark:text-amber-300 font-bold' : 'border-transparent text-[var(--color-text-muted)] hover:text-amber-800 dark:hover:text-amber-300'}`}
                 >
                   รออนุมัติ ({scopedLeaveRequests.filter(r => r.status === 'pending').length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setLeaveFilter('approved')}
-                  className={`py-1 border-b-2 transition cursor-pointer ${leaveFilter === 'approved' ? 'border-emerald-600 dark:border-emerald-400 text-emerald-800 dark:text-emerald-300 font-bold' : 'border-transparent text-[var(--color-text-muted)] hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline'}`}
+                  className={`py-1 border-b-2 transition cursor-pointer ${leaveFilter === 'approved' ? 'border-emerald-600 dark:border-emerald-400 text-emerald-800 dark:text-emerald-300 font-bold' : 'border-transparent text-[var(--color-text-muted)] hover:text-emerald-800 dark:hover:text-emerald-300'}`}
                 >
                   อนุมัติแล้ว ({scopedLeaveRequests.filter(r => r.status === 'approved').length})
                 </button>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="saas-card-body">
               {filteredLeaveRequests.length === 0 ? (
-                <p className="text-xs text-[var(--color-text-muted)] py-8 text-center">ไม่มีรายการใบลาในหมวดนี้</p>
+                <p className="type-meta py-8 text-center">ไม่มีรายการใบลาในหมวดนี้</p>
               ) : (
-                <PagedList items={filteredLeaveRequests} pageSize={2} renderItem={(req) => (
-                  <div key={req.id} className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3 text-xs">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                          req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' :
-                          req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                <div className="divide-y divide-[var(--color-border)]">
+                  <PagedList items={filteredLeaveRequests} pageSize={4} renderItem={(req) => (
+                    <div key={req.id} className="py-3.5 first:pt-0 last:pb-0 space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-baseline gap-x-2">
+                          <h4 className="type-card-title">{req.userName}</h4>
+                          <span className="type-meta">
+                            · {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'} · {req.gradeLevelOrDepartment}
+                          </span>
+                        </div>
+
+                        <span className={`inline-flex items-center gap-1 type-label self-start sm:self-auto ${
+                          req.status === 'approved'
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : req.status === 'pending'
+                              ? 'text-amber-700 dark:text-amber-300'
+                              : 'text-rose-700 dark:text-rose-300'
                         }`}>
-                          {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                          {req.status === 'approved' ? (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          ) : req.status === 'pending' ? (
+                            <Clock className="w-3.5 h-3.5" />
+                          ) : (
+                            <X className="w-3.5 h-3.5" />
+                          )}
+                          <span>{req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}</span>
                         </span>
-                        <h4 className="font-bold text-[var(--color-text-title)] text-sm">{req.userName}</h4>
-                        <span className="text-[var(--color-text-muted)]">({req.gradeLevelOrDepartment})</span>
                       </div>
 
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border self-start sm:self-auto ${
-                        req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
-                        req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                      }`}>
-                        {req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รอการพิจารณา' : 'ไม่อนุมัติ'}
-                      </span>
-                    </div>
+                      <div className="space-y-1">
+                        <p className="type-meta">
+                          {req.startDate} – {req.endDate} · ยื่นเมื่อ {req.createdAt}
+                        </p>
+                        <p className="type-body">"{req.reason}"</p>
+                        {req.attachmentUrl && (
+                          <div className="pt-1.5">
+                            <span className="type-meta block mb-1">เอกสารแนบ</span>
+                            <img src={req.attachmentUrl} alt="Certificate" className="w-32 h-20 rounded-lg object-cover border border-[var(--color-border)]" />
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="p-3 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] space-y-1">
-                      <p className="text-[var(--color-text-muted)] text-[11px]">
-                        ระยะเวลาลา: <strong className="text-[var(--color-text-title)]">{req.startDate} ถึง {req.endDate}</strong> • วันที่ยื่น: {req.createdAt}
-                      </p>
-                      <p className="text-[var(--color-text-body)] font-medium">"{req.reason}"</p>
-                      {req.attachmentUrl && (
-                        <div className="pt-2">
-                          <span className="text-[10px] text-[var(--color-text-muted)] block mb-1">เอกสาร/ใบรับรองแพทย์แนบ:</span>
-                          <img src={req.attachmentUrl} alt="Certificate" className="w-32 h-20 rounded-lg object-cover border border-[var(--color-border)]" />
+                      {req.status === 'pending' && onUpdateLeaveStatus && !isRestrictedViewer && (
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                          <input
+                            type="text"
+                            placeholder="หมายเหตุการอนุมัติ (ถ้ามี)..."
+                            value={approvalNote[req.id] || ''}
+                            onChange={(e) => setApprovalNote({ ...approvalNote, [req.id]: e.target.value })}
+                            className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] flex-1 bg-[var(--color-card-subtle)]"
+                          />
+                          <div className="flex items-center gap-3 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id])}
+                              className="btn-action-success px-3 py-1.5"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>อนุมัติ</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateLeaveStatus(req.id, 'rejected', approvalNote[req.id])}
+                              className="text-rose-700 dark:text-rose-300 hover:underline font-bold text-xs underline-offset-4 flex items-center gap-1 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>ปฏิเสธ</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
-
-                    {req.status === 'pending' && onUpdateLeaveStatus && !isRestrictedViewer && (
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
-                        <input
-                          type="text"
-                          placeholder="ข้อความหมายเหตุการอนุมัติ..."
-                          value={approvalNote[req.id] || ''}
-                          onChange={(e) => setApprovalNote({ ...approvalNote, [req.id]: e.target.value })}
-                          className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] flex-1 bg-[var(--color-card)]"
-                        />
-                        <div className="flex items-center gap-3 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id])}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>อนุมัติใบลา</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onUpdateLeaveStatus(req.id, 'rejected', approvalNote[req.id])}
-                            className="text-rose-700 dark:text-rose-300 hover:underline font-bold text-xs underline-offset-4 flex items-center gap-1 cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>ปฏิเสธ</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )} />
+                  )} />
+                </div>
               )}
             </div>
           </div>
@@ -1681,42 +1692,47 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 3: EXPORT REPORTS (EXCEL & PDF ATTENDANCE ENGINE) */}
       {/* ========================================================================= */}
       {activeTab === 'export_reports' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
-          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-5 text-[var(--color-text-body)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-4">
+          <div className="saas-card text-[var(--color-text-body)]">
+            <div className="saas-card-header">
               <div>
-                <h2 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-[var(--color-primary-text)]" />
-                  <span>ศูนย์ส่งออกรายงานสถิติการเข้าเรียน (Attendance Export Engine)</span>
+                <h2 className="type-section-title flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  <span>ส่งออกรายงานสถิติการเข้าเรียน</span>
                 </h2>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  ดาวน์โหลดไฟล์ Excel (.csv รองรับภาษาไทย UTF-8) หรือสั่งพิมพ์รายงานสรุปสิทธิ์สอบ (มส.)
+                <p className="type-meta mt-0.5">
+                  ไฟล์ CSV (UTF-8) รองรับภาษาไทย พร้อมสรุปสิทธิ์สอบ (เกณฑ์ 80%)
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5">
-                {!isRestrictedViewer && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="saas-control-group">
+                  {!isRestrictedViewer && (
+                    <button
+                      type="button"
+                      onClick={() => setShowImportModal(true)}
+                      className="btn-icon-tool"
+                      title="นำเข้าบันทึกการเข้าเรียนจากไฟล์ Excel / CSV"
+                      aria-label="นำเข้าบันทึกการเข้าเรียนจากไฟล์ Excel หรือ CSV"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setShowImportModal(true)}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    onClick={() => handleExportDailyCsv()}
+                    className="btn-icon-tool"
+                    title="ดาวน์โหลดรายการเข้า-ออกรายวัน (CSV)"
+                    aria-label="ดาวน์โหลดรายการเข้า-ออกรายวัน CSV"
                   >
-                    <Upload className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                    <span>นำเข้า Excel/CSV</span>
+                    <Download className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleExportDailyCsv()}
-                  className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download CSV</span>
-                </button>
+                </div>
                 <button
                   type="button"
                   onClick={handleExportMonthlySummaryCsv}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  className="btn-action-success px-3 py-1.5"
+                  title="ส่งออกสรุปสิทธิ์สอบ (มส.) รายเดือนเป็นไฟล์ CSV"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   <span>ส่งออก Excel รายเดือน</span>
@@ -1724,66 +1740,70 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </div>
             </div>
 
-            <AttendanceCheckinHeatmap
-              attendance={scopedAttendance}
-              campusGates={campusGates}
-              lang={lang}
-            />
+            <div className="saas-card-body space-y-5">
+              <AttendanceCheckinHeatmap
+                attendance={scopedAttendance}
+                campusGates={campusGates}
+                lang={lang}
+              />
 
-            <AttendanceMonthlyTrendLineChart
-              attendance={scopedAttendance}
-              students={scopedStudents}
-              lang={lang}
-              selectedRoom={classFilter}
-            />
+              <AttendanceMonthlyTrendLineChart
+                attendance={scopedAttendance}
+                students={scopedStudents}
+                lang={lang}
+                selectedRoom={classFilter}
+              />
 
-            {/* Monthly Summary Table Preview */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
-                ตัวอย่างตารางสรุปการเข้าเรียนประจำเดือน (Student Attendance &amp; Qualification Matrix)
-              </h3>
+              {/* Monthly Summary Table Preview */}
+              <div className="space-y-2.5">
+                <h3 className="type-card-title">
+                  ตารางสรุปการเข้าเรียนและสิทธิ์สอบประจำเดือน
+                </h3>
 
-              <div className="border border-[var(--color-border)] rounded-xl overflow-x-auto shadow-2xs">
-                <table className="table-comfortable w-full text-left text-xs whitespace-nowrap">
-                  <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)]">
-                    <tr>
-                      <th className="p-3">รหัสนักเรียน</th>
-                      <th className="p-3">ชื่อ-นามสกุล</th>
-                      <th className="p-3">ชั้น / ห้อง</th>
-                      <th className="p-3 text-center">มาเรียน</th>
-                      <th className="p-3 text-center">มาสาย</th>
-                      <th className="p-3 text-center">ลาป่วย/กิจ</th>
-                      <th className="p-3 text-center">ขาดเรียน</th>
-                      <th className="p-3 text-center">เปอร์เซ็นต์</th>
-                      <th className="p-3 text-center">สถานะสิทธิ์สอบ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-border)]">
-                    <PaginatedTableRows items={monthlySummary} colSpan={9} renderRow={(m) => (
-                      <tr key={m.student.id} className="hover:bg-[var(--color-card-subtle)] transition">
-                        <td className="p-3 font-mono text-[var(--color-text-muted)]">{m.student.studentIdNumber}</td>
-                        <td className="p-3 font-bold text-[var(--color-text-title)]">{m.student.firstNameTh} {m.student.lastNameTh}</td>
-                        <td className="p-3 text-[var(--color-text-body)]">{m.student.gradeLevel} {m.student.room}</td>
-                        <td className="p-3 text-center text-emerald-700 dark:text-emerald-300 font-bold">{m.presentDays}</td>
-                        <td className="p-3 text-center text-amber-800 dark:text-amber-300 font-bold">{m.lateDays}</td>
-                        <td className="p-3 text-center text-[var(--color-primary-text)] font-bold">{m.sickDays}</td>
-                        <td className="p-3 text-center text-rose-700 dark:text-rose-300 font-bold">{m.absentDays}</td>
-                        <td className="p-3 text-center font-mono font-bold text-[var(--color-text-title)]">{m.rate}%</td>
-                        <td className="p-3 text-center">
-                          {m.isQualified ? (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold">
-                              ผ่านเกณฑ์
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-[10px] font-bold">
-                              เสี่ยง มส.
-                            </span>
-                          )}
-                        </td>
+                <div className="border border-[var(--color-border)] rounded-xl overflow-x-auto">
+                  <table className="table-comfortable w-full text-left text-xs whitespace-nowrap">
+                    <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)]">
+                      <tr>
+                        <th className="p-3">รหัสนักเรียน</th>
+                        <th className="p-3">ชื่อ-นามสกุล</th>
+                        <th className="p-3">ชั้น / ห้อง</th>
+                        <th className="p-3 text-center">มาเรียน</th>
+                        <th className="p-3 text-center">มาสาย</th>
+                        <th className="p-3 text-center">ลา</th>
+                        <th className="p-3 text-center">ขาด</th>
+                        <th className="p-3 text-center">อัตรา</th>
+                        <th className="p-3 text-center">สิทธิ์สอบ</th>
                       </tr>
-                    )} />
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)]">
+                      <PaginatedTableRows items={monthlySummary} colSpan={9} renderRow={(m) => (
+                        <tr key={m.student.id} className="hover:bg-[var(--color-card-subtle)] transition">
+                          <td className="p-3 font-mono type-meta">{m.student.studentIdNumber}</td>
+                          <td className="p-3 type-card-title">{m.student.firstNameTh} {m.student.lastNameTh}</td>
+                          <td className="p-3 type-body">{m.student.gradeLevel} {m.student.room}</td>
+                          <td className="p-3 text-center text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{m.presentDays}</td>
+                          <td className="p-3 text-center text-amber-800 dark:text-amber-300 font-bold tabular-nums">{m.lateDays}</td>
+                          <td className="p-3 text-center text-[var(--color-primary-text)] font-bold tabular-nums">{m.sickDays}</td>
+                          <td className="p-3 text-center text-rose-700 dark:text-rose-300 font-bold tabular-nums">{m.absentDays}</td>
+                          <td className="p-3 text-center font-mono font-bold text-[var(--color-text-title)] tabular-nums">{m.rate}%</td>
+                          <td className="p-3 text-center">
+                            {m.isQualified ? (
+                              <span className="inline-flex items-center gap-1 type-label text-emerald-700 dark:text-emerald-300">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>ผ่านเกณฑ์</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 type-label text-rose-700 dark:text-rose-300">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                <span>เสี่ยง มส.</span>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )} />
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -1847,34 +1867,36 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* Lightbox Modal for Zooming Selfie Photo in Attendance Logs */}
       {selectedPhotoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-body)]">
+          <div className="saas-card rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-body)]">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
-                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็คชื่อตอนผ่านประตู</h4>
-                <p className="text-xs text-[var(--color-text-muted)]">{selectedPhotoModal.date} • {selectedPhotoModal.time} น.</p>
+                <h4 className="type-section-title">รูปถ่ายเช็คชื่อตอนผ่านประตู</h4>
+                <p className="type-meta">{selectedPhotoModal.date} · {selectedPhotoModal.time} น.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedPhotoModal(null)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                className="btn-icon-tool"
+                aria-label="ปิดหน้าต่างรูปถ่าย"
+                title="ปิด"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
+            <div className="relative rounded-xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
               <img
                 src={selectedPhotoModal.photoUrl}
                 alt="Selfie Zoom"
                 className="w-full h-full object-contain"
               />
-              <div className="absolute bottom-2 left-2 right-2 p-2 rounded-xl bg-black/75 backdrop-blur-md text-white text-[10px] space-y-0.5">
-                <div className="flex justify-between font-bold">
+              <div className="absolute bottom-2 left-2 right-2 p-2.5 rounded-lg bg-black/75 backdrop-blur-md text-white type-meta space-y-0.5">
+                <div className="flex justify-between font-semibold text-white">
                   <span>{selectedPhotoModal.userName}</span>
-                  <span>{selectedPhotoModal.time} น.</span>
+                  <span className="tabular-nums">{selectedPhotoModal.time} น.</span>
                 </div>
-                <div className="text-slate-200 text-[9px]">
-                  {selectedPhotoModal.location?.geofenceZoneName || 'ประตูโรงเรียน'} • ในรัศมี {selectedPhotoModal.location?.distanceMeters || 18} ม.
+                <div className="text-slate-200">
+                  {selectedPhotoModal.location?.geofenceZoneName || 'ประตูโรงเรียน'} · รัศมี {selectedPhotoModal.location?.distanceMeters || 18} ม.
                 </div>
               </div>
             </div>
@@ -1882,7 +1904,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setSelectedPhotoModal(null)}
-              className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer transition"
+              className="w-full py-2.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer transition"
             >
               ปิดหน้าต่าง
             </button>

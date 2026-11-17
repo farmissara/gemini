@@ -456,12 +456,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <BarChart3 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-[#0f172a] dark:text-slate-100 truncate">
-                {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
-              </h1>
-            </div>
-            <p className="text-xs text-[#475569] dark:text-slate-300 truncate tabular-nums">
+            <h1 className="type-page-title truncate">
+              {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
+            </h1>
+            <p className="type-meta truncate">
               {lang === 'th'
                 ? `ปีการศึกษา ${systemConfig.academicYear} · ${formatSemesterLabel(systemConfig.currentSemester)}`
                 : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
@@ -469,7 +467,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 flex-wrap">
+        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 flex-wrap justify-between sm:justify-end">
           <div data-guide-id="dashboard-subtabs" className="seg-tab-group w-full sm:w-auto max-w-full flex! flex-wrap! sm:inline-flex! gap-1">
             <button
               type="button"
@@ -489,12 +487,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               <Camera className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
-              <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
+              <span className={`font-mono text-[11px] tabular-nums ${
                 dashboardTab === 'live_attendance'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)]'
+                  ? 'text-white/90'
+                  : 'text-[var(--color-text-muted)]'
               }`}>
-                {displayRecords.length}
+                ({displayRecords.length})
               </span>
             </button>
 
@@ -519,22 +517,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          {isFocusMode && (
+          {isFocusMode ? (
             <button
               type="button"
               data-guide-id="dashboard-focus-toggle"
               aria-pressed={isFocusMode}
               onClick={handleToggleFocus}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 type-label transition cursor-pointer whitespace-nowrap shrink-0"
               title={lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode'}
+              aria-label={lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode'}
             >
               <Minimize2 className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
             </button>
-          )}
-
-          {!isFocusMode && (
-            <>
+          ) : (
+            <div className="saas-control-group shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -547,25 +544,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   });
                   window.print();
                 }}
-                className="btn-tool-tone"
+                className="btn-icon-tool"
                 title={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
+                aria-label={lang === 'th' ? 'พิมพ์แดชบอร์ดเป็น PDF' : 'Print Dashboard to PDF'}
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'พิมพ์แดชบอร์ด' : 'Print Dashboard'}</span>
+                <Printer className="w-4 h-4" />
               </button>
 
               {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
                 <button
                   type="button"
                   onClick={() => onNavigate('executive_monitor')}
-                  className="hidden md:inline-flex btn-tool-tone"
-                  title={lang === 'th' ? 'โหมดจอทีวี / ผู้อำนวยการ' : 'Director / TV Monitor'}
+                  className="hidden md:inline-flex btn-icon-tool"
+                  title={lang === 'th' ? 'เปิดโหมดจอทีวี / ผู้อำนวยการ' : 'Open Director / TV Monitor'}
+                  aria-label={lang === 'th' ? 'เปิดโหมดจอทีวี / ผู้อำนวยการ' : 'Open Director / TV Monitor'}
                 >
-                  <Monitor className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? 'จอทีวี' : 'TV'}</span>
+                  <Monitor className="w-4 h-4" />
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -614,10 +611,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <ListChecks className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                      <h2 className="type-section-title">
                         {lang === 'th' ? 'เริ่มต้นใช้งานโรงเรียนใน 3 ขั้นตอน' : '3-Step School Setup Checklist'}
                       </h2>
-                      <p className="text-xs text-[#475569] dark:text-slate-300 tabular-nums">
+                      <p className="type-meta">
                         ตั้งค่าระบบหลักให้พร้อมเปิดภาคเรียน ({completedOnboardingCount}/3 สำเร็จ)
                       </p>
                     </div>
@@ -630,63 +627,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         window.localStorage.setItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`, '1');
                       }
                     }}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-white/80 dark:bg-slate-800 hover:bg-slate-100 text-[#475569] dark:text-slate-300 font-semibold cursor-pointer whitespace-nowrap"
+                    className="btn-icon-tool"
+                    title={lang === 'th' ? 'ซ่อนรายการตั้งค่านี้' : 'Dismiss checklist'}
+                    aria-label={lang === 'th' ? 'ซ่อนรายการตั้งค่านี้' : 'Dismiss checklist'}
                   >
-                    ซ่อนรายการนี้
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     type="button"
                     onClick={() => onNavigate('students')}
-                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
                   >
                     <div className="flex items-start gap-2 min-w-0">
                       <Users className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <div className="font-bold text-[#1e293b] dark:text-slate-100">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
-                        <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                        <div className="type-card-title">1. นำเข้าข้อมูลนักเรียน &amp; รายวิชา</div>
+                        <div className="type-meta mt-0.5">
                           {students.length} นักเรียน · {courses.length} วิชา
                         </div>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold whitespace-nowrap shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    <span className={`type-meta font-bold whitespace-nowrap shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step1Done ? 'พร้อมแล้ว' : 'ดำเนินการ'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('system_settings')}
-                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
                   >
                     <div className="flex items-start gap-2 min-w-0">
                       <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <div className="font-bold text-[#1e293b] dark:text-slate-100">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
-                        <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                        <div className="type-card-title">2. ตั้งค่าคาบเรียน &amp; พิกัด GPS</div>
+                        <div className="type-meta mt-0.5">
                           {school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : 'ยังไม่ได้ปักหมุด'}
                         </div>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold whitespace-nowrap shrink-0 ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    <span className={`type-meta font-bold whitespace-nowrap shrink-0 ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step2Done ? 'พร้อมแล้ว' : 'ตั้งค่า'}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('timetable')}
-                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
+                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white/70 dark:bg-slate-900/50 hover:border-sky-400 text-left flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 cursor-pointer transition min-w-0"
                   >
                     <div className="flex items-start gap-2 min-w-0">
                       <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <div className="font-bold text-[#1e293b] dark:text-slate-100">3. จัดตารางเรียน &amp; ภาคเรียน</div>
-                        <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                        <div className="type-card-title">3. จัดตารางเรียน &amp; ภาคเรียน</div>
+                        <div className="type-meta mt-0.5">
                           {timetableSlots.length} คาบในระบบ
                         </div>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold whitespace-nowrap shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    <span className={`type-meta font-bold whitespace-nowrap shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                       {step3Done ? 'พร้อมแล้ว' : 'จัดตาราง'}
                     </span>
                   </button>
@@ -696,21 +695,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Focus Mode Banner: Maximized Task Management Indicator */}
             {isFocusMode && (
-              <div className="no-print frosted-card frosted-blue px-3.5 py-2 rounded-[var(--dash-card-radius)] flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2 text-[#0f172a] dark:text-slate-100 font-semibold min-w-0">
+              <div className="no-print frosted-card frosted-blue px-3.5 py-2 rounded-[var(--dash-card-radius)] flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 type-label min-w-0">
                   <Maximize2 className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span className="truncate">
                     {lang === 'th'
-                      ? 'โหมดโฟกัสเปิดอยู่ — พับแถบเมนูข้างและการแจ้งเตือนรองเพื่อขยายพื้นที่จัดการงานหลัก'
-                      : 'Focus Mode Active — secondary sidebars & notification panels collapsed for active task management'}
+                      ? 'โหมดโฟกัสเปิดอยู่ — ขยายพื้นที่จัดการงานหลัก'
+                      : 'Focus Mode Active — expanded workspace for daily tasks'}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={handleToggleFocus}
-                  className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold cursor-pointer whitespace-nowrap shrink-0"
+                  className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white type-meta font-bold cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  {lang === 'th' ? 'แสดงแถบข้าง & ทั้งหมด' : 'Restore Full View'}
+                  {lang === 'th' ? 'คืนค่าเดิม' : 'Restore View'}
                 </button>
               </div>
             )}
@@ -729,14 +728,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <h2 className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-slate-100">
+                          <h2 className="type-section-title">
                             {lang === 'th' ? 'สรุปงานเช้า' : 'Morning Digest'}
                           </h2>
-                          <span className="text-[11px] font-semibold text-sky-800 dark:text-sky-300 tabular-nums">
-                            ({todayScheduledSlots.length} {lang === 'th' ? 'คาบวันนี้' : 'periods'})
+                          <span className="type-meta font-semibold text-sky-800 dark:text-sky-300">
+                            · {todayScheduledSlots.length} {lang === 'th' ? 'คาบวันนี้' : 'periods'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#475569] dark:text-slate-300 mt-0.5 tabular-nums">
+                        <p className="type-meta mt-0.5">
                           {lang === 'th'
                             ? `รอเช็คชื่อ ${uncheckedTodayCount} คน · ใบลา ${pendingLeaveCount} รายการ · การบ้าน ${ungradedHomeworkCount} ชิ้น${teacherLeavesTodayCount > 0 ? ` · ครูลา ${teacherLeavesTodayCount} ท่าน` : ''}`
                             : `${uncheckedTodayCount} unchecked · ${pendingLeaveCount} leaves · ${ungradedHomeworkCount} ungraded`}
@@ -753,11 +752,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             window.localStorage.setItem('baanpakkru_playyard_collapsed', next ? '1' : '0');
                           }
                         }}
-                        className="shrink-0 px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-800 bg-white/80 dark:bg-slate-800/80 text-[10px] font-bold text-sky-800 dark:text-sky-200 hover:bg-sky-50 cursor-pointer whitespace-nowrap"
+                        title={playyardCollapsed ? (lang === 'th' ? 'แสดงมุมพักใจบ้านพักครู' : 'Show Playyard') : (lang === 'th' ? 'ซ่อนมุมพักใจบ้านพักครู' : 'Hide Playyard')}
+                        aria-label={playyardCollapsed ? (lang === 'th' ? 'แสดงมุมพักใจบ้านพักครู' : 'Show Playyard') : (lang === 'th' ? 'ซ่อนมุมพักใจบ้านพักครู' : 'Hide Playyard')}
+                        className="shrink-0 px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-800 bg-white/80 dark:bg-slate-800/80 type-meta font-semibold text-sky-800 dark:text-sky-200 hover:bg-sky-50 cursor-pointer whitespace-nowrap"
                       >
                         {playyardCollapsed
-                          ? lang === 'th' ? 'เปิดมุมพักใจ' : 'Show Playyard'
-                          : lang === 'th' ? 'พับมุมพักใจ' : 'Hide Playyard'}
+                          ? lang === 'th' ? 'มุมพักใจ' : 'Playyard'
+                          : lang === 'th' ? 'พับมุมพักใจ' : 'Collapse'}
                       </button>
                     )}
                   </div>
@@ -835,21 +836,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <GraduationCap className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h2 className="text-base font-bold text-[#0f172a] dark:text-slate-100">
+                        <h2 className="type-section-title">
                           {lang === 'th' ? 'ภาพรวมสถิติโรงเรียน' : 'School Overview'}
                         </h2>
                       </div>
                     </div>
 
                     {/* Quick Date Selector */}
-                    <div className="no-print flex items-center gap-1.5 text-xs">
+                    <div className="no-print saas-control-group type-meta">
                       <button
                         type="button"
                         onClick={() => setSelectedDate(todayStr)}
-                        className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap ${
+                        className={`px-2.5 py-1 rounded-md font-semibold transition cursor-pointer whitespace-nowrap ${
                           selectedDate === todayStr
                             ? 'bg-sky-600 text-white'
-                            : 'bg-white/80 dark:bg-slate-800 border border-sky-200/80 dark:border-sky-800/60 text-[#1e293b] dark:text-slate-200 hover:bg-sky-50'
+                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                         }`}
                       >
                         {lang === 'th' ? 'วันนี้' : 'Today'}
@@ -857,16 +858,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setSelectedDate(yesterdayStr)}
-                        className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap ${
+                        className={`px-2.5 py-1 rounded-md font-semibold transition cursor-pointer whitespace-nowrap ${
                           selectedDate === yesterdayStr
                             ? 'bg-sky-600 text-white'
-                            : 'bg-white/80 dark:bg-slate-800 border border-sky-200/80 dark:border-sky-800/60 text-[#1e293b] dark:text-slate-200 hover:bg-sky-50'
+                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
                         }`}
                       >
                         {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
                       </button>
                     </div>
-                    <span className="hidden print:inline-block text-xs font-semibold text-[#1e293b] tabular-nums">
+                    <span className="hidden print:inline-block type-meta">
                       {lang === 'th' ? `วันที่: ${selectedDate}` : `Date: ${selectedDate}`}
                     </span>
                   </div>
@@ -876,48 +877,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Metric 1: Total Students */}
                     <div className="sm:pr-6 flex items-start justify-between gap-3">
                       <div className="space-y-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300 flex items-center gap-1.5">
+                        <p className="type-label text-[var(--color-text-muted)] flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
                           <span>{lang === 'th' ? 'นักเรียนทั้งหมด' : 'Total Students'}</span>
                         </p>
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-3xl font-extrabold text-[#0f172a] dark:text-white tabular-nums tracking-tight">
+                          <span className="type-kpi">
                             {totalStudents}
                           </span>
-                          <span className="text-xs font-semibold text-[#475569] dark:text-slate-300">
+                          <span className="type-meta">
                             {lang === 'th' ? 'คน' : 'students'}
                           </span>
                         </div>
-                        <p className="text-xs text-sky-800 dark:text-sky-300 font-semibold tabular-nums">
+                        <p className="type-meta font-semibold text-sky-800 dark:text-sky-300">
                           {activeStudents} {lang === 'th' ? 'คน สถานะปกติ' : 'active enrolled'}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => onNavigate('students')}
-                        className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-sky-200/75 dark:border-sky-800/50 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/60 cursor-pointer transition shrink-0"
+                        className="btn-icon-tool"
                         title={lang === 'th' ? 'ไปยังทะเบียนนักเรียน' : 'Open Student Directory'}
+                        aria-label={lang === 'th' ? 'ไปยังทะเบียนนักเรียน' : 'Open Student Directory'}
                       >
-                        <Users className="w-4 h-4" />
+                        <ArrowUpRight className="w-4 h-4 text-sky-700 dark:text-sky-300" />
                       </button>
                     </div>
 
                     {/* Metric 2: On-time Attendance Today */}
                     <div className="sm:pl-6 flex items-start justify-between gap-3">
                       <div className="space-y-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#475569] dark:text-slate-300 flex items-center gap-1.5">
+                        <p className="type-label text-[var(--color-text-muted)] flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span>{lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} ({selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate})</span>
+                          <span>{lang === 'th' ? 'เข้าเรียนตรงเวลา' : 'On-Time Rate'} · {selectedDate === todayStr ? (lang === 'th' ? 'วันนี้' : 'Today') : selectedDate}</span>
                         </p>
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-3xl font-extrabold text-[#0f172a] dark:text-white tabular-nums tracking-tight">
+                          <span className="type-kpi">
                             {onTimePercent}%
                           </span>
-                          <span className="text-xs font-semibold text-[#475569] dark:text-slate-300 tabular-nums">
+                          <span className="type-meta">
                             ({presentCount}/{totalForDate})
                           </span>
                         </div>
-                        <p className="text-xs text-[#475569] dark:text-slate-300 font-medium tabular-nums">
+                        <p className="type-meta">
                           {lang === 'th'
                             ? `ตรงเวลา ${presentCount} · มาสาย ${lateCount}`
                             : `On-time ${presentCount} · Late ${lateCount}`}
@@ -926,32 +928,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onNavigate('attendance')}
-                        className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-sky-200/75 dark:border-sky-800/50 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/60 cursor-pointer transition shrink-0"
+                        className="btn-icon-tool"
                         title={lang === 'th' ? 'เปิดหน้าเช็กชื่อ' : 'Open Attendance'}
+                        aria-label={lang === 'th' ? 'เปิดหน้าเช็กชื่อ' : 'Open Attendance'}
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <ArrowUpRight className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
                       </button>
                     </div>
                   </div>
 
                   {/* Secondary Quiet Metadata Strip (Zero-pill clean inline text) */}
-                  <div className="dash-footer-divider border-t border-sky-200/75 dark:border-sky-800/50 flex flex-wrap items-center justify-between gap-2.5 text-xs text-[#475569] dark:text-slate-300">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                      <span className="inline-flex items-center gap-1.5 font-medium text-[#1e293b] dark:text-slate-200">
+                  <div className="dash-footer-divider border-t border-sky-200/75 dark:border-sky-800/50 flex flex-wrap items-center justify-between gap-2.5 type-meta">
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
                         <Receipt className="w-3.5 h-3.5 text-sky-700 dark:text-sky-300" />
                         {lang === 'th'
-                          ? `จัดเก็บค่าเล่าเรียน ${collectionRate}% (฿${totalCollected.toLocaleString()})`
+                          ? `ค่าเล่าเรียน ${collectionRate}% (฿${totalCollected.toLocaleString()})`
                           : `Tuition ${collectionRate}% (฿${totalCollected.toLocaleString()})`}
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span>{courses.length} {lang === 'th' ? 'รายวิชา' : 'courses'}</span>
+                      <span>{courses.length} {lang === 'th' ? 'วิชา' : 'courses'}</span>
                       <span aria-hidden="true">·</span>
-                      <span>{teachers.length} {lang === 'th' ? 'ครูและบุคลากร' : 'staff'}</span>
+                      <span>{teachers.length} {lang === 'th' ? 'บุคลากร' : 'staff'}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => onNavigate('billing')}
                       className="no-print text-sky-800 dark:text-sky-300 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                      title={lang === 'th' ? 'เปิดหน้าการเงินและใบแจ้งหนี้' : 'Open Tuition & Billing'}
                     >
                       <span>{lang === 'th' ? 'การเงิน' : 'Billing'}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -966,12 +970,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100/95 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                        <UserCheck className="w-5 h-5" />
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100/95 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                        <UserCheck className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <h2 className="text-base font-bold text-[#0f172a] dark:text-slate-100">
-                          {lang === 'th' ? 'สถานะเช็กชื่อ & ผูก LINE ผู้ปกครอง' : 'Check-in & Guardian LINE'}
+                        <h2 className="type-section-title">
+                          {lang === 'th' ? 'เช็กชื่อ & ผูก LINE ผู้ปกครอง' : 'Check-in & Guardian LINE'}
                         </h2>
                       </div>
                     </div>
@@ -979,27 +983,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setDashboardTab('live_attendance')}
-                      className="no-print text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                      className="no-print type-meta font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                      title={lang === 'th' ? 'เปิดแท็บตรวจเช็กชื่อสด' : 'Open Live Check-in Audit'}
                     >
-                      <span>{lang === 'th' ? 'ดูเช็กชื่อสด' : 'Live Feed'}</span>
+                      <span>{lang === 'th' ? 'เช็กชื่อสด' : 'Live Feed'}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   {/* Part A: Check-in Status Breakdown + Recent Check-ins */}
                   <div className="space-y-3.5">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums">
+                    <div className="flex flex-wrap items-center justify-between gap-2 type-meta">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>{lang === 'th' ? `มาตรงเวลา ${presentCount} คน (${onTimePercent}%)` : `On-time ${presentCount} (${onTimePercent}%)`}</span>
+                          <span>{lang === 'th' ? `ตรงเวลา ${presentCount} คน (${onTimePercent}%)` : `On-time ${presentCount} (${onTimePercent}%)`}</span>
                         </span>
                         <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300">
                           <Clock className="w-3.5 h-3.5 shrink-0" />
                           <span>{lang === 'th' ? `มาสาย ${lateCount} คน (${latePercent}%)` : `Late ${lateCount} (${latePercent}%)`}</span>
                         </span>
                       </div>
-                      <span className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                      <span>
                         {lang === 'th' ? `เข้า ${checkInsCount} · ออก ${checkOutsCount}` : `In ${checkInsCount} · Out ${checkOutsCount}`}
                       </span>
                     </div>
@@ -1019,24 +1024,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Recent Check-ins List */}
                     <div className="pt-1">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-[#1e293b] dark:text-slate-200 flex items-center gap-1.5">
+                        <span className="type-card-title flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                          <span>{lang === 'th' ? `บันทึกล่าสุด (${selectedDate})` : `Recent Logs (${selectedDate})`}</span>
+                          <span>{lang === 'th' ? `บันทึกล่าสุด · ${selectedDate}` : `Recent Logs · ${selectedDate}`}</span>
                         </span>
-                        <span className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                        <span className="type-meta">
                           {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
                         </span>
                       </div>
 
                       {displayRecords.length === 0 ? (
                         <div className="py-5 px-4 rounded-xl bg-white/60 dark:bg-slate-900/45 text-center space-y-2">
-                          <p className="text-xs text-[#475569] dark:text-slate-300">
+                          <p className="type-meta">
                             {lang === 'th' ? `ยังไม่มีบันทึกการเช็กชื่อวันที่ ${selectedDate}` : `No check-in logs for ${selectedDate}`}
                           </p>
                           <button
                             type="button"
                             onClick={() => onNavigate('mobile_checkin')}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white type-label cursor-pointer inline-flex items-center gap-1.5"
                           >
                             <Camera className="w-3.5 h-3.5" />
                             <span>{lang === 'th' ? 'เปิดกล้องเช็กชื่อ' : 'Open Camera Check-in'}</span>
@@ -1049,7 +1054,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               key={rec.id}
                               type="button"
                               onClick={() => openPhotoRecord(rec)}
-                              className="print-keep dash-row w-full flex items-center justify-between gap-2.5 text-left text-xs cursor-pointer hover:bg-white/65 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 transition"
+                              className="print-keep dash-row w-full flex items-center justify-between gap-2.5 text-left cursor-pointer hover:bg-white/65 dark:hover:bg-slate-800/50 rounded-lg px-2 -mx-2 transition"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <img
@@ -1059,17 +1064,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   className="w-7 h-7 rounded-full object-cover border border-emerald-200/80 dark:border-emerald-800/60 shrink-0"
                                 />
                                 <div className="min-w-0">
-                                  <div className="font-semibold text-[#1e293b] dark:text-slate-100 truncate">
+                                  <div className="type-card-title truncate">
                                     {rec.userName}
                                   </div>
-                                  <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate tabular-nums">
+                                  <div className="type-meta truncate">
                                     {rec.userDepartmentOrRoom || rec.userRole} · {rec.time} {lang === 'th' ? 'น.' : ''}
                                   </div>
                                 </div>
                               </div>
 
                               <span
-                                className={`text-[11px] font-bold shrink-0 ${
+                                className={`type-meta font-bold shrink-0 ${
                                   rec.status === 'present'
                                     ? 'text-emerald-700 dark:text-emerald-300'
                                     : 'text-amber-700 dark:text-amber-300'
@@ -1077,7 +1082,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               >
                                 {rec.status === 'present'
                                   ? lang === 'th'
-                                    ? 'มาตรงเวลา'
+                                    ? 'ตรงเวลา'
                                     : 'On-time'
                                   : lang === 'th'
                                     ? 'มาสาย'
@@ -1100,18 +1105,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <MessageSquare className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="text-xs font-bold text-[#0f172a] dark:text-slate-100">
-                            {lang === 'th' ? 'สถานะการผูก LINE ผู้ปกครอง' : 'Guardian LINE Connection'}
+                          <h3 className="type-card-title">
+                            {lang === 'th' ? 'ผูก LINE ผู้ปกครอง' : 'Guardian LINE Connection'}
                           </h3>
-                          <p className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                          <p className="type-meta">
                             {lang === 'th'
-                              ? `เชื่อมต่อแล้ว ${lineConnectedCount} จาก ${totalStudents} รายชื่อ`
+                              ? `เชื่อมต่อ ${lineConnectedCount}/${totalStudents} รายชื่อ`
                               : `${lineConnectedCount} of ${totalStudents} families connected`}
                           </p>
                         </div>
                       </div>
 
-                      <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 tabular-nums shrink-0">
+                      <span className="type-kpi-sm text-emerald-700 dark:text-emerald-300 shrink-0">
                         {linePercent}%
                       </span>
                     </div>
@@ -1123,18 +1128,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                    <div className="flex flex-wrap items-center justify-between gap-2 type-meta">
                       <span>
                         {lang === 'th'
-                          ? `ยังไม่ได้ผูก LINE ${Math.max(0, totalStudents - lineConnectedCount)} รายชื่อ`
-                          : `${Math.max(0, totalStudents - lineConnectedCount)} pending connection`}
+                          ? `ยังไม่ผูก ${Math.max(0, totalStudents - lineConnectedCount)} รายชื่อ`
+                          : `${Math.max(0, totalStudents - lineConnectedCount)} pending`}
                       </span>
                       <button
                         type="button"
                         onClick={() => onNavigate('students')}
                         className="no-print font-semibold text-emerald-800 dark:text-emerald-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                       >
-                        <span>{lang === 'th' ? 'จัดการรายชื่อผู้ปกครอง' : 'Manage Guardians'}</span>
+                        <span>{lang === 'th' ? 'จัดการผู้ปกครอง' : 'Manage Guardians'}</span>
                         <ArrowUpRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -1152,11 +1157,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <Briefcase className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
-                      <h2 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 truncate">
+                      <h2 className="type-section-title truncate">
                         {lang === 'th' ? 'งานวิชาการวันนี้ & รายการเร่งด่วน' : 'Today’s Teaching Desk & Actions'}
                       </h2>
                     </div>
-                    <span className="text-[11px] font-semibold text-[#475569] dark:text-slate-300 tabular-nums inline-flex items-center gap-1 shrink-0">
+                    <span className="type-meta inline-flex items-center gap-1 shrink-0">
                       <Calendar className="w-3 h-3" />
                       <span>{todayStr}</span>
                     </span>
@@ -1176,7 +1181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <ClipboardList className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <h3 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
+                              <h3 className="type-section-title leading-snug">
                                 {isStaffUser
                                   ? lang === 'th'
                                     ? 'โต๊ะงานครู'
@@ -1185,8 +1190,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                     ? 'ตารางเรียน & งานวันนี้'
                                     : 'My Academic Desk'}
                               </h3>
-                              <p className="text-xs text-[#475569] dark:text-slate-300 mt-0.5">
-                                {lang === 'th' ? 'ตารางสอน · ใบลา · การบ้านรอตรวจ' : 'Schedule · Leaves · Grading'}
+                              <p className="type-meta mt-0.5">
+                                {lang === 'th' ? 'ตารางสอน · ใบลา · การบ้าน' : 'Schedule · Leaves · Grading'}
                               </p>
                             </div>
                           </div>
@@ -1202,10 +1207,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <div className="flex items-center gap-2.5 min-w-0">
                               <Calendar className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
                               <div className="min-w-0">
-                                <div className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+                                <div className="type-card-title">
                                   {lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable'}
                                 </div>
-                                <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate">
+                                <div className="type-meta truncate">
                                   {todayScheduledSlots.length > 0
                                     ? todayScheduledSlots
                                         .slice(0, 2)
@@ -1218,7 +1223,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-sm font-extrabold text-purple-800 dark:text-purple-200 tabular-nums">
+                              <span className="type-label font-bold text-purple-800 dark:text-purple-200 tabular-nums">
                                 {todayScheduledSlots.length} {lang === 'th' ? 'คาบ' : 'slots'}
                               </span>
                               <ChevronRight className="w-4 h-4 text-purple-600 dark:text-purple-300" />
@@ -1233,26 +1238,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <div className="flex items-center gap-2.5 min-w-0">
                               <FileCheck2 className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
                               <div className="min-w-0">
-                                <div className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+                                <div className="type-card-title">
                                   {lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves'}
                                 </div>
-                                <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate">
+                                <div className="type-meta truncate">
                                   {pendingLeaveCount > 0
                                     ? lang === 'th'
-                                      ? 'มีคำขอลารอการตรวจสอบ'
+                                      ? 'รอการตรวจสอบ'
                                       : 'Requires review'
                                     : lang === 'th'
-                                      ? 'ไม่มีใบลาค้างพิจารณา'
-                                      : 'All leaves reviewed'}
+                                      ? 'ครบถ้วนแล้ว'
+                                      : 'All reviewed'}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <span
-                                className={`text-sm font-extrabold tabular-nums ${
+                                className={`type-label font-bold tabular-nums ${
                                   pendingLeaveCount > 0
                                     ? 'text-amber-700 dark:text-amber-300'
-                                    : 'text-[#1e293b] dark:text-slate-200'
+                                    : 'text-[var(--color-text-title)]'
                                 }`}
                               >
                                 {pendingLeaveCount} {lang === 'th' ? 'รายการ' : 'items'}
@@ -1269,26 +1274,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <div className="flex items-center gap-2.5 min-w-0">
                               <BookOpen className="w-4 h-4 text-purple-700 dark:text-purple-300 shrink-0" />
                               <div className="min-w-0">
-                                <div className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+                                <div className="type-card-title">
                                   {lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade'}
                                 </div>
-                                <div className="text-[11px] text-[#475569] dark:text-slate-300 truncate">
+                                <div className="type-meta truncate">
                                   {ungradedHomeworkCount > 0
                                     ? lang === 'th'
-                                      ? 'ส่งแล้ว รอให้คะแนน/ตรวจ'
-                                      : 'Submitted, awaiting score'
+                                      ? 'รอให้คะแนน'
+                                      : 'Awaiting score'
                                     : lang === 'th'
-                                      ? 'ตรวจงานครบถ้วนแล้ว'
+                                      ? 'ตรวจครบแล้ว'
                                       : 'All caught up'}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <span
-                                className={`text-sm font-extrabold tabular-nums ${
+                                className={`type-label font-bold tabular-nums ${
                                   ungradedHomeworkCount > 0
                                     ? 'text-purple-800 dark:text-purple-200'
-                                    : 'text-[#1e293b] dark:text-slate-200'
+                                    : 'text-[var(--color-text-title)]'
                                 }`}
                               >
                                 {ungradedHomeworkCount} {lang === 'th' ? 'ชิ้น' : 'items'}
@@ -1299,7 +1304,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="no-print dash-footer-divider mt-2.5 border-t border-purple-200/70 dark:border-purple-800/50 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                      <div className="no-print dash-footer-divider mt-2.5 border-t border-purple-200/70 dark:border-purple-800/50 flex flex-wrap items-center justify-between gap-2 type-meta">
                         <button
                           type="button"
                           onClick={() => onNavigate('timetable')}
@@ -1312,7 +1317,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           onClick={() => onNavigate('gradebook')}
                           className="font-semibold text-purple-800 dark:text-purple-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                         >
-                          <span>{lang === 'th' ? 'สมุดบันทึกคะแนน' : 'Gradebook'}</span>
+                          <span>{lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'}</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -1431,164 +1436,170 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* TAB 2: LIVE ATTENDANCE & GPS CAMERA AUDIT */}
         {dashboardTab === 'live_attendance' && (
-          <div className="space-y-3 animate-in fade-in duration-150">
-            <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden">
-              {/* Compact Action & Date Filter Toolbar */}
-              <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(todayStr)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
-                      selectedDate === todayStr 
-                        ? 'bg-[var(--color-primary)] text-white' 
-                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                    }`}
-                  >
-                    {lang === 'th' ? 'วันนี้' : 'Today'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(yesterdayStr)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
-                      selectedDate === yesterdayStr 
-                        ? 'bg-[var(--color-primary)] text-white' 
-                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                    }`}
-                  >
-                    {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(twoDaysAgoStr)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
-                      selectedDate === twoDaysAgoStr 
-                        ? 'bg-[var(--color-primary)] text-white' 
-                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                    }`}
-                  >
-                    {lang === 'th' ? '2 วันก่อน' : '2 Days Ago'}
-                  </button>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
-                  />
-                  <select
-                    value={selectedRoleFilter}
-                    onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
-                  >
-                    <option value="all">{lang === 'th' ? 'ทุกบทบาท' : 'All Roles'}</option>
-                    <option value="student">{lang === 'th' ? 'นักเรียน' : 'Students'}</option>
-                    <option value="teacher">{lang === 'th' ? 'ครู' : 'Teachers'}</option>
-                  </select>
-                  <select
-                    value={selectedTypeFilter}
-                    onChange={(e) => setSelectedTypeFilter(e.target.value as 'all' | 'check_in' | 'check_out')}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
-                  >
-                    <option value="all">{lang === 'th' ? 'เข้า & ออก' : 'All'}</option>
-                    <option value="check_in">{lang === 'th' ? 'เข้าโรงเรียน' : 'Check-in'}</option>
-                    <option value="check_out">{lang === 'th' ? 'ออกโรงเรียน' : 'Check-out'}</option>
-                  </select>
+          <div className="dash-scroll-stack animate-in fade-in duration-150">
+            <div className="saas-card overflow-hidden">
+              {/* Unified Header + Action & Date Filter Toolbar */}
+              <div className="saas-card-header bg-[var(--color-card-subtle)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="seg-tab-group">
+                    <button type="button" data-active={attendanceStep === 'summary'} onClick={() => setAttendanceStep('summary')} className="seg-tab-btn inline-flex items-center gap-1.5">
+                      <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'สรุป' : 'Summary'}</span>
+                    </button>
+                    <button type="button" data-active={attendanceStep === 'analytics'} onClick={() => setAttendanceStep('analytics')} className="seg-tab-btn inline-flex items-center gap-1.5">
+                      <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'กราฟ' : 'Charts'}</span>
+                    </button>
+                    <button type="button" data-active={attendanceStep === 'records'} onClick={() => setAttendanceStep('records')} className="seg-tab-btn inline-flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'ภาพถ่าย' : 'Photos'}</span>
+                      <span className="font-mono text-[11px] opacity-80">({displayRecords.length})</span>
+                    </button>
+                    <button type="button" data-active={attendanceStep === 'live_feed'} onClick={() => setAttendanceStep('live_feed')} className="seg-tab-btn inline-flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'รายการสด' : 'Feed'}</span>
+                    </button>
+                  </div>
+
+                  <div className="saas-control-group type-meta">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(todayStr)}
+                      className={`px-2 py-1 rounded-md font-semibold transition cursor-pointer ${
+                        selectedDate === todayStr
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                      }`}
+                    >
+                      {lang === 'th' ? 'วันนี้' : 'Today'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(yesterdayStr)}
+                      className={`px-2 py-1 rounded-md font-semibold transition cursor-pointer ${
+                        selectedDate === yesterdayStr
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                      }`}
+                    >
+                      {lang === 'th' ? 'เมื่อวาน' : 'Yesterday'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(twoDaysAgoStr)}
+                      className={`px-2 py-1 rounded-md font-semibold transition cursor-pointer ${
+                        selectedDate === twoDaysAgoStr
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                      }`}
+                    >
+                      {lang === 'th' ? '2 วันก่อน' : '2d Ago'}
+                    </button>
+                    <input
+                      type="date"
+                      aria-label={lang === 'th' ? 'เลือกวันที่' : 'Select date'}
+                      value={selectedDate}
+                      onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                      className="px-2 py-1 type-meta rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
+                    />
+                    <select
+                      aria-label={lang === 'th' ? 'กรองตามบทบาท' : 'Filter by role'}
+                      value={selectedRoleFilter}
+                      onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
+                      className="px-2 py-1 type-meta rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
+                    >
+                      <option value="all">{lang === 'th' ? 'ทุกบทบาท' : 'All Roles'}</option>
+                      <option value="student">{lang === 'th' ? 'นักเรียน' : 'Students'}</option>
+                      <option value="teacher">{lang === 'th' ? 'ครู' : 'Teachers'}</option>
+                    </select>
+                    <select
+                      aria-label={lang === 'th' ? 'กรองตามประเภท' : 'Filter by check type'}
+                      value={selectedTypeFilter}
+                      onChange={(e) => setSelectedTypeFilter(e.target.value as 'all' | 'check_in' | 'check_out')}
+                      className="px-2 py-1 type-meta rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
+                    >
+                      <option value="all">{lang === 'th' ? 'เข้า & ออก' : 'All'}</option>
+                      <option value="check_in">{lang === 'th' ? 'เข้าเรียน' : 'Check-in'}</option>
+                      <option value="check_out">{lang === 'th' ? 'ออกโรงเรียน' : 'Check-out'}</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={handleExportSelectedDateCsv}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                    className="btn-icon-tool"
+                    title={lang === 'th' ? `ส่งออก CSV วันที่ ${selectedDate}` : `Export CSV for ${selectedDate}`}
+                    aria-label={lang === 'th' ? 'ส่งออก CSV' : 'Export CSV'}
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'ส่งออก Excel' : 'Export CSV'}</span>
+                    <Download className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigate('mobile_checkin')}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                    className="btn-action-primary px-3 py-1.5"
+                    title={lang === 'th' ? 'เปิดหน้ากล้องเช็คชื่อมือถือและสแกน NFC' : 'Open Mobile Camera & NFC Check-in'}
                   >
                     <Smartphone className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'เปิดกล้องเช็คชื่อ' : 'Open Camera'}</span>
+                    <span>{lang === 'th' ? 'เช็คชื่อมือถือ' : 'Check-in'}</span>
                   </button>
                 </div>
               </div>
 
-
-
-        <div className="flex flex-wrap items-center gap-2 p-3 border-b border-[var(--color-border)] bg-[var(--color-card)]">
-          <button type="button" onClick={() => setAttendanceStep('summary')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'summary' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'สรุปสถิติ' : 'Summary'}</span>
-          </button>
-          <button type="button" onClick={() => setAttendanceStep('analytics')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'analytics' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'กราฟ' : 'Charts'}</span>
-          </button>
-          <button type="button" onClick={() => setAttendanceStep('records')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'records' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            <Camera className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? `ภาพถ่าย (${displayRecords.length})` : `Photos (${displayRecords.length})`}</span>
-          </button>
-          <button type="button" onClick={() => setAttendanceStep('live_feed')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${attendanceStep === 'live_feed' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-            <Activity className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'รายการสด' : 'Live Feed'}</span>
-          </button>
-        </div>
-
         {(attendanceStep === 'summary' || attendanceStep === 'analytics') && <>
         {/* Detailed Visual Analytics & Graphs Section */}
-        <div className="p-3.5 sm:p-5 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-5">
-          {/* Summary Metric Counters */}
+        <div className="saas-card-body space-y-5">
+          {/* Summary Metric Counters (Single-elevation hairline divided grid) */}
           {attendanceStep === 'summary' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-[var(--color-text-muted)] font-bold flex items-center justify-center gap-1">
-                <ClipboardList className="w-3 h-3 shrink-0" />
-                <span>{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</span>
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+            <div className="p-3 text-center">
+              <p className="type-meta flex items-center justify-center gap-1">
+                <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'ทั้งหมด' : 'Total Logs'}</span>
               </p>
-              <p className="text-xl font-bold text-[var(--color-text-title)] mt-0.5">{totalForDate}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{lang === 'th' ? 'รายการ' : 'records'}</p>
+              <p className="type-kpi-sm mt-1">{totalForDate}</p>
+              <p className="type-meta mt-0.5">{lang === 'th' ? 'รายการ' : 'records'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center gap-1">
-                <LogIn className="w-3 h-3" />
-                <span>{lang === 'th' ? 'เข้าโรงเรียน' : 'Check-ins'}</span>
+            <div className="p-3 text-center">
+              <p className="type-meta text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1">
+                <LogIn className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'เข้าเรียน' : 'Check-ins'}</span>
               </p>
-              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-0.5">{checkInsCount}</p>
-              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5">{lang === 'th' ? `ตรงเวลา ${presentCount}` : `On-time: ${presentCount}`}</p>
+              <p className="type-kpi-sm text-emerald-700 dark:text-emerald-300 mt-1">{checkInsCount}</p>
+              <p className="type-meta text-emerald-700 dark:text-emerald-400 mt-0.5">{lang === 'th' ? `ตรงเวลา ${presentCount}` : `On-time: ${presentCount}`}</p>
             </div>
-            <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-amber-700 dark:text-amber-300 font-bold flex items-center justify-center gap-1">
-                <Clock className="w-3 h-3" />
+            <div className="p-3 text-center">
+              <p className="type-meta text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
               </p>
-              <p className="text-xl font-bold text-amber-700 dark:text-amber-300 mt-0.5">{lateCount}</p>
-              <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">{latePercent}% {lang === 'th' ? 'ของทั้งหมด' : 'of total'}</p>
+              <p className="type-kpi-sm text-amber-700 dark:text-amber-300 mt-1">{lateCount}</p>
+              <p className="type-meta text-amber-700 dark:text-amber-400 mt-0.5">{latePercent}%</p>
             </div>
-            <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-purple-700 dark:text-purple-300 font-bold flex items-center justify-center gap-1">
-                <LogOut className="w-3 h-3" />
+            <div className="p-3 text-center">
+              <p className="type-meta text-purple-700 dark:text-purple-300 flex items-center justify-center gap-1">
+                <LogOut className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Check-outs'}</span>
               </p>
-              <p className="text-xl font-bold text-purple-700 dark:text-purple-300 mt-0.5">{checkOutsCount}</p>
-              <p className="text-[10px] text-purple-700 dark:text-purple-400 mt-0.5">{lang === 'th' ? 'ออกช่วงเย็น' : 'Departures'}</p>
+              <p className="type-kpi-sm text-purple-700 dark:text-purple-300 mt-1">{checkOutsCount}</p>
+              <p className="type-meta text-purple-700 dark:text-purple-400 mt-0.5">{lang === 'th' ? 'ช่วงเย็น' : 'Departures'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center gap-1">
-                <Camera className="w-3 h-3" />
-                <span>{lang === 'th' ? 'มีรูปภาพเซลฟี่' : 'Selfie Verified'}</span>
+            <div className="p-3 text-center">
+              <p className="type-meta text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1">
+                <Camera className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ภาพถ่ายเซลฟี่' : 'Selfie'}</span>
               </p>
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300 mt-0.5">{selfieCount}</p>
-              <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-0.5">{lang === 'th' ? 'มีหลักฐานภาพถ่าย' : 'With photo proof'}</p>
+              <p className="type-kpi-sm text-blue-700 dark:text-blue-300 mt-1">{selfieCount}</p>
+              <p className="type-meta text-blue-700 dark:text-blue-400 mt-0.5">{lang === 'th' ? 'ยืนยันตัวตน' : 'Verified'}</p>
             </div>
-            <div className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs text-center">
-              <p className="text-[11px] text-[var(--color-text-muted)] font-bold flex items-center justify-center gap-1">
-                <Users className="w-3 h-3 shrink-0" />
-                <span>{lang === 'th' ? 'สัดส่วน นร./ครู' : 'Students / Teachers'}</span>
+            <div className="p-3 text-center">
+              <p className="type-meta flex items-center justify-center gap-1">
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'นร. / ครู' : 'Student / Staff'}</span>
               </p>
-              <p className="text-xl font-bold text-[var(--color-text-title)] mt-0.5">{studentCheckIns}/{teacherCheckIns}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} • ครู ${teacherCheckIns}` : `S: ${studentCheckIns} • T: ${teacherCheckIns}`}</p>
+              <p className="type-kpi-sm mt-1">{studentCheckIns}/{teacherCheckIns}</p>
+              <p className="type-meta mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} · ครู ${teacherCheckIns}` : `S: ${studentCheckIns} · T: ${teacherCheckIns}`}</p>
             </div>
           </div>
           )}
@@ -1598,20 +1609,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Hourly Distribution Bar Chart */}
-              <div className="lg:col-span-2 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-3 min-w-0">
+              <div className="lg:col-span-2 saas-card saas-card-body space-y-3 min-w-0">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                    <h3 className="type-card-title flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-[var(--color-primary)]" />
-                      <span>{lang === 'th' ? 'กราฟแสดงการเดินทางเข้า-ออกโรงเรียนรายช่วงเวลา' : 'Traffic Distribution by Time Window'}</span>
+                      <span>{lang === 'th' ? 'การเข้า-ออกโรงเรียนรายช่วงเวลา' : 'Traffic Distribution by Time Window'}</span>
                     </h3>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                    <p className="type-meta">
                       {lang === 'th'
-                        ? `วิเคราะห์ความหนาแน่นของการผ่านเขตพื้นที่และประตูโรงเรียนในวันที่ ${selectedDate}`
-                        : `Hourly traffic load at school perimeter on ${selectedDate}`}
+                        ? `ความหนาแน่นหน้าประตู · ${selectedDate}`
+                        : `Hourly gate traffic · ${selectedDate}`}
                     </p>
                   </div>
-                  <span className="text-[11px] font-bold text-[var(--color-text-body)]">
+                  <span className="type-label">
                     {lang === 'th' ? `รวม ${totalForDate} รายการ` : `Total ${totalForDate}`}
                   </span>
                 </div>
@@ -1641,24 +1652,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Quick Analytics Card: Roles & Quality Index */}
-              <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xs space-y-4 flex flex-col justify-between">
+              <div className="saas-card saas-card-body space-y-4 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <h3 className="type-card-title flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                    <span>{lang === 'th' ? 'ดัชนีความตรงเวลา & ความปลอดภัย GPS' : 'Punctuality & GPS Integrity'}</span>
+                    <span>{lang === 'th' ? 'ความตรงเวลา & GPS' : 'Punctuality & GPS'}</span>
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                    {lang === 'th' ? 'ตรวจสอบระยะห่างจากใจกลางสถานศึกษา' : 'Geofence proximity index verification'}
+                  <p className="type-meta mt-0.5">
+                    {lang === 'th' ? 'ตรวจสอบระยะห่างจากสถานศึกษา' : 'Geofence proximity verification'}
                   </p>
                 </div>
 
                 {/* Quality Progress Bar */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[var(--color-text-body)] font-bold">{lang === 'th' ? 'อัตราเข้าเรียนตรงเวลา:' : 'On-Time Rate:'}</span>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-300 font-mono">{onTimePercent}%</span>
+                  <div className="flex items-center justify-between type-label">
+                    <span>{lang === 'th' ? 'ตรงเวลา' : 'On-Time Rate'}</span>
+                    <span className="font-mono text-emerald-700 dark:text-emerald-300">{onTimePercent}%</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] overflow-hidden flex">
+                  <div className="w-full h-2.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] overflow-hidden flex">
                     <div
                       className="h-full bg-emerald-600 transition-all"
                       style={{ width: `${onTimePercent}%` }}
@@ -1670,28 +1681,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       title={`มาสาย ${lateCount} คน`}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                  <div className="flex justify-between type-meta">
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
-                      <span>{lang === 'th' ? `ตรงเวลา (${presentCount})` : `On-time (${presentCount})`}</span>
+                      <span>{lang === 'th' ? `ตรงเวลา ${presentCount}` : `On-time ${presentCount}`}</span>
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                      <span>{lang === 'th' ? `มาสาย (${lateCount})` : `Late (${lateCount})`}</span>
+                      <span>{lang === 'th' ? `มาสาย ${lateCount}` : `Late ${lateCount}`}</span>
                     </span>
                   </div>
                 </div>
 
-                {/* Geofence verification summary */}
-                <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 space-y-1.5 text-[11px]">
-                  <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
-                    <MapPin className="w-3.5 h-3.5 text-blue-800 dark:text-blue-300" />
-                    <span>{lang === 'th' ? 'รั้วเสมือน GPS Geofence (รัศมี 300 ม.)' : 'GPS Geofence Perimeter (300m)'}</span>
+                {/* Geofence verification summary (hairline divider, no nested card) */}
+                <div className="pt-3 border-t border-[var(--color-border)] space-y-1">
+                  <div className="flex items-center gap-1.5 type-label text-sky-800 dark:text-sky-300">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === 'th' ? 'รั้วเสมือน GPS Geofence (300 ม.)' : 'GPS Geofence (300m)'}</span>
                   </div>
-                  <p className="text-blue-900 dark:text-blue-200 leading-relaxed text-[11px]">
+                  <p className="type-meta leading-relaxed">
                     {lang === 'th'
-                      ? 'ทุกคนที่ลงชื่อผ่านมือถือในระบบนี้ ได้รับการบันทึกภาพถ่ายเซลฟี่จริง พร้อมประทับตราพิกัดระยะห่าง และเวลาที่ตรวจสอบย้อนหลังได้'
-                      : 'All mobile check-ins capture facial selfies with verified timestamp and proximity coordinates.'}
+                      ? 'บันทึกภาพถ่ายเซลฟี่ พร้อมพิกัดและเวลาที่ตรวจสอบย้อนหลังได้'
+                      : 'Selfies verified with timestamp and proximity coordinates.'}
                   </p>
                 </div>
               </div>
@@ -1722,50 +1733,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {attendanceStep === 'records' && <>
         {/* Gallery / Cards of Recent Selfie Check-ins with Click-to-View Modal */}
-        <div className="p-3.5 sm:p-5 space-y-4">
+        <div className="saas-card-body space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex flex-wrap items-center gap-2">
+              <h3 className="type-section-title flex flex-wrap items-center gap-2">
                 <Camera className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
-                <span>{lang === 'th' ? `ภาพถ่ายเช็คชื่อ (${selectedDate})` : `Selfie Logs (${selectedDate})`}</span>
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-bold text-xs">
-                  {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
+                <span>{lang === 'th' ? `ภาพถ่ายเช็คชื่อ · ${selectedDate}` : `Selfie Logs · ${selectedDate}`}</span>
+                <span className="type-meta font-semibold">
+                  · {displayRecords.length} {lang === 'th' ? 'รายการ' : 'records'}
                 </span>
               </h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+              <p className="type-meta mt-0.5">
                 {lang === 'th'
-                  ? 'คลิกที่การ์ดเพื่อดูภาพถ่ายและพิกัดย้อนหลัง'
-                  : 'Click any card to inspect selfie proof & GPS coordinates.'}
+                  ? 'คลิกการ์ดเพื่อดูภาพถ่ายและพิกัด'
+                  : 'Click a card to inspect selfie proof & GPS.'}
               </p>
             </div>
 
             {/* Simple Text Search inside table */}
             <input
               type="text"
-              placeholder={lang === 'th' ? 'ค้นหาชื่อ, รหัสนักเรียน, หรือห้อง...' : 'Search student name, ID, or room...'}
+              placeholder={lang === 'th' ? 'ค้นหาชื่อ, รหัส, ห้อง...' : 'Search name, ID, room...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] placeholder-[var(--color-text-muted)] w-full sm:w-64 focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] type-label text-[var(--color-text-title)] bg-[var(--color-card-subtle)] placeholder-[var(--color-text-muted)] w-full sm:w-64 focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
             />
           </div>
 
           {displayRecords.length === 0 ? (
             <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
               <Camera className="w-10 h-10 text-[var(--color-text-muted)] mx-auto" />
-              <p className="text-sm font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? `ไม่พบบันทึกเช็คชื่อในวันที่เลือก (${selectedDate})` : `No records found for ${selectedDate}`}
+              <p className="type-section-title">
+                {lang === 'th' ? `ไม่พบบันทึกวันที่ ${selectedDate}` : `No records for ${selectedDate}`}
               </p>
-              <p className="text-xs text-[var(--color-text-muted)]">
+              <p className="type-meta">
                 {lang === 'th'
-                  ? 'ลองเลือกดูวันที่อื่น เช่น วันนี้ หรือเมื่อวาน หรือกด "ถ่ายรูปเช็คชื่อมือถือ" เพื่อบันทึกข้อมูลใหม่'
-                  : 'Try selecting another date or use Mobile Check-in to capture a new record.'}
+                  ? 'เลือกวันที่อื่น หรือเปิดกล้องเช็คชื่อเพื่อบันทึกข้อมูลใหม่'
+                  : 'Select another date or capture a new record.'}
               </p>
               <button
                 type="button"
                 onClick={() => setSelectedDate(todayStr)}
-                className="mt-2 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+                className="mt-2 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white type-label cursor-pointer"
               >
-                {lang === 'th' ? 'กลับมาดูวันนี้' : 'Back to Today'}
+                {lang === 'th' ? 'ดูวันนี้' : 'Back to Today'}
               </button>
             </div>
           ) : (
@@ -1782,34 +1793,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div
                     key={rec.id}
                     onClick={() => openPhotoRecord(rec)}
-                    className="group relative rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 shadow-2xs hover:shadow-md hover:border-[var(--color-primary)] transition-all cursor-pointer flex flex-col justify-between gap-3"
+                    className="group relative rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 hover:border-[var(--color-primary)] transition cursor-pointer flex flex-col justify-between gap-3"
                   >
-                    {/* Top Row: Type & Timestamp */}
-                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
+                    {/* Top Row: Clean Unboxed Type & Timestamp */}
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 type-meta">
                       <div className="flex items-center gap-1.5">
-                        {isCheckOut ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 text-[11px] font-bold border border-purple-300 dark:border-purple-700">
-                            <LogOut className="w-3 h-3" />
-                            <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Exit'}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700">
-                            <LogIn className="w-3 h-3" />
-                            <span>{lang === 'th' ? 'เข้าโรงเรียน' : 'Entry'}</span>
-                          </span>
-                        )}
-                        {isTeacher ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 font-bold border border-indigo-300 dark:border-indigo-700">
-                            {lang === 'th' ? 'ครู' : 'Teacher'}
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] font-bold">
-                            {lang === 'th' ? 'นร.' : 'Student'}
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 font-bold ${
+                          isCheckOut ? 'text-purple-700 dark:text-purple-300' : 'text-emerald-700 dark:text-emerald-300'
+                        }`}>
+                          {isCheckOut ? <LogOut className="w-3 h-3" /> : <LogIn className="w-3 h-3" />}
+                          <span>{isCheckOut ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}</span>
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>{isTeacher ? (lang === 'th' ? 'ครู' : 'Staff') : (lang === 'th' ? 'นักเรียน' : 'Student')}</span>
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-[var(--color-text-body)]">
+                      <div className="flex items-center gap-1 font-mono font-semibold text-[var(--color-text-body)]">
                         <Clock className="w-3 h-3 text-[var(--color-text-muted)]" />
                         <span>{rec.time} {lang === 'th' ? 'น.' : ''}</span>
                       </div>
@@ -1817,39 +1816,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* Middle: Photo & Person Info */}
                     <div className="flex items-center gap-3">
-                      {/* Photo Thumbnail with Zoom Icon on Hover */}
-                      <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-[var(--color-card)] border border-[var(--color-border)] shrink-0 group-hover:ring-2 group-hover:ring-[var(--color-primary)] transition">
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[var(--color-card)] border border-[var(--color-border)] shrink-0 group-hover:ring-2 group-hover:ring-[var(--color-primary)] transition">
                         <img
                           src={photoSrc}
                           alt={rec.userName || 'Check-in photo'}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                          <Eye className="w-5 h-5 drop-shadow" />
+                          <Eye className="w-4 h-4" />
                         </div>
-                        {rec.photoUrl && (
-                          <div className="absolute bottom-0.5 right-0.5 p-0.5 rounded bg-[var(--color-primary)] text-white text-[9px] shadow-xs">
-                            <Camera className="w-2.5 h-2.5" />
-                          </div>
-                        )}
                       </div>
 
-                      {/* Info */}
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="font-bold text-xs text-[var(--color-text-title)] truncate">
+                        <p className="type-card-title truncate">
                           {rec.userName || (lang === 'th' ? 'ผู้ใช้งานระบบ' : 'System User')}
                         </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                        <p className="type-meta truncate">
                           {rec.userDepartmentOrRoom || rec.userRole || (lang === 'th' ? 'โรงเรียน' : 'School')}
                         </p>
                         <div className="pt-0.5">
                           {rec.status === 'present' ? (
-                            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
+                            <span className="type-meta font-semibold text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
                               <span>{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
                             </span>
                           ) : (
-                            <span className="text-[10px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1">
+                            <span className="type-meta font-semibold text-amber-700 dark:text-amber-300 inline-flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
                             </span>
@@ -1859,18 +1851,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Bottom Metadata: GPS & Action Prompt */}
-                    <div className="pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-[var(--color-text-muted)]">
-                      <div className="flex items-center gap-1 truncate font-medium">
+                    <div className="pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-1.5 type-meta">
+                      <div className="flex items-center gap-1 truncate">
                         <MapPin className="w-3 h-3 text-[var(--color-primary)] shrink-0" />
                         <span className="truncate">
                           {rec.location?.distanceMeters !== undefined 
                             ? (lang === 'th' ? `ห่าง ${rec.location.distanceMeters} ม.` : `${rec.location.distanceMeters}m away`)
-                            : (lang === 'th' ? 'ในเขตพื้นที่โรงเรียน' : 'On campus')}
+                            : (lang === 'th' ? 'ในเขตพื้นที่' : 'On campus')}
                         </span>
                       </div>
 
-                      <span className="text-[var(--color-primary-text)] font-bold group-hover:underline flex items-center gap-0.5 shrink-0 text-[10px]">
-                        <span>{lang === 'th' ? 'ดูรูปเต็ม' : 'View Full'}</span>
+                      <span className="text-[var(--color-primary-text)] font-semibold group-hover:underline inline-flex items-center gap-0.5 shrink-0">
+                        <span>{lang === 'th' ? 'ดูภาพ' : 'Inspect'}</span>
                         <ChevronRight className="w-3 h-3" />
                       </span>
                     </div>
@@ -1886,23 +1878,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Live Gate Check-in Feed inside Tab 2 */}
             {attendanceStep === 'live_feed' && (
-            <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 sm:p-5 shadow-xs space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="saas-card saas-card-body space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[var(--color-border)]">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Clock className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
-                  <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'บันทึกการผ่านประตูและเข้าเรียนวันนี้' : 'Live Gate & Class Check-in Feed'}
+                  <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <h2 className="type-section-title">
+                    {lang === 'th' ? 'บันทึกเข้า-ออกประตูวันนี้' : 'Live Gate Check-in Feed'}
                   </h2>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700 shrink-0">
-                    {lang === 'th' ? 'สด' : 'Live'}
+                  <span className="type-meta font-semibold text-emerald-700 dark:text-emerald-300">
+                    · {lang === 'th' ? 'อัปเดตล่าสุด' : 'Live'}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => onNavigate('attendance')}
-                  className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                  className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-0.5 cursor-pointer shrink-0"
+                  title={lang === 'th' ? 'เปิดหน้าบันทึกเช็กชื่อทั้งหมด' : 'Open full attendance records'}
                 >
-                  {lang === 'th' ? 'ดูบันทึกทั้งหมด' : 'View All'} <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'ดูทั้งหมด' : 'View All'}</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -1911,7 +1905,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div
                     key={rec.id}
                     onClick={() => openPhotoRecord(rec)}
-                    className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 transition"
+                    className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 transition"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
@@ -1921,29 +1915,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          <span className="font-bold text-[var(--color-text-title)] truncate">
+                        <div className="flex flex-wrap items-baseline gap-x-1.5">
+                          <span className="type-card-title truncate">
                             {rec.userName}
                           </span>
-                          <span className="text-[var(--color-text-muted)] font-mono text-[11px]">
-                            ({rec.studentId})
+                          <span className="type-meta font-mono">
+                            · {rec.studentId}
                           </span>
                         </div>
-                        <div className="text-[11px] text-[var(--color-text-muted)] truncate">
-                          {rec.userDepartmentOrRoom || rec.userRole} • {lang === 'th' ? `เวลา ${rec.time} น.` : rec.time} • {rec.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}
+                        <div className="type-meta truncate">
+                          {rec.userDepartmentOrRoom || rec.userRole} · {rec.time} {lang === 'th' ? 'น.' : ''} · {rec.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}
                         </div>
                       </div>
                     </div>
 
                     <div className="shrink-0 self-start sm:self-auto">
                       {rec.status === 'present' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold text-[11px] border border-emerald-300 dark:border-emerald-700">
-                          <CheckCircle2 className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 type-meta font-semibold text-emerald-700 dark:text-emerald-300">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold text-[11px] border border-amber-300 dark:border-amber-700">
-                          <Clock className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 type-meta font-semibold text-amber-700 dark:text-amber-300">
+                          <Clock className="w-3.5 h-3.5" />
                           <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
                         </span>
                       )}
@@ -1962,13 +1956,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'นวัตกรรมการเรียนรู้ดิจิทัล & เกมมิฟิเคชัน' : 'Digital Learning & Gamification Hub'}
+                <h2 className="type-section-title">
+                  {lang === 'th' ? 'นวัตกรรมการเรียนรู้ดิจิทัล' : 'Digital Learning Hub'}
                 </h2>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="saas-control-group">
                 {[0, 1, 2].map((page) => (
-                  <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer ${innovationPage === page ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
+                  <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-2.5 py-1 rounded-md type-meta font-semibold cursor-pointer ${innovationPage === page ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'}`}>
                     {page + 1} / 3
                   </button>
                 ))}
@@ -1978,127 +1972,118 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {[
                 {
                   id: 'edu_battle_royale_3d',
-                  title: lang === 'th' ? 'EduBattle Royale 3D' : 'EduBattle Royale 3D',
+                  title: 'EduBattle Royale 3D',
                   desc: lang === 'th' ? 'สมรภูมิประลองปัญญา 3D แข่งตอบคำถามชิงตำแหน่งแชมป์' : '3D interactive academic quiz battle arena with live avatars',
                   icon: Swords,
                   color: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700',
                   badge: '3D Realtime',
-                  badgeColor: 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border border-purple-300 dark:border-purple-700',
                   actionLabel: lang === 'th' ? 'เข้าสู่สนาม 3D' : 'Enter 3D Arena',
                 },
                 {
                   id: 'socratic_tutor',
-                  title: lang === 'th' ? 'Socratic AI Tutor' : 'Socratic AI Tutor',
+                  title: 'Socratic AI Tutor',
                   desc: lang === 'th' ? 'ผู้ช่วยติวอัจฉริยะที่ใช้หลักตั้งคำถามกระตุ้นกระบวนการคิด' : 'Inquiry-based AI learning mentor guiding critical thinking',
                   icon: BrainCircuit,
                   color: 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700',
                   badge: 'AI Powered',
-                  badgeColor: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-700',
-                  actionLabel: lang === 'th' ? 'เริ่มติวกับ AI' : 'Start Tutoring',
+                  actionLabel: lang === 'th' ? 'เริ่มติว' : 'Start Tutoring',
                 },
                 {
                   id: 'study_streak_pass',
-                  title: lang === 'th' ? 'Study Streak & Quest Pass' : 'Study Streak & Quest Pass',
+                  title: 'Study Streak & Quest Pass',
                   desc: lang === 'th' ? 'สะสมแต้มการเข้าเรียนต่อเนื่อง ปลดล็อกสกินการ์ดและเหรียญรางวัล' : 'Daily streak challenges, avatar card borders, and rewards',
                   icon: Flame,
                   color: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700',
                   badge: 'Gamified',
-                  badgeColor: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700',
-                  actionLabel: lang === 'th' ? 'ดูเควสต์ประจำวัน' : 'View Quests',
+                  actionLabel: lang === 'th' ? 'ดูเควสต์' : 'View Quests',
                 },
                 {
                   id: 'coop_boss_raid',
-                  title: lang === 'th' ? 'Co-op Boss Raid' : 'Co-op Boss Raid',
+                  title: 'Co-op Boss Raid',
                   desc: lang === 'th' ? 'รวมพลังตอบโจทย์ความยากระดับบอส ประสานงานพิชิตด่านร่วมกัน' : 'Collaborative classroom quiz raid with team boss battles',
                   icon: ShieldAlert,
                   color: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700',
                   badge: 'Multiplayer',
-                  badgeColor: 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-700',
                   actionLabel: lang === 'th' ? 'เข้าร่วมเรดบอส' : 'Join Boss Raid',
                 },
                 {
                   id: 'real_world_snap_quest',
-                  title: lang === 'th' ? 'Real-World Snap Quest' : 'Real-World Snap Quest',
+                  title: 'Real-World Snap Quest',
                   desc: lang === 'th' ? 'ถ่ายภาพปรากฏการณ์รอบตัวส่งตรวจด้วยการวิเคราะห์เชิงวิทยาศาสตร์' : 'Camera quest assignments linking real life to coursework',
                   icon: Camera,
                   color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700',
                   badge: 'Hands-on',
-                  badgeColor: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700',
-                  actionLabel: lang === 'th' ? 'ส่งเควสต์ภาพถ่าย' : 'Snap Quests',
+                  actionLabel: lang === 'th' ? 'ส่งเควสต์ภาพ' : 'Snap Quests',
                 },
                 {
                   id: 'subject_lab_simulation',
-                  title: lang === 'th' ? 'Subject Lab Simulation' : 'Subject Lab Simulation',
+                  title: 'Subject Lab Simulation',
                   desc: lang === 'th' ? 'ห้องทดลองวิทยาศาสตร์และฟิสิกส์เสมือนจริง ทดลองผสมสารได้อย่างปลอดภัย' : 'Interactive STEM lab simulator with chemistry & optics modules',
                   icon: FlaskConical,
                   color: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700',
                   badge: 'Interactive Lab',
-                  badgeColor: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700',
                   actionLabel: lang === 'th' ? 'เปิดห้องแล็บ' : 'Launch Lab',
                 },
                 {
                   id: 'ai_diagnostic_learning',
-                  title: lang === 'th' ? 'AI Diagnostic Learning' : 'AI Diagnostic Learning',
+                  title: 'AI Diagnostic Learning',
                   desc: lang === 'th' ? 'ระบบตรวจวินิจฉัยจุดอ่อนรายบุคคล แนะนำเนื้อหาเสริมเฉพาะจุดอย่างแม่นยำ' : 'Personalized diagnostic learning paths detecting knowledge gaps',
                   icon: BarChart3,
                   color: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700',
                   badge: 'Adaptive',
-                  badgeColor: 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-300 dark:border-blue-700',
                   actionLabel: lang === 'th' ? 'ดูผลวินิจฉัย' : 'View Diagnostics',
                 },
                 {
                   id: 'hall_of_fame_3d',
-                  title: lang === 'th' ? '3D Hall of Fame' : '3D Hall of Fame',
+                  title: '3D Hall of Fame',
                   desc: lang === 'th' ? 'หอเกียรติยศ 3 มิติ จัดแสดงผลงานยอดเยี่ยมและถ้วยรางวัลโรงเรียน' : 'Immersive 3D gallery honoring top academic and sports achievers',
                   icon: Trophy,
                   color: 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700',
                   badge: '3D Gallery',
-                  badgeColor: 'bg-yellow-100 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700',
                   actionLabel: lang === 'th' ? 'ชมหอเกียรติยศ' : 'Visit Hall of Fame',
                 },
                 {
                   id: 'executive_early_warning',
-                  title: lang === 'th' ? 'Executive Early Warning' : 'Executive Early Warning',
+                  title: 'Executive Early Warning',
                   desc: lang === 'th' ? 'ระบบเตือนภัยล่วงหน้าตรวจจับนักเรียนเสี่ยงตกหล่นหรือขาดเรียนบ่อย' : 'Early warning intelligence identifying attendance & academic drop risks',
                   icon: ShieldAlert,
                   color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700',
                   badge: 'Executive',
-                  badgeColor: 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200 border border-red-300 dark:border-red-700',
-                  actionLabel: lang === 'th' ? 'ตรวจวิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
+                  actionLabel: lang === 'th' ? 'วิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
                 },
               ].filter((_, index) => Math.floor(index / 3) === innovationPage).map((item) => (
                 <div
                   key={item.id}
-                  className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs hover:border-[var(--color-primary)] transition flex flex-col justify-between group"
+                  className="saas-card saas-card-body hover:border-[var(--color-primary)] transition flex flex-col justify-between group"
                 >
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className={`p-2.5 rounded-xl border ${item.color}`}>
-                        <item.icon className="w-5 h-5" />
+                    <div className="flex items-center justify-between gap-2">
+                      <div className={`p-2 rounded-xl border ${item.color}`}>
+                        <item.icon className="w-4 h-4" />
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor}`}>
+                      <span className="type-meta font-semibold">
                         {item.badge}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-bold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition">
+                      <h3 className="type-section-title group-hover:text-[var(--color-primary-text)] transition">
                         {item.title}
                       </h3>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-2 leading-relaxed">
+                      <p className="type-body text-[var(--color-text-muted)] mt-1 line-clamp-2">
                         {item.desc}
                       </p>
                     </div>
                   </div>
 
                   <div className="pt-3 mt-3 border-t border-[var(--color-border)] flex items-center justify-between">
-                    <span className="text-[11px] text-[var(--color-text-muted)]">
+                    <span className="type-meta">
                       {lang === 'th' ? 'พร้อมใช้งาน' : 'Ready'}
                     </span>
                     <button
                       type="button"
                       onClick={() => onNavigate(item.id as any)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:text-white border border-[var(--color-border)] text-xs font-bold transition cursor-pointer"
+                      className="btn-tool-tone px-3 py-1.5"
                     >
                       <span>{item.actionLabel}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -2115,38 +2100,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-4 animate-in fade-in duration-150">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Announcements Section (2 cols) */}
-              <div className="lg:col-span-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 sm:p-5 shadow-xs space-y-4 min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="lg:col-span-2 saas-card min-w-0 overflow-hidden">
+                <div className="saas-card-header">
                   <div className="flex items-center gap-2 min-w-0">
                     <BellRing className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
-                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ข่าวสารและประกาศสำคัญของโรงเรียน' : 'Official School Announcements'}
+                    <h2 className="type-section-title">
+                      {lang === 'th' ? 'ข่าวสารและประกาศโรงเรียน' : 'Official School Announcements'}
                     </h2>
                   </div>
                   <button
                     type="button"
                     onClick={() => onNavigate('announcements')}
-                    className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                    className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-0.5 cursor-pointer shrink-0"
                   >
-                    {lang === 'th' ? 'ดูประกาศทั้งหมด' : 'All Announcements'} <ArrowUpRight className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ทั้งหมด' : 'All'}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <PagedList items={announcements} pageSize={2} renderItem={(item) => (
-                    <div key={item.id} className="p-3.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5 flex flex-col justify-between min-w-0">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center justify-between gap-1">
-                          <span className="font-bold text-[var(--color-text-title)]">{item.title}</span>
-                          <span className="text-[10px] text-[var(--color-text-muted)]">{item.publishedAt}</span>
-                        </div>
-                        <p className="text-[var(--color-text-body)] line-clamp-3 text-[11px] leading-relaxed">
-                          {item.content}
-                        </p>
+                <div className="saas-card-body divide-y divide-[var(--color-border)]">
+                  <PagedList items={announcements} pageSize={3} renderItem={(item) => (
+                    <div key={item.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="type-card-title">{item.title}</span>
+                        <span className="type-meta">{item.publishedAt}</span>
                       </div>
-                      <div className="text-[10px] text-[var(--color-text-muted)] pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-1">
-                        <span>{lang === 'th' ? `โดย: ${item.author}` : `By: ${item.author}`}</span>
-                        <span className="text-[10px] font-semibold text-[var(--color-primary-text)]">
+                      <p className="type-body text-[var(--color-text-body)] line-clamp-2">
+                        {item.content}
+                      </p>
+                      <div className="type-meta flex flex-wrap items-center gap-1.5">
+                        <span>{item.author}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="font-semibold text-[var(--color-primary-text)]">
                           {item.authorRole}
                         </span>
                       </div>
@@ -2156,31 +2141,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Honor Students Card (1 col) */}
-              <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 sm:p-5 shadow-xs space-y-4 min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="saas-card min-w-0 overflow-hidden">
+                <div className="saas-card-header">
                   <div className="flex items-center gap-2 min-w-0">
                     <Award className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'นักเรียนผลการเรียนดีเด่น' : 'Honor Students Roll'}
+                    <h2 className="type-section-title">
+                      {lang === 'th' ? 'ผลการเรียนดีเด่น' : 'Honor Roll'}
                     </h2>
                   </div>
                   <button
                     type="button"
                     onClick={() => onNavigate('gradebook')}
-                    className="text-xs text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                    className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-0.5 cursor-pointer shrink-0"
                   >
-                    {lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'} <ArrowUpRight className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'สมุดคะแนน' : 'Gradebook'}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="saas-card-body divide-y divide-[var(--color-border)]">
                   <PagedList items={topStudents} pageSize={3} renderItem={(st, idx) => (
                     <div
                       key={st.id}
-                      className="p-3 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between gap-2 text-xs"
+                      className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-5 text-center font-bold text-[var(--color-text-muted)] text-xs shrink-0">
+                        <div className="w-5 text-center type-meta font-bold shrink-0">
                           #{idx + 1}
                         </div>
                         <img
@@ -2189,11 +2175,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                         />
                         <div className="min-w-0">
-                          <div className="font-bold text-[var(--color-text-title)] truncate">
+                          <div className="type-card-title truncate">
                             {lang === 'th' ? `${st.firstNameTh} ${st.lastNameTh}` : `${st.firstNameEn} ${st.lastNameEn}`}
                           </div>
-                          <div className="text-[11px] text-[var(--color-text-muted)] truncate">
-                            {lang === 'th' ? `ชั้น ${st.gradeLevel} ห้อง ${st.room}` : `Grade ${st.gradeLevel} / ${st.room}`}
+                          <div className="type-meta truncate">
+                            {lang === 'th' ? `ชั้น ${st.gradeLevel} ${st.room}` : `Grade ${st.gradeLevel} / ${st.room}`}
                           </div>
                         </div>
                       </div>
@@ -2210,10 +2196,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             const feedback = getRawScoreFeedback(summary.averageRawScore);
                             return (
                               <>
-                                <div className="font-bold text-emerald-700 dark:text-emerald-300 font-mono text-sm">
+                                <div className="type-label font-bold text-emerald-700 dark:text-emerald-300 font-mono">
                                   {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : 'รายปี'}
                                 </div>
-                                <div className="text-[10px] text-[var(--color-text-muted)] font-medium">
+                                <div className="type-meta">
                                   {summary.averageRawScore !== null ? feedback.labelTh : 'ประเมินรายปี'}
                                 </div>
                               </>
@@ -2223,10 +2209,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           const effectiveGpa = hasRealGpa && summary.gpax !== null ? summary.gpax : 0;
                           return (
                             <>
-                              <div className="font-bold text-[var(--color-primary-text)] font-mono text-sm tabular-nums">
+                              <div className="type-label font-bold text-[var(--color-primary-text)] font-mono tabular-nums">
                                 {hasRealGpa ? effectiveGpa.toFixed(2) : '—'}
                               </div>
-                              <div className="text-[10px] text-[var(--color-text-muted)] font-medium">
+                              <div className="type-meta">
                                 {hasRealGpa ? 'GPAX ปพ.5' : 'ยังไม่ตัดเกรด'}
                               </div>
                             </>
@@ -2253,20 +2239,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Camera className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                  <h3 className="type-section-title truncate">
                     {lang === 'th' ? 'รูปถ่ายเช็คชื่อยืนยันตัวตน' : 'Selfie Verification Proof'}
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                    {lang === 'th' ? `วันที่ ${selectedPhotoRecord.date} • เวลา ${selectedPhotoRecord.time} น.` : `${selectedPhotoRecord.date} at ${selectedPhotoRecord.time}`}
+                  <p className="type-meta truncate">
+                    {lang === 'th' ? `วันที่ ${selectedPhotoRecord.date} · เวลา ${selectedPhotoRecord.time} น.` : `${selectedPhotoRecord.date} · ${selectedPhotoRecord.time}`}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedPhotoRecord(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer shrink-0"
+                className="btn-icon-tool"
+                aria-label={lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
+                title={lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -2282,87 +2270,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
 
                 {/* Live Watermark on Photo */}
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 p-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-[10px] space-y-0.5 border border-white/25">
+                <div className="absolute bottom-2.5 left-2.5 right-2.5 p-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-[11px] space-y-0.5 border border-white/25">
                   <div className="flex flex-wrap items-center justify-between gap-1">
                     <span className="font-bold flex items-center gap-1 text-cyan-300 truncate">
                       <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{systemConfig.schoolNameTh} • VERIFIED CHECK</span>
+                      <span className="truncate">{systemConfig.schoolNameTh} · VERIFIED</span>
                     </span>
                     <span className="font-mono shrink-0">{selectedPhotoRecord.time} {lang === 'th' ? 'น.' : ''}</span>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-1 text-white">
                     <span className="truncate">{selectedPhotoRecord.userName} ({selectedPhotoRecord.userDepartmentOrRoom || selectedPhotoRecord.userRole})</span>
-                    <span className="shrink-0">{selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'ออกโรงเรียน' : 'Exit') : (lang === 'th' ? 'เข้าโรงเรียน' : 'Entry')}</span>
+                    <span className="shrink-0">{selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'ออก' : 'Exit') : (lang === 'th' ? 'เข้า' : 'Entry')}</span>
                   </div>
-                  <div className="text-[9px] text-slate-200 font-mono truncate">
-                    GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} • {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม.` : `${selectedPhotoRecord.location?.distanceMeters || 18}m away`}
+                  <div className="text-[10px] text-slate-200 font-mono truncate">
+                    GPS: {selectedPhotoRecord.location?.lat || 13.7367}, {selectedPhotoRecord.location?.lng || 100.5231} · {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม.` : `${selectedPhotoRecord.location?.distanceMeters || 18}m away`}
                   </div>
                 </div>
               </div>}
 
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] text-[var(--color-text-muted)] font-semibold">{photoModalStep + 1} / 2</span>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setPhotoModalStep(0)} disabled={photoModalStep === 0} className="px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-bold disabled:opacity-40 cursor-pointer">
+                <span className="type-meta">{photoModalStep + 1} / 2</span>
+                <div className="saas-control-group">
+                  <button type="button" onClick={() => setPhotoModalStep(0)} className={`px-3 py-1 rounded-md type-label cursor-pointer ${photoModalStep === 0 ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'}`}>
                     {lang === 'th' ? 'ภาพถ่าย' : 'Photo'}
                   </button>
-                  <button type="button" onClick={() => setPhotoModalStep(1)} disabled={photoModalStep === 1} className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold disabled:opacity-40 cursor-pointer">
+                  <button type="button" onClick={() => setPhotoModalStep(1)} className={`px-3 py-1 rounded-md type-label cursor-pointer ${photoModalStep === 1 ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'}`}>
                     {lang === 'th' ? 'รายละเอียด' : 'Details'}
                   </button>
                 </div>
               </div>
 
               {/* Information Grid */}
-              {photoModalStep === 1 && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
-                  <span className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
-                  <p className="font-bold text-[var(--color-text-title)]">{selectedPhotoRecord.userName}</p>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {selectedPhotoRecord.userRole} • {selectedPhotoRecord.userDepartmentOrRoom}
-                  </p>
+              {photoModalStep === 1 && <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] divide-y divide-[var(--color-border)]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+                  <div className="p-3 space-y-1">
+                    <span className="type-meta">{lang === 'th' ? 'ชื่อผู้ลงชื่อ' : 'Name'}</span>
+                    <p className="type-card-title">{selectedPhotoRecord.userName}</p>
+                    <p className="type-meta">
+                      {selectedPhotoRecord.userRole} · {selectedPhotoRecord.userDepartmentOrRoom}
+                    </p>
+                  </div>
+
+                  <div className="p-3 space-y-1">
+                    <span className="type-meta">{lang === 'th' ? 'ประเภทและสถานะ' : 'Type & Status'}</span>
+                    <div className="flex flex-wrap items-center gap-1.5 type-label">
+                      <span className={selectedPhotoRecord.recordType === 'check_out' ? 'text-purple-700 dark:text-purple-300' : 'text-emerald-700 dark:text-emerald-300'}>
+                        {selectedPhotoRecord.recordType === 'check_out' ? (lang === 'th' ? 'เช็คชื่อออก' : 'Check-out') : (lang === 'th' ? 'เช็คชื่อเข้า' : 'Check-in')}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span className={selectedPhotoRecord.status === 'present' ? 'text-blue-700 dark:text-blue-300' : 'text-amber-700 dark:text-amber-300'}>
+                        {selectedPhotoRecord.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'On-time') : (lang === 'th' ? 'มาสาย' : 'Late')}
+                      </span>
+                    </div>
+                    <p className="type-meta font-mono">
+                      {lang === 'th' ? `เวลา: ${selectedPhotoRecord.time} น.` : `Time: ${selectedPhotoRecord.time}`}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
-                  <span className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase">{lang === 'th' ? 'ประเภทและสถานะ' : 'Type & Status'}</span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {selectedPhotoRecord.recordType === 'check_out' ? (
-                      <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-700 font-bold text-[11px]">
-                        {lang === 'th' ? 'เช็คชื่อออก' : 'Check-out'}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-[11px]">
-                        {lang === 'th' ? 'เช็คชื่อเข้า' : 'Check-in'}
-                      </span>
-                    )}
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
-                      selectedPhotoRecord.status === 'present' ? 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700' : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                    }`}>
-                      {selectedPhotoRecord.status === 'present' ? (lang === 'th' ? 'ตรงเวลา' : 'On-time') : (lang === 'th' ? 'มาสาย' : 'Late')}
+                <div className="p-3 space-y-1">
+                  <span className="type-label text-sky-800 dark:text-sky-300 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ตำแหน่ง GPS & รั้วเสมือน' : 'GPS & Geofence'}</span>
+                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 type-body">
+                    <span>
+                      {selectedPhotoRecord.location?.geofenceZoneName || (lang === 'th' ? 'ประตูโรงเรียน' : 'Main Gate')}
+                    </span>
+                    <span className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
+                      {lang === 'th' ? `ห่าง ${selectedPhotoRecord.location?.distanceMeters || 18} ม. · ในเขต` : `${selectedPhotoRecord.location?.distanceMeters || 18}m · Verified`}
                     </span>
                   </div>
-                  <p className="text-[11px] text-[var(--color-text-muted)] font-mono">
-                    {lang === 'th' ? `บันทึกเวลา: ${selectedPhotoRecord.time} น.` : `Time: ${selectedPhotoRecord.time}`}
-                  </p>
-                </div>
-
-                <div className="sm:col-span-2 p-3 rounded-xl bg-blue-100 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 space-y-1">
-                  <span className="text-[10px] text-blue-950 dark:text-blue-200 font-bold uppercase flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-blue-800 dark:text-blue-300" />
-                    <span>{lang === 'th' ? 'ข้อมูลตำแหน่ง GPS & รั้วเสมือน (Geofence)' : 'GPS & Geofence Coordinates'}</span>
-                  </span>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-blue-950 dark:text-blue-100">
-                    <div>
-                      <span className="font-bold">{lang === 'th' ? 'จุดตรวจ: ' : 'Gate Zone: '}</span>
-                      <span>{selectedPhotoRecord.location?.geofenceZoneName || (lang === 'th' ? 'ประตูโรงเรียน' : 'Main Gate')}</span>
-                    </div>
-                    <div className="font-mono text-emerald-800 dark:text-emerald-300 font-bold">
-                      {lang === 'th' ? `ระยะห่าง: ${selectedPhotoRecord.location?.distanceMeters || 18} เมตร (อยู่ในเขต)` : `Distance: ${selectedPhotoRecord.location?.distanceMeters || 18}m (Verified)`}
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-blue-900 dark:text-blue-200 italic pt-0.5">
-                    {lang === 'th'
-                      ? `หมายเหตุ: ${selectedPhotoRecord.remarks || 'ลงชื่อผ่านโทรศัพท์ด้วยการถ่ายภาพหน้าและตรวจสอบพิกัด Geofence'}`
-                      : `Remarks: ${selectedPhotoRecord.remarks || 'Facial selfie verified with geofenced location'}`}
+                  <p className="type-meta pt-0.5">
+                    {selectedPhotoRecord.remarks || (lang === 'th' ? 'ลงชื่อผ่านมือถือพร้อมถ่ายภาพและพิกัด Geofence' : 'Facial selfie verified with geofenced location')}
                   </p>
                 </div>
               </div>}

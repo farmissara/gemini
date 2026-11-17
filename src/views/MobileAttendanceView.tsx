@@ -6,9 +6,9 @@ import {
   MapPin, 
   CheckCircle2, 
   AlertCircle, 
-  Radio, 
-  ShieldCheck, 
+  AlertTriangle,
   Users, 
+  User,
   Check, 
   Camera,
   SwitchCamera,
@@ -39,10 +39,12 @@ import {
   Nfc,
   Fingerprint,
   Lock,
-  Unlock,
   CreditCard,
   Trash2,
-  KeyRound
+  Settings,
+  Building2,
+  Briefcase,
+  HeartPulse
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import {
@@ -1760,58 +1762,59 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     Boolean(checkinSuccessFeedback);
 
   return (
-    <div className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full pb-20' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}>
-      {/* Top Header - Clean & minimal */}
+    <div className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-2 overflow-x-hidden w-full max-w-full pb-20' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}>
+      {/* Top Header */}
       {embeddedMobile ? (
         <div className="shrink-0 flex items-center justify-between px-1 py-1 text-[var(--color-text-title)]">
-          <h1 className="text-sm font-bold truncate">
+          <h1 className="type-section-title truncate">
             {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Attendance'}
           </h1>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="type-meta tabular-nums">
+              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+            </span>
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] cursor-pointer"
+              className="btn-icon-tool min-h-[36px] min-w-[36px]"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+              aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
               {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" /> : <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
             </button>
-            <span className="text-[11px] font-medium tabular-nums text-[var(--color-text-muted)]">
-              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-            </span>
           </div>
         </div>
       ) : (
-        <div className="app-page-header p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="app-page-header px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-              <Smartphone className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl tone-chip shrink-0">
+              <Smartphone className="w-4.5 h-4.5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] truncate">
+              <h1 className="type-page-title truncate">
                 {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
               </h1>
-              <p className="text-xs text-[var(--color-text-muted)] truncate">
+              <p className="type-meta truncate">
                 {lang === 'th'
-                  ? 'เซลฟี่ในเขต GPS · แตะบัตร NFC · ยื่นใบลา · เช็คชื่อรายคาบ'
-                  : 'Selfie GPS · NFC ID tap · Leave requests · Period check-in'}
+                  ? 'เซลฟี่ GPS · แตะบัตร NFC · ใบลา · เช็คชื่อรายคาบ'
+                  : 'Selfie GPS · NFC ID tap · Leave · Period check-in'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="saas-control-group shrink-0 self-start sm:self-auto">
+            <span className="type-meta px-2 tabular-nums">
+              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="btn-tool-tone"
+              className="btn-icon-tool"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+              aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-[var(--color-text-muted)]" />}
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" /> : <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
             </button>
-
-            <span className="text-xs font-medium tabular-nums text-[var(--color-text-muted)] px-3 py-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
           </div>
         </div>
       )}
@@ -1841,10 +1844,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <tab.icon className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
               {tab.badge ? (
-                <span className={`px-1.5 py-0.5 rounded-full font-bold text-[9px] tabular-nums ${
-                  subTab === tab.id ? 'bg-white/20 text-white' : 'bg-amber-400 text-slate-950'
+                <span className={`font-bold tabular-nums ${
+                  subTab === tab.id ? 'text-white/90' : 'text-amber-600 dark:text-amber-300'
                 }`}>
-                  {tab.badge}
+                  ({tab.badge})
                 </span>
               ) : null}
             </button>
@@ -1863,7 +1866,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 }
               }}
               disabled={biometricBusy}
-              className={`min-h-[38px] px-2.5 py-1 rounded-xl border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition shrink-0 ${
+              className={`min-h-[38px] px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shrink-0 ${
                 isQuickAttendanceLocked
                   ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
                   : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
@@ -1877,7 +1880,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {isQuickAttendanceLocked ? <Lock className="w-3.5 h-3.5 shrink-0" /> : <Fingerprint className="w-3.5 h-3.5 shrink-0" />}
               <span className="tabular-nums">
                 {isQuickAttendanceLocked
-                  ? (lang === 'th' ? 'ล็อกอยู่' : 'Locked')
+                  ? (lang === 'th' ? 'ล็อก' : 'Locked')
                   : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
               </span>
             </button>
@@ -1888,8 +1891,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => runWithBiometricGuard(() => setShowRapidScanner(true))}
-              className="btn-action-primary shrink-0"
-              title="สแกน QR / บาร์โค้ดต่อเนื่อง"
+              className="btn-action-primary px-3 py-1.5 shrink-0"
+              title="สแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
             >
               <ScanLine className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'สแกน QR รัว' : 'Rapid Scan'}</span>
@@ -1915,7 +1918,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           )}
 
           {isQuickAttendanceLocked && (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin') && (
-            <div className="px-3.5 py-2.5 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 flex items-center justify-between gap-2.5 text-xs">
+            <div className="px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 flex items-center justify-between gap-2.5 text-xs">
               <div className="flex items-center gap-2 min-w-0">
                 <Lock className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
                 <span className="font-semibold text-amber-950 dark:text-amber-100 truncate">
@@ -1926,7 +1929,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 type="button"
                 disabled={biometricBusy}
                 onClick={handleBiometricVerify}
-                className="min-h-[40px] px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="min-h-[40px] px-3.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <Fingerprint className="w-4 h-4" />
                 <span>{biometricBusy ? '...' : (lang === 'th' ? 'ปลดล็อก' : 'Unlock')}</span>
@@ -1936,25 +1939,26 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Pane Switcher for Mobile Selfie - Compact Underlined Text Links */}
+      {/* Pane Switcher for Mobile Selfie - Compact Underlined Links with Lucide Icons */}
       {embeddedMobile && subTab === 'selfie_mobile' && (
-        <div className="shrink-0 flex items-center justify-around gap-2 px-1 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px]">
+        <div className="shrink-0 flex items-center justify-around gap-2 px-1 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px]">
           {([
-            ['camera', '📷 กล้อง'],
-            ['identity', '👤 ผู้ใช้'],
-            ['geofence', '📍 จุด GPS']
-          ] as const).map(([pane, label]) => (
+            { pane: 'camera' as const, label: 'กล้อง', Icon: Camera },
+            { pane: 'identity' as const, label: 'บัญชี', Icon: User },
+            { pane: 'geofence' as const, label: 'GPS', Icon: MapPin }
+          ]).map(({ pane, label, Icon }) => (
             <button
               key={pane}
               type="button"
               onClick={() => setCompactPane(pane)}
-              className={`px-2 py-0.5 font-bold transition text-center cursor-pointer border-b-2 whitespace-nowrap ${
+              className={`px-2.5 py-0.5 font-semibold transition text-center cursor-pointer border-b-2 whitespace-nowrap inline-flex items-center gap-1 ${
                 compactPane === pane
                   ? 'border-amber-400 text-amber-300'
-                  : 'border-transparent text-slate-200 hover:text-white hover:underline underline-offset-4'
+                  : 'border-transparent text-slate-200 hover:text-white'
               }`}
             >
-              {label}
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span>{label}</span>
             </button>
           ))}
         </div>
@@ -1964,12 +1968,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 1: SELFIE CHECK-IN/OUT (SELF PHONE) FOR STUDENTS & TEACHERS */}
       {/* ========================================================================= */}
       {subTab === 'selfie_mobile' && (
-        <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col gap-1.5' : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'}`}>
+        <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col gap-1.5' : 'grid grid-cols-1 lg:grid-cols-12 gap-5 items-start'}`}>
           {/* CAMERA COLUMN: Optimized for mobile screen height without overflow */}
           {(!embeddedMobile || compactPane === 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col items-center'}`}>
-            <div className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl border' : 'w-full max-w-sm rounded-[40px] p-4 border-4'} bg-slate-900 shadow-xl border-slate-800 relative flex flex-col overflow-hidden`}>
+            <div className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl border' : 'w-full max-w-sm rounded-[36px] p-3.5 border-4'} bg-slate-900 shadow-xl border-slate-800 relative flex flex-col overflow-hidden`}>
 
-              {/* Event Selector: Check-in vs Check-out + Gate Selector (Wraps safely on narrow phones) */}
+              {/* Event Selector: Check-in vs Check-out + Gate Selector */}
               <div className="p-1.5 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-1.5 shrink-0">
                 <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
                   <button
@@ -1982,7 +1986,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     }`}
                   >
                     <LogIn className="w-3 h-3 text-emerald-200 shrink-0" />
-                    <span>เข้า (IN)</span>
+                    <span>เข้าเรียน</span>
                   </button>
                   <button
                     type="button"
@@ -1994,7 +1998,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     }`}
                   >
                     <LogOut className="w-3 h-3 text-purple-200 shrink-0" />
-                    <span>ออก (OUT)</span>
+                    <span>ออกโรงเรียน</span>
                   </button>
                 </div>
 
@@ -2125,8 +2129,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         <span>{isSavingAttendance ? 'กำลังบันทึก...' : `ยืนยัน ${checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน'}`}</span>
                       </button>
                     </div>
-                    <p className="text-[10px] text-center text-slate-300">
-                      {isInGeofence ? '✅ ถ่ายรูปเรียบร้อย พร้อมส่ง LINE หาผู้ปกครอง' : '⚠️ อยู่นอกพื้นที่โรงเรียน'}
+                    <p className="text-[11px] text-center text-slate-300 flex items-center justify-center gap-1">
+                      {isInGeofence ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>พร้อมส่งหลักฐานและแจ้งเตือนผู้ปกครอง</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>อยู่นอกพื้นที่โรงเรียน</span>
+                        </>
+                      )}
                     </p>
                     {selfieActionError && (
                       <p className="text-[10px] text-center text-rose-300 font-semibold">{selfieActionError}</p>
@@ -2139,6 +2153,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       onClick={() => { void startCamera(); }}
                       className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
                       title="เปิด/รีเฟรชกล้อง"
+                      aria-label="เปิดหรือรีเฟรชกล้อง"
                     >
                       <RefreshCw className="w-4 h-4" />
                     </button>
@@ -2148,6 +2163,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       onClick={handleCaptureSnapshot}
                       disabled={isCapturing}
                       className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer"
+                      title="ถ่ายรูปเช็คชื่อ"
+                      aria-label="ถ่ายรูปเช็คชื่อ"
                     >
                       <div className="w-full h-full rounded-full border-2 border-slate-900 bg-red-600 hover:bg-red-500 flex items-center justify-center transition">
                         <Camera className="w-5 h-5 text-white" />
@@ -2159,6 +2176,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       onClick={handleRefreshGps}
                       className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
                       title="รีเฟรชสัญญาณ GPS"
+                      aria-label="รีเฟรชสัญญาณ GPS"
                     >
                       <Navigation className={`w-4 h-4 ${isGpsLoading ? 'animate-spin text-blue-400' : ''}`} />
                     </button>
@@ -2168,7 +2186,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               <div className="text-center py-1">
                 <p className={`text-[11px] text-slate-300 ${embeddedMobile ? 'hidden' : ''}`}>
-                  {isSelfCheckin ? 'กำลังเช็คชื่อบัญชีของคุณ: ' : 'กำลังบันทึกเช็คชื่อแทน: '}
+                  {isSelfCheckin ? 'บัญชีของคุณ · ' : 'สแกนแทน · '}
                   <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
                 </p>
               </div>
@@ -2176,262 +2194,257 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>}
 
           {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & Identity */}
-          {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pb-4' : 'lg:col-span-5 space-y-5'}`}>
+          {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pb-4 space-y-3' : 'lg:col-span-5 space-y-4'}`}>
             {/* User Profile Card: Accurately references loggedIn user in self mode; allows proxy mode for staff */}
-            {(!embeddedMobile || compactPane === 'identity') && <div className={`${embeddedMobile ? 'p-3 space-y-3' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs`}>
-              <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-3">
+            {(!embeddedMobile || compactPane === 'identity') && <div className="saas-card">
+              <div className="saas-card-header">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Smartphone className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                    {isRestrictedViewer ? 'ข้อมูลบัญชีเช็คชื่อของคุณ' : 'ตัวตนผู้ใช้งาน & บัญชีเช็คชื่อ'}
+                  <Smartphone className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  <h3 className="type-section-title truncate">
+                    {isRestrictedViewer ? 'บัญชีเช็คชื่อ' : 'บัญชีผู้ใช้งาน'}
                   </h3>
                 </div>
                 {!isRestrictedViewer ? (
-                  <div className="flex rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-xs font-semibold shrink-0">
+                  <div className="seg-tab-group shrink-0">
                     <button
                       type="button"
+                      data-active={isSelfCheckin}
                       onClick={() => setAttendanceMode('self')}
-                      className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1.5 ${
-                        isSelfCheckin ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                      }`}
+                      className="seg-tab-btn flex items-center gap-1"
+                      title="เช็คชื่อด้วยบัญชีที่เข้าสู่ระบบของคุณเอง"
                     >
-                      <span>👤 บัญชีของฉัน</span>
+                      <User className="w-3.5 h-3.5 shrink-0" />
+                      <span>บัญชีฉัน</span>
                     </button>
                     <button
                       type="button"
+                      data-active={!isSelfCheckin}
                       onClick={() => setAttendanceMode('proxy')}
-                      className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1.5 ${
-                        !isSelfCheckin ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                      }`}
+                      className="seg-tab-btn flex items-center gap-1"
+                      title="บันทึกเช็คชื่อแทนนักเรียนหรือบุคลากร"
                     >
-                      <span>👥 สแกนแทน</span>
+                      <Users className="w-3.5 h-3.5 shrink-0" />
+                      <span>สแกนแทน</span>
                     </button>
                   </div>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0">
-                    {currentUser?.role === 'student' ? 'บัญชีนักเรียน (ผูกตรง)' : 'บัญชีของฉัน'}
+                  <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold shrink-0">
+                    {currentUser?.role === 'student' ? 'บัญชีนักเรียน' : 'บัญชีของฉัน'}
                   </span>
                 )}
               </div>
 
-              {isSelfCheckin ? (
-                <div className="space-y-2">
-                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+              <div className="saas-card-body space-y-3">
+                {isSelfCheckin ? (
+                  <p className="type-meta flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="truncate">
-                      อ้างอิงบัญชีที่เข้าสู่ระบบ: <strong>{currentUser?.fullNameTh || loggedInProfile.userName}</strong> ({currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'})
+                    <span>
+                      ผูกตรงกับบัญชี{' '}
+                      <strong className="text-[var(--color-text-title)]">{currentUser?.fullNameTh || loggedInProfile.userName}</strong>
+                      {' · '}
+                      {currentUser?.role === 'super_admin' ? 'Super Admin' : currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'teacher' ? 'ครูผู้สอน' : 'นักเรียน'}
                     </span>
-                  </div>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    ระบบบันทึกเวลาเข้า-ออกและหลักฐานภาพถ่ายสำหรับตัวคุณโดยตรง ไม่สุ่มหรือสลับกับรายชื่อบุคคลอื่น
                   </p>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  <div className="flex rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-0.5 text-xs font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setActiveUserType('student')}
-                      className={`flex-1 py-1 rounded-md transition cursor-pointer ${
-                        effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'
-                      }`}
-                    >
-                      นักเรียน
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveUserType('teacher')}
-                      className={`flex-1 py-1 rounded-md transition cursor-pointer ${
-                        effectiveUserType === 'teacher' ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)]'
-                      }`}
-                    >
-                      ครู / บุคลากร
-                    </button>
-                  </div>
-                  {effectiveUserType === 'student' ? (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--color-text-title)]">
-                        เลือกรายชื่อนักเรียนที่ต้องการเช็คชื่อแทน:
-                      </label>
-                      <select
-                        value={selectedStudentId}
-                        onChange={(e) => setSelectedStudentId(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="seg-tab-group w-full flex">
+                      <button
+                        type="button"
+                        data-active={effectiveUserType === 'student'}
+                        onClick={() => setActiveUserType('student')}
+                        className="seg-tab-btn flex-1 text-center"
                       >
-                        {scopedStudents.map((st) => (
-                          <option key={st.id} value={st.id}>
-                            {st.firstNameTh} {st.lastNameTh} ({st.studentIdNumber}) - ชั้น {st.gradeLevel} {st.room}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[var(--color-text-title)]">
-                        เลือกรายชื่อครูที่ต้องการเช็คชื่อแทน:
-                      </label>
-                      <select
-                        value={selectedTeacherId}
-                        onChange={(e) => setSelectedTeacherId(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)] focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                        นักเรียน
+                      </button>
+                      <button
+                        type="button"
+                        data-active={effectiveUserType === 'teacher'}
+                        onClick={() => setActiveUserType('teacher')}
+                        className="seg-tab-btn flex-1 text-center"
                       >
-                        {teachers.map((tc) => (
-                          <option key={tc.id} value={tc.id}>
-                            {tc.fullNameTh} ({tc.teacherIdNumber}) - {tc.academicStanding} ({tc.department})
-                          </option>
-                        ))}
-                      </select>
+                        ครู / บุคลากร
+                      </button>
                     </div>
-                  )}
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                    * บันทึกโดยเจ้าหน้าที่: {currentUser?.fullNameTh || 'ผู้ดูแลระบบ'}
-                  </p>
-                </div>
-              )}
-
-              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center gap-3">
-                <img
-                  src={activePersonDefaultAvatar}
-                  alt={activePersonName}
-                  className="w-12 h-12 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
-                />
-                <div className="min-w-0 flex-1 space-y-0.5 text-xs">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-[var(--color-text-title)] truncate">{activePersonName}</p>
-                    {isSelfCheckin && (
-                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[9px] border border-emerald-300 dark:border-emerald-700">
-                        บัญชีของคุณ
-                      </span>
+                    {effectiveUserType === 'student' ? (
+                      <div className="space-y-1">
+                        <label className="type-label block">รายชื่อนักเรียน</label>
+                        <select
+                          value={selectedStudentId}
+                          onChange={(e) => setSelectedStudentId(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] type-body text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
+                        >
+                          {scopedStudents.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.firstNameTh} {st.lastNameTh} ({st.studentIdNumber}) - {st.gradeLevel} {st.room}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <label className="type-label block">รายชื่อครู</label>
+                        <select
+                          value={selectedTeacherId}
+                          onChange={(e) => setSelectedTeacherId(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] type-body text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
+                        >
+                          {teachers.map((tc) => (
+                            <option key={tc.id} value={tc.id}>
+                              {tc.fullNameTh} ({tc.teacherIdNumber}) - {tc.department}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
+                    <p className="type-meta text-amber-700 dark:text-amber-400">
+                      บันทึกโดย {currentUser?.fullNameTh || 'ผู้ดูแลระบบ'}
+                    </p>
                   </div>
-                  <p className="text-[var(--color-text-body)] truncate text-[11px]">{activePersonRole}</p>
-                  <p className="font-mono text-[var(--color-text-muted)] text-[10px]">
-                    รหัสประจำตัว: {activePersonId} {activeDepartmentOrRoom ? `• ${activeDepartmentOrRoom}` : ''}
-                  </p>
+                )}
+
+                <div className="pt-3 border-t border-[var(--color-border)] flex items-center gap-3">
+                  <img
+                    src={activePersonDefaultAvatar}
+                    alt={activePersonName}
+                    className="w-11 h-11 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
+                  />
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <p className="type-card-title truncate">{activePersonName}</p>
+                      {isSelfCheckin && (
+                        <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold shrink-0">
+                          · บัญชีคุณ
+                        </span>
+                      )}
+                    </div>
+                    <p className="type-meta truncate">{activePersonRole}</p>
+                    <p className="type-meta font-mono truncate">
+                      {activePersonId} {activeDepartmentOrRoom ? `· ${activeDepartmentOrRoom}` : ''}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>}
 
             {/* Multi-Gate Geofence Radar */}
-            {(!embeddedMobile || compactPane === 'geofence') && <div className={`${embeddedMobile ? 'p-3 space-y-3' : 'p-5 space-y-4'} rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs text-[var(--color-text-body)]`}>
-              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">จุดเช็คชื่อพิกัด Geofence ({normalizedGates.length} จุด)</h3>
+            {(!embeddedMobile || compactPane === 'geofence') && <div className="saas-card text-[var(--color-text-body)]">
+              <div className="saas-card-header">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                  <h3 className="type-section-title truncate">จุดเช็คชื่อ GPS ({normalizedGates.length})</h3>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="saas-control-group shrink-0">
                   {(currentRole === 'admin' || currentRole === 'super_admin') && (
                     <button
                       type="button"
                       onClick={() => setShowGpsAdminModal(true)}
-                      className="text-xs text-[var(--color-primary-text)] font-bold flex items-center gap-1 cursor-pointer bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] px-2.5 py-1 rounded-lg border border-[var(--color-border)] transition"
+                      className="btn-icon-tool"
+                      title="ตั้งค่าและแก้ไขพิกัดจุดเช็คชื่อโรงเรียน (Admin)"
+                      aria-label="แก้ไขพิกัดจุดเช็คชื่อโรงเรียน"
                     >
-                      <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-                      <span>⚙️ แก้ไขพิกัดจุดเช็คชื่อ (Admin)</span>
+                      <Settings className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={handleRefreshGps}
-                    className="text-xs text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    className="btn-icon-tool"
+                    title="ตรวจพิกัด GPS ปัจจุบัน"
+                    aria-label="ตรวจพิกัด GPS ปัจจุบัน"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
-                    <span>ตรวจพิกัด</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-[var(--color-primary-text)] ${isGpsLoading ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
               </div>
 
-              {campusGates.length === 0 && (
-                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-[11px] text-amber-900 dark:text-amber-200">
-                  โรงเรียนยังไม่ได้ตั้งค่าจุดพิกัดประตูเพิ่มเติม ระบบใช้พิกัดหลักของโรงเรียนชั่วคราว
-                </div>
-              )}
+              <div className="saas-card-body space-y-3.5">
+                {campusGates.length === 0 && (
+                  <p className="type-meta text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-2">
+                    ใช้พิกัดหลักของโรงเรียนชั่วคราว (ยังไม่ได้ตั้งค่าจุดประตูเพิ่มเติม)
+                  </p>
+                )}
 
-              {/* Multi-gate Selector List */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--color-text-title)]">เลือกประตูหรือจุดเช็คชื่อ:</label>
-                <div className="grid grid-cols-1 gap-2">
-                  <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
-                    const isSelected = gate.id === selectedGate.id;
-                    return (
+                {/* Multi-gate Selector List (Single-elevation hairline rows) */}
+                <div className="space-y-1.5">
+                  <label className="type-label block">เลือกจุดเช็คชื่อ</label>
+                  <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+                    <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
+                      const isSelected = gate.id === selectedGate.id;
+                      return (
+                        <button
+                          key={gate.id}
+                          type="button"
+                          onClick={() => setSelectedGateId(gate.id)}
+                          className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
+                              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <MapPin className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
+                            <div className="min-w-0">
+                              <p className="type-card-title truncate">{gate.nameTh}</p>
+                              <p className="type-meta font-mono truncate">
+                                รัศมี {gate.radiusMeters} ม. · {Number(gate.lat).toFixed(4)}, {Number(gate.lng).toFixed(4)}
+                              </p>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                          )}
+                        </button>
+                      );
+                    }} />
+                  </div>
+                </div>
+
+                {/* Status Summary */}
+                <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                  isInGeofence 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100' 
+                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
+                }`}>
+                  {isInGeofence ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <p className="type-card-title">
+                      {isInGeofence ? `ในเขต · ${selectedGate.nameTh}` : `นอกเขต · ${selectedGate.nameTh}`}
+                    </p>
+                    <p className="type-meta">
+                      ระยะห่าง <strong className="font-mono text-[var(--color-text-title)]">{currentGpsDistance} ม.</strong> (รัศมี {selectedGate.radiusMeters} ม.)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Testing Presets for Location */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
+                  <span className="type-meta">จำลองระยะ:</span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    {[
+                      { dist: 15, label: '15 ม.', inZone: true },
+                      { dist: 35, label: '35 ม.', inZone: true },
+                      { dist: 120, label: '120 ม.', inZone: true },
+                      { dist: 450, label: '450 ม.', inZone: false },
+                    ].map((preset) => (
                       <button
-                        key={gate.id}
+                        key={preset.dist}
                         type="button"
-                        onClick={() => setSelectedGateId(gate.id)}
-                        className={`p-3 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
-                          isSelected 
-                            ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-text-title)] shadow-2xs ring-1 ring-[var(--color-primary)]' 
-                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                        onClick={() => setCurrentGpsDistance(preset.dist)}
+                        title={preset.inZone ? 'จำลองระยะอยู่ในเขตโรงเรียน' : 'จำลองระยะอยู่นอกเขตโรงเรียน'}
+                        className={`font-semibold underline underline-offset-4 cursor-pointer transition tabular-nums ${
+                          currentGpsDistance === preset.dist
+                            ? preset.inZone ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
+                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'}`}>
-                            <MapPin className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-xs text-[var(--color-text-title)]">{gate.nameTh}</p>
-                            <p className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                              รัศมี {gate.radiusMeters} ม. • พิกัด {Number(gate.lat).toFixed(4)}, {Number(gate.lng).toFixed(4)}
-                            </p>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <span className="px-2 py-0.5 rounded-md bg-[var(--color-primary)] text-white text-[10px] font-bold">
-                            จุดปัจจุบัน
-                          </span>
-                        )}
+                        {preset.label}
                       </button>
-                    );
-                  }} />
-                </div>
-              </div>
-
-              {/* Status Badge */}
-              <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
-                isInGeofence 
-                  ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100' 
-                  : 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
-              }`}>
-                {isInGeofence ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-rose-700 dark:text-rose-300 shrink-0 mt-0.5" />
-                )}
-                <div className="space-y-1 text-xs">
-                  <p className="font-bold">
-                    {isInGeofence 
-                      ? `คุณอยู่ในเขต: ${selectedGate.nameTh}` 
-                      : `คุณอยู่นอกเขต: ${selectedGate.nameTh}`}
-                  </p>
-                  <p className="text-[11px] leading-relaxed">
-                    ระยะห่าง: <strong className="font-mono">{currentGpsDistance} เมตร</strong> (รัศมีที่อนุญาต {selectedGate.radiusMeters} ม.)
-                  </p>
-                </div>
-              </div>
-
-              {/* Testing Presets for Location - Compact Text Links */}
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs font-bold text-[var(--color-text-title)] block">จำลองระยะห่าง:</label>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                  {[
-                    { dist: 15, label: '15 ม. (ในเขต)', inZone: true },
-                    { dist: 35, label: '35 ม. (ในเขต)', inZone: true },
-                    { dist: 120, label: '120 ม. (ในเขต)', inZone: true },
-                    { dist: 450, label: '450 ม. (นอกเขต)', inZone: false },
-                  ].map((preset) => (
-                    <button
-                      key={preset.dist}
-                      type="button"
-                      onClick={() => setCurrentGpsDistance(preset.dist)}
-                      className={`font-semibold underline underline-offset-4 cursor-pointer transition ${
-                        currentGpsDistance === preset.dist
-                          ? preset.inZone ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
-                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>}
@@ -2444,468 +2457,470 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* ========================================================================= */}
       {subTab === 'leave_request' && (
         <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Form */}
-          <div className="lg:col-span-7 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-5 text-[var(--color-text-body)]">
-            <div className="flex items-center gap-2.5 border-b border-[var(--color-border)] pb-4">
-              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
-                <FileText className="w-5 h-5" />
+          <div className="lg:col-span-7 saas-card text-[var(--color-text-body)]">
+            <div className="saas-card-header">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <h3 className="type-section-title">ยื่นใบลาออนไลน์</h3>
+                  <p className="type-meta">
+                    ขอลาป่วย ลากิจ หรือไปราชการ พร้อมแนบหลักฐาน
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-[var(--color-text-title)]">ยื่นใบลาออนไลน์ผ่านโทรศัพท์</h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  สำหรับนักเรียน, ผู้ปกครอง และครู ยื่นขอลาป่วย/ลากิจพร้อมแนบหลักฐาน
-                </p>
+              <div className="flex items-center gap-1.5 type-meta">
+                <span className={leaveFormStep === 1 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>1. รายละเอียด</span>
+                <span>→</span>
+                <span className={leaveFormStep === 2 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>2. เหตุผล</span>
               </div>
             </div>
 
-            {leaveSuccessNotice && (
-              <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-                <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                <span>{leaveSuccessNotice}</span>
-              </div>
-            )}
-
-            {leaveErrorNotice && (
-              <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
-                <span>{leaveErrorNotice}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmitLeave} className="space-y-4 text-xs">
-              <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
-                <span className={leaveFormStep === 1 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>1. Leave details</span>
-                <span>→</span>
-                <span className={leaveFormStep === 2 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>2. Reason & evidence</span>
-              </div>
-              {leaveFormStep === 1 && (
-                <div className="space-y-4">
-              {/* Person Summary / Switcher (Admin only; Student & Teacher locked to own profile) */}
-              <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
-                <span className="text-[11px] font-bold text-[var(--color-text-title)] block">ผู้ขอยื่นใบลา:</span>
-                {isSelfCheckin ? (
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
-                    <span className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white truncate">
-                      {activePersonName} ({activePersonRole})
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
-                      บัญชีของคุณ
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveUserType('student')}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-xs transition max-w-full truncate cursor-pointer ${
-                        effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
-                      }`}
-                    >
-                      นักเรียน: {selectedStudent?.firstNameTh} ({selectedStudent?.room})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveUserType('teacher')}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-xs transition max-w-full truncate cursor-pointer ${
-                        effectiveUserType === 'teacher' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
-                      }`}
-                    >
-                      ครู: {selectedTeacher?.fullNameTh}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Leave Scope Toggle: Full day vs Period / Hourly teaching leave */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-[var(--color-text-title)]">ขอบเขตการลา:</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLeaveScope('full_day')}
-                    className={`p-2.5 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
-                      leaveScope === 'full_day'
-                        ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 shadow-2xs ring-1 ring-emerald-500'
-                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    📅 ลาเต็มวัน / หลายวัน
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeaveScope('period_hourly')}
-                    className={`p-2.5 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
-                      leaveScope === 'period_hourly'
-                        ? 'bg-[var(--color-primary-light)] border-purple-400 text-[var(--color-primary-text)] shadow-2xs ring-1 ring-purple-500'
-                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    ⏰ ลาเฉพาะคาบสอน / รายชม.
-                  </button>
+            <div className="saas-card-body space-y-4">
+              {leaveSuccessNotice && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 type-meta font-semibold flex items-center gap-2 animate-fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                  <span>{leaveSuccessNotice}</span>
                 </div>
-              </div>
+              )}
 
-              {/* Period / Hourly Specific Selectors */}
-              {leaveScope === 'period_hourly' && (
-                <div className="p-3.5 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-border)] space-y-3">
-                  <div className="flex items-center gap-2 text-[var(--color-primary-text)] font-bold text-xs">
-                    <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <span>ระบุคาบสอนและครูผู้สอนแทน (Period Leave Details)</span>
-                  </div>
+              {leaveErrorNotice && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 type-meta font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
+                  <span>{leaveErrorNotice}</span>
+                </div>
+              )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="text-[11px] font-bold text-[var(--color-text-muted)]">คาบเรียนที่ลา:</label>
-                      <select
-                        value={leavePeriodNum}
-                        onChange={(e) => setLeavePeriodNum(Number(e.target.value))}
-                        className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+              <form onSubmit={handleSubmitLeave} className="space-y-4 type-body">
+                {leaveFormStep === 1 && (
+                  <div className="space-y-4">
+                {/* Person Summary / Switcher (hairline-separated, no nested border sandwich) */}
+                <div className="pb-3 border-b border-[var(--color-border)] space-y-2">
+                  <span className="type-label block">ผู้ขอยื่นใบลา</span>
+                  {isSelfCheckin ? (
+                    <div className="flex flex-wrap items-center gap-x-2">
+                      <span className="type-card-title">{activePersonName}</span>
+                      <span className="type-meta">· {activePersonRole} · บัญชีของคุณ</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveUserType('student')}
+                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs transition max-w-full truncate cursor-pointer ${
+                          effectiveUserType === 'student' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                        }`}
                       >
-                        {periodsList.map((p) => (
-                          <option key={p.period} value={p.period}>
-                            {p.label} ({p.time})
-                          </option>
-                        ))}
-                      </select>
+                        นักเรียน: {selectedStudent?.firstNameTh} ({selectedStudent?.room})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveUserType('teacher')}
+                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs transition max-w-full truncate cursor-pointer ${
+                          effectiveUserType === 'teacher' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                        }`}
+                      >
+                        ครู: {selectedTeacher?.fullNameTh}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Leave Scope Toggle: Full day vs Period / Hourly teaching leave */}
+                <div className="space-y-1.5">
+                  <label className="type-label block">ขอบเขตการลา</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLeaveScope('full_day')}
+                      className={`p-2.5 rounded-lg border text-center font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                        leaveScope === 'full_day'
+                          ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-500 text-emerald-900 dark:text-emerald-200'
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <span>ลาเต็มวัน / หลายวัน</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeaveScope('period_hourly')}
+                      className={`p-2.5 rounded-lg border text-center font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                        leaveScope === 'period_hourly'
+                          ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 shrink-0" />
+                      <span>ลาเฉพาะคาบ / รายชม.</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Period / Hourly Specific Selectors */}
+                {leaveScope === 'period_hourly' && (
+                  <div className="p-3.5 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] space-y-3">
+                    <div className="flex items-center gap-2 text-[var(--color-primary-text)] type-card-title">
+                      <Clock className="w-4 h-4 shrink-0" />
+                      <span>ระบุคาบสอนและครูสอนแทน</span>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-[var(--color-text-muted)]">วิชาที่ติดสอน:</label>
-                      {courseTeacherOptions.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="type-meta font-semibold">คาบเรียนที่ลา</label>
                         <select
-                          aria-label="กรองวิชาตามรายชื่อครู"
-                          value={leaveTeacherFilter}
-                          onChange={(e) => {
-                            const nextTeacher = e.target.value;
-                            setLeaveTeacherFilter(nextTeacher);
-                            const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
-                              courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
-                            );
-                            if (matching.length > 0 && !matching.some((c) => c.id === leaveCourseId)) {
-                              setLeaveCourseId(matching[0].id);
-                            }
-                          }}
-                          className="w-full px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                          value={leavePeriodNum}
+                          onChange={(e) => setLeavePeriodNum(Number(e.target.value))}
+                          className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
                         >
-                          <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
-                          {courseTeacherOptions.map((opt) => (
-                            <option key={opt.key} value={opt.key}>
-                              {opt.label} ({opt.count} วิชา)
+                          {periodsList.map((p) => (
+                            <option key={p.period} value={p.period}>
+                              {p.label} ({p.time})
                             </option>
                           ))}
                         </select>
-                      )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="type-meta font-semibold">วิชาที่ติดสอน</label>
+                        {courseTeacherOptions.length > 0 && (
+                          <select
+                            aria-label="กรองวิชาตามรายชื่อครู"
+                            value={leaveTeacherFilter}
+                            onChange={(e) => {
+                              const nextTeacher = e.target.value;
+                              setLeaveTeacherFilter(nextTeacher);
+                              const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
+                                courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
+                              );
+                              if (matching.length > 0 && !matching.some((c) => c.id === leaveCourseId)) {
+                                setLeaveCourseId(matching[0].id);
+                              }
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                          >
+                            <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                            {courseTeacherOptions.map((opt) => (
+                              <option key={opt.key} value={opt.key}>
+                                {opt.label} ({opt.count} วิชา)
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <select
+                          value={leaveCourseId}
+                          onChange={(e) => setLeaveCourseId(e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                        >
+                          {leaveFilteredCourses.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.code} {c.titleTh} {c.room ? `(ห้อง ${c.room})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="type-meta font-semibold">ครูสอนแทน</label>
                       <select
-                        value={leaveCourseId}
-                        onChange={(e) => setLeaveCourseId(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                        value={leaveSubstituteTeacherId}
+                        onChange={(e) => setLeaveSubstituteTeacherId(e.target.value)}
+                        className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
                       >
-                        {leaveFilteredCourses.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.code} {c.titleTh} {c.room ? `(ห้อง ${c.room})` : ''}
+                        <option value="">-- เลือกครูสอนแทน หรือเวรประจำวัน --</option>
+                        {teachers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.fullNameTh} ({t.department} · {t.academicStanding})
                           </option>
                         ))}
                       </select>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="text-[11px] font-bold text-[var(--color-text-muted)]">
-                      ครูผู้ปฏิบัติการสอนแทน (Substitute Teacher):
-                    </label>
-                    <select
-                      value={leaveSubstituteTeacherId}
-                      onChange={(e) => setLeaveSubstituteTeacherId(e.target.value)}
-                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                    <div>
+                      <label className="type-meta font-semibold">CC บุคคล/ตำแหน่งที่เกี่ยวข้อง</label>
+                      <input
+                        type="text"
+                        value={leaveCcRoles}
+                        onChange={(e) => setLeaveCcRoles(e.target.value)}
+                        placeholder="เช่น หัวหน้ากลุ่มสาระฯ, รอง ผอ.วิชาการ"
+                        className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="type-meta font-semibold">เลขที่บันทึกข้อความ / คำสั่ง (ถ้ามี)</label>
+                      <input
+                        type="text"
+                        value={leaveMissionNumber}
+                        onChange={(e) => setLeaveMissionNumber(e.target.value)}
+                        placeholder="เช่น ศธ 04225/ว1234"
+                        className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Leave Type */}
+                <div className="space-y-1.5">
+                  <label className="type-label block">ประเภทการลา</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLeaveType('sick')}
+                      className={`p-2 rounded-lg border text-center font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                        leaveType === 'sick' 
+                          ? 'bg-rose-50 dark:bg-rose-950 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-200' 
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                      }`}
                     >
-                      <option value="">-- เลือกครูสอนแทน หรือเวรประจำวัน --</option>
-                      {teachers.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.fullNameTh} ({t.department} - {t.academicStanding})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-[var(--color-text-muted)]">
-                      CC บุคคล/ตำแหน่งที่เกี่ยวข้อง (แจ้งเตือนพร้อมกัน):
-                    </label>
-                    <input
-                      type="text"
-                      value={leaveCcRoles}
-                      onChange={(e) => setLeaveCcRoles(e.target.value)}
-                      placeholder="เช่น หัวหน้ากลุ่มสาระฯ, รอง ผอ.กลุ่มบริหารวิชาการ, ฝ่ายบุคคล"
-                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-[var(--color-text-muted)]">
-                      เลขที่บันทึกข้อความ / คำสั่งราชการภารกิจ (ถ้ามี):
-                    </label>
-                    <input
-                      type="text"
-                      value={leaveMissionNumber}
-                      onChange={(e) => setLeaveMissionNumber(e.target.value)}
-                      placeholder="เช่น ศธ 04225/ว1234 หรือ ลิงก์เอกสารขอไปราชการ"
-                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs"
-                    />
+                      <HeartPulse className="w-3.5 h-3.5 shrink-0" />
+                      <span>ลาป่วย</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeaveType('personal')}
+                      className={`p-2 rounded-lg border text-center font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                        leaveType === 'personal' 
+                          ? 'bg-amber-50 dark:bg-amber-950 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200' 
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                      }`}
+                    >
+                      <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                      <span>ลากิจ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeaveType('official')}
+                      className={`p-2 rounded-lg border text-center font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                        leaveType === 'official' 
+                          ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-primary-text)]' 
+                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
+                      }`}
+                    >
+                      <Building2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>ไปราชการ</span>
+                    </button>
                   </div>
                 </div>
-              )}
 
-              {/* Leave Type */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-[var(--color-text-title)]">ประเภทการลา:</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLeaveType('sick')}
-                    className={`p-2 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
-                      leaveType === 'sick' 
-                        ? 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 shadow-2xs' 
-                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    🤒 ลาป่วย
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeaveType('personal')}
-                    className={`p-2 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
-                      leaveType === 'personal' 
-                        ? 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 shadow-2xs' 
-                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    🚗 ลากิจ / ติดภารกิจ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeaveType('official')}
-                    className={`p-2 rounded-xl border text-center font-bold text-xs transition cursor-pointer ${
-                      leaveType === 'official' 
-                        ? 'bg-[var(--color-primary-light)] border-[var(--color-border)] text-[var(--color-primary-text)] shadow-2xs' 
-                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    🏛️ ไปราชการ / อบรม
-                  </button>
-                </div>
-              </div>
-
-              {/* Date Range */}
-              <div className={`grid ${leaveScope === 'period_hourly' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
-                <div className="space-y-1">
-                  <label className="font-bold text-[var(--color-text-title)]">
-                    {leaveScope === 'period_hourly' ? 'วันที่ลาคาบสอน:' : 'ตั้งแต่วันที่:'}
-                  </label>
-                  <input
-                    type="date"
-                    value={leaveStartDate}
-                    onChange={(e) => {
-                      setLeaveStartDate(e.target.value);
-                      if (leaveScope === 'period_hourly') setLeaveEndDate(e.target.value);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                    required
-                  />
-                </div>
-                {leaveScope === 'full_day' && (
+                {/* Date Range */}
+                <div className={`grid ${leaveScope === 'period_hourly' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
                   <div className="space-y-1">
-                    <label className="font-bold text-[var(--color-text-title)]">ถึงวันที่:</label>
+                    <label className="type-label block">
+                      {leaveScope === 'period_hourly' ? 'วันที่ลา' : 'ตั้งแต่วันที่'}
+                    </label>
                     <input
                       type="date"
-                      value={leaveEndDate}
-                      onChange={(e) => setLeaveEndDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                      value={leaveStartDate}
+                      onChange={(e) => {
+                        setLeaveStartDate(e.target.value);
+                        if (leaveScope === 'period_hourly') setLeaveEndDate(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] tabular-nums"
                       required
                     />
                   </div>
-                )}
-              </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (leaveStartDate) setLeaveFormStep(2);
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
-                  >
-                    ไปยังขั้นตอนระบุเหตุผลและหลักฐาน →
-                  </button>
-                </div>
-              )}
-
-              {leaveFormStep === 2 && (
-                <div className="space-y-4">
-              {/* Reason */}
-              <div className="space-y-1">
-                <label className="font-bold text-[var(--color-text-title)]">
-                  {leaveScope === 'period_hourly' ? 'เหตุผลและภารกิจประกอบการลาสอน:' : 'เหตุผลประกอบการลา:'}
-                </label>
-                <textarea
-                  rows={3}
-                  value={leaveReason}
-                  onChange={(e) => setLeaveReason(e.target.value)}
-                  placeholder={
-                    leaveScope === 'period_hourly'
-                      ? 'ระบุภารกิจราชการ การนำนักเรียนแข่งขันทักษะ หรืออาการป่วยกะทันหัน...'
-                      : 'ระบุอาการเจ็บป่วย หรือภารกิจจำเป็น...'
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
-                  required
-                />
-              </div>
-
-              {/* Medical certificate / Document attachment */}
-              <div className="space-y-2">
-                <label className="font-bold text-[var(--color-text-title)]">
-                  {leaveScope === 'period_hourly' ? 'แนบรูปคำสั่ง / ภาพภารกิจ / ใบมอบหมายสอนแทน (ถ้ามี):' : 'แนบรูปใบรับรองแพทย์ / เอกสารหลักฐาน (ถ้ามี):'}
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const sampleCert = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500';
-                      setLeaveAttachmentUrl(sampleCert);
-                    }}
-                    className="text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1.5 underline underline-offset-4 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>แนบรูปเอกสารตัวอย่าง</span>
-                  </button>
-                  {leaveAttachmentUrl && (
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>แนบเอกสารแล้ว</span>
-                    </span>
+                  {leaveScope === 'full_day' && (
+                    <div className="space-y-1">
+                      <label className="type-label block">ถึงวันที่</label>
+                      <input
+                        type="date"
+                        value={leaveEndDate}
+                        onChange={(e) => setLeaveEndDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] tabular-nums"
+                        required
+                      />
+                    </div>
                   )}
                 </div>
-
-                {leaveAttachmentUrl && (
-                  <div className="relative w-36 h-24 rounded-xl overflow-hidden border border-[var(--color-border)] mt-2">
-                    <img src={leaveAttachmentUrl} alt="Document Attachment" className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => setLeaveAttachmentUrl('')}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-black/80 text-white hover:bg-black"
+                      onClick={() => {
+                        if (leaveStartDate) setLeaveFormStep(2);
+                      }}
+                      className="w-full py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5"
                     >
-                      <X className="w-3 h-3" />
+                      <span>ถัดไป: ระบุเหตุผลและหลักฐาน</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
-              </div>
 
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>
-                  {leaveScope === 'period_hourly' ? 'ยื่นคำขอลาสอนคาบนี้และแจ้งเตือนครูสอนแทน (CC)' : 'ส่งคำขอใบลาให้อาจารย์ประจำชั้น'}
-                </span>
-              </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeaveFormStep(1)}
-                    className="w-full py-1 text-center text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-bold text-xs underline underline-offset-4 cursor-pointer"
-                  >
-                    ← ย้อนกลับแก้ไขรายละเอียดวันลา
-                  </button>
+                {leaveFormStep === 2 && (
+                  <div className="space-y-4">
+                {/* Reason */}
+                <div className="space-y-1">
+                  <label className="type-label block">
+                    {leaveScope === 'period_hourly' ? 'เหตุผลและภารกิจประกอบการลาสอน' : 'เหตุผลประกอบการลา'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={leaveReason}
+                    onChange={(e) => setLeaveReason(e.target.value)}
+                    placeholder={
+                      leaveScope === 'period_hourly'
+                        ? 'ระบุภารกิจราชการ หรืออาการป่วยกะทันหัน...'
+                        : 'ระบุอาการเจ็บป่วย หรือภารกิจจำเป็น...'
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
+                    required
+                  />
                 </div>
-              )}
-            </form>
-          </div>
 
-          {/* Right: History of Leave Requests (Scoped for students/parents) */}
-          <div className="lg:col-span-5 p-6 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 text-[var(--color-text-body)]">
-            <h4 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-              <FileCheck2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-              <span>
-                {isRestrictedViewer
-                  ? `ประวัติใบลาของคุณ (${scopedLeaveRequests.length})`
-                  : `ประวัติและสถานะใบลาล่าสุด (${scopedLeaveRequests.length})`}
-              </span>
-            </h4>
-
-            <div className="space-y-3">
-              <PagedList items={scopedLeaveRequests} pageSize={2} emptyState={<p className="text-xs text-[var(--color-text-muted)] py-4 text-center">ยังไม่มีประวัติใบลาของคุณ</p>} renderItem={(req) => (
-                <div key={req.id} className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2 text-xs">
-                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        req.leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' :
-                        req.leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                      }`}>
-                        {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                {/* Medical certificate / Document attachment */}
+                <div className="space-y-2">
+                  <label className="type-label block">
+                    {leaveScope === 'period_hourly' ? 'แนบคำสั่ง / ใบมอบหมายสอนแทน (ถ้ามี)' : 'แนบใบรับรองแพทย์ / เอกสาร (ถ้ามี)'}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sampleCert = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500';
+                        setLeaveAttachmentUrl(sampleCert);
+                      }}
+                      className="text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1.5 underline-offset-4 cursor-pointer text-xs"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>แนบเอกสารตัวอย่าง</span>
+                    </button>
+                    {leaveAttachmentUrl && (
+                      <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>แนบแล้ว</span>
                       </span>
-                      {req.leaveScope === 'period_hourly' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-                          ⏰ ลาสอนคาบที่ {req.periodNumber || 1} {req.courseCode ? `(${req.courseCode})` : ''}
-                        </span>
-                      )}
-                    </div>
-
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
-                      req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                    }`}>
-                      {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
-                    </span>
-                  </div>
-
-                  <div>
-                    <p className="font-bold text-[var(--color-text-title)]">{req.userName}</p>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      {req.gradeLevelOrDepartment} • {req.leaveScope === 'period_hourly' ? `วันที่ ${req.startDate}` : `วันที่ ${req.startDate} ถึง ${req.endDate}`}
-                    </p>
-                    {req.leaveScope === 'period_hourly' && (
-                      <div className="mt-1 text-[11px] text-[var(--color-primary-text)] bg-[var(--color-primary-light)] p-1.5 rounded-lg border border-[var(--color-border)]">
-                        <p>👤 <strong>สอนแทนโดย:</strong> {req.substituteTeacherName || 'ยังไม่ระบุ'}</p>
-                        {req.ccEmailsOrRoles && <p className="text-[10px] text-[var(--color-text-muted)]">📨 <strong>CC:</strong> {req.ccEmailsOrRoles}</p>}
-                      </div>
                     )}
                   </div>
 
-                  <p className="text-[var(--color-text-body)] text-[11px] bg-[var(--color-card)] p-2 rounded-lg border border-[var(--color-border)]">
-                    "{req.reason}"
-                  </p>
-
-                  {req.attachmentUrl && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-primary-text)] font-semibold">
-                      <FileText className="w-3 h-3" />
-                      <span>มีรูปใบรับรองแพทย์แนบ</span>
-                    </div>
-                  )}
-
-                  {req.approvalRemarks && (
-                    <div className="text-[10px] text-[var(--color-text-muted)] pt-1 border-t border-[var(--color-border)]">
-                      ผู้อนุมัติ: {req.approvedBy} ({req.approvalRemarks})
-                    </div>
-                  )}
-
-                  {req.status === 'pending' && onUpdateLeaveStatus && (currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
+                  {leaveAttachmentUrl && (
+                    <div className="relative w-36 h-24 rounded-lg overflow-hidden border border-[var(--color-border)] mt-2">
+                      <img src={leaveAttachmentUrl} alt="Document Attachment" className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ')}
-                        className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer"
+                        onClick={() => setLeaveAttachmentUrl('')}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/80 text-white hover:bg-black cursor-pointer"
+                        aria-label="ลบไฟล์แนบ"
                       >
-                        ✓ อนุมัติใบลา
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ')}
-                        className="py-1.5 px-3 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-xs transition cursor-pointer"
-                      >
-                        ✕ ปฏิเสธ
+                        <X className="w-3 h-3" />
                       </button>
                     </div>
                   )}
                 </div>
-              )} />
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>
+                    {leaveScope === 'period_hourly' ? 'ยื่นขอลาสอนคาบนี้ (แจ้งเตือน CC)' : 'ส่งคำขอใบลา'}
+                  </span>
+                </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeaveFormStep(1)}
+                      className="w-full py-1 text-center type-meta hover:text-[var(--color-text-title)] font-semibold underline underline-offset-4 cursor-pointer"
+                    >
+                      ย้อนกลับแก้ไขวันลา
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+
+          {/* Right: History of Leave Requests (Single-elevation divide-y list) */}
+          <div className="lg:col-span-5 saas-card text-[var(--color-text-body)]">
+            <div className="saas-card-header">
+              <h4 className="type-section-title flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span>
+                  {isRestrictedViewer
+                    ? `ประวัติใบลา (${scopedLeaveRequests.length})`
+                    : `สถานะใบลาล่าสุด (${scopedLeaveRequests.length})`}
+                </span>
+              </h4>
+            </div>
+
+            <div className="saas-card-body">
+              <div className="divide-y divide-[var(--color-border)]">
+                <PagedList items={scopedLeaveRequests} pageSize={3} emptyState={<p className="type-meta py-4 text-center">ยังไม่มีประวัติใบลา</p>} renderItem={(req) => (
+                  <div key={req.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="type-card-title truncate">{req.userName}</p>
+                        <p className="type-meta truncate">
+                          {req.leaveType === 'sick' ? 'ลาป่วย' : req.leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}
+                          {' · '}
+                          {req.leaveScope === 'period_hourly' ? `คาบที่ ${req.periodNumber || 1}${req.courseCode ? ` (${req.courseCode})` : ''} · ${req.startDate}` : `${req.startDate} – ${req.endDate}`}
+                        </p>
+                      </div>
+
+                      <span className={`inline-flex items-center gap-1 type-label shrink-0 ${
+                        req.status === 'approved'
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : req.status === 'pending'
+                            ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-rose-700 dark:text-rose-300'
+                      }`}>
+                        {req.status === 'approved' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        ) : req.status === 'pending' ? (
+                          <Clock className="w-3.5 h-3.5" />
+                        ) : (
+                          <X className="w-3.5 h-3.5" />
+                        )}
+                        <span>{req.status === 'approved' ? 'อนุมัติ' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}</span>
+                      </span>
+                    </div>
+
+                    {req.leaveScope === 'period_hourly' && (
+                      <p className="type-meta text-[var(--color-primary-text)]">
+                        สอนแทน: {req.substituteTeacherName || 'ยังไม่ระบุ'}
+                        {req.ccEmailsOrRoles ? ` · CC: ${req.ccEmailsOrRoles}` : ''}
+                      </p>
+                    )}
+
+                    <p className="type-body">"{req.reason}"</p>
+
+                    {req.attachmentUrl && (
+                      <div className="flex items-center gap-1 type-meta text-[var(--color-primary-text)]">
+                        <FileText className="w-3 h-3" />
+                        <span>มีเอกสารแนบ</span>
+                      </div>
+                    )}
+
+                    {req.approvalRemarks && (
+                      <p className="type-meta">
+                        ผู้อนุมัติ: {req.approvedBy} ({req.approvalRemarks})
+                      </p>
+                    )}
+
+                    {req.status === 'pending' && onUpdateLeaveStatus && (currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+                      <div className="flex items-center gap-2 pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ')}
+                          className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>อนุมัติ</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ')}
+                          className="py-1.5 px-3 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>ปฏิเสธ</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )} />
+              </div>
             </div>
           </div>
           </div>
@@ -2916,44 +2931,49 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 2B: NFC SCHOOL ID CARD TAP CHECK-IN (TEACHERS & STUDENTS)             */}
       {/* ========================================================================= */}
       {subTab === 'nfc_tap' && (
-        <div className={`space-y-3.5 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
+        <div className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
           {/* Top Terminal Card */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+          <div className="saas-card">
+            <div className="saas-card-header">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                   isNfcScanning
                     ? 'bg-emerald-600 text-white'
                     : 'bg-[var(--tone-soft)] text-[var(--tone)]'
                 }`}>
-                  <Nfc className="w-5 h-5" />
+                  <Nfc className="w-4.5 h-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-sm sm:text-base font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'เช็คชื่อด้วยบัตรประจำตัว NFC' : 'NFC School ID Card Check-in'}
+                  <h2 className="type-section-title truncate">
+                    {lang === 'th' ? 'เช็คชื่อด้วยบัตร NFC' : 'NFC ID Card Check-in'}
                   </h2>
-                  <p className="text-xs text-[var(--color-text-muted)]">
+                  <p className="type-meta truncate">
                     {isStaffUser
                       ? (lang === 'th'
-                        ? 'แตะบัตรนักเรียนหรือบัตรครูที่ด้านหลังมือถือ / เครื่องอ่าน NFC เพื่อบันทึกเวลาทันที'
-                        : 'Tap a student or teacher NFC ID card against the device to log attendance instantly.')
+                        ? 'แตะบัตรนักเรียนหรือครูเพื่อบันทึกเวลาทันที'
+                        : 'Tap a student or teacher NFC ID card to log attendance.')
                       : (lang === 'th'
-                        ? 'แตะบัตรนักเรียน NFC ของคุณเพื่อลงเวลาเข้า-ออกโรงเรียนทันที'
-                        : 'Tap your NFC student ID card to log attendance instantly.')}
+                        ? 'แตะบัตรนักเรียน NFC ของคุณเพื่อลงเวลา'
+                        : 'Tap your NFC student ID card to log attendance.')}
                   </p>
                 </div>
               </div>
 
-              <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold shrink-0 self-start ${
+              <span className={`inline-flex items-center gap-1 type-meta font-semibold shrink-0 ${
                 webNfcAvailable && secureNfc
-                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-muted)]'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-[var(--color-text-muted)]'
               }`}>
-                {webNfcAvailable && secureNfc
-                  ? (lang === 'th' ? 'รองรับ Web NFC' : 'Web NFC Ready')
-                  : (lang === 'th' ? 'โหมด USB / รหัสบัตร UID' : 'UID / Reader Fallback')}
+                <Nfc className="w-3.5 h-3.5" />
+                <span>
+                  {webNfcAvailable && secureNfc
+                    ? (lang === 'th' ? 'Web NFC พร้อม' : 'Web NFC Ready')
+                    : (lang === 'th' ? 'โหมด USB / UID' : 'USB / UID Mode')}
+                </span>
               </span>
             </div>
+
+            <div className="saas-card-body space-y-4">
 
             {/* Mode Controls: IN/OUT + Gate + (Staff Status) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
@@ -3226,120 +3246,126 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </button>
               </div>
             )}
+            </div>
           </div>
 
           {/* Staff Quick Card Tap Strip (Teachers & Students) */}
           {isStaffUser && (teachers.length > 0 || students.length > 0) && (
-            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'แตะบัตรด่วน (ครูและนักเรียน)' : 'Quick ID Tap (Teachers & Students)'}
+            <div className="saas-card">
+              <div className="saas-card-header">
+                <h3 className="type-card-title">
+                  {lang === 'th' ? 'แตะบัตรด่วน' : 'Quick ID Tap'}
                 </h3>
-                <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                  {lang === 'th' ? `ผูกบัตรแล้ว ${nfcBindings.length} ใบ` : `${nfcBindings.length} bound`}
+                <span className="type-meta">
+                  {lang === 'th' ? `ผูกบัตร ${nfcBindings.length} ใบ` : `${nfcBindings.length} bound`}
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {teachers.slice(0, 3).map((tc) => (
-                  <button
-                    key={tc.id}
-                    type="button"
-                    onClick={() => handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber)}
-                    className="min-h-[40px] px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Nfc className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
-                    <span className="font-mono text-[10px] text-[var(--color-text-muted)]">{tc.teacherIdNumber}</span>
-                  </button>
-                ))}
-                {students.slice(0, 4).map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber)}
-                    className="min-h-[40px] px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="truncate max-w-[140px]">{st.firstNameTh} {st.lastNameTh}</span>
-                    <span className="font-mono text-[10px] text-[var(--color-text-muted)]">{st.studentIdNumber}</span>
-                  </button>
-                ))}
-              </div>
-
-              {nfcBindings.length > 0 && (
-                <div className="pt-2 border-t border-[var(--color-border)] space-y-1.5">
-                  <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'บัตร NFC ที่จับคู่ไว้บนอุปกรณ์นี้' : 'Paired NFC Cards'}
-                  </p>
-                  <div className="divide-y divide-[var(--color-border)]">
-                    {nfcBindings.slice(0, 5).map((b) => (
-                      <div key={b.normalizedUid} className="py-1.5 flex items-center justify-between gap-2 text-xs">
-                        <div className="min-w-0">
-                          <span className="font-bold text-[var(--color-text-title)]">{b.label}</span>
-                          <span className="ml-2 font-mono text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                            {b.uid} · {b.displayId}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
-                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 cursor-pointer"
-                          title={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+              <div className="saas-card-body space-y-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {teachers.slice(0, 3).map((tc) => (
+                    <button
+                      key={tc.id}
+                      type="button"
+                      onClick={() => handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber)}
+                      className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Nfc className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
+                      <span className="font-mono type-meta">{tc.teacherIdNumber}</span>
+                    </button>
+                  ))}
+                  {students.slice(0, 4).map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber)}
+                      className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="truncate max-w-[140px]">{st.firstNameTh} {st.lastNameTh}</span>
+                      <span className="font-mono type-meta">{st.studentIdNumber}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
+
+                {nfcBindings.length > 0 && (
+                  <div className="pt-2.5 border-t border-[var(--color-border)] space-y-1.5">
+                    <p className="type-meta font-semibold">
+                      {lang === 'th' ? 'บัตร NFC ที่จับคู่บนอุปกรณ์นี้' : 'Paired NFC Cards'}
+                    </p>
+                    <div className="divide-y divide-[var(--color-border)]">
+                      {nfcBindings.slice(0, 5).map((b) => (
+                        <div key={b.normalizedUid} className="py-1.5 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="type-card-title">{b.label}</span>
+                            <span className="ml-2 font-mono type-meta">
+                              {b.uid} · {b.displayId}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
+                            className="btn-icon-tool text-rose-600 dark:text-rose-300"
+                            title={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
+                            aria-label={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {/* Recent NFC Tap Log */}
-          <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'บันทึกการแตะบัตร NFC ล่าสุด' : 'Recent NFC Tap Check-ins'}
+          <div className="saas-card">
+            <div className="saas-card-header">
+              <h3 className="type-card-title">
+                {lang === 'th' ? 'บันทึกการแตะบัตรล่าสุด' : 'Recent NFC Check-ins'}
               </h3>
-              <span className="text-[11px] font-mono tabular-nums text-[var(--color-text-muted)]">
+              <span className="type-meta font-mono">
                 {nfcRecentLogs.length} {lang === 'th' ? 'รายการ' : 'taps'}
               </span>
             </div>
 
-            {nfcRecentLogs.length === 0 ? (
-              <p className="text-center text-[var(--color-text-muted)] py-4">
-                {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
-              </p>
-            ) : (
-              <div className="divide-y divide-[var(--color-border)]">
-                {nfcRecentLogs.map((log) => (
-                  <div key={log.id} className="py-2 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-bold text-[var(--color-text-title)] truncate">{log.name}</p>
-                      <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                        {log.roleLabel} · UID {log.uid} · {log.gateName}
-                      </p>
+            <div className="saas-card-body">
+              {nfcRecentLogs.length === 0 ? (
+                <p className="type-meta text-center py-4">
+                  {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
+                </p>
+              ) : (
+                <div className="divide-y divide-[var(--color-border)]">
+                  {nfcRecentLogs.map((log) => (
+                    <div key={log.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="type-card-title truncate">{log.name}</p>
+                        <p className="type-meta truncate">
+                          {log.roleLabel} · UID {log.uid} · {log.gateName}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`type-label ${
+                          log.checkType === 'check_in'
+                            ? log.status === 'late'
+                              ? 'text-amber-700 dark:text-amber-300'
+                              : 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-[var(--color-primary-text)]'
+                        }`}>
+                          {log.checkType === 'check_in' ? (log.status === 'late' ? 'เข้า · สาย' : 'เข้าเรียน') : 'ออกโรงเรียน'}
+                        </span>
+                        <p className="type-meta font-mono">
+                          {log.time}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        log.checkType === 'check_in'
-                          ? log.status === 'late'
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200'
-                            : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200'
-                          : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                      }`}>
-                        {log.checkType === 'check_in' ? (log.status === 'late' ? 'เข้า (สาย)' : 'เข้า (IN)') : 'ออก (OUT)'}
-                      </span>
-                      <p className="text-[10px] font-mono tabular-nums text-[var(--color-text-muted)] mt-0.5">
-                        {log.time}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -3349,48 +3375,48 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* ========================================================================= */}
       {subTab === 'teacher_proxy' && isStaffUser && (
         <div className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
-          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="saas-card">
+            <div className="saas-card-header">
               <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>ครูเช็คชื่อให้นักเรียน (กรอกรหัสนักเรียนก่อนเช็คชื่อ)</span>
+                <h3 className="type-section-title flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>ลงชื่อเข้า-ออกแทนนักเรียน</span>
                 </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  กรุณาระบุรหัสนักเรียนเพื่อตรวจสอบตัวตนก่อนบันทึกเวลาเข้า-ออกแทนนักเรียน
+                <p className="type-meta mt-0.5">
+                  ระบุรหัสนักเรียนเพื่อยืนยันตัวตนก่อนบันทึกเวลา
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setProxyShowRosterHint(!proxyShowRosterHint)}
-                className="text-xs font-bold text-[var(--color-primary-text)] underline underline-offset-4 cursor-pointer self-start sm:self-auto"
+                className="text-xs font-semibold text-[var(--color-primary-text)] underline underline-offset-4 cursor-pointer self-start sm:self-auto"
               >
-                {proxyShowRosterHint ? 'ซ่อนตารางรหัสนักเรียน' : 'ดูรายชื่อและรหัสนักเรียน'}
+                {proxyShowRosterHint ? 'ซ่อนรายชื่อ' : 'ดูรายชื่อ & รหัส'}
               </button>
             </div>
 
-            {proxySavedNotification && (
-              <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                <span>{proxySavedNotification}</span>
-              </div>
-            )}
+            <div className="saas-card-body space-y-3.5">
+              {proxySavedNotification && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 type-meta font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                  <span>{proxySavedNotification}</span>
+                </div>
+              )}
 
-            {/* Step 1: Required Student ID Input */}
-            <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-3 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-bold text-[var(--color-text-title)] block">
-                  1. กรอกรหัสนักเรียน (Student ID) <span className="text-rose-700 dark:text-rose-300">*จำเป็น</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
+              {/* Step 1: Required Student ID Input (Single elevation, no nested box) */}
+              <div className="space-y-3 type-body">
+                <div className="space-y-1.5">
+                  <label className="type-label block">
+                    รหัสนักเรียน <span className="text-rose-600 dark:text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
                     <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
                     <input
                       type="text"
                       value={proxyStudentIdInput}
                       onChange={(e) => setProxyStudentIdInput(e.target.value)}
                       placeholder={`เช่น ${students[0]?.studentIdNumber || 'ED-6901'}`}
-                      className="w-full pl-8 pr-8 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                      className="w-full pl-8 pr-8 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
                     />
                     {proxyStudentIdInput && (
                       <button
@@ -3403,122 +3429,124 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       </button>
                     )}
                   </div>
+                  {students.length > 0 && !trimmedProxyStudentId && (
+                    <p className="type-meta">
+                      ตัวอย่าง: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
+                    </p>
+                  )}
                 </div>
-                {students.length > 0 && (
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    ตัวอย่างรหัสในระบบ: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
+
+                {/* Verification Feedback & Check-in Controls */}
+                {!trimmedProxyStudentId ? (
+                  <p className="type-meta flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>กรุณาระบุรหัสนักเรียนด้านบนก่อนบันทึกเวลา</span>
                   </p>
-                )}
-              </div>
-
-              {/* Verification Feedback & Check-in Controls */}
-              {!trimmedProxyStudentId ? (
-                <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
-                  <span>กรุณาใส่รหัสนักเรียนด้านบนก่อนจึงจะสามารถเช็คชื่อให้นักเรียนได้</span>
-                </div>
-              ) : !matchedProxyStudent ? (
-                <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
-                  <span>ไม่พบนักเรียนรหัส "{trimmedProxyStudentId}" กรุณาตรวจสอบรหัสนักเรียนให้ถูกต้อง</span>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={matchedProxyStudent.avatarUrl}
-                      alt={matchedProxyStudent.firstNameTh}
-                      className="w-11 h-11 rounded-xl object-cover border border-emerald-400 dark:border-emerald-700 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-emerald-950 dark:text-emerald-100 text-sm">
-                          {matchedProxyStudent.firstNameTh} {matchedProxyStudent.lastNameTh}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold">
-                          ยืนยันรหัสถูกต้อง ✓
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-emerald-900 dark:text-emerald-200 font-mono">
-                        รหัส: {matchedProxyStudent.studentIdNumber} • {matchedProxyStudent.gradeLevel} {matchedProxyStudent.room}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Check-in / Check-out & Status */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-emerald-950 dark:text-emerald-100 block">ประเภทบันทึก:</span>
-                      <div className="flex gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setProxyCheckType('check_in')}
-                          className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
-                            proxyCheckType === 'check_in'
-                              ? 'bg-emerald-700 text-white'
-                              : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
-                          }`}
-                        >
-                          เข้าโรงเรียน (IN)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setProxyCheckType('check_out')}
-                          className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
-                            proxyCheckType === 'check_out'
-                              ? 'bg-[var(--color-primary)] text-white'
-                              : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
-                          }`}
-                        >
-                          ออกโรงเรียน (OUT)
-                        </button>
+                ) : !matchedProxyStudent ? (
+                  <p className="type-meta text-rose-700 dark:text-rose-300 font-semibold flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>ไม่พบนักเรียนรหัส "{trimmedProxyStudentId}"</span>
+                  </p>
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={matchedProxyStudent.avatarUrl}
+                        alt={matchedProxyStudent.firstNameTh}
+                        className="w-10 h-10 rounded-lg object-cover border border-emerald-400 dark:border-emerald-700 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="type-card-title text-emerald-950 dark:text-emerald-100">
+                            {matchedProxyStudent.firstNameTh} {matchedProxyStudent.lastNameTh}
+                          </span>
+                          <span className="inline-flex items-center gap-1 type-meta text-emerald-700 dark:text-emerald-300 font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>ยืนยันแล้ว</span>
+                          </span>
+                        </div>
+                        <p className="type-meta text-emerald-900 dark:text-emerald-200 font-mono">
+                          {matchedProxyStudent.studentIdNumber} · {matchedProxyStudent.gradeLevel} {matchedProxyStudent.room}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-emerald-950 dark:text-emerald-100 block">สถานะการเข้าเรียน:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {(['present', 'late', 'sick', 'absent'] as AttendanceStatus[]).map((stt) => (
+                    {/* Step 2: Check-in / Check-out & Status */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
+                        <span className="type-meta font-semibold block">ประเภทบันทึก</span>
+                        <div className="flex gap-1.5">
                           <button
-                            key={stt}
                             type="button"
-                            onClick={() => setProxySingleStatus(stt)}
-                            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                              proxySingleStatus === stt
-                                ? stt === 'present' ? 'bg-emerald-700 text-white' :
-                                  stt === 'late' ? 'bg-amber-500 text-slate-950' :
-                                  stt === 'sick' ? 'bg-[var(--color-primary)] text-white' : 'bg-rose-700 text-white'
+                            onClick={() => setProxyCheckType('check_in')}
+                            className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                              proxyCheckType === 'check_in'
+                                ? 'bg-emerald-700 text-white'
                                 : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
                             }`}
                           >
-                            {stt === 'present' ? 'มา' : stt === 'late' ? 'สาย' : stt === 'sick' ? 'ลา' : 'ขาด'}
+                            เข้าโรงเรียน
                           </button>
-                        ))}
+                          <button
+                            type="button"
+                            onClick={() => setProxyCheckType('check_out')}
+                            className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                              proxyCheckType === 'check_out'
+                                ? 'bg-[var(--color-primary)] text-white'
+                                : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                            }`}
+                          >
+                            ออกโรงเรียน
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="type-meta font-semibold block">สถานะ</span>
+                        <div className="flex flex-wrap gap-1">
+                          {(['present', 'late', 'sick', 'absent'] as AttendanceStatus[]).map((stt) => (
+                            <button
+                              key={stt}
+                              type="button"
+                              onClick={() => setProxySingleStatus(stt)}
+                              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                proxySingleStatus === stt
+                                  ? stt === 'present' ? 'bg-emerald-700 text-white' :
+                                    stt === 'late' ? 'bg-amber-500 text-slate-950' :
+                                    stt === 'sick' ? 'bg-[var(--color-primary)] text-white' : 'bg-rose-700 text-white'
+                                  : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                              }`}
+                            >
+                              {stt === 'present' ? 'มา' : stt === 'late' ? 'สาย' : stt === 'sick' ? 'ลา' : 'ขาด'}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => runWithBiometricGuard(() => handleConfirmProxySingleCheckin())}
-                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>ยืนยันเช็คชื่อให้นักเรียน ({matchedProxyStudent.studentIdNumber})</span>
-                  </button>
-                </div>
-              )}
+                    <button
+                      type="button"
+                      onClick={() => runWithBiometricGuard(() => handleConfirmProxySingleCheckin())}
+                      className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>ยืนยันเช็คชื่อ ({matchedProxyStudent.studentIdNumber})</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Optional Reference Roster (Read-only ID lookup so teachers always verify ID above before check-in) */}
+          {/* Optional Reference Roster */}
           {proxyShowRosterHint && (
-            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-[var(--color-text-title)]">
-                  รายชื่ออ้างอิงสำหรับตรวจสอบรหัสนักเรียน ({filteredProxyStudents.length} คน)
+            <div className="saas-card">
+              <div className="saas-card-header">
+                <span className="type-card-title">
+                  รายชื่ออ้างอิง ({filteredProxyStudents.length} คน)
                 </span>
                 <select
+                  aria-label="กรองตามระดับชั้น"
                   value={proxyGradeFilter}
                   onChange={(e) => setProxyGradeFilter(e.target.value)}
                   className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
@@ -3529,21 +3557,23 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <option value="มัธยมศึกษาปีที่ 6 (M.6)">ม.6</option>
                 </select>
               </div>
-              <div className="divide-y divide-[var(--color-border)]">
-                <PagedList items={filteredProxyStudents} pageSize={4} renderItem={(st) => (
-                  <div key={st.id} className="py-2 flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img src={st.avatarUrl} alt={st.firstNameTh} className="w-8 h-8 rounded-lg object-cover border border-[var(--color-border)] shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-bold text-[var(--color-text-title)] truncate">{st.firstNameTh} {st.lastNameTh}</p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] truncate">{st.gradeLevel} {st.room}</p>
+              <div className="saas-card-body">
+                <div className="divide-y divide-[var(--color-border)]">
+                  <PagedList items={filteredProxyStudents} pageSize={4} renderItem={(st) => (
+                    <div key={st.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img src={st.avatarUrl} alt={st.firstNameTh} className="w-8 h-8 rounded-lg object-cover border border-[var(--color-border)] shrink-0" />
+                        <div className="min-w-0">
+                          <p className="type-card-title truncate">{st.firstNameTh} {st.lastNameTh}</p>
+                          <p className="type-meta truncate">{st.gradeLevel} {st.room}</p>
+                        </div>
                       </div>
+                      <span className="font-mono type-meta font-semibold text-[var(--color-text-title)] shrink-0">
+                        {st.studentIdNumber}
+                      </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-mono text-[11px] font-bold text-[var(--color-text-title)] shrink-0">
-                      {st.studentIdNumber}
-                    </span>
-                  </div>
-                )} />
+                  )} />
+                </div>
               </div>
             </div>
           )}
@@ -3554,140 +3584,143 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 4: PERIOD ATTENDANCE (รายคาบ) - WITH QR CODE & CHECK-IN LINK */}
       {/* ========================================================================= */}
       {subTab === 'period_checkin' && (
-        <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-2.5 p-0.5' : 'space-y-4'}`}>
-          <div className="p-3.5 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5' : 'space-y-4'}`}>
+          <div className="saas-card">
+            <div className="saas-card-header">
               <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>เช็คชื่อเข้าเรียนรายคาบ (QR Code &amp; Link)</span>
+                <h3 className="type-section-title flex items-center gap-1.5">
+                  <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  <span>เช็คชื่อรายคาบ (QR &amp; Link)</span>
                 </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
+                <p className="type-meta mt-0.5">
                   {isRestrictedViewer
-                    ? 'สแกน QR Code หรือเปิดลิงก์จากอาจารย์เพื่อเช็คชื่อเข้าคาบเรียนของตนเอง'
-                    : `สร้าง QR Code และลิงก์ให้นักเรียนสแกนเช็คชื่อเข้าคาบ (${periodStudentIds.length} นักเรียน)`}
+                    ? 'สแกน QR Code หรือเปิดลิงก์เพื่อเช็คชื่อเข้าคาบเรียน'
+                    : `${periodStudentIds.length} นักเรียนในรายวิชานี้`}
                 </p>
               </div>
               {isStaffUser && (
                 <button
                   type="button"
                   onClick={() => runWithBiometricGuard(() => handleSavePeriodAttendance())}
-                  className="px-3.5 py-1.5 rounded-xl bg-[var(--color-primary)] hover:opacity-90 text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
+                  className="btn-action-primary px-3.5 py-1.5 self-start sm:self-auto"
                 >
                   บันทึกรายชื่อทั้งคาบ
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-              {courseTeacherOptions.length > 0 && (
-                <div>
-                  <label className="text-[11px] font-bold text-[var(--color-text-muted)]">กรองวิชาตามรายชื่อครู:</label>
+            <div className="saas-card-body space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {courseTeacherOptions.length > 0 && (
+                  <div>
+                    <label className="type-meta font-semibold">ครูผู้สอน</label>
+                    <select
+                      aria-label="กรองวิชาตามรายชื่อครู"
+                      value={periodTeacherFilter}
+                      onChange={(e) => {
+                        const nextTeacher = e.target.value;
+                        setPeriodTeacherFilter(nextTeacher);
+                        const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
+                          courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
+                        );
+                        if (matching.length > 0 && !matching.some((c) => c.id === selectedCourseId)) {
+                          setSelectedCourseId(matching[0].id);
+                        }
+                      }}
+                      className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                    >
+                      <option value="all">ทุกคน ({courseTeacherOptions.length})</option>
+                      {courseTeacherOptions.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          {opt.label} ({opt.count})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className={courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
+                  <label className="type-meta font-semibold">รายวิชา</label>
                   <select
-                    aria-label="กรองวิชาตามรายชื่อครู"
-                    value={periodTeacherFilter}
-                    onChange={(e) => {
-                      const nextTeacher = e.target.value;
-                      setPeriodTeacherFilter(nextTeacher);
-                      const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
-                        courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
-                      );
-                      if (matching.length > 0 && !matching.some((c) => c.id === selectedCourseId)) {
-                        setSelectedCourseId(matching[0].id);
-                      }
-                    }}
-                    className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                    value={selectedCourse.id}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                    className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
                   >
-                    <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
-                    {courseTeacherOptions.map((opt) => (
-                      <option key={opt.key} value={opt.key}>
-                        {opt.label} ({opt.count} วิชา)
-                      </option>
+                    {periodFilteredCourses.map(c => (
+                      <option key={c.id} value={c.id}>{c.code} {c.titleTh}</option>
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="type-meta font-semibold">คาบเรียน</label>
+                  <select
+                    value={selectedPeriod}
+                    onChange={(e) => setSelectedPeriod(Number(e.target.value))}
+                    className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                  >
+                    {periodsList.map(p => (
+                      <option key={p.period} value={p.period}>{p.label} ({p.time})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="type-meta font-semibold">วันที่</label>
+                  <input
+                    type="date"
+                    value={periodDate}
+                    onChange={(e) => setPeriodDate(e.target.value)}
+                    className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums"
+                  />
+                </div>
+              </div>
+
+              {periodSavedNotification && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 type-meta font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                  <span>{periodSavedNotification}</span>
+                </div>
               )}
-
-              <div className={courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
-                <label className="text-[11px] font-bold text-[var(--color-text-muted)]">เลือกรายวิชา:</label>
-                <select
-                  value={selectedCourse.id}
-                  onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
-                >
-                  {periodFilteredCourses.map(c => (
-                    <option key={c.id} value={c.id}>{c.code} {c.titleTh}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-[var(--color-text-muted)]">เลือกคาบเรียน:</label>
-                <select
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
-                >
-                  {periodsList.map(p => (
-                    <option key={p.period} value={p.period}>{p.label} ({p.time})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-[var(--color-text-muted)]">วันที่:</label>
-                <input
-                  type="date"
-                  value={periodDate}
-                  onChange={(e) => setPeriodDate(e.target.value)}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
-                />
-              </div>
             </div>
-
-            {periodSavedNotification && (
-              <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                <span>{periodSavedNotification}</span>
-              </div>
-            )}
           </div>
 
-          {/* QR CODE & SHAREABLE CHECK-IN LINK CARD (Available for teachers to share AND accessible for QR check-in) */}
-          <div className="p-4 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-border)] shadow-xs">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
+          {/* QR CODE & SHAREABLE CHECK-IN LINK CARD */}
+          <div className="saas-card bg-[var(--color-primary-light)]">
+            <div className="saas-card-body flex flex-col sm:flex-row items-center gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <QrCodeMatrix
                   value={periodCheckinUrl}
                   size={embeddedMobile ? 132 : 148}
                   label={`QR Code เช็คชื่อคาบเรียน ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
                 />
-                <span className="text-[10px] font-mono font-bold text-[var(--color-primary-text)] bg-[var(--color-primary-light)] border border-[var(--color-border)] px-2 py-0.5 rounded-md">
+                <span className="type-meta font-mono font-bold text-[var(--color-primary-text)]">
                   {expectedPeriodCode}
                 </span>
               </div>
 
-              <div className="flex-1 min-w-0 w-full space-y-2.5 text-xs">
+              <div className="flex-1 min-w-0 w-full space-y-2.5">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h4 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5 text-sm">
-                    <Link2 className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
-                    <span>QR Code &amp; ลิงก์เช็คชื่อรายคาบ</span>
+                  <h4 className="type-section-title flex items-center gap-1.5">
+                    <Link2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                    <span>QR &amp; ลิงก์เช็คชื่อรายคาบ</span>
                   </h4>
                   <button
                     type="button"
                     onClick={() => setShowPeriodQrModal(true)}
-                    className="text-xs font-bold text-[var(--color-primary-text)] underline underline-offset-4 flex items-center gap-1 cursor-pointer"
+                    className="btn-icon-tool"
+                    title="ขยาย QR เต็มจอสำหรับฉายขึ้นโปรเจกเตอร์"
+                    aria-label="ขยาย QR เต็มจอ"
                   >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    <span>ขยาย QR เต็มจอ</span>
+                    <Maximize2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                   </button>
                 </div>
 
-                <p className="text-[11px] text-[var(--color-text-body)]">
-                  วิชา <strong>{selectedCourse.code} {selectedCourse.titleTh}</strong> • คาบที่ {selectedPeriod} • วันที่ {periodDate}
+                <p className="type-meta text-[var(--color-text-body)]">
+                  <strong className="text-[var(--color-text-title)]">{selectedCourse.code} {selectedCourse.titleTh}</strong> · คาบที่ {selectedPeriod} · {periodDate}
                 </p>
 
-                <div className="p-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
@@ -3698,10 +3731,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <button
                     type="button"
                     onClick={handleCopyPeriodLink}
-                    className="px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                    className="btn-icon-tool bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white border-transparent"
+                    title={periodQrCopied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์เช็คชื่อ'}
+                    aria-label={periodQrCopied ? 'คัดลอกลิงก์แล้ว' : 'คัดลอกลิงก์เช็คชื่อ'}
                   >
                     {periodQrCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{periodQrCopied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}</span>
                   </button>
                 </div>
 
@@ -3717,15 +3751,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     className="font-bold text-[var(--color-primary-text)] underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>{isRestrictedViewer ? 'กดลิงก์เช็คชื่อเข้าคาบนี้ทันที' : 'เปิดลิงก์เช็คชื่อรายคาบ'}</span>
+                    <span>{isRestrictedViewer ? 'กดลิงก์เช็คชื่อเข้าคาบนี้' : 'เปิดลิงก์เช็คชื่อ'}</span>
                   </a>
                   {isStaffUser && (
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                      สแกน/เช็คชื่อแล้ว: {
+                    <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold">
+                      เช็คแล้ว:{' '}
+                      {
                         periodAttendance.filter(
                           (p) => p.courseId === selectedCourse.id && p.periodNumber === selectedPeriod && p.date === periodDate && (p.status === 'present' || p.status === 'late')
                         ).length
-                      } / {periodStudentIds.length} คน
+                      }{' '}
+                      / {periodStudentIds.length} คน
                     </span>
                   )}
                 </div>
@@ -3733,147 +3769,145 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           </div>
 
-          {/* STUDENT VIEW: SELF CHECK-IN VIA QR/CODE + OWN RECORD ONLY (NEVER SHOW OTHER STUDENTS) */}
+          {/* STUDENT VIEW: SELF CHECK-IN VIA QR/CODE + OWN RECORD ONLY */}
           {isRestrictedViewer ? (
-            <div className="space-y-3">
-              <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3 text-xs">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="space-y-4">
+              <div className="saas-card">
+                <div className="saas-card-header">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
                       src={selectedStudent?.avatarUrl}
                       alt={selectedStudent?.firstNameTh}
-                      className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                      className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
                     />
                     <div className="min-w-0">
-                      <p className="font-bold text-[var(--color-text-title)] truncate">
+                      <p className="type-card-title truncate">
                         {selectedStudent?.firstNameTh} {selectedStudent?.lastNameTh}
                       </p>
-                      <p className="text-[11px] text-[var(--color-text-muted)] font-mono">
-                        รหัส {selectedStudent?.studentIdNumber} • {selectedStudent?.room}
+                      <p className="type-meta font-mono">
+                        {selectedStudent?.studentIdNumber} · {selectedStudent?.room}
                       </p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-[10px] font-bold">
-                    เห็นเฉพาะข้อมูลของฉัน
-                  </span>
-                </div>
-
-                {/* Check-in vs Check-out Mode Toggle */}
-                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex-wrap">
-                  <span className="text-[11px] font-bold text-[var(--color-text-title)]">โหมดการบันทึก:</span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="seg-tab-group">
                     <button
                       type="button"
+                      data-active={periodCheckType === 'check_in'}
                       onClick={() => setPeriodCheckType('check_in')}
-                      className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
-                        periodCheckType === 'check_in'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-[var(--color-border)]'
-                      }`}
+                      className="seg-tab-btn flex items-center gap-1"
                     >
                       <LogIn className="w-3.5 h-3.5" />
-                      <span>เช็คชื่อเข้า (Check-in)</span>
+                      <span>เข้าเรียน</span>
                     </button>
                     <button
                       type="button"
+                      data-active={periodCheckType === 'check_out'}
                       onClick={() => setPeriodCheckType('check_out')}
-                      className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
-                        periodCheckType === 'check_out'
-                          ? 'bg-rose-600 text-white shadow-xs'
-                          : 'bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-[var(--color-border)]'
-                      }`}
+                      className="seg-tab-btn flex items-center gap-1"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>เช็คชื่อออก (Check-out)</span>
+                      <span>ออกคาบ</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-[var(--color-text-title)] block">
-                    วางลิงก์เช็คชื่อ หรือกรอกรหัส Barcode/QR คาบเรียน:
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="relative flex-1">
-                      <ScanLine className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        value={studentPeriodCodeInput}
-                        onChange={(e) => setStudentPeriodCodeInput(e.target.value)}
-                        placeholder={`วางลิงก์หรือรหัส เช่น ${expectedPeriodCode}`}
-                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs font-mono"
-                      />
+                <div className="saas-card-body space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="type-label block">
+                      ลิงก์เช็คชื่อ หรือรหัสคาบเรียน
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <ScanLine className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={studentPeriodCodeInput}
+                          onChange={(e) => setStudentPeriodCodeInput(e.target.value)}
+                          placeholder={`วางลิงก์หรือรหัส เช่น ${expectedPeriodCode}`}
+                          className="w-full pl-8 pr-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs font-mono"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleStudentSelfPeriodCheckin()}
+                        className={`px-4 py-2 rounded-lg text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition ${
+                          periodCheckType === 'check_in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
+                        }`}
+                      >
+                        <QrCode className="w-4 h-4" />
+                        <span>{periodCheckType === 'check_in' ? 'ยืนยันเข้าเรียน' : 'ยืนยันออกคาบ'}</span>
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleStudentSelfPeriodCheckin()}
-                      className={`px-4 py-2 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-xs transition ${
-                        periodCheckType === 'check_in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
-                      }`}
-                    >
-                      <QrCode className="w-4 h-4" />
-                      <span>{periodCheckType === 'check_in' ? 'ยืนยันเช็คชื่อเข้าเรียน' : 'ยืนยันเช็คชื่อออกคาบ'}</span>
-                    </button>
                   </div>
+
+                  {studentPeriodCheckinMsg && (
+                    <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 type-meta font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                      <span>{studentPeriodCheckinMsg}</span>
+                    </div>
+                  )}
+
+                  {studentPeriodCheckinError && (
+                    <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 type-meta font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
+                      <span>{studentPeriodCheckinError}</span>
+                    </div>
+                  )}
                 </div>
-
-                {studentPeriodCheckinMsg && (
-                  <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                    <span>{studentPeriodCheckinMsg}</span>
-                  </div>
-                )}
-
-                {studentPeriodCheckinError && (
-                  <div className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 font-semibold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0" />
-                    <span>{studentPeriodCheckinError}</span>
-                  </div>
-                )}
               </div>
 
               {/* Only this student's own period check-in history */}
-              <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 text-xs">
-                <h4 className="font-bold text-[var(--color-text-title)]">
-                  ประวัติเช็คชื่อรายคาบของคุณ ({scopedPeriodAttendance.length})
-                </h4>
-                {scopedPeriodAttendance.length === 0 ? (
-                  <p className="text-[var(--color-text-muted)] text-center py-4">
-                    ยังไม่มีบันทึกเช็คชื่อรายคาบของคุณ
-                  </p>
-                ) : (
-                  <PagedList
-                    items={scopedPeriodAttendance}
-                    pageSize={4}
-                    renderItem={(rec) => (
-                      <div key={rec.id} className="py-2 flex items-center justify-between gap-2 border-b last:border-b-0 border-[var(--color-border)]">
-                        <div className="min-w-0">
-                          <p className="font-bold text-[var(--color-text-title)] truncate">
-                            {rec.courseCode} • คาบที่ {rec.periodNumber}
-                          </p>
-                          <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                            {rec.date} ({rec.timeSlot}) • {rec.checkMethod === 'qr_code' ? 'สแกน QR/ลิงก์' : 'อาจารย์เช็คชื่อ'}
-                          </p>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
-                          rec.status === 'present' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
-                          rec.status === 'late' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' :
-                          rec.status === 'excused' ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                        }`}>
-                          {rec.status === 'present' ? 'เข้าเรียน' : rec.status === 'late' ? 'สาย' : rec.status === 'excused' ? 'ลา' : 'ขาด'}
-                        </span>
-                      </div>
-                    )}
-                  />
-                )}
+              <div className="saas-card">
+                <div className="saas-card-header">
+                  <h4 className="type-card-title">
+                    ประวัติเช็คชื่อรายคาบ ({scopedPeriodAttendance.length})
+                  </h4>
+                </div>
+                <div className="saas-card-body">
+                  {scopedPeriodAttendance.length === 0 ? (
+                    <p className="type-meta text-center py-4">
+                      ยังไม่มีบันทึกเช็คชื่อรายคาบของคุณ
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-[var(--color-border)]">
+                      <PagedList
+                        items={scopedPeriodAttendance}
+                        pageSize={4}
+                        renderItem={(rec) => (
+                          <div key={rec.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="type-card-title truncate">
+                                {rec.courseCode} · คาบที่ {rec.periodNumber}
+                              </p>
+                              <p className="type-meta truncate">
+                                {rec.date} ({rec.timeSlot}) · {rec.checkMethod === 'qr_code' ? 'QR/ลิงก์' : 'อาจารย์เช็คชื่อ'}
+                              </p>
+                            </div>
+                            <span className={`inline-flex items-center gap-1 type-label shrink-0 ${
+                              rec.status === 'present'
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : rec.status === 'late'
+                                  ? 'text-amber-700 dark:text-amber-300'
+                                  : rec.status === 'excused'
+                                    ? 'text-[var(--color-primary-text)]'
+                                    : 'text-rose-700 dark:text-rose-300'
+                            }`}>
+                              {rec.status === 'present' ? 'เข้าเรียน' : rec.status === 'late' ? 'สาย' : rec.status === 'excused' ? 'ลา' : 'ขาด'}
+                            </span>
+                          </div>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : periodStudentIds.length === 0 ? (
-            <div className="p-6 text-center bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] text-[var(--color-text-muted)] text-xs">
+            <div className="saas-card p-6 text-center type-meta">
               ยังไม่มีรายชื่อนักเรียนในโรงเรียนนี้
             </div>
           ) : (
-            <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden shadow-xs">
+            <div className="saas-card overflow-hidden">
               <div className="divide-y divide-[var(--color-border)]">
                 <PagedList items={periodStudentIds} pageSize={4} renderItem={(stuId) => {
                   const st = students.find(s => s.id === stuId);
@@ -3884,18 +3918,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   const status = periodStatuses[st.id] || savedRecord?.status || 'present';
 
                   return (
-                    <div key={st.id} className="p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div key={st.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
                           src={st.avatarUrl}
                           alt={st.firstNameEn}
-                          className="w-9 h-9 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                          className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
                         />
                         <div className="min-w-0">
-                          <p className="font-bold text-[var(--color-text-title)] truncate">{st.firstNameTh} {st.lastNameTh}</p>
-                          <p className="text-[var(--color-text-muted)] text-[11px] font-mono truncate">
-                            ID: {st.studentIdNumber} • ชั้น {st.gradeLevel} {st.room}
-                            {savedRecord?.checkMethod === 'qr_code' ? ' • สแกน QR แล้ว' : ''}
+                          <p className="type-card-title truncate">{st.firstNameTh} {st.lastNameTh}</p>
+                          <p className="type-meta font-mono truncate">
+                            {st.studentIdNumber} · {st.gradeLevel} {st.room}
+                            {savedRecord?.checkMethod === 'qr_code' ? ' · สแกน QR' : ''}
                           </p>
                         </div>
                       </div>
@@ -3906,7 +3940,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                             key={pst}
                             type="button"
                             onClick={() => setPeriodStatuses(prev => ({ ...prev, [st.id]: pst }))}
-                            className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                               status === pst
                                 ? pst === 'present' ? 'bg-emerald-700 text-white' :
                                   pst === 'late' ? 'bg-amber-500 text-slate-950' :

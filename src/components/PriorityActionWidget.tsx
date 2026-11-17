@@ -393,10 +393,10 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-[#0f172a] dark:text-slate-100 leading-snug">
+              <h3 className="type-section-title leading-snug">
                 {lang === 'th' ? 'รายการเร่งด่วน' : 'Priority Actions'}
               </h3>
-              <p className="text-xs text-[#475569] dark:text-slate-300 tabular-nums mt-0.5">
+              <p className="type-meta mt-0.5">
                 {lang === 'th'
                   ? `เร่งด่วน ${counts.all} · ติดตามแล้ว ${counts.followed}`
                   : `${counts.all} urgent · ${counts.followed} contacted`}
@@ -418,7 +418,9 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               }
               onNavigate('executive_warning');
             }}
-            className="no-print text-[11px] font-semibold text-orange-800 dark:text-orange-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap shrink-0"
+            className="no-print type-meta font-semibold text-orange-800 dark:text-orange-300 hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap shrink-0"
+            title={lang === 'th' ? 'เปิดระบบเตือนภัยและวิเคราะห์ความเสี่ยงผู้เรียน' : 'Open Early Warning & Risk Alerts'}
+            aria-label={lang === 'th' ? 'เปิดระบบเตือนภัยและวิเคราะห์ความเสี่ยงผู้เรียน' : 'Open Early Warning & Risk Alerts'}
           >
             <span>{lang === 'th' ? 'เตือนภัย' : 'Alerts'}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -430,7 +432,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
           <div
             role="tablist"
             aria-label={lang === 'th' ? 'กรองตามประเภทปัญหา' : 'Filter priority items'}
-            className="flex flex-wrap sm:inline-flex items-center gap-0.5 max-w-full rounded-xl border border-orange-200/75 dark:border-orange-800/60 bg-white/75 dark:bg-slate-900/60 p-0.5 text-[11px]"
+            className="saas-control-group max-w-full type-meta"
           >
             <button
               type="button"
@@ -440,7 +442,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums inline-flex items-center gap-1 ${
                 filterMode === 'all'
                   ? 'bg-orange-600 text-white shadow-2xs'
-                  : 'text-[#1e293b] dark:text-slate-200 hover:bg-orange-50/80 dark:hover:bg-orange-950/40'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
               <span>{lang === 'th' ? `ทั้งหมด (${counts.all})` : `All (${counts.all})`}</span>
@@ -453,11 +455,11 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums inline-flex items-center gap-1 ${
                 filterMode === 'absence'
                   ? 'bg-orange-600 text-white shadow-2xs'
-                  : 'text-[#1e293b] dark:text-slate-200 hover:bg-orange-50/80 dark:hover:bg-orange-950/40'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
               <CalendarX2 className="w-3 h-3 shrink-0" />
-              <span>{lang === 'th' ? `ขาดเรียน (${counts.absence})` : `Absent (${counts.absence})`}</span>
+              <span>{lang === 'th' ? `ขาด (${counts.absence})` : `Absent (${counts.absence})`}</span>
             </button>
             <button
               type="button"
@@ -467,7 +469,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               className={`px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap tabular-nums inline-flex items-center gap-1 ${
                 filterMode === 'homework'
                   ? 'bg-orange-600 text-white shadow-2xs'
-                  : 'text-[#1e293b] dark:text-slate-200 hover:bg-orange-50/80 dark:hover:bg-orange-950/40'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
               }`}
             >
               <BookOpen className="w-3 h-3 shrink-0" />
@@ -477,26 +479,26 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
         </div>
 
         {/* Search & Hide Followed */}
-        <div className="no-print flex flex-wrap items-center gap-2 text-xs">
+        <div className="no-print flex flex-wrap items-center gap-2">
           <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[140px]">
-            <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={lang === 'th' ? 'ค้นหานักเรียน / ห้อง...' : 'Search student...'}
-              className="w-full pl-8 pr-2.5 py-1.5 rounded-lg border border-orange-200/75 dark:border-orange-800/60 bg-white/80 dark:bg-slate-900/70 text-[#1e293b] dark:text-slate-100 placeholder-slate-500 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
+              className="w-full pl-8 pr-2.5 py-1.5 rounded-lg border border-orange-200/75 dark:border-orange-800/60 bg-white/80 dark:bg-slate-900/70 text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] type-label focus:outline-hidden focus:ring-1 focus:ring-orange-500"
             />
           </div>
 
-          <label className="inline-flex items-center gap-1.5 text-[11px] text-[#475569] dark:text-slate-300 font-medium cursor-pointer select-none whitespace-nowrap">
+          <label className="inline-flex items-center gap-1.5 type-meta cursor-pointer select-none whitespace-nowrap">
             <input
               type="checkbox"
               checked={hideFollowedUp}
               onChange={(e) => setHideFollowedUp(e.target.checked)}
               className="rounded border-orange-300 accent-orange-600 cursor-pointer"
             />
-            <span>{lang === 'th' ? 'ซ่อนที่ติดตามแล้ว' : 'Hide done'}</span>
+            <span>{lang === 'th' ? 'ซ่อนติดตามแล้ว' : 'Hide done'}</span>
           </label>
         </div>
 
@@ -504,7 +506,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
         {filteredItems.length === 0 ? (
           <div className="py-6 px-3 text-center space-y-2 rounded-xl bg-white/60 dark:bg-slate-900/40">
             <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400 mx-auto" />
-            <p className="text-xs font-bold text-[#1e293b] dark:text-slate-100">
+            <p className="type-label">
               {counts.all === 0
                 ? lang === 'th'
                   ? 'ไม่พบนักเรียนขาดเรียนหรือค้างส่งงานเร่งด่วน'
@@ -517,16 +519,16 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('attendance')}
-                className="px-2.5 py-1 rounded-lg border border-orange-200/80 dark:border-orange-800/60 bg-white/80 dark:bg-slate-800 text-[#1e293b] dark:text-slate-200 text-[11px] font-semibold cursor-pointer whitespace-nowrap hover:bg-orange-50 dark:hover:bg-slate-700"
+                className="px-2.5 py-1 rounded-lg border border-orange-200/80 dark:border-orange-800/60 bg-white/80 dark:bg-slate-800 text-[var(--color-text-title)] type-meta font-semibold cursor-pointer whitespace-nowrap hover:bg-orange-50 dark:hover:bg-slate-700"
               >
-                {lang === 'th' ? 'ดูการเช็กชื่อ' : 'Attendance'}
+                {lang === 'th' ? 'เช็กชื่อ' : 'Attendance'}
               </button>
               <button
                 type="button"
                 onClick={() => onNavigate('homework')}
-                className="px-2.5 py-1 rounded-lg border border-orange-200/80 dark:border-orange-800/60 bg-white/80 dark:bg-slate-800 text-[#1e293b] dark:text-slate-200 text-[11px] font-semibold cursor-pointer whitespace-nowrap hover:bg-orange-50 dark:hover:bg-slate-700"
+                className="px-2.5 py-1 rounded-lg border border-orange-200/80 dark:border-orange-800/60 bg-white/80 dark:bg-slate-800 text-[var(--color-text-title)] type-meta font-semibold cursor-pointer whitespace-nowrap hover:bg-orange-50 dark:hover:bg-slate-700"
               >
-                {lang === 'th' ? 'ดูการบ้าน' : 'Homework'}
+                {lang === 'th' ? 'การบ้าน' : 'Homework'}
               </button>
             </div>
           </div>
@@ -556,21 +558,21 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                           className="w-8 h-8 rounded-full object-cover border border-orange-200/80 dark:border-orange-800/60 shrink-0 mt-0.5"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 type-label flex items-center justify-center shrink-0 mt-0.5">
                           {(student.firstNameTh || student.firstNameEn || 'S').slice(0, 1)}
                         </div>
                       )}
                       <div className="min-w-0 space-y-0.5">
-                        <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
-                          <span className="font-bold text-[#1e293b] dark:text-slate-100 truncate">
+                        <div className="flex flex-wrap items-baseline gap-x-1.5">
+                          <span className="type-card-title truncate">
                             {displayName}
                           </span>
-                          <span className="text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+                          <span className="type-meta">
                             · {student.gradeLevel} {student.room}
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px]">
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 type-meta">
                           {unexcusedAbsences && (
                             <span
                               className={`inline-flex items-center gap-1 font-semibold tabular-nums ${
@@ -586,7 +588,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                                     ? 'ยังไม่เช็กชื่อวันนี้'
                                     : 'No check-in today'
                                   : lang === 'th'
-                                    ? `ขาดเรียน ${unexcusedAbsences.count} ครั้ง`
+                                    ? `ขาด ${unexcusedAbsences.count} ครั้ง`
                                     : `${unexcusedAbsences.count} absence(s)`}
                               </span>
                             </span>
@@ -608,7 +610,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                             </span>
                           )}
                           {student.guardianPhone && (
-                            <span className="text-[#475569] dark:text-slate-400 inline-flex items-center gap-1 tabular-nums">
+                            <span className="text-[var(--color-text-muted)] inline-flex items-center gap-1 tabular-nums">
                               <Phone className="w-3 h-3" />
                               {student.guardianPhone}
                             </span>
@@ -620,7 +622,8 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleFollowUp(student.id)}
-                      className={`no-print px-2.5 py-1 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 transition ${
+                      title={followedTime ? (lang === 'th' ? `ติดตามแล้วเมื่อ ${followedTime}` : `Followed at ${followedTime}`) : (lang === 'th' ? 'บันทึกว่าติดตามผู้ปกครองแล้ว' : 'Mark as contacted')}
+                      className={`no-print px-2.5 py-1 rounded-lg type-meta font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 transition ${
                         followedTime
                           ? 'bg-emerald-700 text-white hover:bg-emerald-800'
                           : 'bg-orange-600 text-white hover:bg-orange-700'
@@ -641,14 +644,14 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                   </div>
 
                   {/* Quick contextual links */}
-                  <div className="no-print flex flex-wrap items-center gap-2 pl-0 sm:pl-10 text-[11px]">
+                  <div className="no-print flex flex-wrap items-center gap-2 pl-0 sm:pl-10 type-meta">
                     {onSelectStudent && (
                       <button
                         type="button"
                         onClick={() => onSelectStudent(student)}
-                        className="font-semibold text-[#1e293b] dark:text-slate-200 hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer"
+                        className="font-semibold text-[var(--color-text-body)] hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer"
                       >
-                        {lang === 'th' ? 'ดูโปรไฟล์' : 'Profile'}
+                        {lang === 'th' ? 'โปรไฟล์' : 'Profile'}
                       </button>
                     )}
                     {unexcusedAbsences && (
@@ -657,7 +660,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                         <button
                           type="button"
                           onClick={() => onNavigate('attendance')}
-                          className="font-semibold text-[#1e293b] dark:text-slate-200 hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer"
+                          className="font-semibold text-[var(--color-text-body)] hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer"
                         >
                           {lang === 'th' ? 'เช็กชื่อ/ใบลา' : 'Attendance'}
                         </button>
@@ -669,7 +672,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
                         <button
                           type="button"
                           onClick={() => onNavigate('homework')}
-                          className="font-semibold text-[#1e293b] dark:text-slate-200 hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer"
+                          className="font-semibold text-[var(--color-text-body)] hover:text-orange-700 dark:hover:text-orange-300 hover:underline cursor-pointer"
                         >
                           {lang === 'th' ? 'ตรวจงาน' : 'Homework'}
                         </button>
@@ -685,7 +688,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
 
       {/* Footer Show More / Actions */}
       {filteredItems.length > defaultLimit && (
-        <div className="no-print dash-footer-divider mt-2.5 border-t border-orange-200/70 dark:border-orange-800/50 flex items-center justify-between text-[11px] text-[#475569] dark:text-slate-300 tabular-nums">
+        <div className="no-print dash-footer-divider mt-2.5 border-t border-orange-200/70 dark:border-orange-800/50 flex items-center justify-between type-meta">
           <span>
             {lang === 'th'
               ? `แสดง ${visibleItems.length} / ${filteredItems.length} รายการ`
