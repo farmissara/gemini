@@ -211,6 +211,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
+  const [showMoreFilters, setShowMoreFilters] = useState<boolean>(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<AttendanceRecord | null>(null);
 
   const courseTeacherOptions = useMemo(
@@ -802,10 +803,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               data-active={activeTab === 'export_reports'}
               onClick={() => setActiveTab('export_reports')}
               className="seg-tab-btn flex items-center gap-1.5"
-              title="สรุปรายงานสถิติและส่งออกไฟล์ Excel/CSV"
+              title="สรุปรายงานสถิติ กราฟแนวโน้ม และส่งออกไฟล์ Excel/CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-              <span>ส่งออกรายงาน</span>
+              <span>{lang === 'th' ? 'สถิติและรายงาน' : 'Analytics & Reports'}</span>
             </button>
             {isAdminUser && (
               <button
@@ -851,7 +852,36 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}
       {/* ========================================================================= */}
       {activeTab === 'gate_scanner' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-3">
+          {/* 1-Row Executive KPI Strip */}
+          {(() => {
+            const presentCount = displayedFilteredLogs.filter((l) => l.status === 'present').length;
+            const lateCount = displayedFilteredLogs.filter((l) => l.status === 'late').length;
+            const absenceCount = displayedFilteredLogs.filter((l) => l.status === 'sick' || l.status === 'leave' || l.status === 'absent').length;
+            return (
+              <div className="saas-kpi-strip">
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+                  <div className="saas-kpi-cell">
+                    <span className="type-meta block">{lang === 'th' ? 'บันทึกในช่วงนี้' : 'Logs in Range'}</span>
+                    <span className="type-kpi-sm tabular-nums mt-0.5 block">{displayedFilteredLogs.length}</span>
+                  </div>
+                  <div className="saas-kpi-cell">
+                    <span className="type-meta block">{lang === 'th' ? 'ตรงเวลา' : 'On-time'}</span>
+                    <span className="type-kpi-sm text-emerald-700 dark:text-emerald-300 tabular-nums mt-0.5 block">{presentCount}</span>
+                  </div>
+                  <div className="saas-kpi-cell">
+                    <span className="type-meta block">{lang === 'th' ? 'มาสาย' : 'Late'}</span>
+                    <span className="type-kpi-sm text-amber-700 dark:text-amber-300 tabular-nums mt-0.5 block">{lateCount}</span>
+                  </div>
+                  <div className="saas-kpi-cell">
+                    <span className="type-meta block">{lang === 'th' ? 'ลา / ขาด' : 'Leave / Absent'}</span>
+                    <span className="type-kpi-sm text-rose-700 dark:text-rose-300 tabular-nums mt-0.5 block">{absenceCount}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           {/* Scanner Card: Students see ONLY their own locked pass; Teachers enter Student ID first */}
           <div data-guide-id="attendance-scanner-box" className="saas-card text-[var(--color-text-body)]">
@@ -1152,128 +1182,144 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </div>
               )}
 
-              {/* Filter Component: Clean Grouped Controls */}
-              <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-[var(--color-border)]">
-                <div className="saas-control-group">
-                  <span className="px-1.5 type-meta flex items-center gap-1" title="ช่วงวันที่">
-                    <Filter className="w-3 h-3 text-[var(--color-primary-text)]" />
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('today')}
-                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
-                  >
-                    วันนี้
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('7d')}
-                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
-                  >
-                    7 วัน
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('month')}
-                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
-                  >
-                    เดือนนี้
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyQuickDatePreset('all')}
-                    className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
-                  >
-                    ทั้งหมด
-                  </button>
-                </div>
+              {/* Clean Filter Component: Primary presets + Room + Expandable Advanced Filters */}
+              <div className="space-y-2 pb-3 border-b border-[var(--color-border)]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="saas-control-group">
+                      <button
+                        type="button"
+                        onClick={() => applyQuickDatePreset('today')}
+                        className={`px-2 py-1 rounded-md text-[11px] font-semibold cursor-pointer ${startDateFilter === todayDateStr && endDateFilter === todayDateStr ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'}`}
+                      >
+                        วันนี้
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyQuickDatePreset('7d')}
+                        className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                      >
+                        7 วัน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyQuickDatePreset('month')}
+                        className="px-2 py-1 rounded-md hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer"
+                      >
+                        เดือนนี้
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyQuickDatePreset('all')}
+                        className={`px-2 py-1 rounded-md text-[11px] font-semibold cursor-pointer ${!startDateFilter && !endDateFilter ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'}`}
+                      >
+                        ทั้งหมด
+                      </button>
+                    </div>
 
-                <div className="saas-control-group">
-                  <input
-                    type="date"
-                    aria-label="ตั้งแต่วันที่"
-                    value={startDateFilter}
-                    onChange={(e) => setStartDateFilter(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] tabular-nums"
-                  />
-                  <span className="type-meta px-0.5">–</span>
-                  <input
-                    type="date"
-                    aria-label="ถึงวันที่"
-                    value={endDateFilter}
-                    onChange={(e) => setEndDateFilter(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] tabular-nums"
-                  />
-                </div>
+                    <select
+                      aria-label="กรองตามห้องเรียน"
+                      value={classFilter}
+                      onChange={(e) => setClassFilter(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] font-medium"
+                    >
+                      <option value="all">ทุกห้อง ({availableClasses.length})</option>
+                      {availableClasses.map((room) => (
+                        <option key={room} value={room}>
+                          {room}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="saas-control-group flex-1 min-w-[220px]">
-                  <select
-                    aria-label="กรองตามห้องเรียน"
-                    value={classFilter}
-                    onChange={(e) => setClassFilter(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
-                  >
-                    <option value="all">ทุกห้อง ({availableClasses.length})</option>
-                    {availableClasses.map((room) => (
-                      <option key={room} value={room}>
-                        {room}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    aria-label="กรองวิชาตามรายชื่อครู"
-                    value={teacherFilter}
-                    onChange={(e) => {
-                      const nextTeacher = e.target.value;
-                      setTeacherFilter(nextTeacher);
-                      if (courseFilter !== 'all') {
-                        const cur = courses.find((c) => c.id === courseFilter);
-                        if (cur && !courseMatchesTeacherFilter(cur, nextTeacher, courseTeacherOptions)) {
-                          setCourseFilter('all');
-                        }
-                      }
-                    }}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[160px]"
-                  >
-                    <option value="all">ครูทุกคน ({courseTeacherOptions.length})</option>
-                    {courseTeacherOptions.map((opt) => (
-                      <option key={opt.key} value={opt.key}>
-                        {opt.label} ({opt.count})
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    aria-label="กรองตามรายวิชา"
-                    value={courseFilter}
-                    onChange={(e) => setCourseFilter(e.target.value)}
-                    className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium max-w-[180px]"
-                  >
-                    <option value="all">
-                      {teacherFilter === 'all'
-                        ? 'ทุกรายวิชา'
-                        : `วิชาครู (${teacherFilteredCourses.length})`}
-                    </option>
-                    {teacherFilteredCourses.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.code} — {course.titleTh}
-                      </option>
-                    ))}
-                  </select>
-
-                  {(classFilter !== 'all' || teacherFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      onClick={handleResetLogFilters}
-                      className="btn-icon-tool text-rose-600 dark:text-rose-300"
-                      title="รีเซ็ตตัวกรองเป็นค่าเริ่มต้น"
-                      aria-label="รีเซ็ตตัวกรองเป็นค่าเริ่มต้น"
+                      data-active={showMoreFilters || teacherFilter !== 'all' || courseFilter !== 'all'}
+                      onClick={() => setShowMoreFilters((v) => !v)}
+                      className="btn-tool-neutral px-2.5 py-1.5"
+                      title="ตัวกรองเพิ่มเติม (ช่วงวันที่ ครู รายวิชา)"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
+                      <Filter className="w-3.5 h-3.5" />
+                      <span>{lang === 'th' ? 'ตัวกรอง' : 'Filters'}</span>
                     </button>
-                  )}
+
+                    {(classFilter !== 'all' || teacherFilter !== 'all' || courseFilter !== 'all' || startDateFilter !== todayDateStr || endDateFilter !== todayDateStr) && (
+                      <button
+                        type="button"
+                        onClick={handleResetLogFilters}
+                        className="btn-icon-tool text-rose-600 dark:text-rose-300"
+                        title="รีเซ็ตตัวกรองเป็นค่าเริ่มต้น"
+                        aria-label="รีเซ็ตตัวกรองเป็นค่าเริ่มต้น"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {(showMoreFilters || teacherFilter !== 'all' || courseFilter !== 'all') && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <div className="saas-control-group">
+                      <input
+                        type="date"
+                        aria-label="ตั้งแต่วันที่"
+                        value={startDateFilter}
+                        onChange={(e) => setStartDateFilter(e.target.value)}
+                        className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] tabular-nums"
+                      />
+                      <span className="type-meta px-0.5">–</span>
+                      <input
+                        type="date"
+                        aria-label="ถึงวันที่"
+                        value={endDateFilter}
+                        onChange={(e) => setEndDateFilter(e.target.value)}
+                        className="px-2 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] tabular-nums"
+                      />
+                    </div>
+
+                    <select
+                      aria-label="กรองวิชาตามรายชื่อครู"
+                      value={teacherFilter}
+                      onChange={(e) => {
+                        const nextTeacher = e.target.value;
+                        setTeacherFilter(nextTeacher);
+                        if (courseFilter !== 'all') {
+                          const cur = courses.find((c) => c.id === courseFilter);
+                          if (cur && !courseMatchesTeacherFilter(cur, nextTeacher, courseTeacherOptions)) {
+                            setCourseFilter('all');
+                          }
+                        }
+                      }}
+                      className="px-2 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] font-medium max-w-[170px]"
+                    >
+                      <option value="all">ครูทุกคน ({courseTeacherOptions.length})</option>
+                      {courseTeacherOptions.map((opt) => (
+                        <option key={opt.key} value={opt.key}>
+                          {opt.label} ({opt.count})
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      aria-label="กรองตามรายวิชา"
+                      value={courseFilter}
+                      onChange={(e) => setCourseFilter(e.target.value)}
+                      className="px-2 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] font-medium max-w-[200px]"
+                    >
+                      <option value="all">
+                        {teacherFilter === 'all'
+                          ? 'ทุกรายวิชา'
+                          : `วิชาครู (${teacherFilteredCourses.length})`}
+                      </option>
+                      {teacherFilteredCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.code} — {course.titleTh}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {attendanceViewMode === 'homeroom_rollcall' && !isRestrictedViewer ? (
@@ -1520,21 +1566,20 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           </div>
         </div>
 
-          {/* 30-Day Check-in Heatmap (Peak Times & Popular Entry Gates) */}
-          <AttendanceCheckinHeatmap
-            attendance={scopedAttendance}
-            campusGates={campusGates}
-            lang={lang}
-          />
-
-          {/* Monthly Attendance Trends Recharts LineChart */}
-          <div className="mt-5">
-            <AttendanceMonthlyTrendLineChart
-              attendance={scopedAttendance}
-              students={scopedStudents}
-              lang={lang}
-              selectedRoom={classFilter}
-            />
+          {/* Link Banner to Analytics Tab instead of stacking heavy charts on operational screen */}
+          <div className="saas-alert-bar">
+            <span className="type-meta">
+              {lang === 'th'
+                ? 'ต้องการดู Heatmap เวลาเข้าเรียน 30 วันและกราฟแนวโน้มรายเดือน?'
+                : 'Looking for 30-day check-in heatmap and monthly trend charts?'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTab('export_reports')}
+              className="type-label text-[var(--color-primary-text)] hover:underline cursor-pointer"
+            >
+              {lang === 'th' ? 'เปิดแท็บสถิติและรายงาน →' : 'Open Analytics & Reports →'}
+            </button>
           </div>
       </div>
       )}
@@ -1864,14 +1909,23 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Lightbox Modal for Zooming Selfie Photo in Attendance Logs */}
+      {/* Slide-Over Drawer for Zooming Selfie Photo & GPS Proof */}
       {selectedPhotoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="saas-card rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-body)]">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h4 className="type-section-title">รูปถ่ายเช็คชื่อตอนผ่านประตู</h4>
-                <p className="type-meta">{selectedPhotoModal.date} · {selectedPhotoModal.time} น.</p>
+        <div
+          className="saas-drawer-backdrop animate-in fade-in duration-150"
+          onClick={() => setSelectedPhotoModal(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="รูปถ่ายเช็คชื่อตอนผ่านประตู"
+            onClick={(e) => e.stopPropagation()}
+            className="saas-drawer-panel animate-in slide-in-from-right duration-200 text-[var(--color-text-body)]"
+          >
+            <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h4 className="type-section-title truncate">{selectedPhotoModal.userName || 'รูปถ่ายเช็คชื่อตอนผ่านประตู'}</h4>
+                <p className="type-meta tabular-nums">{selectedPhotoModal.date} · {selectedPhotoModal.time} น.</p>
               </div>
               <button
                 type="button"
@@ -1884,30 +1938,40 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </button>
             </div>
 
-            <div className="relative rounded-xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
-              <img
-                src={selectedPhotoModal.photoUrl}
-                alt="Selfie Zoom"
-                className="w-full h-full object-contain"
-              />
-              <div className="absolute bottom-2 left-2 right-2 p-2.5 rounded-lg bg-black/75 backdrop-blur-md text-white type-meta space-y-0.5">
-                <div className="flex justify-between font-semibold text-white">
-                  <span>{selectedPhotoModal.userName}</span>
-                  <span className="tabular-nums">{selectedPhotoModal.time} น.</span>
+            <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
+              <div className="relative rounded-xl overflow-hidden aspect-4/3 max-h-72 border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
+                <img
+                  src={selectedPhotoModal.photoUrl}
+                  alt="Selfie Zoom"
+                  className="w-full h-full object-contain"
+                />
+                <div className="absolute bottom-2 left-2 right-2 p-2 rounded-lg bg-black/75 backdrop-blur-md text-white type-meta flex items-center justify-between gap-2">
+                  <span className="truncate">{selectedPhotoModal.location?.geofenceZoneName || 'ประตูโรงเรียน'}</span>
+                  <span className="font-mono shrink-0">รัศมี {selectedPhotoModal.location?.distanceMeters || 18} ม.</span>
                 </div>
-                <div className="text-slate-200">
-                  {selectedPhotoModal.location?.geofenceZoneName || 'ประตูโรงเรียน'} · รัศมี {selectedPhotoModal.location?.distanceMeters || 18} ม.
+              </div>
+
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] divide-y divide-[var(--color-border)]">
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <span className="type-meta">รหัส / ห้อง</span>
+                  <span className="type-card-title font-mono">{selectedPhotoModal.studentId} · {selectedPhotoModal.userDepartmentOrRoom || '-'}</span>
+                </div>
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <span className="type-meta">หมายเหตุ</span>
+                  <span className="type-meta text-right">{selectedPhotoModal.remarks || 'สแกนประตู'}</span>
                 </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSelectedPhotoModal(null)}
-              className="w-full py-2.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer transition"
-            >
-              ปิดหน้าต่าง
-            </button>
+            <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedPhotoModal(null)}
+                className="btn-action-primary px-4 py-2"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
           </div>
         </div>
       )}

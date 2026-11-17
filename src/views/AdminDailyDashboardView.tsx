@@ -369,22 +369,19 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
           </div>
         </div>
 
-        {/* 2. UNIFIED TRIAGE TABS (KPI Strip acts directly as section switcher) */}
+        {/* 2. UNIFIED TRIAGE KPI STRIP (1-Row hairline divided, acts directly as section switcher) */}
         <div
           role="tablist"
           aria-label={lang === 'th' ? 'หมวดงานแอดมินรายวัน' : 'Daily Admin Sections'}
-          className="grid grid-cols-3 gap-2"
+          className="saas-kpi-strip grid grid-cols-3 divide-x divide-[var(--color-border)]"
         >
           <button
             type="button"
             role="tab"
             aria-selected={section === 'attendance'}
+            data-active={section === 'attendance'}
             onClick={() => setSection('attendance')}
-            className={`min-h-[68px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-              section === 'attendance'
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
-                : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)]'
-            }`}
+            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
             <span className={`text-[11px] font-semibold truncate ${section === 'attendance' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
               {lang === 'th' ? 'เช็คชื่อวันนี้' : 'Attendance'}
@@ -403,12 +400,9 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             type="button"
             role="tab"
             aria-selected={section === 'leaves'}
+            data-active={section === 'leaves'}
             onClick={() => setSection('leaves')}
-            className={`min-h-[68px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-              section === 'leaves'
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
-                : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)]'
-            }`}
+            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
             <span className={`text-[11px] font-semibold truncate ${section === 'leaves' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
               {lang === 'th' ? 'นักเรียนที่ลา' : 'Leaves'}
@@ -433,12 +427,9 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             type="button"
             role="tab"
             aria-selected={section === 'approvals'}
+            data-active={section === 'approvals'}
             onClick={() => setSection('approvals')}
-            className={`min-h-[68px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-              section === 'approvals'
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
-                : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)]'
-            }`}
+            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
             <span className={`text-[11px] font-semibold truncate ${section === 'approvals' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
               {lang === 'th' ? 'คำขออนุมัติ' : 'Approvals'}

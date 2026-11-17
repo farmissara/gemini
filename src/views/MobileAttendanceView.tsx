@@ -206,7 +206,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [subTab, setSubTab] = useState<'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin'>(
     safeInitialSubTab
   );
-  const [compactPane, setCompactPane] = useState<'camera' | 'identity' | 'geofence'>('camera');
+  const [showIdentitySheet, setShowIdentitySheet] = useState(false);
+  const [showGeofenceSheet, setShowGeofenceSheet] = useState(false);
+  const [nfcDrawerMode, setNfcDrawerMode] = useState<null | 'quick_tap' | 'recent_logs'>(null);
   const [showRapidScanner, setShowRapidScanner] = useState(false);
   const [showQuickRosterSheet, setShowQuickRosterSheet] = useState(false);
   const [rosterSheetQuery, setRosterSheetQuery] = useState('');
@@ -1665,11 +1667,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       setActiveUserType('student');
       setSelectedStudentId(st.id);
       setSubTab('selfie_mobile');
-      setCompactPane('camera');
+      setShowIdentitySheet(false);
       setShowQuickRosterSheet(false);
     } else {
       setSubTab('selfie_mobile');
-      setCompactPane('camera');
+      setShowIdentitySheet(false);
       setShowQuickRosterSheet(false);
     }
   };
@@ -1677,10 +1679,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const handlePrimaryFabCheckin = () => {
     setFabMenuOpen(false);
     if (subTab === 'selfie_mobile') {
-      if (embeddedMobile && compactPane !== 'camera') {
-        setCompactPane('camera');
-        return;
-      }
+      setShowIdentitySheet(false);
+      setShowGeofenceSheet(false);
       if (capturedPhotoUrl) {
         void handleConfirmCheckin();
       } else {
@@ -1720,14 +1720,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       return;
     }
     setSubTab('selfie_mobile');
-    setCompactPane('camera');
   };
 
   const primaryFabLabel = (() => {
     if (subTab === 'selfie_mobile') {
-      if (embeddedMobile && compactPane !== 'camera') {
-        return lang === 'th' ? 'เปิดกล้องเช็คชื่อ' : 'Open Camera';
-      }
       if (capturedPhotoUrl) {
         return lang === 'th' ? 'ยืนยันเช็คชื่อ' : 'Confirm';
       }
@@ -1758,6 +1754,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     showPeriodQrModal ||
     showGpsAdminModal ||
     showQuickRosterSheet ||
+    showIdentitySheet ||
+    showGeofenceSheet ||
+    Boolean(nfcDrawerMode) ||
     showBiometricUnlockModal ||
     Boolean(checkinSuccessFeedback);
 
@@ -1939,28 +1938,40 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Pane Switcher for Mobile Selfie - Compact Underlined Links with Lucide Icons */}
+      {/* 1-Line Compact Context Strip for Mobile Selfie (1-Screen = 1-Task, Details in Bottom Sheets) */}
       {embeddedMobile && subTab === 'selfie_mobile' && (
-        <div className="shrink-0 flex items-center justify-around gap-2 px-1 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px]">
-          {([
-            { pane: 'camera' as const, label: 'กล้อง', Icon: Camera },
-            { pane: 'identity' as const, label: 'บัญชี', Icon: User },
-            { pane: 'geofence' as const, label: 'GPS', Icon: MapPin }
-          ]).map(({ pane, label, Icon }) => (
-            <button
-              key={pane}
-              type="button"
-              onClick={() => setCompactPane(pane)}
-              className={`px-2.5 py-0.5 font-semibold transition text-center cursor-pointer border-b-2 whitespace-nowrap inline-flex items-center gap-1 ${
-                compactPane === pane
-                  ? 'border-amber-400 text-amber-300'
-                  : 'border-transparent text-slate-200 hover:text-white'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5 shrink-0" />
-              <span>{label}</span>
-            </button>
-          ))}
+        <div className="shrink-0 saas-kpi-strip grid grid-cols-2 divide-x divide-[var(--color-border)]">
+          <button
+            type="button"
+            onClick={() => setShowIdentitySheet(true)}
+            className="px-2.5 py-2 text-left flex items-center justify-between gap-1.5 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+              <div className="min-w-0">
+                <p className="type-meta truncate">{isSelfCheckin ? (lang === 'th' ? 'บัญชีฉัน' : 'Self') : (lang === 'th' ? 'สแกนแทน' : 'Proxy')}</p>
+                <p className="type-label truncate">{activePersonName}</p>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowGeofenceSheet(true)}
+            className="px-2.5 py-2 text-left flex items-center justify-between gap-1.5 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <MapPin className={`w-3.5 h-3.5 shrink-0 ${isInGeofence ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} />
+              <div className="min-w-0">
+                <p className="type-meta truncate">{selectedGate.nameTh}</p>
+                <p className={`type-label tabular-nums truncate ${isInGeofence ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                  {isInGeofence ? `ในเขต · ${currentGpsDistance}ม.` : `นอกเขต · ${currentGpsDistance}ม.`}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+          </button>
         </div>
       )}
 
@@ -1969,8 +1980,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* ========================================================================= */}
       {subTab === 'selfie_mobile' && (
         <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col gap-1.5' : 'grid grid-cols-1 lg:grid-cols-12 gap-5 items-start'}`}>
-          {/* CAMERA COLUMN: Optimized for mobile screen height without overflow */}
-          {(!embeddedMobile || compactPane === 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col items-center'}`}>
+          {/* CAMERA COLUMN: Always primary on mobile (1-Screen = 1-Task) */}
+          <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col items-center'}`}>
             <div className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl border' : 'w-full max-w-sm rounded-[36px] p-3.5 border-4'} bg-slate-900 shadow-xl border-slate-800 relative flex flex-col overflow-hidden`}>
 
               {/* Event Selector: Check-in vs Check-out + Gate Selector */}
@@ -2191,12 +2202,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </p>
               </div>
             </div>
-          </div>}
+          </div>
 
-          {/* RIGHT COLUMN: Settings, Multi-Gate Coordinates & Identity */}
-          {(!embeddedMobile || compactPane !== 'camera') && <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pb-4 space-y-3' : 'lg:col-span-5 space-y-4'}`}>
+          {/* RIGHT COLUMN (Desktop Only — on mobile, Identity & Geofence live inside Bottom Sheets) */}
+          {!embeddedMobile && <div className="lg:col-span-5 space-y-4">
             {/* User Profile Card: Accurately references loggedIn user in self mode; allows proxy mode for staff */}
-            {(!embeddedMobile || compactPane === 'identity') && <div className="saas-card">
+            <div className="saas-card">
               <div className="saas-card-header">
                 <div className="flex items-center gap-2 min-w-0">
                   <Smartphone className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
@@ -2324,10 +2335,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 </div>
               </div>
-            </div>}
+            </div>
 
             {/* Multi-Gate Geofence Radar */}
-            {(!embeddedMobile || compactPane === 'geofence') && <div className="saas-card text-[var(--color-text-body)]">
+            <div className="saas-card text-[var(--color-text-body)]">
               <div className="saas-card-header">
                 <div className="flex items-center gap-2 min-w-0">
                   <MapPin className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
@@ -2447,7 +2458,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 </div>
               </div>
-            </div>}
+            </div>
           </div>}
         </div>
       )}
@@ -3249,124 +3260,156 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           </div>
 
-          {/* Staff Quick Card Tap Strip (Teachers & Students) */}
-          {isStaffUser && (teachers.length > 0 || students.length > 0) && (
-            <div className="saas-card">
-              <div className="saas-card-header">
-                <h3 className="type-card-title">
-                  {lang === 'th' ? 'แตะบัตรด่วน' : 'Quick ID Tap'}
-                </h3>
-                <span className="type-meta">
-                  {lang === 'th' ? `ผูกบัตร ${nfcBindings.length} ใบ` : `${nfcBindings.length} bound`}
-                </span>
-              </div>
+          {/* Mobile: Compact 2-Button Drawer Triggers; Desktop: Clean 2-Col Secondary Cards */}
+          {embeddedMobile ? (
+            <div className="saas-kpi-strip grid grid-cols-2 divide-x divide-[var(--color-border)]">
+              {isStaffUser && (teachers.length > 0 || students.length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => setNfcDrawerMode('quick_tap')}
+                  className="px-3 py-2.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0"
+                >
+                  <div className="min-w-0">
+                    <p className="type-card-title truncate">{lang === 'th' ? 'แตะบัตรด่วน' : 'Quick ID Tap'}</p>
+                    <p className="type-meta tabular-nums truncate">{lang === 'th' ? `ผูกบัตร ${nfcBindings.length} ใบ` : `${nfcBindings.length} bound`}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setNfcDrawerMode('recent_logs')}
+                className={`px-3 py-2.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0 ${!(isStaffUser && (teachers.length > 0 || students.length > 0)) ? 'col-span-2' : ''}`}
+              >
+                <div className="min-w-0">
+                  <p className="type-card-title truncate">{lang === 'th' ? 'ประวัติแตะบัตร' : 'Tap History'}</p>
+                  <p className="type-meta tabular-nums truncate">{nfcRecentLogs.length} {lang === 'th' ? 'รายการ' : 'taps'}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              {/* Staff Quick Card Tap Strip (Teachers & Students) */}
+              {isStaffUser && (teachers.length > 0 || students.length > 0) && (
+                <div className="saas-card">
+                  <div className="saas-card-header">
+                    <h3 className="type-card-title">
+                      {lang === 'th' ? 'แตะบัตรด่วน' : 'Quick ID Tap'}
+                    </h3>
+                    <span className="type-meta">
+                      {lang === 'th' ? `ผูกบัตร ${nfcBindings.length} ใบ` : `${nfcBindings.length} bound`}
+                    </span>
+                  </div>
 
-              <div className="saas-card-body space-y-3">
-                <div className="flex flex-wrap gap-1.5">
-                  {teachers.slice(0, 3).map((tc) => (
-                    <button
-                      key={tc.id}
-                      type="button"
-                      onClick={() => handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber)}
-                      className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Nfc className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                      <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
-                      <span className="font-mono type-meta">{tc.teacherIdNumber}</span>
-                    </button>
-                  ))}
-                  {students.slice(0, 4).map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber)}
-                      className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="truncate max-w-[140px]">{st.firstNameTh} {st.lastNameTh}</span>
-                      <span className="font-mono type-meta">{st.studentIdNumber}</span>
-                    </button>
-                  ))}
+                  <div className="saas-card-body space-y-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {teachers.slice(0, 3).map((tc) => (
+                        <button
+                          key={tc.id}
+                          type="button"
+                          onClick={() => handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber)}
+                          className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Nfc className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                          <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
+                          <span className="font-mono type-meta">{tc.teacherIdNumber}</span>
+                        </button>
+                      ))}
+                      {students.slice(0, 4).map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber)}
+                          className="min-h-[40px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="truncate max-w-[140px]">{st.firstNameTh} {st.lastNameTh}</span>
+                          <span className="font-mono type-meta">{st.studentIdNumber}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {nfcBindings.length > 0 && (
+                      <div className="pt-2.5 border-t border-[var(--color-border)] space-y-1.5">
+                        <p className="type-meta font-semibold">
+                          {lang === 'th' ? 'บัตร NFC ที่จับคู่บนอุปกรณ์นี้' : 'Paired NFC Cards'}
+                        </p>
+                        <div className="divide-y divide-[var(--color-border)]">
+                          {nfcBindings.slice(0, 5).map((b) => (
+                            <div key={b.normalizedUid} className="py-1.5 flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <span className="type-card-title">{b.label}</span>
+                                <span className="ml-2 font-mono type-meta">
+                                  {b.uid} · {b.displayId}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
+                                className="btn-icon-tool text-rose-600 dark:text-rose-300"
+                                title={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
+                                aria-label={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent NFC Tap Log */}
+              <div className="saas-card">
+                <div className="saas-card-header">
+                  <h3 className="type-card-title">
+                    {lang === 'th' ? 'บันทึกการแตะบัตรล่าสุด' : 'Recent NFC Check-ins'}
+                  </h3>
+                  <span className="type-meta font-mono">
+                    {nfcRecentLogs.length} {lang === 'th' ? 'รายการ' : 'taps'}
+                  </span>
                 </div>
 
-                {nfcBindings.length > 0 && (
-                  <div className="pt-2.5 border-t border-[var(--color-border)] space-y-1.5">
-                    <p className="type-meta font-semibold">
-                      {lang === 'th' ? 'บัตร NFC ที่จับคู่บนอุปกรณ์นี้' : 'Paired NFC Cards'}
+                <div className="saas-card-body">
+                  {nfcRecentLogs.length === 0 ? (
+                    <p className="type-meta text-center py-4">
+                      {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
                     </p>
+                  ) : (
                     <div className="divide-y divide-[var(--color-border)]">
-                      {nfcBindings.slice(0, 5).map((b) => (
-                        <div key={b.normalizedUid} className="py-1.5 flex items-center justify-between gap-2">
+                      {nfcRecentLogs.map((log) => (
+                        <div key={log.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <span className="type-card-title">{b.label}</span>
-                            <span className="ml-2 font-mono type-meta">
-                              {b.uid} · {b.displayId}
-                            </span>
+                            <p className="type-card-title truncate">{log.name}</p>
+                            <p className="type-meta truncate">
+                              {log.roleLabel} · UID {log.uid} · {log.gateName}
+                            </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
-                            className="btn-icon-tool text-rose-600 dark:text-rose-300"
-                            title={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
-                            aria-label={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind card'}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="text-right shrink-0">
+                            <span className={`type-label ${
+                              log.checkType === 'check_in'
+                                ? log.status === 'late'
+                                  ? 'text-amber-700 dark:text-amber-300'
+                                  : 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-[var(--color-primary-text)]'
+                            }`}>
+                              {log.checkType === 'check_in' ? (log.status === 'late' ? 'เข้า · สาย' : 'เข้าเรียน') : 'ออกโรงเรียน'}
+                            </span>
+                            <p className="type-meta font-mono">
+                              {log.time}
+                            </p>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           )}
-
-          {/* Recent NFC Tap Log */}
-          <div className="saas-card">
-            <div className="saas-card-header">
-              <h3 className="type-card-title">
-                {lang === 'th' ? 'บันทึกการแตะบัตรล่าสุด' : 'Recent NFC Check-ins'}
-              </h3>
-              <span className="type-meta font-mono">
-                {nfcRecentLogs.length} {lang === 'th' ? 'รายการ' : 'taps'}
-              </span>
-            </div>
-
-            <div className="saas-card-body">
-              {nfcRecentLogs.length === 0 ? (
-                <p className="type-meta text-center py-4">
-                  {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
-                </p>
-              ) : (
-                <div className="divide-y divide-[var(--color-border)]">
-                  {nfcRecentLogs.map((log) => (
-                    <div key={log.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="type-card-title truncate">{log.name}</p>
-                        <p className="type-meta truncate">
-                          {log.roleLabel} · UID {log.uid} · {log.gateName}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className={`type-label ${
-                          log.checkType === 'check_in'
-                            ? log.status === 'late'
-                              ? 'text-amber-700 dark:text-amber-300'
-                              : 'text-emerald-700 dark:text-emerald-300'
-                            : 'text-[var(--color-primary-text)]'
-                        }`}>
-                          {log.checkType === 'check_in' ? (log.status === 'late' ? 'เข้า · สาย' : 'เข้าเรียน') : 'ออกโรงเรียน'}
-                        </span>
-                        <p className="type-meta font-mono">
-                          {log.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -4456,6 +4499,274 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           )}
         </div>
+      </MobileBottomSheet>
+
+      {/* BOTTOM SHEET: MOBILE IDENTITY & PROXY SWITCHER */}
+      <MobileBottomSheet
+        isOpen={showIdentitySheet}
+        onClose={() => setShowIdentitySheet(false)}
+        title={isRestrictedViewer ? (lang === 'th' ? 'บัญชีเช็คชื่อ' : 'Check-in Account') : (lang === 'th' ? 'เลือกบัญชีผู้เช็คชื่อ' : 'Select Check-in Account')}
+        subtitle={activePersonName}
+      >
+        <div className="space-y-4">
+          {!isRestrictedViewer && (
+            <div className="seg-tab-group w-full flex">
+              <button
+                type="button"
+                data-active={isSelfCheckin}
+                onClick={() => setAttendanceMode('self')}
+                className="seg-tab-btn flex-1 text-center"
+              >
+                {lang === 'th' ? 'บัญชีฉัน' : 'My Account'}
+              </button>
+              <button
+                type="button"
+                data-active={!isSelfCheckin}
+                onClick={() => setAttendanceMode('proxy')}
+                className="seg-tab-btn flex-1 text-center"
+              >
+                {lang === 'th' ? 'สแกนแทน' : 'Proxy Check-in'}
+              </button>
+            </div>
+          )}
+
+          {!isSelfCheckin && (
+            <div className="space-y-3">
+              <div className="seg-tab-group w-full flex">
+                <button
+                  type="button"
+                  data-active={effectiveUserType === 'student'}
+                  onClick={() => setActiveUserType('student')}
+                  className="seg-tab-btn flex-1 text-center"
+                >
+                  {lang === 'th' ? 'นักเรียน' : 'Student'}
+                </button>
+                <button
+                  type="button"
+                  data-active={effectiveUserType === 'teacher'}
+                  onClick={() => setActiveUserType('teacher')}
+                  className="seg-tab-btn flex-1 text-center"
+                >
+                  {lang === 'th' ? 'ครู / บุคลากร' : 'Teacher / Staff'}
+                </button>
+              </div>
+              {effectiveUserType === 'student' ? (
+                <select
+                  aria-label="เลือกนักเรียน"
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+                >
+                  {scopedStudents.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.firstNameTh} {st.lastNameTh} ({st.studentIdNumber}) - {st.gradeLevel} {st.room}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  aria-label="เลือกครู"
+                  value={selectedTeacherId}
+                  onChange={(e) => setSelectedTeacherId(e.target.value)}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+                >
+                  {teachers.map((tc) => (
+                    <option key={tc.id} value={tc.id}>
+                      {tc.fullNameTh} ({tc.teacherIdNumber}) - {tc.department}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center gap-3">
+            <img
+              src={activePersonDefaultAvatar}
+              alt={activePersonName}
+              className="w-11 h-11 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="type-card-title truncate">{activePersonName}</p>
+              <p className="type-meta truncate">{activePersonRole}</p>
+              <p className="type-meta font-mono truncate">{activePersonId}</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowIdentitySheet(false)}
+            className="w-full min-h-[44px] rounded-xl bg-[var(--color-primary)] text-white font-bold text-xs cursor-pointer"
+          >
+            {lang === 'th' ? 'กลับไปหน้ากล้อง' : 'Back to Camera'}
+          </button>
+        </div>
+      </MobileBottomSheet>
+
+      {/* BOTTOM SHEET: MOBILE GEOFENCE & GPS RADAR */}
+      <MobileBottomSheet
+        isOpen={showGeofenceSheet}
+        onClose={() => setShowGeofenceSheet(false)}
+        title={lang === 'th' ? `จุดเช็คชื่อ GPS (${normalizedGates.length})` : `GPS Check-in Gates (${normalizedGates.length})`}
+        subtitle={isInGeofence ? `ในเขต · ${currentGpsDistance} ม.` : `นอกเขต · ${currentGpsDistance} ม.`}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={handleRefreshGps}
+              className="btn-tool-neutral px-3 py-2"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
+              <span>{lang === 'th' ? 'อัปเดตพิกัด GPS' : 'Refresh GPS'}</span>
+            </button>
+            {(currentRole === 'admin' || currentRole === 'super_admin') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGeofenceSheet(false);
+                  setShowGpsAdminModal(true);
+                }}
+                className="btn-tool-neutral px-3 py-2"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ตั้งค่าจุดประตู' : 'Manage Gates'}</span>
+              </button>
+            )}
+          </div>
+
+          <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+            {normalizedGates.map((gate) => {
+              const isSelected = gate.id === selectedGate.id;
+              return (
+                <button
+                  key={gate.id}
+                  type="button"
+                  onClick={() => setSelectedGateId(gate.id)}
+                  className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 cursor-pointer ${
+                    isSelected ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--color-card)]'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="type-card-title truncate">{gate.nameTh}</p>
+                    <p className="type-meta font-mono truncate">
+                      รัศมี {gate.radiusMeters} ม. · {Number(gate.lat).toFixed(4)}, {Number(gate.lng).toFixed(4)}
+                    </p>
+                  </div>
+                  {isSelected && <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+            <span className="type-meta">{lang === 'th' ? 'จำลองระยะ:' : 'Simulate distance:'}</span>
+            <div className="flex items-center gap-3 text-xs">
+              {[15, 35, 120, 450].map((dist) => (
+                <button
+                  key={dist}
+                  type="button"
+                  onClick={() => setCurrentGpsDistance(dist)}
+                  className={`font-semibold underline underline-offset-4 cursor-pointer tabular-nums ${
+                    currentGpsDistance === dist
+                      ? dist <= selectedGate.radiusMeters ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
+                      : 'text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {dist} ม.
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </MobileBottomSheet>
+
+      {/* BOTTOM SHEET: MOBILE NFC QUICK TAP / RECENT LOGS */}
+      <MobileBottomSheet
+        isOpen={Boolean(nfcDrawerMode)}
+        onClose={() => setNfcDrawerMode(null)}
+        title={
+          nfcDrawerMode === 'quick_tap'
+            ? (lang === 'th' ? `แตะบัตรด่วน (${nfcBindings.length} ใบ)` : `Quick ID Tap (${nfcBindings.length})`)
+            : (lang === 'th' ? `ประวัติแตะบัตรล่าสุด (${nfcRecentLogs.length})` : `Recent NFC Check-ins (${nfcRecentLogs.length})`)
+        }
+      >
+        {nfcDrawerMode === 'quick_tap' ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-1.5">
+              {teachers.slice(0, 4).map((tc) => (
+                <button
+                  key={tc.id}
+                  type="button"
+                  onClick={() => {
+                    handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber);
+                    setNfcDrawerMode(null);
+                  }}
+                  className="min-h-[42px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Nfc className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
+                </button>
+              ))}
+              {students.slice(0, 6).map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => {
+                    handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber);
+                    setNfcDrawerMode(null);
+                  }}
+                  className="min-h-[42px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="truncate max-w-[140px]">{st.firstNameTh} {st.lastNameTh}</span>
+                </button>
+              ))}
+            </div>
+
+            {nfcBindings.length > 0 && (
+              <div className="pt-3 border-t border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+                {nfcBindings.map((b) => (
+                  <div key={b.normalizedUid} className="py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="type-card-title truncate">{b.label}</p>
+                      <p className="type-meta font-mono truncate">{b.uid} · {b.displayId}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
+                      className="btn-icon-tool text-rose-600 dark:text-rose-300"
+                      aria-label={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : nfcRecentLogs.length === 0 ? (
+          <p className="type-meta text-center py-6">
+            {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
+          </p>
+        ) : (
+          <div className="divide-y divide-[var(--color-border)]">
+            {nfcRecentLogs.map((log) => (
+              <div key={log.id} className="py-2.5 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="type-card-title truncate">{log.name}</p>
+                  <p className="type-meta truncate">{log.roleLabel} · UID {log.uid} · {log.gateName}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className={`type-label ${log.checkType === 'check_in' ? (log.status === 'late' ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300') : 'text-[var(--color-primary-text)]'}`}>
+                    {log.checkType === 'check_in' ? (log.status === 'late' ? 'เข้า · สาย' : 'เข้าเรียน') : 'ออกโรงเรียน'}
+                  </span>
+                  <p className="type-meta font-mono">{log.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </MobileBottomSheet>
 
       {/* Biometric Verification Modal for Quick-Action Attendance */}

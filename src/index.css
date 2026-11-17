@@ -512,6 +512,61 @@
     min-width: 2.75rem;
     min-height: 2.75rem;
   }
+
+  /* ── Executive 1-Row KPI Strip & Slide-Over Drawer (90% Neutral Monochrome) ── */
+  .saas-kpi-strip {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--dash-card-radius);
+    overflow: hidden;
+  }
+  .saas-kpi-cell {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    transition: background-color 150ms ease;
+    min-width: 0;
+  }
+  .saas-kpi-cell-interactive {
+    cursor: pointer;
+  }
+  .saas-kpi-cell-interactive:hover {
+    background-color: var(--color-card-subtle);
+  }
+  .saas-kpi-cell-interactive[data-active="true"] {
+    background-color: var(--color-card-subtle);
+    box-shadow: inset 0 -2px 0 0 var(--color-primary);
+  }
+  .saas-alert-bar {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .saas-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: rgb(15 23 42 / 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    justify-content: flex-end;
+  }
+  .saas-drawer-panel {
+    width: 100%;
+    max-width: 28rem;
+    height: 100%;
+    background-color: var(--color-card);
+    border-left: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: -8px 0 32px rgb(15 23 42 / 0.14);
+  }
 }
 
 input::placeholder,
