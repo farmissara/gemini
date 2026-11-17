@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { DayOfWeek, SchoolPeriodTime, TimetableSlot } from '../types';
 import { getLocalDateString } from './date';
+import { isCustomHexColor, TIMETABLE_COLOR_PRESETS } from './timetableColors';
 import { parseSlotTeachersFromRaw } from './timetableTeachers';
 
 const DAY_THAI_LABELS: Record<DayOfWeek, string> = {
@@ -11,15 +12,7 @@ const DAY_THAI_LABELS: Record<DayOfWeek, string> = {
   fri: 'ศุกร์',
 };
 
-const COLOR_OPTIONS: TimetableSlot['colorTag'][] = [
-  'sky',
-  'emerald',
-  'amber',
-  'rose',
-  'purple',
-  'indigo',
-  'cyan',
-];
+const COLOR_OPTIONS: string[] = TIMETABLE_COLOR_PRESETS.map((preset) => preset.key);
 
 function parseDayOfWeek(raw: string): DayOfWeek | null {
   const val = raw.trim().toLowerCase();
@@ -33,8 +26,11 @@ function parseDayOfWeek(raw: string): DayOfWeek | null {
 }
 
 function normalizeColorTag(raw: string): TimetableSlot['colorTag'] {
-  const val = raw.trim().toLowerCase() as TimetableSlot['colorTag'];
-  return COLOR_OPTIONS.includes(val) ? val : 'sky';
+  const val = raw.trim().toLowerCase();
+  if (COLOR_OPTIONS.includes(val) || isCustomHexColor(val)) {
+    return val;
+  }
+  return 'sky';
 }
 
 function normalizeTimeValue(raw: unknown): string {

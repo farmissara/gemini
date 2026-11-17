@@ -28,6 +28,8 @@ import {
   FileSpreadsheet,
   Send,
   RefreshCw,
+  Palette,
+  Check,
 } from 'lucide-react';
 import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
@@ -64,6 +66,11 @@ import {
   slotMatchesLoggedInTeacher,
 } from '../lib/courseTeacherFilter';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
+import {
+  getTimetableSlotCardStyle,
+  isCustomHexColor,
+  TIMETABLE_COLOR_PRESETS,
+} from '../lib/timetableColors';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -129,16 +136,6 @@ type TimetableConflictCandidate = Pick<
 >;
 
 const getAcademicPeriodKey = (academicYear: string, semester: string) => JSON.stringify([academicYear, semester]);
-
-const COLOR_CLASSES: Record<string, string> = {
-  sky: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-100 hover:bg-sky-200 dark:hover:bg-sky-900',
-  emerald: 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 hover:bg-emerald-200 dark:hover:bg-emerald-900',
-  amber: 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 hover:bg-amber-200 dark:hover:bg-amber-900',
-  rose: 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100 hover:bg-rose-200 dark:hover:bg-rose-900',
-  purple: 'bg-purple-100 dark:bg-purple-950 border-purple-300 dark:border-purple-700 text-purple-950 dark:text-purple-100 hover:bg-purple-200 dark:hover:bg-purple-900',
-  indigo: 'bg-indigo-100 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 hover:bg-indigo-200 dark:hover:bg-indigo-900',
-  cyan: 'bg-cyan-100 dark:bg-cyan-950 border-cyan-300 dark:border-cyan-700 text-cyan-950 dark:text-cyan-100 hover:bg-cyan-200 dark:hover:bg-cyan-900'
-};
 
 export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   slots: allTimetableSlots,
@@ -950,9 +947,76 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       else if (c.category === 'core') setNewColor('sky');
       else if (c.category === 'language') setNewColor('amber');
       else if (c.category === 'arts') setNewColor('rose');
-      else if (c.category === 'social') setNewColor('amber');
+      else if (c.category === 'social') setNewColor('indigo');
       else setNewColor('purple');
     }
+  };
+
+  const renderTimetableColorPicker = (
+    value: string,
+    onChange: (nextColor: string) => void
+  ) => {
+    const activeStyle = getTimetableSlotCardStyle(value);
+    const customHexValue = isCustomHexColor(value) ? value : activeStyle.swatchHex;
+    return (
+      <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-text-body)]">
+            <Palette className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+            <span>สีในตารางสอน</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[var(--color-text-muted)]">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full border border-black/15"
+              style={{ backgroundColor: activeStyle.swatchHex }}
+            />
+            <span className="truncate max-w-[170px]">{activeStyle.labelTh}</span>
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {TIMETABLE_COLOR_PRESETS.map((preset) => {
+            const isSelected = value.toLowerCase() === preset.key;
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => onChange(preset.key)}
+                title={preset.labelTh}
+                aria-label={preset.labelTh}
+                aria-pressed={isSelected}
+                className={`relative flex h-6 w-6 items-center justify-center rounded-full border transition cursor-pointer ${
+                  isSelected
+                    ? 'scale-110 ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-[var(--color-card-subtle)] border-white shadow-sm'
+                    : 'border-black/15 hover:scale-105'
+                }`}
+                style={{ backgroundColor: preset.swatchHex }}
+              >
+                {isSelected && <Check className="h-3 w-3 text-white drop-shadow-xs" strokeWidth={3} />}
+              </button>
+            );
+          })}
+
+          <label
+            title="เลือกสีเองตามต้องการ"
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition cursor-pointer ${
+              activeStyle.isCustomHex
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+            }`}
+          >
+            <input
+              type="color"
+              value={customHexValue}
+              onChange={(e) => onChange(e.target.value)}
+              aria-label="เลือกสีตารางสอนเอง"
+              className="h-3.5 w-3.5 cursor-pointer rounded-full border-0 bg-transparent p-0"
+            />
+            <span>กำหนดเอง</span>
+          </label>
+        </div>
+      </div>
+    );
   };
 
   // Check if prospective new slot has a conflict
@@ -2339,19 +2403,28 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         ) : daySlots.map((slot) => {
                           const timeRange = getSlotTimeRange(slot);
                           const hasCoTeacher = getSlotTeachers(slot).length > 1;
+                          const slotColor = getTimetableSlotCardStyle(slot.colorTag);
+                          const hasConflict = conflictingSlotIds.has(slot.id);
                           return (
                             <button
                               key={slot.id}
                               type="button"
                               onClick={() => openSlotDetails(slot)}
-                              className={`w-full rounded-lg border p-2 text-left transition hover:brightness-95 ${
-                                conflictingSlotIds.has(slot.id)
+                              style={!hasConflict ? slotColor.style : undefined}
+                              className={`w-full rounded-lg border p-2 text-left transition cursor-pointer ${
+                                hasConflict
                                   ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50'
-                                  : 'border-[var(--color-border)] bg-[var(--color-card)]'
+                                  : slotColor.className
                               }`}
                             >
-                              <span className="flex items-center justify-between gap-1 text-[9px] font-semibold text-[var(--color-primary-text)]">
-                                <span>{timeRange ? `${formatTimeMinutes(timeRange.start)}–${formatTimeMinutes(timeRange.end)}` : `คาบ ${slot.periodNumber}`}</span>
+                              <span className="flex items-center justify-between gap-1 text-[9px] font-semibold">
+                                <span className="inline-flex items-center gap-1">
+                                  <span
+                                    className="inline-block h-2 w-2 rounded-full border border-black/15 shrink-0"
+                                    style={{ backgroundColor: slotColor.swatchHex }}
+                                  />
+                                  <span>{timeRange ? `${formatTimeMinutes(timeRange.start)}–${formatTimeMinutes(timeRange.end)}` : `คาบ ${slot.periodNumber}`}</span>
+                                </span>
                                 <span className="flex items-center gap-1">
                                   {hasCoTeacher && (
                                     <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
@@ -2642,12 +2715,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                           <div className={isAllClassroomsView ? 'space-y-1' : 'space-y-1.5'}>
                             {periodSlots.map((slot) => {
                               const hasConflict = conflictingSlotIds.has(slot.id);
-                              const colorStyle = COLOR_CLASSES[slot.colorTag] || COLOR_CLASSES.sky;
+                              const slotColor = getTimetableSlotCardStyle(slot.colorTag);
                               return (
                                 <div
                                   key={slot.id}
                                   onClick={() => openSlotDetails(slot)}
-                                  className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${colorStyle} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
+                                  style={slotColor.style}
+                                  className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
                                 >
                                   <div className="min-w-0">
                                     <div className="flex items-start justify-between gap-1">
@@ -2973,6 +3047,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
                       />
                     </label>
+                    <div className="col-span-2 pt-1">
+                      {renderTimetableColorPicker(
+                        editSlotDraft.colorTag || 'sky',
+                        (nextColor) =>
+                          setEditSlotDraft((previous) =>
+                            previous ? { ...previous, colorTag: nextColor } : previous
+                          )
+                      )}
+                    </div>
                   </div>
                   {editSlotConflicts.length > 0 && (
                     <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100">
@@ -3021,6 +3104,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <span className="text-[var(--color-text-muted)]">เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ):</span>
                     <span className="font-bold text-emerald-700 dark:text-emerald-300">
                       {Math.round((selectedSlotForDetail.totalSemesterHours || ((selectedSlotForDetail.credits ?? 1.5) > 0 ? (selectedSlotForDetail.credits ?? 1.5) * 40 : 20)) * 0.8)} / {selectedSlotForDetail.totalSemesterHours || ((selectedSlotForDetail.credits ?? 1.5) > 0 ? (selectedSlotForDetail.credits ?? 1.5) * 40 : 20)} ชั่วโมง
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--color-text-muted)]">สีในตารางสอน:</span>
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
+                      <span
+                        className="inline-block h-3 w-3 rounded-full border border-black/15"
+                        style={{ backgroundColor: getTimetableSlotCardStyle(selectedSlotForDetail.colorTag).swatchHex }}
+                      />
+                      <span>{getTimetableSlotCardStyle(selectedSlotForDetail.colorTag).labelTh}</span>
                     </span>
                   </div>
                 </div>
@@ -3329,7 +3422,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </div>
 
               {/* Classroom destination & Color tag */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียนผู้เรียน</label>
                   <select
@@ -3347,21 +3440,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">โทนสีหมวดวิชา</label>
-                  <select
-                    value={newColor}
-                    onChange={(e) => setNewColor(e.target.value as any)}
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                  >
-                    <option value="sky">ฟ้า (วิทยาศาสตร์ / พื้นฐาน)</option>
-                    <option value="emerald">เขียว (STEM / เทคโนโลยี)</option>
-                    <option value="amber">เหลืองส้ม (ภาษาไทย / ต่างประเทศ)</option>
-                    <option value="purple">ม่วง (คณิตศาสตร์ / เพิ่มเติม)</option>
-                    <option value="rose">ชมพูแดง (ศิลปะ / สุขศึกษา)</option>
-                    <option value="cyan">ฟ้าสว่าง (กิจกรรมพัฒนาผู้เรียน)</option>
-                  </select>
-                </div>
+                {renderTimetableColorPicker(newColor, (nextColor) => setNewColor(nextColor))}
               </div>
 
               {/* Action Buttons */}

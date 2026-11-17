@@ -744,6 +744,22 @@ export interface SchoolPeriodTime {
   labelEn?: string;
 }
 
+export type TimetablePresetColor =
+  | 'sky'
+  | 'blue'
+  | 'indigo'
+  | 'purple'
+  | 'pink'
+  | 'rose'
+  | 'orange'
+  | 'amber'
+  | 'lime'
+  | 'emerald'
+  | 'teal'
+  | 'cyan';
+
+export type TimetableColorTag = TimetablePresetColor | (string & {});
+
 export interface TimetableSlot {
   id: string;
   schoolId?: string;
@@ -760,7 +776,7 @@ export interface TimetableSlot {
   coTeacherName?: string;
   room: string;
   classRoom: string; // e.g. "ห้อง 401 (วิทย์-คณิต)", "ห้อง 402"
-  colorTag: 'sky' | 'emerald' | 'amber' | 'rose' | 'purple' | 'indigo' | 'cyan';
+  colorTag: TimetableColorTag;
   courseId?: string;
   credits?: number;
   totalSemesterHours?: number;
