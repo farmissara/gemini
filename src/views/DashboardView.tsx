@@ -502,6 +502,133 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     timeStyle: 'short',
   });
 
+  // Role-aware Morning Brief & Scoped Personal Summary
+  const primaryScopedStudent = scopedStudents[0] || null;
+  const ownAcademicSummary = useMemo(() => {
+    if (!primaryScopedStudent) return null;
+    return calculateStudentAcademicSummary({
+      student: primaryScopedStudent,
+      courses,
+      grades: scopedGrades,
+      gradingSystem: systemConfig.gradingSystem,
+    });
+  }, [primaryScopedStudent, courses, scopedGrades, systemConfig.gradingSystem]);
+
+  const scopedAttendancePresentTotal = scopedAttendance.filter((a) => a.status === 'present').length;
+  const scopedAttendanceRate =
+    totalForDate > 0
+      ? onTimePercent
+      : scopedAttendance.length > 0
+        ? Math.round((scopedAttendancePresentTotal / scopedAttendance.length) * 100)
+        : 100;
+
+  const pendingInvoices = canViewFinancials
+    ? scopedInvoices.filter((inv) => inv.status !== 'paid')
+    : [];
+
+  const currentHour = new Date().getHours();
+  const timeGreeting =
+    lang === 'th'
+      ? currentHour < 12
+        ? 'สวัสดีตอนเช้า'
+        : currentHour < 17
+          ? 'สวัสดีตอนบ่าย'
+          : 'สวัสดีตอนเย็น'
+      : currentHour < 12
+        ? 'Good morning'
+        : currentHour < 17
+          ? 'Good afternoon'
+          : 'Good evening';
+
+  const userDisplayName =
+    lang === 'th'
+      ? currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email || 'ผู้ใช้งาน'
+      : currentUser?.fullNameEn || currentUser?.fullNameTh || currentUser?.email || 'User';
+
+  const roleBadgeLabel =
+    currentRole === 'super_admin' || currentRole === 'admin'
+      ? lang === 'th' ? 'ผู้บริหารสถานศึกษา' : 'School Administrator'
+      : currentRole === 'teacher'
+        ? lang === 'th' ? 'คุณครูผู้สอน' : 'Teacher'
+        : currentRole === 'student'
+          ? lang === 'th' ? 'นักเรียน' : 'Student'
+          : lang === 'th' ? 'ผู้ปกครอง' : 'Parent';
+
+  const formattedTodayDate = new Date().toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const teacherNextSlot = todayScheduledSlots[0] || null;
+  const studentCanSelfCheckin = schoolPermissions?.student_self_checkin !== false;
+  const studentCanViewGrades = schoolPermissions?.student_view_grades !== false;
+  const parentCanViewGrades = schoolPermissions?.student_view_grades !== false;
+  const parentCanPayTuition = schoolPermissions?.parent_promptpay_tuition !== false;
+
+  const morningQuickActions: Array<{ id: string; label: string; tab: NavTab; primary?: boolean }> = [];
+  if (currentRole === 'admin' || currentRole === 'super_admin') {
+    morningQuickActions.push(
+      { id: 'att', label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance', tab: 'attendance', primary: true },
+      { id: 'tt', label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable', tab: 'timetable' }
+    );
+  } else if (currentRole === 'teacher') {
+    morningQuickActions.push(
+      {
+        id: 'att',
+        label: lang === 'th' ? 'เช็คชื่อประจำวัน/คาบ' : 'Take Attendance',
+        tab: schoolPermissions?.teacher_attendance !== false ? 'attendance' : 'mobile_checkin',
+        primary: true,
+      },
+      { id: 'gb', label: lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook ปพ.5', tab: 'gradebook' }
+    );
+  } else if (currentRole === 'student') {
+    if (studentCanSelfCheckin) {
+      morningQuickActions.push({
+        id: 'checkin',
+        label: lang === 'th' ? 'เช็คชื่อเข้าเรียน' : 'Check-in Now',
+        tab: 'mobile_checkin',
+        primary: true,
+      });
+    }
+    morningQuickActions.push({
+      id: 'tt',
+      label: lang === 'th' ? 'ตารางเรียนวันนี้' : 'My Timetable',
+      tab: 'timetable',
+      primary: !studentCanSelfCheckin,
+    });
+    if (studentCanViewGrades && morningQuickActions.length < 2) {
+      morningQuickActions.push({
+        id: 'gb',
+        label: lang === 'th' ? 'ผลการเรียน' : 'My Grades',
+        tab: 'gradebook',
+      });
+    }
+  } else if (currentRole === 'parent') {
+    morningQuickActions.push({
+      id: 'gb',
+      label: parentCanViewGrades
+        ? (lang === 'th' ? 'ผลการเรียนบุตรหลาน' : 'Child Grades')
+        : (lang === 'th' ? 'ตารางเรียนบุตรหลาน' : 'Class Schedule'),
+      tab: parentCanViewGrades ? 'gradebook' : 'timetable',
+      primary: true,
+    });
+    if (parentCanPayTuition) {
+      morningQuickActions.push({
+        id: 'bill',
+        label: lang === 'th' ? 'ค่าเล่าเรียน & ใบเสร็จ' : 'Tuition & Receipts',
+        tab: 'billing',
+      });
+    } else {
+      morningQuickActions.push({
+        id: 'ann',
+        label: lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements',
+        tab: 'announcements',
+      });
+    }
+  }
+
   return (
     <div className={`dashboard-print-area flex flex-col min-w-0 max-w-full dash-shell rounded-2xl ${getModuleTone('dashboard')}`}>
       {/* Print-Only Administrative Report Header */}
@@ -739,79 +866,393 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Main Tab Panels Container */}
       <div className="dashboard-print-scroll flex-1 dash-scroll-stack pb-12">
-        {/* TAB 1: DAILY OVERVIEW (3 KPIs + Max 5 Rows per Pane) */}
+        {/* TAB 1: DAILY OVERVIEW (Cohesive Morning Brief + 3 KPIs + Max 5 Rows per Pane) */}
         {dashboardTab === 'overview' && (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
-            {/* STRICTLY 3 LARGE KPI CELLS */}
+            {/* MORNING BRIEF STRIP (Harmonized with AuthLayout Editorial Tone) */}
+            <section
+              aria-label={lang === 'th' ? 'สรุปภาพรวมประจำวัน' : 'Daily Morning Brief'}
+              className="no-print morning-brief-strip px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[var(--color-primary-text)]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-sm bg-[var(--color-primary)]" aria-hidden="true" />
+                    <span>{roleBadgeLabel}</span>
+                  </span>
+                  <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
+                  <span className="text-[var(--color-text-muted)] font-semibold tabular-nums">
+                    {formattedTodayDate}
+                  </span>
+                  <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
+                  <span className="text-[var(--color-text-muted)] font-semibold tabular-nums">
+                    {lang === 'th'
+                      ? `ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
+                      : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
+                  </span>
+                </div>
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-[var(--color-text-title)] truncate">
+                  {timeGreeting}, {userDisplayName}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)] truncate">
+                  {currentRole === 'teacher'
+                    ? teacherNextSlot
+                      ? lang === 'th'
+                        ? `วันนี้คุณมีสอน ${todayScheduledSlots.length} คาบ · คาบแรก ${teacherNextSlot.courseTitleTh || teacherNextSlot.courseCode} (${teacherNextSlot.room || 'ห้องเรียน'})`
+                        : `You have ${todayScheduledSlots.length} classes today · First: ${teacherNextSlot.courseTitleEn || teacherNextSlot.courseCode}`
+                      : lang === 'th'
+                        ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
+                        : 'No classes scheduled today · Ready for grading and student support'
+                    : currentRole === 'student'
+                      ? lang === 'th'
+                        ? `วันนี้มีเรียน ${todayScheduledSlots.length} คาบ · ติดตามงานที่ได้รับมอบหมายและเวลาเข้าเรียนของคุณ`
+                        : `${todayScheduledSlots.length} classes today · Track your attendance and assignments`
+                      : currentRole === 'parent'
+                        ? primaryScopedStudent
+                          ? lang === 'th'
+                            ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+                            : `Linked student: ${primaryScopedStudent.firstNameEn} ${primaryScopedStudent.lastNameEn} (${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+                          : lang === 'th'
+                            ? 'ติดตามการเข้าเรียน ผลการเรียน และประกาศของบุตรหลาน'
+                            : 'Track your child’s attendance, grades, and school updates'
+                        : lang === 'th'
+                          ? `ภาพรวมสถานศึกษาประจำวัน · นักเรียนในระบบ ${totalStudents} คน · พร้อมใช้งานทุกโมดูล`
+                          : `Daily campus summary · ${totalStudents} active students`}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {morningQuickActions.slice(0, 2).map((act) => (
+                  <button
+                    key={act.id}
+                    type="button"
+                    onClick={() => onNavigate(act.tab)}
+                    className={act.primary ? 'btn-action-primary px-3.5 py-2' : 'btn-tool-neutral px-3.5 py-2'}
+                  >
+                    <span>{act.label}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* STRICTLY 3 ROLE-ADAPTED LARGE KPI CELLS */}
             <section
               data-guide-id="dashboard-kpis"
               aria-label={lang === 'th' ? 'สรุปตัวชี้วัดสำคัญประจำวัน' : 'Daily Executive KPIs'}
               className="saas-kpi-strip print-avoid-break"
             >
               <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
-                {/* KPI 1: On-Time Rate */}
-                <button
-                  type="button"
-                  onClick={() => onNavigate('attendance')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta">
-                      {lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}
-                    </span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </div>
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="type-kpi tabular-nums">{onTimePercent}%</span>
-                    <span className="type-meta tabular-nums">
-                      {presentCount}/{totalForDate} {lang === 'th' ? 'คน' : 'checked'}
-                    </span>
-                  </div>
-                </button>
+                {currentRole === 'teacher' ? (
+                  <>
+                    {/* Teacher KPI 1: My Classes Today */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('timetable')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'คาบสอนวันนี้ของฉัน' : 'My Classes Today'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
+                        <span className="type-meta truncate">
+                          {teacherNextSlot
+                            ? `${lang === 'th' ? 'คาบ' : 'P'}${teacherNextSlot.periodNumber} · ${teacherNextSlot.courseCode || teacherNextSlot.courseTitleTh}`
+                            : (lang === 'th' ? 'ไม่มีคาบสอนวันนี้' : 'No periods today')}
+                        </span>
+                      </div>
+                    </button>
 
-                {/* KPI 2: Actionable Pending Items */}
-                <button
-                  type="button"
-                  onClick={() => onNavigate(pendingLeaveCount > 0 ? 'attendance' : 'homework')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta">
-                      {lang === 'th' ? 'รอดำเนินการ' : 'Pending Actions'}
-                    </span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </div>
-                  <div className="flex items-baseline gap-2.5">
-                    <span className={`type-kpi tabular-nums ${(pendingLeaveCount + ungradedHomeworkCount) > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
-                      {pendingLeaveCount + ungradedHomeworkCount}
-                    </span>
-                    <span className="type-meta tabular-nums">
-                      {lang === 'th'
-                        ? `ใบลา ${pendingLeaveCount} · การบ้าน ${ungradedHomeworkCount}`
-                        : `${pendingLeaveCount} leaves · ${ungradedHomeworkCount} hw`}
-                    </span>
-                  </div>
-                </button>
+                    {/* Teacher KPI 2: Today Attendance */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(schoolPermissions?.teacher_attendance !== false ? 'attendance' : 'mobile_checkin')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{onTimePercent}%</span>
+                        <span className="type-meta tabular-nums">
+                          {presentCount}/{totalForDate} {lang === 'th' ? 'คน' : 'checked'}
+                        </span>
+                      </div>
+                    </button>
 
-                {/* KPI 3: Guardian LINE Coverage */}
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode('guardian_line')}
-                  className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="type-meta">
-                      {lang === 'th' ? 'LINE ผู้ปกครอง' : 'Guardian LINE'}
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </div>
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="type-kpi tabular-nums">{linePercent}%</span>
-                    <span className="type-meta tabular-nums">
-                      {lineConnectedCount}/{totalStudents} {lang === 'th' ? 'ครอบครัว' : 'families'}
-                    </span>
-                  </div>
-                </button>
+                    {/* Teacher KPI 3: Homework & Leaves */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(ungradedHomeworkCount > 0 ? 'homework' : 'attendance')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'งานรอตรวจ & ใบลา' : 'Pending Review'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className={`type-kpi tabular-nums ${(pendingLeaveCount + ungradedHomeworkCount) > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
+                          {pendingLeaveCount + ungradedHomeworkCount}
+                        </span>
+                        <span className="type-meta tabular-nums">
+                          {lang === 'th'
+                            ? `การบ้าน ${ungradedHomeworkCount} · ใบลา ${pendingLeaveCount}`
+                            : `${ungradedHomeworkCount} hw · ${pendingLeaveCount} leaves`}
+                        </span>
+                      </div>
+                    </button>
+                  </>
+                ) : currentRole === 'student' ? (
+                  <>
+                    {/* Student KPI 1: Personal Attendance */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(studentCanSelfCheckin ? 'mobile_checkin' : 'timetable')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'สถิติมาตรงเวลาของคุณ' : 'Your Attendance'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{scopedAttendanceRate}%</span>
+                        <span className="type-meta tabular-nums">
+                          {totalForDate > 0
+                            ? `${presentCount}/${totalForDate} ${lang === 'th' ? 'วันนี้' : 'today'}`
+                            : `${scopedAttendance.length} ${lang === 'th' ? 'ครั้งสะสม' : 'records'}`}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Student KPI 2: Today Classes */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('timetable')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'คาบเรียนวันนี้' : 'Today’s Classes'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
+                        <span className="type-meta tabular-nums">
+                          {courses.length} {lang === 'th' ? 'รายวิชาทั้งหมด' : 'courses'}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Student KPI 3: Grades (gated) OR Open Homework */}
+                    {studentCanViewGrades ? (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('gradebook')}
+                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="type-meta">
+                            {ownAcademicSummary?.hideGpaCalculations
+                              ? (lang === 'th' ? 'คะแนนเฉลี่ยสะสม' : 'Average Score')
+                              : (lang === 'th' ? 'เกรดเฉลี่ยสะสม (GPAX)' : 'Cumulative GPAX')}
+                          </span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className="type-kpi tabular-nums">
+                            {ownAcademicSummary?.hideGpaCalculations
+                              ? (ownAcademicSummary.averageRawScore !== null ? `${ownAcademicSummary.averageRawScore}%` : '—')
+                              : (ownAcademicSummary?.hasRecordedGrades && ownAcademicSummary.gpax !== null ? ownAcademicSummary.gpax.toFixed(2) : '—')}
+                          </span>
+                          <span className="type-meta">
+                            {lang === 'th' ? 'เปิดสมุดพกส่วนตัว' : 'Open report card'}
+                          </span>
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('homework')}
+                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="type-meta">{lang === 'th' ? 'งานและแบบฝึกหัด' : 'Assignments'}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className="type-kpi tabular-nums">{assignments.length}</span>
+                          <span className="type-meta">{lang === 'th' ? 'เปิดหน้าส่งงาน' : 'View homework'}</span>
+                        </div>
+                      </button>
+                    )}
+                  </>
+                ) : currentRole === 'parent' ? (
+                  <>
+                    {/* Parent KPI 1: Child Attendance */}
+                    <button
+                      type="button"
+                      onClick={() => setDashboardTab('live_attendance')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'การมาเรียนบุตรหลาน' : 'Child Attendance'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{scopedAttendanceRate}%</span>
+                        <span className="type-meta truncate">
+                          {primaryScopedStudent
+                            ? `${primaryScopedStudent.firstNameTh} · ${totalForDate > 0 ? `${presentCount}/${totalForDate}` : `${scopedAttendance.length} ${lang === 'th' ? 'ครั้ง' : 'logs'}`}`
+                            : (lang === 'th' ? 'ดูเวลาเข้า-ออก' : 'View arrival logs')}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Parent KPI 2: Child Grades (gated) or Timetable */}
+                    {parentCanViewGrades ? (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('gradebook')}
+                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="type-meta">{lang === 'th' ? 'ผลการเรียนเฉลี่ย' : 'Academic Standing'}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className="type-kpi tabular-nums">
+                            {ownAcademicSummary?.hideGpaCalculations
+                              ? (ownAcademicSummary.averageRawScore !== null ? `${ownAcademicSummary.averageRawScore}%` : '—')
+                              : (ownAcademicSummary?.hasRecordedGrades && ownAcademicSummary.gpax !== null ? ownAcademicSummary.gpax.toFixed(2) : '—')}
+                          </span>
+                          <span className="type-meta">{lang === 'th' ? 'สมุดพกและรายวิชา' : 'View gradebook'}</span>
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('timetable')}
+                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="type-meta">{lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s Schedule'}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
+                          <span className="type-meta">{lang === 'th' ? 'คาบเรียน' : 'periods'}</span>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Parent KPI 3: Tuition (gated) or Announcements */}
+                    {parentCanPayTuition ? (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('billing')}
+                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="type-meta">{lang === 'th' ? 'ค่าเล่าเรียนรอดำเนินการ' : 'Tuition Invoices'}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className={`type-kpi tabular-nums ${pendingInvoices.length > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
+                            {pendingInvoices.length}
+                          </span>
+                          <span className="type-meta">
+                            {pendingInvoices.length > 0
+                              ? (lang === 'th' ? 'รายการรอชำระ / ตรวจสอบ' : 'pending payment')
+                              : (lang === 'th' ? 'ชำระครบถ้วนแล้ว' : 'All settled')}
+                          </span>
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDashboardTab('announcements')}
+                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="type-meta">{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'Announcements'}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        </div>
+                        <div className="flex items-baseline gap-2.5">
+                          <span className="type-kpi tabular-nums">{announcements.length}</span>
+                          <span className="type-meta">{lang === 'th' ? 'ข่าวสารล่าสุด' : 'school updates'}</span>
+                        </div>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Admin KPI 1: On-Time Rate */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('attendance')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">
+                          {lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{onTimePercent}%</span>
+                        <span className="type-meta tabular-nums">
+                          {presentCount}/{totalForDate} {lang === 'th' ? 'คน' : 'checked'}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Admin KPI 2: Actionable Pending Items */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(pendingLeaveCount > 0 ? 'attendance' : 'homework')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">
+                          {lang === 'th' ? 'รอดำเนินการ' : 'Pending Actions'}
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className={`type-kpi tabular-nums ${(pendingLeaveCount + ungradedHomeworkCount) > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
+                          {pendingLeaveCount + ungradedHomeworkCount}
+                        </span>
+                        <span className="type-meta tabular-nums">
+                          {lang === 'th'
+                            ? `ใบลา ${pendingLeaveCount} · การบ้าน ${ungradedHomeworkCount}`
+                            : `${pendingLeaveCount} leaves · ${ungradedHomeworkCount} hw`}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Admin KPI 3: Guardian LINE Coverage */}
+                    <button
+                      type="button"
+                      onClick={() => setDrawerMode('guardian_line')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">
+                          {lang === 'th' ? 'LINE ผู้ปกครอง' : 'Guardian LINE'}
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{linePercent}%</span>
+                        <span className="type-meta tabular-nums">
+                          {lineConnectedCount}/{totalStudents} {lang === 'th' ? 'ครอบครัว' : 'families'}
+                        </span>
+                      </div>
+                    </button>
+                  </>
+                )}
               </div>
             </section>
 
@@ -825,7 +1266,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="saas-card-header">
                     <h2 className="type-section-title truncate">
-                      {lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins'}
+                      {currentRole === 'student'
+                        ? (lang === 'th' ? 'ประวัติเช็คชื่อของคุณ' : 'Your Recent Check-ins')
+                        : currentRole === 'parent'
+                          ? (lang === 'th' ? 'การมาเรียนของบุตรหลาน' : 'Child Check-in History')
+                          : (lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins')}
                     </h2>
 
                     <div className="no-print flex items-center gap-3 shrink-0">
@@ -869,13 +1314,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <p className="type-meta">
                           {lang === 'th' ? `ยังไม่มีรายการวันที่ ${selectedDate}` : `No check-ins for ${selectedDate}`}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => onNavigate('mobile_checkin')}
-                          className="btn-action-primary px-4 py-2 mx-auto"
-                        >
-                          <span>{lang === 'th' ? 'เปิดเช็คชื่อมือถือ' : 'Open Check-in'}</span>
-                        </button>
+                        {currentRole === 'student' ? (
+                          studentCanSelfCheckin ? (
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('mobile_checkin')}
+                              className="btn-action-primary px-4 py-2 mx-auto"
+                            >
+                              <span>{lang === 'th' ? 'เปิดเช็คชื่อเข้าเรียน' : 'Open Check-in'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('timetable')}
+                              className="btn-tool-neutral px-4 py-2 mx-auto"
+                            >
+                              <span>{lang === 'th' ? 'ดูตารางเรียนวันนี้' : 'View Timetable'}</span>
+                            </button>
+                          )
+                        ) : currentRole === 'parent' ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('timetable')}
+                            className="btn-tool-neutral px-4 py-2 mx-auto"
+                          >
+                            <span>{lang === 'th' ? 'ดูตารางเรียนบุตรหลาน' : 'View Child Timetable'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('mobile_checkin')}
+                            className="btn-action-primary px-4 py-2 mx-auto"
+                          >
+                            <span>{lang === 'th' ? 'เปิดเช็คชื่อมือถือ' : 'Open Check-in'}</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="divide-y divide-[var(--color-border)]">
@@ -921,7 +1394,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </section>
 
-              {/* RIGHT PANE: Actionable Items (Strictly Max 5 Rows) */}
+              {/* RIGHT PANE: Role-Tailored Actionable Items (Strictly Max 5 Rows) */}
               <section
                 data-guide-id="dashboard-today-desk"
                 aria-label={lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items'}
@@ -930,14 +1403,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="saas-card-header">
                     <h2 className="type-section-title truncate">
-                      {lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items'}
+                      {currentRole === 'student'
+                        ? (lang === 'th' ? 'ตารางเรียนและสิ่งที่ต้องทำวันนี้' : 'Today’s Schedule & Tasks')
+                        : currentRole === 'parent'
+                          ? (lang === 'th' ? 'รายการสำคัญสำหรับผู้ปกครอง' : 'Family Action Items')
+                          : (lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items')}
                     </h2>
                     <button
                       type="button"
-                      onClick={() => onNavigate('attendance')}
+                      onClick={() =>
+                        onNavigate(
+                          currentRole === 'student'
+                            ? 'timetable'
+                            : currentRole === 'parent'
+                              ? (parentCanViewGrades ? 'gradebook' : 'timetable')
+                              : schoolPermissions?.teacher_attendance !== false
+                                ? 'attendance'
+                                : 'timetable'
+                        )
+                      }
                       className="no-print type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
                     >
-                      {lang === 'th' ? 'เช็คชื่อ →' : 'Attendance →'}
+                      {currentRole === 'student'
+                        ? (lang === 'th' ? 'ตารางเรียน →' : 'Timetable →')
+                        : currentRole === 'parent'
+                          ? (parentCanViewGrades ? (lang === 'th' ? 'ผลการเรียน →' : 'Grades →') : (lang === 'th' ? 'ตารางเรียน →' : 'Timetable →'))
+                          : (lang === 'th' ? 'เช็คชื่อ →' : 'Attendance →')}
                     </button>
                   </div>
 
@@ -951,53 +1442,137 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick: () => void;
                       }> = [];
 
-                      if (pendingLeaveCount > 0) {
-                        actionRows.push({
-                          id: 'leaves',
-                          label: lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves',
-                          value: `${pendingLeaveCount} ${lang === 'th' ? 'รายการ' : 'items'}`,
-                          urgent: true,
-                          onClick: () => onNavigate('attendance'),
+                      if (currentRole === 'student') {
+                        todayScheduledSlots.slice(0, 3).forEach((slot) => {
+                          actionRows.push({
+                            id: `slot-${slot.id}`,
+                            label: `${lang === 'th' ? 'คาบ' : 'P'}${slot.periodNumber} · ${slot.courseTitleTh || slot.courseTitleEn || slot.courseCode || ''}`,
+                            value: slot.room || (lang === 'th' ? 'ห้องเรียน' : 'Class'),
+                            onClick: () => onNavigate('timetable'),
+                          });
                         });
-                      }
-                      if (ungradedHomeworkCount > 0) {
+                        if (studentCanSelfCheckin) {
+                          actionRows.push({
+                            id: 'student-checkin',
+                            label: lang === 'th' ? 'เช็คชื่อเข้าเรียน / สแกน QR' : 'Self Check-in / Scan QR',
+                            value: lang === 'th' ? 'พร้อมใช้งาน' : 'Ready',
+                            onClick: () => onNavigate('mobile_checkin'),
+                          });
+                        }
                         actionRows.push({
-                          id: 'homework',
-                          label: lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade',
-                          value: `${ungradedHomeworkCount} ${lang === 'th' ? 'ชิ้น' : 'items'}`,
-                          urgent: true,
+                          id: 'student-homework',
+                          label: lang === 'th' ? 'การบ้านและแบบฝึกหัด' : 'Homework & Tasks',
+                          value: `${assignments.length} ${lang === 'th' ? 'รายการ' : 'tasks'}`,
                           onClick: () => onNavigate('homework'),
                         });
-                      }
-                      if (isStaffUser && uncheckedTodayCount > 0) {
+                        if (studentCanViewGrades && actionRows.length < 5) {
+                          actionRows.push({
+                            id: 'student-grades',
+                            label: lang === 'th' ? 'สมุดพกและผลการเรียน' : 'My Grades & Report',
+                            value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                            onClick: () => onNavigate('gradebook'),
+                          });
+                        }
+                      } else if (currentRole === 'parent') {
+                        if (parentCanPayTuition && pendingInvoices.length > 0) {
+                          actionRows.push({
+                            id: 'parent-invoices',
+                            label: lang === 'th' ? 'ค่าเล่าเรียนรอชำระ' : 'Pending Tuition Invoices',
+                            value: `${pendingInvoices.length} ${lang === 'th' ? 'รายการ' : 'items'}`,
+                            urgent: true,
+                            onClick: () => onNavigate('billing'),
+                          });
+                        }
+                        if (pendingLeaveCount > 0) {
+                          actionRows.push({
+                            id: 'parent-leaves',
+                            label: lang === 'th' ? 'คำขอลาที่อยู่ระหว่างพิจารณา' : 'Pending Leave Requests',
+                            value: `${pendingLeaveCount} ${lang === 'th' ? 'รายการ' : 'items'}`,
+                            onClick: () => setDashboardTab('live_attendance'),
+                          });
+                        }
                         actionRows.push({
-                          id: 'unchecked',
-                          label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
-                          value: `${uncheckedTodayCount} ${lang === 'th' ? 'คน' : 'students'}`,
-                          onClick: () => onNavigate('attendance'),
-                        });
-                      }
-                      if (teacherLeavesTodayCount > 0) {
-                        actionRows.push({
-                          id: 'staff-leave',
-                          label: lang === 'th' ? 'ครูลาวันนี้ (หาครูสอนแทน)' : 'Staff on Leave Today',
-                          value: `${teacherLeavesTodayCount} ${lang === 'th' ? 'คน' : 'staff'}`,
+                          id: 'parent-timetable',
+                          label: lang === 'th' ? 'ตารางเรียนวันนี้ของบุตรหลาน' : 'Child’s Classes Today',
+                          value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
                           onClick: () => onNavigate('timetable'),
                         });
-                      }
-                      actionRows.push({
-                        id: 'timetable',
-                        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable',
-                        value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
-                        onClick: () => onNavigate('timetable'),
-                      });
-                      if (actionRows.length < 5) {
-                        actionRows.push({
-                          id: 'gradebook',
-                          label: lang === 'th' ? 'บันทึกคะแนน ปพ.5' : 'Gradebook',
-                          value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
-                          onClick: () => onNavigate('gradebook'),
-                        });
+                        if (parentCanViewGrades) {
+                          actionRows.push({
+                            id: 'parent-grades',
+                            label: lang === 'th' ? 'ตรวจสอบผลการเรียน' : 'Inspect Grades',
+                            value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                            onClick: () => onNavigate('gradebook'),
+                          });
+                        }
+                        if (actionRows.length < 5) {
+                          actionRows.push({
+                            id: 'parent-announcements',
+                            label: lang === 'th' ? 'ข่าวสารและประกาศโรงเรียน' : 'School Announcements',
+                            value: `${announcements.length} ${lang === 'th' ? 'ประกาศ' : 'posts'}`,
+                            onClick: () => setDashboardTab('announcements'),
+                          });
+                        }
+                      } else {
+                        // Staff (Admin & Teacher)
+                        if (currentRole === 'teacher' && todayScheduledSlots.length > 0) {
+                          actionRows.push({
+                            id: 'teacher-next-slot',
+                            label: `${lang === 'th' ? 'คาบสอนวันนี้' : 'Classes Today'} (${todayScheduledSlots[0].courseTitleTh || todayScheduledSlots[0].courseCode})`,
+                            value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
+                            onClick: () => onNavigate('timetable'),
+                          });
+                        }
+                        if (pendingLeaveCount > 0) {
+                          actionRows.push({
+                            id: 'leaves',
+                            label: lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves',
+                            value: `${pendingLeaveCount} ${lang === 'th' ? 'รายการ' : 'items'}`,
+                            urgent: true,
+                            onClick: () => onNavigate('attendance'),
+                          });
+                        }
+                        if (ungradedHomeworkCount > 0) {
+                          actionRows.push({
+                            id: 'homework',
+                            label: lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade',
+                            value: `${ungradedHomeworkCount} ${lang === 'th' ? 'ชิ้น' : 'items'}`,
+                            urgent: true,
+                            onClick: () => onNavigate('homework'),
+                          });
+                        }
+                        if (isStaffUser && uncheckedTodayCount > 0 && schoolPermissions?.teacher_attendance !== false) {
+                          actionRows.push({
+                            id: 'unchecked',
+                            label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
+                            value: `${uncheckedTodayCount} ${lang === 'th' ? 'คน' : 'students'}`,
+                            onClick: () => onNavigate('attendance'),
+                          });
+                        }
+                        if (teacherLeavesTodayCount > 0 && (currentRole === 'admin' || currentRole === 'super_admin')) {
+                          actionRows.push({
+                            id: 'staff-leave',
+                            label: lang === 'th' ? 'ครูลาวันนี้ (หาครูสอนแทน)' : 'Staff on Leave Today',
+                            value: `${teacherLeavesTodayCount} ${lang === 'th' ? 'คน' : 'staff'}`,
+                            onClick: () => onNavigate('timetable'),
+                          });
+                        }
+                        if (currentRole !== 'teacher' || todayScheduledSlots.length === 0) {
+                          actionRows.push({
+                            id: 'timetable',
+                            label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable',
+                            value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
+                            onClick: () => onNavigate('timetable'),
+                          });
+                        }
+                        if (actionRows.length < 5) {
+                          actionRows.push({
+                            id: 'gradebook',
+                            label: lang === 'th' ? 'บันทึกคะแนน ปพ.5' : 'Gradebook',
+                            value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                            onClick: () => onNavigate('gradebook'),
+                          });
+                        }
                       }
 
                       return (
