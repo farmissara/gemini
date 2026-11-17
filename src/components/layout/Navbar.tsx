@@ -134,13 +134,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          <div className="flex items-center gap-1.5 shrink-0" title="BaanPakKru · บ้านพักครู">
+          <div className="flex items-center gap-1.5 shrink-0" title="BaanPakKru">
             <BaanPakKruLogo size={26} />
             <span className="font-extrabold text-sm tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
               BaanPakKru
-              <span className="hidden 2xl:inline font-semibold text-xs text-[var(--color-text-muted)] ml-1">
-                · บ้านพักครู
-              </span>
             </span>
           </div>
 
@@ -234,101 +231,139 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Right Controls: Focus Mode, Theme, Lang, Tools, Notifications (hidden in Focus Mode), Profile, Logout */}
+        {/* Right Controls: Exit Focus (when active), Notifications, Unified Settings/Menu Dropdown, Profile, Logout */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {onToggleFocusMode && (
+          {focusMode && onToggleFocusMode && (
             <button
               type="button"
-              data-guide-id="nav-focus-toggle"
-              aria-pressed={focusMode}
               onClick={onToggleFocusMode}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                focusMode
-                  ? 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 shadow-xs'
-                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] hover:text-[var(--color-text-title)]'
-              }`}
-              title={
-                focusMode
-                  ? lang === 'th'
-                    ? 'ออกจากโหมดโฟกัส (แสดงเมนูข้างและการแจ้งเตือน)'
-                    : 'Exit Focus Mode (Ctrl+Shift+F)'
-                  : lang === 'th'
-                  ? 'เปิดโหมดโฟกัส: พับเมนูข้างและการแจ้งเตือนรอง (Ctrl+Shift+F)'
-                  : 'Enable Focus Mode: collapse sidebar & secondary panels (Ctrl+Shift+F)'
-              }
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0"
+              title={lang === 'th' ? 'ออกจากโหมดโฟกัส (Ctrl+Shift+F)' : 'Exit Focus Mode (Ctrl+Shift+F)'}
             >
-              {focusMode ? (
-                <Minimize2 className="w-3.5 h-3.5 shrink-0" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5 shrink-0 text-[var(--color-primary-text)]" />
+              <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'}</span>
+            </button>
+          )}
+
+          {/* Notification Center Trigger (collapsed in Focus Mode) */}
+          {!focusMode && onOpenNotifications && (
+            <button
+              type="button"
+              data-guide-id="nav-notifications"
+              onClick={onOpenNotifications}
+              className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer"
+              title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
+            >
+              <Bell className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[15px] h-3.5 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
               )}
-              <span className="hidden sm:inline">
-                {focusMode
-                  ? lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'
-                  : lang === 'th' ? 'โหมดโฟกัส' : 'Focus'}
-              </span>
             </button>
           )}
-
-          {/* Eye-Care Theme Switcher */}
-          <div data-guide-id="nav-theme-toggle" className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-            <button
-              type="button"
-              onClick={() => setThemePalette('light_warm')}
-              className={`p-1 rounded transition cursor-pointer ${
-                isLight ? 'bg-[var(--color-card)] text-amber-700 shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-              title="โหมดสว่างถนอมสายตา"
-            >
-              <Sun className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setThemePalette('sapphire')}
-              className={`p-1 rounded transition cursor-pointer ${
-                !isLight ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-              title="โหมดมืด"
-            >
-              <Moon className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Mobile Install Button (compact, hidden in Focus Mode to keep header calm) */}
-          {!focusMode && (
-            <PWAInstallButton lang={lang} variant="nav" className="hidden 2xl:inline-flex py-1 text-[11px]" />
-          )}
-
-          {/* Language Switcher */}
-          <button
-            type="button"
-            data-guide-id="nav-lang-toggle"
-            onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
-            title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
-          >
-            <Globe className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
-            <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
-          </button>
 
           <details
             data-guide-id="nav-tools-menu"
             className="relative"
             onClick={(event) => {
-              if (event.target instanceof Element && event.target.closest('button')) {
+              if (event.target instanceof Element && event.target.closest('button:not([data-keep-open])')) {
                 event.currentTarget.removeAttribute('open');
               }
             }}
           >
             <summary
-              aria-label={lang === 'th' ? 'เปิดเมนูเครื่องมือ' : 'Open tools menu'}
+              aria-label={lang === 'th' ? 'เปิดเมนูและตั้งค่า' : 'Open menu and preferences'}
               className="flex list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-[11px] font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-primary-light)] whitespace-nowrap"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-              <span className="hidden sm:inline">{lang === 'th' ? 'เครื่องมือ' : 'Tools'}</span>
+              <span className="hidden sm:inline">{lang === 'th' ? 'เมนู' : 'Menu'}</span>
               <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
             </summary>
-            <div className="absolute right-0 top-full z-50 mt-1.5 max-h-[75vh] w-60 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-1.5 max-h-[75vh] w-64 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-lg space-y-1">
+              {/* Quick Preferences Section */}
+              <div className="px-2 pt-1 pb-2 border-b border-[var(--color-border)] space-y-2">
+                <div className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'ตั้งค่าการแสดงผล' : 'Preferences'}
+                </div>
+
+                {/* Eye-Care Theme Switcher */}
+                <div data-guide-id="nav-theme-toggle" className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-[var(--color-text-body)]">
+                    {lang === 'th' ? 'ธีมสี' : 'Theme'}
+                  </span>
+                  <div className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+                    <button
+                      type="button"
+                      data-keep-open
+                      onClick={() => setThemePalette('light_warm')}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
+                        isLight ? 'bg-[var(--color-card)] text-amber-700 shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <Sun className="w-3 h-3" />
+                      <span>{lang === 'th' ? 'สว่าง' : 'Light'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-keep-open
+                      onClick={() => setThemePalette('sapphire')}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
+                        !isLight ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <Moon className="w-3 h-3" />
+                      <span>{lang === 'th' ? 'มืด' : 'Dark'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Language Switcher */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-[var(--color-text-body)]">
+                    {lang === 'th' ? 'ภาษา' : 'Language'}
+                  </span>
+                  <button
+                    type="button"
+                    data-guide-id="nav-lang-toggle"
+                    data-keep-open
+                    onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
+                  >
+                    <Globe className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
+                    <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
+                  </button>
+                </div>
+
+                {onToggleFocusMode && (
+                  <button
+                    type="button"
+                    data-guide-id="nav-focus-toggle"
+                    aria-pressed={focusMode}
+                    onClick={onToggleFocusMode}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      {focusMode ? (
+                        <Minimize2 className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                      ) : (
+                        <Maximize2 className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
+                      )}
+                      <span>{lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}</span>
+                    </span>
+                    <span className={`text-[11px] font-semibold ${focusMode ? 'text-sky-600 dark:text-sky-400' : 'text-[var(--color-text-muted)]'}`}>
+                      {focusMode ? (lang === 'th' ? 'เปิด' : 'ON') : (lang === 'th' ? 'ปิด' : 'OFF')}
+                    </span>
+                  </button>
+                )}
+
+                {!focusMode && (
+                  <div className="pt-0.5">
+                    <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-1.5 text-[11px]" />
+                  </div>
+                )}
+              </div>
+
               {onToggleMascotGuide && (
                 <button
                   type="button"
@@ -340,7 +375,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <Compass className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
                     <span>{lang === 'th' ? 'ตัวการ์ตูนนำทาง' : 'Mascot Guide'}</span>
                   </span>
-                  <span className={`text-[10px] font-bold ${isMascotGuideEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+                  <span className={`text-[11px] font-semibold ${isMascotGuideEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
                     {isMascotGuideEnabled ? (lang === 'th' ? 'เปิด' : 'ON') : (lang === 'th' ? 'ปิด' : 'OFF')}
                   </span>
                 </button>
@@ -363,7 +398,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
                     <GraduationCap className="h-4 w-4 text-blue-700 dark:text-blue-300" />
-                    <span>{lang === 'th' ? 'คู่มือนักเรียน (ในโมดูล)' : 'Student Guide'}</span>
+                    <span>{lang === 'th' ? 'คู่มือนักเรียน' : 'Student Guide'}</span>
                   </button>
                   <button
                     type="button"
@@ -371,7 +406,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
                     <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                    <span>{lang === 'th' ? 'คู่มือคุณครู (ในโมดูล)' : 'Teacher Guide'}</span>
+                    <span>{lang === 'th' ? 'คู่มือคุณครู' : 'Teacher Guide'}</span>
                   </button>
                 </>
               )}
@@ -385,7 +420,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
                     <FileSpreadsheet className="h-4 w-4 text-indigo-700 dark:text-indigo-300" />
-                    <span>{lang === 'th' ? 'นำเข้า/ส่งออกข้อมูล' : 'Import / Export data'}</span>
+                    <span>{lang === 'th' ? 'นำเข้า/ส่งออกข้อมูล' : 'Import / Export'}</span>
                   </button>
                 )}
               {canAccessSchoolOperations && onOpenOnboardingTutor && (
@@ -395,29 +430,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
                   <Sparkles className="h-4 w-4 text-purple-700 dark:text-purple-300" />
-                  <span>{lang === 'th' ? 'ติวเตอร์ระบบ' : 'System tutor'}</span>
+                  <span>{lang === 'th' ? 'ติวเตอร์ระบบ' : 'System Tutor'}</span>
                 </button>
               )}
             </div>
           </details>
-
-          {/* Notification Center Trigger (collapsed in Focus Mode) */}
-          {!focusMode && onOpenNotifications && (
-            <button
-              type="button"
-              data-guide-id="nav-notifications"
-              onClick={onOpenNotifications}
-              className="relative p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer"
-              title={lang === 'th' ? 'ศูนย์การแจ้งเตือน' : 'Notifications'}
-            >
-              <Bell className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[15px] h-3.5 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          )}
 
           {/* User Profile & Logout */}
           <div className="flex items-center gap-1 pl-1 border-l border-[var(--color-border)]">

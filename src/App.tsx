@@ -3310,19 +3310,18 @@ export const App: React.FC = () => {
       onSetGuideEnabled={(next) => handleToggleMascotGuide(next)}
     >
     <div className={`${isMobileInDesktopView ? 'h-dvh max-h-dvh w-full overflow-x-auto overflow-y-hidden' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
-      {/* Sticky Top Banner when viewing Desktop View on Mobile Screen */}
+      {/* Single Sticky Top Banner when viewing Desktop View on Mobile Screen */}
       {isMobileInDesktopView && (
-        <div className="sticky top-0 z-50 bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-3 py-1.5 text-xs flex items-center justify-between shadow-md shrink-0">
-          <div className="flex items-center gap-2 font-medium">
-            <span>🖥️ <strong>โหมดคอมพิวเตอร์ (Desktop ERP)</strong></span>
-            <span className="text-blue-100 text-[11px]">— เลื่อนซ้าย-ขวาเพื่อดูตารางและคอลัมน์ข้อมูลได้ครบถ้วน</span>
-          </div>
+        <div className="sticky top-0 z-50 bg-[var(--color-primary)] text-white px-3 py-1.5 text-xs flex items-center justify-between gap-2 shrink-0">
+          <span className="font-medium truncate">
+            {lang === 'th' ? 'โหมดคอมพิวเตอร์ · เลื่อนซ้าย-ขวาได้' : 'Desktop View · Horizontal scroll enabled'}
+          </span>
           <button
             type="button"
             onClick={() => setDeviceViewPreference('mobile')}
-            className="px-2.5 py-1 bg-white text-blue-800 hover:bg-blue-50 font-bold rounded-lg text-[11px] transition shadow-xs cursor-pointer shrink-0 ml-2"
+            className="px-2.5 py-1 bg-white text-[var(--color-primary)] hover:bg-slate-100 font-semibold rounded-lg text-[11px] transition cursor-pointer shrink-0 whitespace-nowrap"
           >
-            กลับโหมดมือถือ
+            {lang === 'th' ? 'กลับโหมดมือถือ' : 'Mobile View'}
           </button>
         </div>
       )}
@@ -3376,181 +3375,158 @@ export const App: React.FC = () => {
         focusMode={focusMode}
         onToggleFocusMode={() => setFocusMode((prev) => !prev)}
       />}
-      {!useImmersiveGameLayout && isMobileInDesktopView && (
-        <div className="shrink-0 mx-2 mt-1.5 px-3 py-1.5 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/60 text-xs text-sky-950 dark:text-sky-100 flex items-center justify-between gap-2">
-          <span className="truncate font-medium">
-            {lang === 'th' ? 'กำลังเปิดมุมมองคอมพิวเตอร์บนมือถือ (เลื่อนซ้าย-ขวาได้)' : 'Desktop view active on mobile'}
-          </span>
-          <button
-            type="button"
-            onClick={() => setDeviceViewPreference('mobile')}
-            className="shrink-0 min-h-[34px] px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-bold cursor-pointer whitespace-nowrap"
-          >
-            {lang === 'th' ? 'กลับโหมดมือถือ' : 'Mobile View'}
-          </button>
-        </div>
-      )}
       {!useImmersiveGameLayout && isDemoMode && (
-        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/60 text-[11px] text-violet-900 dark:text-violet-100 flex items-center justify-between">
-          <span>{lang === 'th' ? 'โหมดทดลองใช้งาน (Demo) — บันทึกในเซสชันเบราว์เซอร์' : 'Demo mode — browser session only.'}</span>
-          <span className="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-violet-200 dark:border-violet-800 text-violet-950 dark:text-violet-100 rounded">DEMO</span>
+        <div role="status" className="shrink-0 mx-3 mt-1.5 px-3 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between gap-2">
+          <span>{lang === 'th' ? 'โหมดทดลองใช้งาน · ข้อมูลบันทึกเฉพาะในเบราว์เซอร์' : 'Demo mode · Saved in browser session only'}</span>
         </div>
       )}
       {!useImmersiveGameLayout && dataSyncError && (
-        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
-          <span>{lang === 'th' ? 'เกิดข้อผิดพลาดในการซิงก์ข้อมูล Supabase:' : 'Supabase sync error:'} {dataSyncError}</span>
-          <button type="button" onClick={() => setDataSyncError(null)} className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
+        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-[11px] text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
+          <span className="truncate">{lang === 'th' ? 'ซิงก์ข้อมูลไม่สำเร็จ:' : 'Sync error:'} {dataSyncError}</span>
+          <button type="button" onClick={() => setDataSyncError(null)} aria-label="Close error" className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
         </div>
       )}
-      {!useImmersiveGameLayout && !focusMode && orphanedGrades.length > 0 && (
-        <div role="alert" className="shrink-0 mx-3 mt-1 px-3 py-2 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-[11px] text-amber-900 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
-          <span>
-            พักการซิงก์ผลการเรียน {orphanedGrades.length} รายการ เพราะไม่พบนักเรียนในทะเบียน
-            {' '}({[...new Set(orphanedGrades.map((grade) => grade.studentId))].slice(0, 5).join(', ')})
-          </span>
-          {['admin', 'super_admin'].includes(currentRole) && (
-            <button
-              type="button"
-              onClick={() => void handleCleanupOrphanGrades()}
-              disabled={isCleaningOrphanedGrades}
-              className="px-2.5 py-1 rounded bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-bold cursor-pointer"
-            >
-              {isCleaningOrphanedGrades ? 'กำลังลบ...' : 'ลบผลการเรียนที่ค้าง'}
-            </button>
-          )}
-        </div>
-      )}
-      {!useImmersiveGameLayout && !focusMode && dataSyncWarnings.length > 0 && (
-        <div role="status" className="shrink-0 mx-3 mt-1 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/50 text-[11px] text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span className="truncate font-medium">
-              <strong className="font-bold">
-                {lang === 'th' ? 'ต้องอัปเดตโครงสร้าง DB (SQL Migration):' : 'DB schema migration needed:'}
-              </strong>{' '}
-              {dataSyncWarnings[0]}
-              {dataSyncWarnings.length > 1 ? ` (+${dataSyncWarnings.length - 1})` : ''}
-              {dataSyncSummary ? ` • ✓ ${dataSyncSummary}` : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={handleCopyMigrationSql}
-              className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
-            >
-              {copiedMigrationSql ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอกแล้ว' : 'Copied') : (lang === 'th' ? 'คัดลอก SQL' : 'Copy SQL')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowSchemaMigrationModal(true)}
-              className="px-2 py-0.5 rounded border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-amber-950 dark:text-amber-100 font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
-            >
-              <Database className="w-3 h-3" />
-              <span>{lang === 'th' ? 'วิธีรัน' : 'Steps'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDataSyncWarnings([])}
-              aria-label="Close warning"
-              className="p-0.5 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-      {!useImmersiveGameLayout && !focusMode && isDataReady && !isDemoMode && !dismissedDuplicateWarning &&
-        ['admin', 'super_admin'].includes(currentRole) && duplicateRecordGroupCount > 0 && (
-        <section className="shrink-0 mx-3 mt-1 overflow-hidden rounded-xl border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-            <div className="min-w-0">
-              <p className="text-xs font-bold">
-                ตรวจพบข้อมูลซ้ำ {duplicateRecordGroupCount} กลุ่ม ใน {duplicateReports.length} หมวด
-              </p>
-              <p className="mt-0.5 text-[10px]">
-                รวมการแจ้งเตือนไว้จุดเดียว เลือกดูค่าที่ซ้ำและหน้าที่ควรเข้าไปตรวจสอบ
-              </p>
+      {!useImmersiveGameLayout && !focusMode && (() => {
+        const hasOrphanGrades = orphanedGrades.length > 0;
+        const hasSchemaWarnings = dataSyncWarnings.length > 0;
+        const hasDuplicates = isDataReady && !isDemoMode && !dismissedDuplicateWarning && ['admin', 'super_admin'].includes(currentRole) && duplicateRecordGroupCount > 0;
+        if (!hasOrphanGrades && !hasSchemaWarnings && !hasDuplicates) return null;
+
+        return (
+          <section className="shrink-0 mx-3 mt-1 overflow-hidden rounded-xl border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
+            <div role="status" className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-[11px]">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="truncate font-medium">
+                  {[
+                    hasSchemaWarnings
+                      ? (lang === 'th' ? `อัปเดตฐานข้อมูล (${dataSyncWarnings.length})` : `DB migration (${dataSyncWarnings.length})`)
+                      : null,
+                    hasOrphanGrades
+                      ? (lang === 'th' ? `ผลการเรียนค้างซิงก์ ${orphanedGrades.length} รายการ` : `${orphanedGrades.length} orphaned grades`)
+                      : null,
+                    hasDuplicates
+                      ? (lang === 'th' ? `ข้อมูลซ้ำ ${duplicateRecordGroupCount} กลุ่ม` : `${duplicateRecordGroupCount} duplicate groups`)
+                      : null,
+                  ].filter(Boolean).join(' · ')}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                {hasSchemaWarnings && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCopyMigrationSql}
+                      className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                    >
+                      {copiedMigrationSql ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedMigrationSql ? (lang === 'th' ? 'คัดลอกแล้ว' : 'Copied') : (lang === 'th' ? 'คัดลอก SQL' : 'Copy SQL')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSchemaMigrationModal(true)}
+                      className="px-2 py-1 rounded-md border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 text-amber-950 dark:text-amber-100 font-semibold text-[11px] inline-flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                    >
+                      <Database className="w-3 h-3" />
+                      <span>{lang === 'th' ? 'วิธีรัน' : 'Steps'}</span>
+                    </button>
+                  </>
+                )}
+                {hasOrphanGrades && ['admin', 'super_admin'].includes(currentRole) && (
+                  <button
+                    type="button"
+                    onClick={() => void handleCleanupOrphanGrades()}
+                    disabled={isCleaningOrphanedGrades}
+                    className="px-2 py-1 rounded-md bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white font-semibold text-[11px] cursor-pointer whitespace-nowrap"
+                  >
+                    {isCleaningOrphanedGrades ? (lang === 'th' ? 'กำลังลบ...' : 'Cleaning...') : (lang === 'th' ? 'ล้างเกรดค้าง' : 'Clean grades')}
+                  </button>
+                )}
+                {hasDuplicates && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDuplicateDetails((open) => !open)}
+                    aria-expanded={showDuplicateDetails}
+                    className="rounded-md border border-amber-400 bg-white/80 px-2 py-1 text-[11px] font-semibold hover:bg-white dark:border-amber-600 dark:bg-slate-900/50 dark:hover:bg-slate-900 cursor-pointer whitespace-nowrap"
+                  >
+                    {showDuplicateDetails ? (lang === 'th' ? 'ซ่อนรายการซ้ำ' : 'Hide') : (lang === 'th' ? 'ตรวจข้อมูลซ้ำ' : 'Inspect')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasSchemaWarnings) setDataSyncWarnings([]);
+                    if (hasDuplicates) setDismissedDuplicateWarning(true);
+                  }}
+                  aria-label={lang === 'th' ? 'ปิดการแจ้งเตือน' : 'Dismiss warning'}
+                  className="p-1 font-bold text-amber-800 dark:text-amber-200 hover:text-amber-950 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDuplicateDetails((open) => !open)}
-                aria-expanded={showDuplicateDetails}
-                className="rounded-lg border border-amber-400 bg-white/70 px-2.5 py-1.5 text-[10px] font-bold hover:bg-white dark:border-amber-600 dark:bg-slate-900/50 dark:hover:bg-slate-900 cursor-pointer"
-              >
-                {showDuplicateDetails ? 'ซ่อนรายละเอียด' : 'ดูรายการและวิธีแก้'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDismissedDuplicateWarning(true)}
-                aria-label="ปิดการแจ้งเตือนข้อมูลซ้ำ"
-                className="p-1 font-bold hover:text-amber-700 dark:hover:text-amber-300 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          {showDuplicateDetails && (
-            <div className="max-h-[55vh] space-y-2 overflow-y-auto border-t border-amber-200 p-3 dark:border-amber-800">
-              {duplicateReports.map((report) => {
-                const reportGroupCount = report.checks.reduce((sum, check) => sum + check.groups.length, 0);
-                return (
-                  <section key={report.target} className="rounded-lg border border-amber-200 bg-white/70 p-3 dark:border-amber-800 dark:bg-slate-950/40">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-xs font-bold">{report.module}</h3>
-                        <p className="text-[10px]">{reportGroupCount} กลุ่มที่ต้องตรวจสอบ</p>
+
+            {hasDuplicates && showDuplicateDetails && (
+              <div className="max-h-[55vh] space-y-2 overflow-y-auto border-t border-amber-200 p-3 dark:border-amber-800">
+                {duplicateReports.map((report) => {
+                  const reportGroupCount = report.checks.reduce((sum, check) => sum + check.groups.length, 0);
+                  return (
+                    <section key={report.target} className="rounded-lg border border-amber-200 bg-white/70 p-3 dark:border-amber-800 dark:bg-slate-950/40">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-xs font-bold">{report.module}</h3>
+                          <p className="text-[10px]">{reportGroupCount} กลุ่มที่ต้องตรวจสอบ</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (report.programMode) setProgramMode(report.programMode);
+                            navigateToAppTab(report.target);
+                          }}
+                          className="rounded-lg bg-amber-700 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer"
+                        >
+                          ไปหน้า{report.module}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (report.programMode) setProgramMode(report.programMode);
-                          navigateToAppTab(report.target);
-                        }}
-                        className="rounded-lg bg-amber-700 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer"
-                      >
-                        ไปหน้า{report.module}
-                      </button>
-                    </div>
-                    <p className="mt-2 text-[10px] leading-relaxed">{report.guidance}</p>
-                    <div className="mt-2 space-y-1.5">
-                      {report.checks.map((check) => (
-                        <details key={check.label} className="rounded-md border border-amber-200 bg-white/60 px-2.5 py-2 dark:border-amber-900 dark:bg-slate-950/30">
-                          <summary className="cursor-pointer text-[10px] font-semibold">
-                            {check.label} · {check.groups.length} กลุ่ม
-                          </summary>
-                          <ul className="mt-2 space-y-2">
-                            {check.groups.slice(0, 25).map((group, index) => (
-                              <li key={`${group.value}-${index}`} className="rounded-md bg-amber-50/80 p-2 text-[10px] dark:bg-amber-950/30">
-                                <p className="font-bold">ค่าที่ซ้ำ: {group.value || 'ไม่ระบุ'}</p>
-                                <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                                  {group.records.slice(0, 5).map((record, recordIndex) => (
-                                    <li key={`${record}-${recordIndex}`}>{record}</li>
-                                  ))}
-                                </ul>
-                                {group.records.length > 5 && (
-                                  <p className="mt-1 text-[9px] opacity-75">และอีก {group.records.length - 5} ระเบียน</p>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                          {check.groups.length > 25 && (
-                            <p className="mt-2 text-[9px]">
-                              แสดง 25 จาก {check.groups.length} กลุ่ม · ใช้ปุ่มไปยังหน้า{report.module} เพื่อค้นหารายการที่เหลือ
-                            </p>
-                          )}
-                        </details>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
+                      <p className="mt-2 text-[10px] leading-relaxed">{report.guidance}</p>
+                      <div className="mt-2 space-y-1.5">
+                        {report.checks.map((check) => (
+                          <details key={check.label} className="rounded-md border border-amber-200 bg-white/60 px-2.5 py-2 dark:border-amber-900 dark:bg-slate-950/30">
+                            <summary className="cursor-pointer text-[10px] font-semibold">
+                              {check.label} · {check.groups.length} กลุ่ม
+                            </summary>
+                            <ul className="mt-2 space-y-2">
+                              {check.groups.slice(0, 25).map((group, index) => (
+                                <li key={`${group.value}-${index}`} className="rounded-md bg-amber-50/80 p-2 text-[10px] dark:bg-amber-950/30">
+                                  <p className="font-bold">ค่าที่ซ้ำ: {group.value || 'ไม่ระบุ'}</p>
+                                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                                    {group.records.slice(0, 5).map((record, recordIndex) => (
+                                      <li key={`${record}-${recordIndex}`}>{record}</li>
+                                    ))}
+                                  </ul>
+                                  {group.records.length > 5 && (
+                                    <p className="mt-1 text-[9px] opacity-75">และอีก {group.records.length - 5} ระเบียน</p>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                            {check.groups.length > 25 && (
+                              <p className="mt-2 text-[9px]">
+                                แสดง 25 จาก {check.groups.length} กลุ่ม · ใช้ปุ่มไปยังหน้า{report.module} เพื่อค้นหารายการที่เหลือ
+                              </p>
+                            )}
+                          </details>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Mobile Drawer Overlay and Sidebar */}
       {!useImmersiveGameLayout && isMobileMenuOpen && (

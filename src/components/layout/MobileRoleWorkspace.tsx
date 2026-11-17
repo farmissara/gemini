@@ -290,7 +290,7 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-[var(--color-text-title)]">
-              {lang === 'th' ? 'ศูนย์ปรับข้อมูลด่วน (แอดมิน)' : 'Admin Quick Workspace'}
+              {lang === 'th' ? 'ปรับข้อมูลด่วน' : 'Quick Edits'}
             </h2>
             <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">
               {activeSchool.nameTh} · {lang === 'th' ? 'ปีการศึกษา' : 'Year'} {activeSchool.academicYear || '-'} / {activeSchool.currentSemester || '-'}
@@ -366,18 +366,18 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                 {lang === 'th' ? 'ไม่มีคำขอลาค้างอนุมัติ' : 'All leave requests reviewed.'}
               </p>
             ) : (
-              <div className="space-y-2.5">
+              <div className="divide-y divide-[var(--color-border)]">
                 {pendingLeaves.slice(0, 6).map((req) => (
                   <div
                     key={req.id}
-                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2"
+                    className="py-3 first:pt-0 last:pb-0 space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                           {req.userName}
                         </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
                           {req.userRole === 'teacher' ? 'ครู' : 'นักเรียน'} · {req.leaveType} · {req.startDate}
                         </p>
                       </div>
@@ -430,13 +430,13 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                 {lang === 'th' ? 'ไม่มีสลิปโอนเงินรอตรวจสอบ' : 'No slips awaiting review.'}
               </p>
             ) : (
-              <div className="space-y-2.5">
+              <div className="divide-y divide-[var(--color-border)]">
                 {pendingSlips.slice(0, 5).map((inv) => {
                   const stu = students.find((s) => s.id === inv.studentId);
                   return (
                     <div
                       key={inv.id}
-                      className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2"
+                      className="py-3 first:pt-0 last:pb-0 space-y-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
@@ -694,10 +694,10 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                 onChange={(e) => setStuStatus(e.target.value as Student['status'])}
                 className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-sm text-[var(--color-text-title)]"
               >
-                <option value="active">{lang === 'th' ? 'กำลังศึกษา (Active)' : 'Active'}</option>
-                <option value="leave">{lang === 'th' ? 'พักการเรียน (On Leave)' : 'On Leave'}</option>
-                <option value="graduated">{lang === 'th' ? 'สำเร็จการศึกษา (Graduated)' : 'Graduated'}</option>
-                <option value="transferred">{lang === 'th' ? 'ย้ายสถานศึกษา (Transferred)' : 'Transferred'}</option>
+                <option value="active">{lang === 'th' ? 'กำลังศึกษา' : 'Active'}</option>
+                <option value="leave">{lang === 'th' ? 'พักการเรียน' : 'On Leave'}</option>
+                <option value="graduated">{lang === 'th' ? 'สำเร็จการศึกษา' : 'Graduated'}</option>
+                <option value="transferred">{lang === 'th' ? 'ย้ายสถานศึกษา' : 'Transferred'}</option>
               </select>
             </div>
 
@@ -1006,7 +1006,7 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
               <h2 className="text-base font-bold text-[var(--color-text-title)] truncate">
-                {lang === 'th' ? 'ศูนย์ควบคุมแม่ข่าย (Super Admin)' : 'Master Control Center'}
+                {lang === 'th' ? 'ภาพรวมระบบทั้งหมด' : 'Master Control Center'}
               </h2>
             </div>
             <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">

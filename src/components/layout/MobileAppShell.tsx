@@ -425,21 +425,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* ======================================================== */}
       {/* 1. COMPACT TOP MOBILE HEADER (Capped for <=15% sticky chrome) */}
       {/* ======================================================== */}
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md flex flex-col shadow-xs transition-colors">
-        <PWAInstallButton lang={lang} variant="top_mobile_banner" />
-
-        {/* Row 1: Logo + Active Role/School Switcher + Utility Actions */}
-        <div className="px-3 py-1.5 flex items-center justify-between gap-2 min-h-[48px]">
-          <div className="flex items-center gap-2 min-w-0">
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md flex flex-col transition-colors">
+        <div className="px-3.5 py-2 flex items-center justify-between gap-2 min-h-[52px]">
+          <div className="flex items-center gap-2.5 min-w-0">
             <BaanPakKruLogo size={24} />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-xs text-[var(--color-text-title)] tracking-tight truncate">
+                <span className="font-bold text-sm text-[var(--color-text-title)] tracking-tight truncate">
                   BaanPakKru
                 </span>
-                <span className="text-[10px] font-semibold text-[var(--color-primary-text)] truncate">
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
                   · {currentRole === 'super_admin'
-                    ? (lang === 'th' ? 'แม่ข่าย' : 'Super Admin')
+                    ? (lang === 'th' ? 'แม่ข่าย' : 'Master')
                     : currentRole === 'admin'
                     ? (lang === 'th' ? 'แอดมิน' : 'Admin')
                     : currentRole === 'teacher'
@@ -453,13 +450,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <button
                   type="button"
                   onClick={onOpenSchoolSwitcher}
-                  className="text-[10px] text-[var(--color-primary-text)] font-semibold truncate max-w-[165px] flex items-center gap-1 hover:underline cursor-pointer"
+                  className="text-[11px] text-[var(--color-primary-text)] font-medium truncate max-w-[170px] flex items-center gap-1 hover:underline cursor-pointer"
                 >
                   <Building2 className="w-3 h-3 shrink-0" />
                   <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
                 </button>
               ) : (
-                <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[165px]">
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate max-w-[170px]">
                   {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
                 </p>
               )}
@@ -470,20 +467,19 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <button
               type="button"
               onClick={onSwitchToDesktopMode}
-              className="min-h-[36px] flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold transition cursor-pointer whitespace-nowrap"
-              title="สลับเป็นมุมมองคอมพิวเตอร์ (Desktop)"
+              className="min-h-[38px] flex items-center gap-1 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
+              title={lang === 'th' ? 'สลับเป็นมุมมองคอมพิวเตอร์' : 'Switch to Desktop'}
             >
-              <Laptop className="w-3.5 h-3.5" />
+              <Laptop className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
               <span>{lang === 'th' ? 'คอม' : 'PC'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-              className="min-h-[36px] inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[11px] font-bold text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
+              className="min-h-[38px] inline-flex items-center gap-1 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
               title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
             >
-              <Globe className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
               <span>{lang === 'th' ? 'TH' : 'EN'}</span>
             </button>
 
@@ -491,12 +487,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={onOpenNotifications}
-                className="relative min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
+                className="relative min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] transition cursor-pointer"
                 title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
               >
                 <Bell className="w-4 h-4 text-[var(--color-primary-text)]" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs tabular-nums">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -559,40 +555,37 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {homePage === 0 && (
               <>
             {/* Welcome & Persona Card (Role-aware) */}
-            <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-r from-blue-700 via-indigo-800 to-indigo-950 text-white shadow-lg">
-              <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="text-[11px] text-blue-100 font-semibold flex items-center gap-1.5 tabular-nums">
-                    <Calendar className="w-3 h-3 text-amber-300 shrink-0" />
-                    <span>{todayStr} · {activeSchool.nameTh}</span>
-                  </span>
-                  <h1 className="text-lg font-black mt-1 truncate">
-                    {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
-                  </h1>
-                  <p className="text-xs text-slate-100 mt-0.5">
-                    {currentRole === 'teacher'
-                      ? (lang === 'th' ? 'อาจารย์ประจำวิชา · โหมดสอนและเช็คชื่อด่วน' : 'Teacher · Quick Teaching & Check-in')
-                      : currentRole === 'student'
-                      ? (ownStudent
-                          ? (lang === 'th' ? `นักเรียนชั้น ${ownStudent.gradeLevel}/${ownStudent.room}` : `Student · ${ownStudent.gradeLevel}/${ownStudent.room}`)
-                          : (lang === 'th' ? 'บัญชีนักเรียน' : 'Student Account'))
-                      : currentRole === 'parent'
-                      ? (ownStudent
-                          ? (lang === 'th' ? `ผู้ปกครองของ ${ownStudent.firstNameTh} (${ownStudent.gradeLevel}/${ownStudent.room})` : `Parent of ${ownStudent.firstNameEn}`)
-                          : (lang === 'th' ? 'พอร์ทัลผู้ปกครอง' : 'Parent Portal'))
-                      : (lang === 'th' ? 'ผู้บริหารโรงเรียน · โหมดสั่งการด่วน' : 'School Admin · Quick Command Mode')}
-                  </p>
-                </div>
-
-                {currentRole === 'student' ? (
-                  <div className="text-right shrink-0">
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/50 border border-white/25 text-xs font-bold text-amber-300 tabular-nums">
-                      <Flame className="w-3.5 h-3.5 fill-current" />
-                      <span>{currentScore.exp} EXP</span>
-                    </div>
-                  </div>
-                ) : null}
+            <div className="rounded-2xl p-4 border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums truncate">
+                  {todayStr} · {activeSchool.nameTh}
+                </p>
+                <h1 className="text-base font-bold text-[var(--color-text-title)] mt-0.5 truncate">
+                  {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
+                </h1>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">
+                  {currentRole === 'teacher'
+                    ? (lang === 'th' ? 'อาจารย์ประจำวิชา' : 'Teacher')
+                    : currentRole === 'student'
+                    ? (ownStudent
+                        ? (lang === 'th' ? `ชั้น ${ownStudent.gradeLevel}/${ownStudent.room}` : `Grade ${ownStudent.gradeLevel}/${ownStudent.room}`)
+                        : (lang === 'th' ? 'บัญชีนักเรียน' : 'Student'))
+                    : currentRole === 'parent'
+                    ? (ownStudent
+                        ? (lang === 'th' ? `ผู้ปกครองของ ${ownStudent.firstNameTh} (${ownStudent.gradeLevel}/${ownStudent.room})` : `Parent of ${ownStudent.firstNameEn}`)
+                        : (lang === 'th' ? 'พอร์ทัลผู้ปกครอง' : 'Parent Portal'))
+                    : (lang === 'th' ? 'ผู้บริหารโรงเรียน' : 'School Admin')}
+                </p>
               </div>
+
+              {currentRole === 'student' && (
+                <div className="text-right shrink-0">
+                  <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                    <Flame className="w-3.5 h-3.5 shrink-0" />
+                    <span>{currentScore.exp} EXP</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Role-Specific Quick Core Actions */}
@@ -602,14 +595,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('executive')}
-                  className="tone-1 tone-card p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                  className="tone-1 tone-card p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
                 >
-                  <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                  <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
                     <Monitor className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                      {lang === 'th' ? 'แดชบอร์ดภาพรวมโรงเรียน (MIS)' : 'School Executive Monitor'}
+                    <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                      {lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
                     </h2>
                     <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
                       มาเรียน {execMetrics.attendanceRate}% · GPAX {execMetrics.avgGpa} · ป่วย {execMetrics.todayInfirmary}
@@ -631,13 +624,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)]">
                       <p className="text-[10px] text-[var(--color-text-muted)]">{lang === 'th' ? 'เข้าเรียนวันนี้' : 'Attendance'}</p>
                       <p className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
                         {todayCheckin ? `${todayCheckin.time} น.` : (lang === 'th' ? 'ยังไม่เช็คอิน' : 'Not checked in')}
                       </p>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                    <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)]">
                       <p className="text-[10px] text-[var(--color-text-muted)]">{lang === 'th' ? 'ใบแจ้งหนี้ค้างชำระ' : 'Pending Invoices'}</p>
                       <p className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
                         {invoices.filter((i) => (!ownStudent || i.studentId === ownStudent.id) && i.status !== 'paid').length} {lang === 'th' ? 'รายการ' : 'items'}
@@ -647,27 +640,27 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
               )}
 
-              {/* Action 1: Check-in (Everyone except parent goes to selfie/proxy, parent goes to history) */}
+              {/* Action 1: Check-in */}
               <button
                 type="button"
                 onClick={() => setActiveTab('checkin')}
-                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                className="tone-2 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
               >
-                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                  <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
                     {currentRole === 'teacher'
                       ? (lang === 'th' ? 'เช็คชื่อเข้าสอน / แทนนักเรียน' : 'Period & Class Check-in')
                       : currentRole === 'parent'
                       ? (lang === 'th' ? 'ประวัติการมาเรียนบุตรหลาน' : 'Child Attendance Log')
-                      : (lang === 'th' ? 'เช็คชื่อเข้า-ออก (Check-in)' : 'Check-in & Out')}
+                      : (lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check-in & Out')}
                   </h2>
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                     {currentRole === 'parent'
                       ? (lang === 'th' ? 'ตรวจสอบเวลาเข้า-ออกประตูโรงเรียน' : 'Gate arrival & departure records')
-                      : 'GPS Geofence & สแกนใบหน้า / QR คาบเรียน'}
+                      : (lang === 'th' ? 'เซลฟี่ GPS · แตะบัตร NFC · สแกนรายคาบ' : 'Selfie GPS · NFC Tap · Period QR')}
                   </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
@@ -677,23 +670,22 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('leave')}
-                className="tone-2 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group relative min-h-[68px]"
+                className="tone-2 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group relative min-h-[64px]"
               >
-                {pendingLeavesCount > 0 && (
-                  <span className="absolute top-3 right-8 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black shadow-xs tabular-nums">
-                    {pendingLeavesCount}
-                  </span>
-                )}
-                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                  <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
                     {currentRole === 'teacher'
-                      ? (lang === 'th' ? 'ใบลาออนไลน์ (ส่ง/อนุมัติ)' : 'Leave Requests & Approval')
-                      : (lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Submit Leave Request')}
+                      ? (lang === 'th' ? 'ใบลาออนไลน์' : 'Leave Requests')
+                      : (lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Submit Leave')}
                   </h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ลาป่วย / ลากิจ &amp; ติดตามสถานะ</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                    {pendingLeavesCount > 0
+                      ? (lang === 'th' ? `รอตรวจ ${pendingLeavesCount} รายการ` : `${pendingLeavesCount} pending`)
+                      : (lang === 'th' ? 'ลาป่วย · ลากิจ · ติดตามสถานะ' : 'Sick / Personal leave')}
+                  </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
               </button>
@@ -704,20 +696,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => onJumpToDesktopTab('gradebook')}
-                    className="min-h-[54px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                    className="min-h-[52px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
                   >
                     <span className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'กรอกคะแนน (คอม)' : 'Gradebook (PC)'}
+                      {lang === 'th' ? 'กรอกคะแนน' : 'Gradebook'}
                     </span>
                     <Laptop className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onJumpToDesktopTab('timetable')}
-                    className="min-h-[54px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                    className="min-h-[52px] p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-2 cursor-pointer"
                   >
                     <span className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ตารางสอน (คอม)' : 'Timetable (PC)'}
+                      {lang === 'th' ? 'ตารางสอน' : 'Timetable'}
                     </span>
                     <Calendar className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
                   </button>
@@ -733,35 +725,39 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     setActiveGameView('hub');
                     setGameHubPage(0);
                   }}
-                  className="tone-5 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                  className="tone-5 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
                 >
-                  <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                  <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
                     <Gamepad2 className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">เกมส์ความรู้ &amp; เวิร์กช็อป 6 มิติ</h2>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">3D Battle, บอส, แล็บจำลองทุกวิชา</p>
+                    <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                      {lang === 'th' ? 'เกมส์ความรู้ & แล็บจำลอง' : 'Learning Games & Labs'}
+                    </h2>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                      {lang === 'th' ? '3D Battle · ตีบอส · แล็บวิชาเรียน' : '3D Battle · Boss Raid · Subject Labs'}
+                    </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
                 </button>
               )}
 
-              {/* PARENT: Announcements + Desktop Billing Shortcut */}
+              {/* PARENT: Announcements */}
               {currentRole === 'parent' && (
                 <button
                   type="button"
                   onClick={() => setActiveTab('announcements')}
-                  className="tone-3 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                  className="tone-3 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
                 >
-                  <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                  <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
                     <BellRing className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
-                      {lang === 'th' ? 'ประกาศและข่าวสารโรงเรียน' : 'School Announcements'}
+                    <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                      {lang === 'th' ? 'ประกาศโรงเรียน' : 'School Announcements'}
                     </h2>
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      {announcements.length} {lang === 'th' ? 'ประกาศล่าสุดจากโรงเรียน' : 'announcements'}
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                      {announcements.length} {lang === 'th' ? 'ประกาศล่าสุด' : 'announcements'}
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
@@ -772,14 +768,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('profile')}
-                className="tone-4 p-3.5 sm:p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] shadow-xs cursor-pointer group min-h-[68px]"
+                className="tone-4 p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--tone)] text-left flex items-center gap-3.5 transition-all active:scale-[0.98] cursor-pointer group min-h-[64px]"
               >
-                <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+                <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-extrabold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">บัตรดิจิทัล &amp; โปรไฟล์</h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Virtual ID Card &amp; ตั้งค่าบัญชี</p>
+                  <h2 className="font-bold text-sm text-[var(--color-text-title)] group-hover:text-[var(--tone)] transition-colors">
+                    {lang === 'th' ? 'บัตรดิจิทัล & ตั้งค่า' : 'Digital ID & Settings'}
+                  </h2>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                    {lang === 'th' ? 'บัตรนักเรียน · FaceID · ข้อมูลบัญชี' : 'ID Card · Biometrics · Account'}
+                  </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--tone)] shrink-0" />
               </button>
@@ -1455,12 +1455,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <div className="flex items-center gap-2 min-w-0">
                       <Fingerprint className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                       <span className="font-bold text-[var(--color-text-title)] truncate">
-                        {lang === 'th' ? 'ความปลอดภัย FaceID / TouchID (WebAuthn)' : 'Biometric Security (WebAuthn)'}
+                        {lang === 'th' ? 'สแกน FaceID / TouchID' : 'Biometric Security'}
                       </span>
                     </div>
                     {passkey && (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold shrink-0">
-                        {lang === 'th' ? 'ผูกแล้ว' : 'Active'}
+                      <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
+                        {lang === 'th' ? 'เปิดใช้งาน' : 'Active'}
                       </span>
                     )}
                   </div>
@@ -1477,7 +1477,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       <p className="text-[11px] text-[var(--color-text-muted)]">
                         {webAuthnInfo
                           ? (lang === 'th' ? webAuthnInfo.reasonTh : webAuthnInfo.reasonEn)
-                          : (lang === 'th' ? 'ใช้สแกนใบหน้า/ลายนิ้วมือเพื่อเข้าสู่ระบบและล็อกเช็คชื่อด่วน' : 'Use FaceID/TouchID for fast login and quick attendance lock')}
+                          : (lang === 'th' ? 'ใช้สแกนใบหน้าหรือลายนิ้วมือเพื่อยืนยันตัวตนและล็อกเช็คชื่อด่วน' : 'Use FaceID/TouchID for fast login and quick attendance lock')}
                       </p>
                       <button
                         type="button"
@@ -1488,8 +1488,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         <KeyRound className="w-4 h-4" />
                         <span>
                           {bioBusy
-                            ? (lang === 'th' ? 'กำลังลงทะเบียน Passkey...' : 'Enrolling Passkey...')
-                            : (lang === 'th' ? 'ลงทะเบียน FaceID / TouchID บนเครื่องนี้' : 'Enroll FaceID / TouchID')}
+                            ? (lang === 'th' ? 'กำลังลงทะเบียน...' : 'Enrolling...')
+                            : (lang === 'th' ? 'ผูก FaceID / TouchID' : 'Enroll FaceID / TouchID')}
                         </span>
                       </button>
                     </div>
@@ -1502,7 +1502,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
                         <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
                           <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'ล็อกโมดูลเช็คชื่อด่วน (NFC / สแกนรัว / ครูลงชื่อแทน)' : 'Lock Quick Attendance Module'}
+                            {lang === 'th' ? 'ล็อกเมนูเช็คชื่อด่วน' : 'Lock Quick Attendance'}
                           </span>
                           <input
                             type="checkbox"
@@ -1521,7 +1521,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
                       <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
                         <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'แสดงการยืนยันด้วย FaceID บนหน้าเข้าสู่ระบบ' : 'Enable Biometric Sign-In Prompt'}
+                          {lang === 'th' ? 'ยืนยันตัวตนหน้าเข้าสู่ระบบ' : 'Enable Sign-In Biometrics'}
                         </span>
                         <input
                           type="checkbox"
@@ -1585,7 +1585,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <Laptop className="w-4 h-4" />
-                    <span>สลับเป็นมุมมองคอมพิวเตอร์เต็มจอ (Desktop View)</span>
+                    <span>{lang === 'th' ? 'สลับเป็นมุมมองคอมพิวเตอร์' : 'Switch to Desktop View'}</span>
                   </div>
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -1657,24 +1657,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         : 'bg-[var(--color-card)] border-[var(--color-border)]'
                     } shadow-xs space-y-2 text-xs`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold px-2 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-[var(--color-text-muted)]">
                         {courses.find(c => c.id === asg.courseId)?.code || courses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isDone ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200' : 'bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200'
+                      <span className={`font-bold ${
+                        isDone ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
                       }`}>
-                        {isDone ? '✓ ส่งแล้ว' : 'รอส่ง'}
+                        {isDone ? 'ส่งแล้ว' : 'รอส่ง'}
                       </span>
                     </div>
 
-                    <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">
+                    <h4 className="font-bold text-sm text-[var(--color-text-title)]">
                       {lang === 'th' ? (asg.titleTh || asg.titleEn) : (asg.titleEn || asg.titleTh)}
                     </h4>
 
-                    <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                    <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums">
                       <span>กำหนดส่ง: {asg.dueDate}</span>
-                      <span className="font-bold text-amber-700 dark:text-amber-300">{asg.points} คะแนน</span>
+                      <span className="font-semibold text-[var(--color-text-title)]">{asg.points} คะแนน</span>
                     </div>
                   </div>
                 );
@@ -1748,19 +1748,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       : 'bg-[var(--color-card)] border-[var(--color-border)]'
                   } shadow-xs space-y-2 text-xs`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200">
-                      {a.category}
-                    </span>
-                    <span className="text-[10px] text-[var(--color-text-muted)]">{a.publishedAt}</span>
+                  <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                    <span className="font-semibold text-[var(--color-primary-text)]">{a.category}</span>
+                    <span>{a.publishedAt}</span>
                   </div>
 
-                  <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">{a.title}</h4>
+                  <h4 className="font-bold text-sm text-[var(--color-text-title)]">{a.title}</h4>
                   <p className="text-[var(--color-text-body)] leading-relaxed text-xs whitespace-pre-line line-clamp-2">{a.content}</p>
 
                   <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-[var(--color-text-muted)]">
-                      ผู้ประกาศ: {a.author} ({a.authorRole})
+                    <span className="text-[11px] text-[var(--color-text-muted)]">
+                      {a.author} · {a.authorRole}
                     </span>
                     <button
                       type="button"

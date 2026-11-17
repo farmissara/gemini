@@ -334,20 +334,14 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
 
       {/* 1. COMPACT DAILY HEADER */}
       <section className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums">
-              <Calendar className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-              <span>{todayStr}</span>
-              <span aria-hidden="true">·</span>
-              <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
-            </div>
-            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] mt-1 truncate">
-              {lang === 'th' ? 'ภารกิจแอดมินประจำวัน' : 'Admin Daily Operations'}
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] truncate">
-              {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้บริหารโรงเรียน'}
+            <p className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums truncate">
+              {todayStr} · {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
             </p>
+            <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] mt-0.5 truncate">
+              {lang === 'th' ? 'งานแอดมินวันนี้' : "Today's Admin Tasks"}
+            </h1>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -355,7 +349,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
               <button
                 type="button"
                 onClick={onOpenCheckin}
-                className="min-h-[44px] px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="min-h-[44px] px-3.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
                 <QrCode className="w-4 h-4 shrink-0" />
                 <span>{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
@@ -375,18 +369,24 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
           </div>
         </div>
 
-        {/* 2. DAILY TRIAGE KPI STRIP (3 high-contrast interactive cells) */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* 2. UNIFIED TRIAGE TABS (KPI Strip acts directly as section switcher) */}
+        <div
+          role="tablist"
+          aria-label={lang === 'th' ? 'หมวดงานแอดมินรายวัน' : 'Daily Admin Sections'}
+          className="grid grid-cols-3 gap-2"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={section === 'attendance'}
             onClick={() => setSection('attendance')}
-            className={`min-h-[72px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+            className={`min-h-[68px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
               section === 'attendance'
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
                 : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)]'
             }`}
           >
-            <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
+            <span className={`text-[11px] font-semibold truncate ${section === 'attendance' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
               {lang === 'th' ? 'เช็คชื่อวันนี้' : 'Attendance'}
             </span>
             <div className="flex items-baseline justify-between gap-1 mt-1">
@@ -401,15 +401,17 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
 
           <button
             type="button"
+            role="tab"
+            aria-selected={section === 'leaves'}
             onClick={() => setSection('leaves')}
-            className={`min-h-[72px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+            className={`min-h-[68px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
               section === 'leaves'
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
                 : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)]'
             }`}
           >
-            <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
-              {lang === 'th' ? 'ลา / รออนุมัติ' : 'Leaves'}
+            <span className={`text-[11px] font-semibold truncate ${section === 'leaves' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
+              {lang === 'th' ? 'นักเรียนที่ลา' : 'Leaves'}
             </span>
             <div className="flex items-baseline justify-between gap-1 mt-1">
               <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)]">
@@ -429,15 +431,17 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
 
           <button
             type="button"
+            role="tab"
+            aria-selected={section === 'approvals'}
             onClick={() => setSection('approvals')}
-            className={`min-h-[72px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+            className={`min-h-[68px] p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
               section === 'approvals'
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
                 : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)]'
             }`}
           >
-            <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
-              {lang === 'th' ? 'อนุมัติเอกสาร' : 'Approvals'}
+            <span className={`text-[11px] font-semibold truncate ${section === 'approvals' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
+              {lang === 'th' ? 'คำขออนุมัติ' : 'Approvals'}
             </span>
             <div className="flex items-baseline justify-between gap-1 mt-1">
               <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)]">
@@ -447,55 +451,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                 {lang === 'th' ? 'รายการ' : 'items'}
               </span>
             </div>
-          </button>
-        </div>
-
-        {/* 3. SEGMENTED VIEW SWITCHER */}
-        <div
-          role="tablist"
-          aria-label={lang === 'th' ? 'หมวดงานแอดมินรายวัน' : 'Daily Admin Sections'}
-          className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={section === 'attendance'}
-            onClick={() => setSection('attendance')}
-            className={`min-h-[44px] px-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap truncate ${
-              section === 'attendance'
-                ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {lang === 'th' ? 'เช็คชื่อวันนี้' : 'Attendance'}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={section === 'leaves'}
-            onClick={() => setSection('leaves')}
-            className={`min-h-[44px] px-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap truncate tabular-nums ${
-              section === 'leaves'
-                ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {lang === 'th'
-              ? `นักเรียนที่ลา (${pendingLeaves.length + activeLeavesToday.length})`
-              : `Leaves (${pendingLeaves.length + activeLeavesToday.length})`}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={section === 'approvals'}
-            onClick={() => setSection('approvals')}
-            className={`min-h-[44px] px-2 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap truncate tabular-nums ${
-              section === 'approvals'
-                ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {lang === 'th' ? `คำขออนุมัติ (${totalPendingApprovals})` : `Approvals (${totalPendingApprovals})`}
           </button>
         </div>
       </section>
@@ -723,7 +678,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                       )}
                     </div>
 
-                    <p className="text-xs text-[var(--color-text-body)] bg-[var(--color-card-subtle)] px-3 py-2 rounded-xl border border-[var(--color-border)]">
+                    <p className="text-xs text-[var(--color-text-body)] bg-[var(--color-card-subtle)] px-3 py-2 rounded-xl">
                       {req.reason}
                     </p>
 

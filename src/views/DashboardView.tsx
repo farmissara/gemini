@@ -46,10 +46,8 @@ import {
   Briefcase
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
-import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { BaanPakKruPlayyard } from '../components/guide/BaanPakKruPlayyard';
-import { DashboardAmbientMascots } from '../components/guide/DashboardAmbientMascots';
 import { 
   Student, 
   Teacher,
@@ -168,8 +166,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return window.localStorage.getItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`) === '1';
   });
   const [playyardCollapsed, setPlayyardCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem('baanpakkru_playyard_collapsed') === '1';
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('baanpakkru_playyard_collapsed') !== '0';
   });
   
   // Lightbox Modal for viewing captured selfie photo
@@ -462,7 +460,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-[#0f172a] dark:text-slate-100 truncate">
                 {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
               </h1>
-              <ModuleTourTrigger moduleId="dashboard" lang={lang} />
             </div>
             <p className="text-xs text-[#475569] dark:text-slate-300 truncate tabular-nums">
               {lang === 'th'
@@ -491,7 +488,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="seg-tab-btn inline-flex items-center gap-1.5"
             >
               <Camera className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'เช็คชื่อ & GPS สด' : 'Live GPS'}</span>
+              <span>{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
               <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono tabular-nums ${
                 dashboardTab === 'live_attendance'
                   ? 'bg-white/20 text-white'
@@ -508,7 +505,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="seg-tab-btn inline-flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'นวัตกรรม & เควสต์' : 'Innovations'}</span>
+              <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
             </button>
 
             <button
@@ -522,37 +519,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          <button
-            type="button"
-            data-guide-id="dashboard-focus-toggle"
-            aria-pressed={isFocusMode}
-            onClick={handleToggleFocus}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-              isFocusMode
-                ? 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 shadow-xs'
-                : 'border-[var(--color-border)] bg-white/85 dark:bg-slate-800/80 text-[var(--color-text-title)] hover:bg-sky-50 dark:hover:bg-slate-700'
-            }`}
-            title={
-              isFocusMode
-                ? lang === 'th'
-                  ? 'ออกจากโหมดโฟกัส (แสดงเมนูข้างและการแจ้งเตือนทั้งหมด)'
-                  : 'Exit Focus Mode'
-                : lang === 'th'
-                ? 'เปิดโหมดโฟกัส: พับเมนูข้างและการแจ้งเตือนเพื่อขยายพื้นที่จัดการงาน'
-                : 'Focus Mode: collapse sidebars & notification panels'
-            }
-          >
-            {isFocusMode ? (
+          {isFocusMode && (
+            <button
+              type="button"
+              data-guide-id="dashboard-focus-toggle"
+              aria-pressed={isFocusMode}
+              onClick={handleToggleFocus}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
+              title={lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode'}
+            >
               <Minimize2 className="w-3.5 h-3.5 shrink-0" />
-            ) : (
-              <Maximize2 className="w-3.5 h-3.5 shrink-0 text-sky-700 dark:text-sky-300" />
-            )}
-            <span>
-              {isFocusMode
-                ? lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'
-                : lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}
-            </span>
-          </button>
+              <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
+            </button>
+          )}
 
           {!isFocusMode && (
             <>
@@ -751,7 +730,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <h2 className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-slate-100">
-                            {lang === 'th' ? 'บ้านพักครู · สรุปงานเช้าใน 3 นาที' : 'BaanPakKru · Morning Digest'}
+                            {lang === 'th' ? 'สรุปงานเช้า' : 'Morning Digest'}
                           </h2>
                           <span className="text-[11px] font-semibold text-sky-800 dark:text-sky-300 tabular-nums">
                             ({todayScheduledSlots.length} {lang === 'th' ? 'คาบวันนี้' : 'periods'})
@@ -790,7 +769,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition whitespace-nowrap"
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>{lang === 'th' ? 'เช็คชื่อโฮมรูม (มาทุกคน)' : 'Quick Roll Call'}</span>
+                      <span>{lang === 'th' ? 'เช็คชื่อโฮมรูม' : 'Quick Roll Call'}</span>
                     </button>
                     <button
                       type="button"
@@ -840,7 +819,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 MAIN 2-COLUMN WORKSPACE (Maximized Task Focus when Focus Mode ON)
                ============================================================== */}
             <div className={`dashboard-print-grid relative dash-grid grid-cols-1 ${isFocusMode ? 'lg:grid-cols-[0.88fr_1.12fr]' : 'lg:grid-cols-2'} items-start`}>
-              {!isFocusMode && <DashboardAmbientMascots lang={lang} />}
               {/* ──────────────────────────────────────────────────────────
                   LEFT COLUMN (50%): School Overview (Blue) + Attendance & Parent Link (Green)
                  ────────────────────────────────────────────────────────── */}

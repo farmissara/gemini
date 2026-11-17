@@ -1761,57 +1761,45 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   return (
     <div className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-x-hidden w-full max-w-full pb-20' : 'space-y-5 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}>
-      {/* Top Header - Compact for mobile */}
+      {/* Top Header - Clean & minimal */}
       {embeddedMobile ? (
         <div className="shrink-0 flex items-center justify-between px-1 py-1 text-[var(--color-text-title)]">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-lg tone-chip shrink-0">
-              <Camera className="w-3.5 h-3.5" />
-            </div>
-            <h1 className="text-xs font-bold truncate">
-              {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check in / out'}
-            </h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] font-bold border border-[var(--color-border)] shrink-0">
-              GPS Geofence
-            </span>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <h1 className="text-sm font-bold truncate">
+            {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Attendance'}
+          </h1>
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] text-xs cursor-pointer"
+              className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] cursor-pointer"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
               {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" /> : <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
             </button>
-            <span className="text-[10px] font-mono text-[var(--color-text-title)] bg-[var(--color-card-subtle)] px-2 py-0.5 rounded-lg border border-[var(--color-border)]">
+            <span className="text-[11px] font-medium tabular-nums text-[var(--color-text-muted)]">
               {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
             </span>
           </div>
         </div>
       ) : (
-        <div className="app-page-header p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-start gap-3.5 min-w-0">
-            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
+        <div className="app-page-header p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
               <Smartphone className="w-5 h-5" />
             </div>
-            <div className="space-y-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] border border-[var(--color-border)] text-[11px] font-bold">
-                <Radio className="w-3.5 h-3.5" />
-                <span>Smart Attendance Ecosystem • GPS Geofence & LINE Flex Alert</span>
-              </div>
-              <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ระบบเช็คชื่อเข้า-ออกผ่านโทรศัพท์มือถือ' : 'Mobile Selfie Check-in/out Hub'}
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] truncate">
+                {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
               </h1>
-              <p className="text-[var(--color-text-body)] text-xs">
-                {lang === 'th' 
-                  ? 'นักเรียนและครูเปิดเข้าระบบจากเครื่องตัวเอง ถ่ายรูปยืนยันตัวตนในเขตพื้นที่โรงเรียนหลายจุด (Multi-Gate Geofence) พร้อมแจ้งเตือน LINE ผู้ปกครอง'
-                  : 'Self check-in and out for students & teachers with phone camera snapshot, multi-gate GPS radius, and LINE parent notifications.'}
+              <p className="text-xs text-[var(--color-text-muted)] truncate">
+                {lang === 'th'
+                  ? 'เซลฟี่ในเขต GPS · แตะบัตร NFC · ยื่นใบลา · เช็คชื่อรายคาบ'
+                  : 'Selfie GPS · NFC ID tap · Leave requests · Period check-in'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -1821,30 +1809,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-[var(--color-text-muted)]" />}
             </button>
 
-            <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shrink-0">
-              <Clock className="w-4 h-4 text-[var(--tone)]" />
-              <div>
-                <div className="text-xs font-bold text-[var(--color-text-title)]">
-                  {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </div>
-                <div className="text-[11px] text-[var(--tone)] font-mono font-semibold">
-                  เวลาทำการ 06:30 - 18:00 น.
-                </div>
-              </div>
-            </div>
+            <span className="text-xs font-medium tabular-nums text-[var(--color-text-muted)] px-3 py-1.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
+              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Navigation Sub Tabs & Primary Scanner Action */}
+      {/* Navigation Sub Tabs & Contextual Action */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
         <nav aria-label="Attendance sub-navigation" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
           {[
-            { id: 'selfie_mobile', icon: Camera, labelTh: 'เช็คชื่อมือถือ', labelEn: 'Selfie', staffOnly: false },
-            { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะบัตร NFC', labelEn: 'NFC Tap', staffOnly: false },
+            { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
+            { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
             { id: 'leave_request', icon: FileText, labelTh: 'ใบลา', labelEn: 'Leave', badge: scopedLeaveRequests.filter(r => r.status === 'pending').length, staffOnly: false },
-            { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ครูลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
-            { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ (QR)', labelEn: 'Periods (QR)', staffOnly: false }
+            { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+            { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false }
           ]
             .filter((tab) => isStaffUser || !tab.staffOnly)
             .map(tab => (
@@ -1883,110 +1863,76 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 }
               }}
               disabled={biometricBusy}
-              className={`min-h-[38px] px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition shrink-0 ${
+              className={`min-h-[38px] px-2.5 py-1 rounded-xl border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition shrink-0 ${
                 isQuickAttendanceLocked
                   ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                  : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
               }`}
               title={
                 isQuickAttendanceLocked
                   ? (lang === 'th' ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID' : 'Unlock with FaceID / TouchID')
-                  : (lang === 'th' ? 'แตะเพื่อล็อกโมดูลเช็คชื่อด่วน' : 'Lock quick attendance')
+                  : (lang === 'th' ? 'แตะเพื่อล็อกเช็คชื่อด่วน' : 'Lock quick attendance')
               }
             >
               {isQuickAttendanceLocked ? <Lock className="w-3.5 h-3.5 shrink-0" /> : <Fingerprint className="w-3.5 h-3.5 shrink-0" />}
               <span className="tabular-nums">
                 {isQuickAttendanceLocked
-                  ? (lang === 'th' ? 'ล็อก (FaceID)' : 'Locked')
-                  : (lang === 'th' ? `ปลดล็อก ${biometricUnlockMinutes}น.` : `${biometricUnlockMinutes}m`)}
+                  ? (lang === 'th' ? 'ล็อกอยู่' : 'Locked')
+                  : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
               </span>
             </button>
           )}
 
-          {/* Rapid Scanner Button */}
-          <button
-            type="button"
-            onClick={() => runWithBiometricGuard(() => setShowRapidScanner(true))}
-            className="btn-action-primary shrink-0"
-            title="เปิดโหมดสแกนเนอร์บาร์โค้ด & QR รัวต่อเนื่อง"
-          >
-            <Camera className="w-3.5 h-3.5" />
-            <span>สแกนรัว 1วิ/คน</span>
-          </button>
+          {/* Show top rapid scanner button only in full desktop layout (on mobile it lives in the bottom thumb FAB) */}
+          {!embeddedMobile && (
+            <button
+              type="button"
+              onClick={() => runWithBiometricGuard(() => setShowRapidScanner(true))}
+              className="btn-action-primary shrink-0"
+              title="สแกน QR / บาร์โค้ดต่อเนื่อง"
+            >
+              <ScanLine className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'สแกน QR รัว' : 'Rapid Scan'}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Biometric Quick-Action Security Strip (Staff/Admin only) */}
-      {isStaffUser && (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin') && (
-        <div className="shrink-0">
+      {/* Slim Biometric Status / Lock Bar (only renders on active feedback or when actually locked) */}
+      {isStaffUser && (biometricNotice || biometricError || (isQuickAttendanceLocked && (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin'))) && (
+        <div className="shrink-0 space-y-1.5">
           {biometricNotice && (
-            <div role="status" className="mb-2 px-3 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2">
+            <div role="status" className="px-3 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{biometricNotice}</span>
             </div>
           )}
           {biometricError && (
-            <div role="alert" className="mb-2 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-medium flex items-center gap-2">
+            <div role="alert" className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{biometricError}</span>
             </div>
           )}
 
-          {!userPasskey ? (
-            <div className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2.5 text-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
-                  <Fingerprint className="w-4.5 h-4.5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ล็อกเช็คชื่อด่วนด้วย FaceID / TouchID' : 'Secure Quick Attendance with Biometrics'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                    {webAuthnSupport?.supported
-                      ? (lang === 'th' ? 'ผูก Passkey อุปกรณ์นี้เพื่อป้องกันการเช็คชื่อแทนโดยไม่ได้รับอนุญาต' : 'Enroll device Passkey to guard quick check-in actions')
-                      : (lang === 'th' ? webAuthnSupport?.reasonTh || 'ต้องใช้งานผ่าน HTTPS บนมือถือที่รองรับ' : webAuthnSupport?.reasonEn || 'Requires HTTPS mobile browser')}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={biometricBusy || webAuthnSupport?.supported === false}
-                onClick={handleEnrollQuickBiometric}
-                className="min-h-[44px] px-3.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>{biometricBusy ? (lang === 'th' ? 'กำลังลงทะเบียน...' : 'Enrolling...') : (lang === 'th' ? 'ผูก FaceID / TouchID' : 'Enable Passkey')}</span>
-              </button>
-            </div>
-          ) : isQuickAttendanceLocked ? (
-            <div className="p-3.5 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-amber-950 dark:text-amber-100">
-                    {lang === 'th' ? 'โมดูลเช็คชื่อด่วนถูกล็อกด้วยไบโอเมตริกซ์' : 'Quick Attendance Biometric Lock Active'}
-                  </p>
-                  <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                    {lang === 'th'
-                      ? `ยืนยัน ${userPasskey.deviceLabel} ก่อนสแกนรัว เช็คชื่อแทน หรือเปิดจุดแตะ NFC`
-                      : `Verify ${userPasskey.deviceLabel} to unlock rapid scanner, NFC terminal & proxy check-in`}
-                  </p>
-                </div>
+          {isQuickAttendanceLocked && (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin') && (
+            <div className="px-3.5 py-2.5 rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 flex items-center justify-between gap-2.5 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Lock className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                <span className="font-semibold text-amber-950 dark:text-amber-100 truncate">
+                  {lang === 'th' ? 'ล็อกเช็คชื่อด่วนด้วยไบโอเมตริกซ์' : 'Quick Attendance Locked'}
+                </span>
               </div>
               <button
                 type="button"
                 disabled={biometricBusy}
                 onClick={handleBiometricVerify}
-                className="min-h-[44px] px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                className="min-h-[40px] px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <Fingerprint className="w-4 h-4" />
-                <span>{biometricBusy ? (lang === 'th' ? 'กำลังตรวจสอบ...' : 'Verifying...') : (lang === 'th' ? 'สแกน FaceID / TouchID ปลดล็อก' : 'Unlock with Biometrics')}</span>
+                <span>{biometricBusy ? '...' : (lang === 'th' ? 'ปลดล็อก' : 'Unlock')}</span>
               </button>
             </div>
-          ) : null}
+          )}
         </div>
       )}
 
@@ -3022,7 +2968,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   }`}
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? 'เข้า (IN)' : 'Check In'}</span>
+                  <span>{lang === 'th' ? 'เข้าเรียน' : 'Check In'}</span>
                 </button>
                 <button
                   type="button"
@@ -3034,7 +2980,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   }`}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? 'ออก (OUT)' : 'Check Out'}</span>
+                  <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Check Out'}</span>
                 </button>
               </div>
 
@@ -4255,8 +4201,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           )}
 
-          <div className="pointer-events-auto flex items-center gap-2">
-            {/* Quick Roster Drawer Trigger (Thumb Zone) */}
+          <div className="pointer-events-auto flex items-center gap-1.5 bg-[var(--color-card)]/95 backdrop-blur-md p-1 rounded-full border border-[var(--color-border)] shadow-xl">
+            {/* Quick Roster Drawer Trigger */}
             <button
               type="button"
               onClick={() => {
@@ -4264,13 +4210,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 setShowQuickRosterSheet(true);
               }}
               aria-label={lang === 'th' ? 'ดูรายชื่อนักเรียน' : 'Open Student Roster'}
-              className="min-h-[48px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
+              className="min-h-[44px] px-3 rounded-full hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
             >
               <Users className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
               <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
-              <span className="text-[11px] font-mono tabular-nums text-[var(--color-text-muted)]">
-                ({scopedStudents.length})
-              </span>
             </button>
 
             {/* Primary Context Check-in FAB */}
@@ -4278,7 +4221,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               type="button"
               onClick={handlePrimaryFabCheckin}
               disabled={isSavingAttendance}
-              className="min-h-[48px] px-4 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white shadow-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
+              className="min-h-[44px] px-4 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
             >
               {subTab === 'selfie_mobile' && !capturedPhotoUrl ? (
                 <Camera className="w-4 h-4 shrink-0" />
@@ -4298,9 +4241,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               onClick={() => setFabMenuOpen((prev) => !prev)}
               aria-expanded={fabMenuOpen}
               aria-label={lang === 'th' ? 'เมนูลัดเช็คชื่อ' : 'Quick attendance tools'}
-              className="min-h-[48px] min-w-[48px] rounded-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white border border-white/15 shadow-xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
             >
-              <Plus className={`w-5 h-5 transition-transform duration-150 ${fabMenuOpen ? 'rotate-45' : ''}`} />
+              <Plus className={`w-4 h-4 transition-transform duration-150 ${fabMenuOpen ? 'rotate-45' : ''}`} />
             </button>
           </div>
         </div>
