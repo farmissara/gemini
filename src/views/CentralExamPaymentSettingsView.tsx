@@ -37,7 +37,7 @@ interface CentralExamPaymentSettingsViewProps {
 }
 
 export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettingsViewProps> = ({
-  adminEmail = 'farmissara@gmail.com',
+  adminEmail = 'baanpakkru@gmail.com',
   onSaved,
 }) => {
   const [settings, setSettings] = useState<CentralExamPaymentSettings>(() => fetchCentralExamPaymentSettings());
@@ -387,7 +387,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
                 type="text"
                 value={settings.notes || ''}
                 onChange={(e) => setSettings((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="เช่น ติดต่อสอบถาม Super Admin: farmissara@gmail.com"
+                placeholder="เช่น ติดต่อสอบถาม Super Admin: baanpakkru@gmail.com"
                 className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
             </div>

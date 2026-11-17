@@ -436,14 +436,14 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard?.writeText('farmissara@gmail.com');
-                  setFeedbackToast(lang === 'th' ? 'คัดลอกอีเมล Master (farmissara@gmail.com) แล้ว' : 'Copied Master email');
+                  navigator.clipboard?.writeText('baanpakkru@gmail.com');
+                  setFeedbackToast(lang === 'th' ? 'คัดลอกอีเมล Master (baanpakkru@gmail.com) แล้ว' : 'Copied Master email');
                 }}
                 className="inline-flex items-center gap-1 text-[var(--tone)] font-mono hover:underline cursor-pointer"
                 title="คลิกเพื่อคัดลอกอีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
               >
                 <Mail className="w-3 h-3" />
-                <span>farmissara@gmail.com</span>
+                <span>baanpakkru@gmail.com</span>
               </button>
             </div>
           </div>
@@ -1174,7 +1174,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
       {/* View 5: Central Exam Payment & PromptPay Settings (Requirement 2) */}
       {activeSubTab === 'exam_payment' && (
-        <CentralExamPaymentSettingsView adminEmail="farmissara@gmail.com" />
+        <CentralExamPaymentSettingsView adminEmail="baanpakkru@gmail.com" />
       )}
 
       {/* View 6: Multi-School Audit Logs */}

@@ -291,8 +291,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     staffPositionOptions: systemConfig.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
     resendFromEmail: systemConfig.resendFromEmail,
     resendApiKeyConfigured: systemConfig.resendApiKeyConfigured,
-    masterEmail: systemConfig.masterEmail || 'farmissara@gmail.com',
-    replyToEmail: systemConfig.replyToEmail || 'farmissara@gmail.com',
+    masterEmail: systemConfig.masterEmail || 'baanpakkru@gmail.com',
+    replyToEmail: systemConfig.replyToEmail || 'baanpakkru@gmail.com',
     backupBucket: systemConfig.backupBucket,
   });
 
@@ -1739,17 +1739,17 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => setGeneralConfig(prev => ({ ...prev, masterEmail: 'farmissara@gmail.com' }))}
+                    onClick={() => setGeneralConfig(prev => ({ ...prev, masterEmail: 'baanpakkru@gmail.com' }))}
                     className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
                   >
-                    ตั้งเป็น farmissara@gmail.com
+                    ตั้งเป็น baanpakkru@gmail.com
                   </button>
                 </div>
                 <input
                   type="email"
                   value={generalConfig.masterEmail}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, masterEmail: e.target.value }))}
-                  placeholder="farmissara@gmail.com"
+                  placeholder="baanpakkru@gmail.com"
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
                 <span className="text-[10px] text-[var(--color-text-muted)] block">
@@ -1765,17 +1765,17 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => setGeneralConfig(prev => ({ ...prev, replyToEmail: 'farmissara@gmail.com' }))}
+                    onClick={() => setGeneralConfig(prev => ({ ...prev, replyToEmail: 'baanpakkru@gmail.com' }))}
                     className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
                   >
-                    ตั้งเป็น farmissara@gmail.com
+                    ตั้งเป็น baanpakkru@gmail.com
                   </button>
                 </div>
                 <input
                   type="email"
                   value={generalConfig.replyToEmail}
                   onChange={(e) => setGeneralConfig(prev => ({ ...prev, replyToEmail: e.target.value }))}
-                  placeholder="farmissara@gmail.com"
+                  placeholder="baanpakkru@gmail.com"
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-600"
                 />
                 <span className="text-[10px] text-[var(--color-text-muted)] block">
@@ -1814,7 +1814,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   <div className="font-bold text-xs text-blue-950 dark:text-blue-100 flex items-center gap-2">
                     <span>Master Authority Email:</span>
                     <span className="font-mono bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded text-blue-800 dark:text-blue-200 font-bold">
-                      {generalConfig.masterEmail || 'farmissara@gmail.com'}
+                      {generalConfig.masterEmail || 'baanpakkru@gmail.com'}
                     </span>
                   </div>
                   <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-1 leading-relaxed max-w-2xl">
@@ -1826,7 +1826,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => handleCopy(generalConfig.masterEmail || 'farmissara@gmail.com', 'masterEmail')}
+                onClick={() => handleCopy(generalConfig.masterEmail || 'baanpakkru@gmail.com', 'masterEmail')}
                 className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 flex items-center gap-1.5 self-center bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg shadow-xs cursor-pointer"
               >
                 {copiedField === 'masterEmail' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}

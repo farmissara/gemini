@@ -833,11 +833,11 @@ export const DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS: CentralExamPaymentSettings =
   accountNumber: '142-2-90188-3',
   qrImageUrl: '',
   transferInstructions: 'สแกน QR Code พร้อมเพย์ด้วยแอปธนาคารทุกแห่ง ยอดเงินตรงตามชุดข้อสอบ เพื่อปลดล็อกเข้าสู่คลังข้อสอบโรงเรียนทันที',
-  notes: 'ออกหลักฐานและยืนยันสิทธิ์ทันทีผ่านระบบอัตโนมัติ ติดต่อสอบถาม Super Admin: farmissara@gmail.com',
+  notes: 'ออกหลักฐานและยืนยันสิทธิ์ทันทีผ่านระบบอัตโนมัติ ติดต่อสอบถาม Super Admin: baanpakkru@gmail.com',
   enablePromptPay: true,
   enableInvoice: true,
   lastUpdated: '2026-11-11T00:00:00.000Z',
-  updatedBy: 'Super Admin (farmissara@gmail.com)',
+  updatedBy: 'Super Admin (baanpakkru@gmail.com)',
 };
 
 export function fetchCentralExamPaymentSettings(): CentralExamPaymentSettings {

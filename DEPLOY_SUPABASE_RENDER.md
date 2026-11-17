@@ -109,15 +109,15 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 #### ตั้ง Gmail เป็นผู้ส่งอีเมล Supabase Auth
 
-อีเมลยืนยันสมาชิกและลิงก์รีเซ็ตรหัสผ่านส่งผ่าน SMTP ของ Supabase ไม่ได้กำหนดผู้ส่งจากโค้ดหน้าเว็บ หากต้องการใช้ `farmissara@gmail.com`:
+อีเมลยืนยันสมาชิกและลิงก์รีเซ็ตรหัสผ่านส่งผ่าน SMTP ของ Supabase ไม่ได้กำหนดผู้ส่งจากโค้ดหน้าเว็บ หากต้องการใช้ `baanpakkru@gmail.com`:
 
 1. เปิดการยืนยันแบบ 2 ขั้นตอนในบัญชี Google แล้วสร้าง **Google App Password** สำหรับใช้กับ Supabase
 2. ใน Supabase ไปที่ **Authentication → Emails → SMTP Settings** (ตำแหน่งเมนูอาจต่างกันตาม Dashboard) แล้วเปิดใช้งาน Custom SMTP
 3. กรอกค่าเหล่านี้:
    - Host: `smtp.gmail.com`
    - Port: `465` (SSL) หรือ `587` (STARTTLS)
-   - Username: `farmissara@gmail.com`
-   - Sender email: `farmissara@gmail.com`
+   - Username: `baanpakkru@gmail.com`
+   - Sender email: `baanpakkru@gmail.com`
    - Sender name: ชื่อระบบที่ต้องการให้ผู้รับเห็น เช่น `EduVerse`
    - Password: Google App Password
 4. บันทึกการตั้งค่าแล้วทดสอบสมัครบัญชีและส่งลิงก์ยืนยันใหม่ โดยใช้กล่องเมลที่ควบคุมได้ ตรวจโฟลเดอร์ Spam หากไม่พบอีเมล

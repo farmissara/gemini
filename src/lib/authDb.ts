@@ -580,7 +580,7 @@ export async function registerSchoolWithSupabase(params: {
   }
 }
 
-export const MASTER_SYSTEM_EMAIL = 'farmissara@gmail.com';
+export const MASTER_SYSTEM_EMAIL = 'baanpakkru@gmail.com';
 
 export async function resendSignupConfirmation(email: string): Promise<void> {
   const client = getSupabaseClient();
